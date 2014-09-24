@@ -181,6 +181,23 @@ config PTP_NOPOSIX
 
 endchoice
 
+choice
+	prompt "Choose your preferred ptp synchronization mechanism"
+	depends on DEVELOPER && PPSI
+
+config E2E
+  boolean "DELAY_REQUEST_RESPONSE"
+	help
+	  Select this option if you want to use Delay-Request-Response mechanism
+
+config P2P
+	boolean "PEER_DELAY"
+	help
+	  Select this option if you want to use Peer Delay mechanism
+
+endchoice
+
+
 config DETERMINISTIC_BINARY
 	depends on DEVELOPER
 	boolean "Build a binary that is the same every time"
