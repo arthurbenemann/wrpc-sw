@@ -20,6 +20,7 @@
 #include <softpll_ng.h>
 
 static struct rts_pll_state pstate;
+static struct greg_rts_state greg_channels[RTS_PLL_CHANNELS];
 
 static void clear_state()
 {
@@ -64,7 +65,6 @@ int rts_adjust_phase(int channel, int32_t phase_setpoint)
       spll_set_backup_phase_shift(phase_setpoint); 
     }
 
-    
     pstate.channels[channel].phase_setpoint = phase_setpoint;
     return 0;
 }
@@ -174,6 +174,7 @@ void rts_update(void)
     for(i=0;i<RTS_PLL_CHANNELS;i++)
     {
 #define CH pstate.channels[i]
+#define gCH greg_channels[i]
         CH.flags = 0;
         CH.phase_loopback = 0;
         CH.phase_current = 0;
@@ -185,13 +186,13 @@ void rts_update(void)
         else {
             if(i==pstate.current_ref)
             {
-                spll_get_phase_shift(0, &CH.phase_current, NULL);
+                spll_get_phase_shift(0, &CH.phase_current, &gCH.phase_target);
 		            if(spll_shifter_busy(0))
 		            	CH.flags |= CHAN_SHIFTING;
 						}
             if(i==pstate.backup_ref)
             {
-                spll_get_backup_phase_shift(&CH.phase_current, NULL);
+                spll_get_backup_phase_shift(&CH.phase_current, &gCH.phase_target, &gCH.err_d);
 // 		            if(spll_shifter_busy(0))
 // 		            	CH.flags |= CHAN_SHIFTING;
 						}
@@ -204,6 +205,7 @@ void rts_update(void)
         }
 
 #undef CH
+#undef gCH
     }
 }
 
@@ -238,11 +240,14 @@ static int rts_get_state_func(const struct minipc_pd *pd, uint32_t *args, void *
         tmp->channels[i].phase_current = htonl(pstate.channels[i].phase_current);
         tmp->channels[i].phase_loopback = htonl(pstate.channels[i].phase_loopback);
         tmp->channels[i].flags = htonl(pstate.channels[i].flags);
-        if(i<2)
-        TRACE("RT [chan: %d] setpoint: %d, loopback real: %d [cor:%d], prio: %d, cur: %d\n", 
-        i, tmp->channels[i].phase_setpoint, htonl(pstate.channels[i].phase_loopback),
-        tmp->channels[i].phase_loopback, tmp->channels[i].priority, 
-        tmp->channels[i].phase_current);
+        if(i<2) {
+          TRACE("RT [chan: %d] setpoint: %d, loopback real: %d [cor:%d], prio: %d, cur: %d\n", 
+          i, tmp->channels[i].phase_setpoint, htonl(pstate.channels[i].phase_loopback),
+          tmp->channels[i].phase_loopback, tmp->channels[i].priority, 
+          tmp->channels[i].phase_current);
+          TRACE("RT [chan: %d] ph_tar: %d, err_d: %d\n", i, greg_channels[i].phase_target,
+              greg_channels[i].err_d);
+        }
     }
 
     return 0;

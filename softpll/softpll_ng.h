@@ -84,7 +84,7 @@ void spll_set_phase_shift(int out_channel, int32_t value_picoseconds);
 void spll_set_backup_phase_shift(int32_t value_picoseconds);
 /* Retreives the current phase shift and desired setpoint for given output channel */
 void spll_get_phase_shift(int out_channel, int32_t *current, int32_t *target);
-void spll_get_backup_phase_shift(int32_t *current, int32_t *target);
+void spll_get_backup_phase_shift(int32_t *current, int32_t *target, int32_t *err);
 /* Returns non-zero if the given output channel is busy phase shifting to a new preset */
 int spll_shifter_busy(int out_channel);
 

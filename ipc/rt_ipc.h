@@ -74,6 +74,12 @@
 /* Serdes reference clock enable/disable */
 #define RTS_DEBUG_ENABLE_SERDES_CLOCKS 1
 
+/* Greg's debug */
+struct greg_rts_state {
+  int32_t phase_target;
+  int32_t err_d;
+};
+
 struct rts_pll_state {
 
 /* State of an individual input channel (i.e. switch port) */

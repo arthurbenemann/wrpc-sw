@@ -325,8 +325,8 @@ void _irq_entry()
 	}
 
 	irq_count++;
-	if((irq_count % 600)==10)
-		show_debug(irq_count,&s->mpll, &s->bpll,s->ptrackers);
+	//if((irq_count % 600)==10)
+	//	show_debug(irq_count,&s->mpll, &s->bpll,s->ptrackers);
 
 	clear_irq();
 }
@@ -513,7 +513,7 @@ void spll_get_phase_shift(int channel, int32_t *current, int32_t *target)
 /*
  * 
  */
-void spll_get_backup_phase_shift(int32_t *current, int32_t *target)
+void spll_get_backup_phase_shift(int32_t *current, int32_t *target, int32_t *err)
 {
 	volatile struct spll_backup_state *st = (struct spll_backup_state *)&softpll.bpll;
 	int div = (DIVIDE_DMTD_CLOCKS_BY_2 ? 2 : 1);
@@ -521,6 +521,8 @@ void spll_get_backup_phase_shift(int32_t *current, int32_t *target)
 		*current = to_picos(st->phase_shift_current * div);
 	if (target)
 		*target = to_picos(st->phase_shift_target * div);
+  if (err)
+    *err = to_picos(st->err_d * div);
 }
 
 int spll_read_ptracker(int channel, int32_t *phase_ps, int *enabled)
@@ -816,8 +818,10 @@ void spll_switchover(int new_ref)
 {
 	struct softpll_state *s = (struct softpll_state *) &softpll;
 	
+  TRACE("greg: switch to ref %d\n", new_ref);
 	/*switch over helper reference*/
 	helper_switch_reference(&s->helper,new_ref);
+  TRACE("greg: helper switched\n");
 	
 	/*switch over between bpll and mpll by copying the appropriate runtime and config
 	  data 
