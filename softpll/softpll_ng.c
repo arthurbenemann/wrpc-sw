@@ -539,7 +539,7 @@ int spll_read_ptracker(int channel, int32_t *phase_ps, int *enabled)
 	 */
 	if(s->bpll.enabled && channel == s->bpll.id_ref)
 	{
-	  phase = s->phase_shift_current;
+	  phase = s->bpll.phase_shift_current;
 	  TRACE_DEV("[b-ptracker] set phase to setpoint: %d \n",phase);
 	}
 	
