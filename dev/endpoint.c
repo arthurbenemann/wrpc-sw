@@ -21,7 +21,7 @@ LGPL 2.1
 
 /* Length of a single bit on the gigabit serial link in picoseconds. Used for calculating deltaRx/deltaTx
    from the serdes bitslip value */
-#define PICOS_PER_SERIAL_BIT 800
+#define PICOS_PER_SERIAL_BIT 1600		//New value for the CPIC. Old one 800
 
 /* Number of raw phase samples averaged by the DMTD detector in the Endpoint during single phase measurement.
    The bigger, the better precision, but slower rate */

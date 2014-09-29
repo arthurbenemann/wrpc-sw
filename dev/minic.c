@@ -243,7 +243,7 @@ int minic_rx_frame(uint8_t * hdr, uint8_t * payload, uint32_t buf_size,
 			shw_pps_gen_get_time(&sec, &counter_ppsg);
 
 			if (counter_r > 3 * REF_CLOCK_FREQ_HZ / 4
-			    && counter_ppsg < 250000000)
+			    && counter_ppsg < 125000000)
 				sec--;
 
 			hwts->sec = sec & 0x7fffffff;
@@ -368,15 +368,16 @@ int minic_tx_frame(uint8_t * hdr, uint8_t * payload, uint32_t size,
 		EXPLODE_WR_TIMESTAMP(raw_ts, counter_r, counter_f);
 		shw_pps_gen_get_time(&sec, &nsec);
 
-		if (counter_r > 3 * REF_CLOCK_FREQ_HZ / 4 && nsec < 250000000)
+		if (counter_r > 3 * REF_CLOCK_FREQ_HZ / 4 && nsec < 125000000)
 			sec--;
 
 		hwts->valid = ts_valid;
 		hwts->sec = sec;
 		hwts->ahead = 0;
-		hwts->nsec = counter_r * 8;
+		hwts->nsec = counter_r * (REF_CLOCK_PERIOD_PS/1000);	// = counter_r * 8; //BEFORE. Emilio.
+		//hwts->nsec = counter_r * 16;
 		
-//        TRACE_DEV("minic_tx_frame [%d bytes] TS: %d.%d valid %d\n", size, hwts->utc, hwts->nsec, hwts->valid);
+		//mprintf("TRACE DEV: minic_tx_frame [%d bytes] TS: %d.%d valid %d\n", size, hwts->sec, hwts->nsec, hwts->valid);
 		minic.tx_count++;
         }
         
