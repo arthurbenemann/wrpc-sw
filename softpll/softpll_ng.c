@@ -499,15 +499,20 @@ void spll_set_backup_phase_shift(int32_t value_picoseconds)
 	set_backup_phase_shift(value_picoseconds);
 }
 
-void spll_get_phase_shift(int channel, int32_t *current, int32_t *target)
+void spll_get_phase_shift(int channel, int32_t *current, int32_t *target, int32_t *err)
 {
-	volatile struct spll_main_state *st = (struct spll_main_state *)
-	    (!channel ? &softpll.mpll : &softpll.aux[channel - 1].pll.dmtd);
+	//volatile struct spll_main_state *st = (struct spll_main_state *)
+	//    (!channel ? &softpll.mpll : &softpll.aux[channel - 1].pll.dmtd);
+	volatile struct spll_main_state *st = (struct spll_main_state *) &softpll.mpll;
 	int div = (DIVIDE_DMTD_CLOCKS_BY_2 ? 2 : 1);
-	if (current)
+	if (current) {
 		*current = to_picos(st->phase_shift_current * div);
-	if (target)
+	}
+	if (target) {
 		*target = to_picos(st->phase_shift_target * div);
+	}
+	if (err)
+		*err = to_picos(st->err_d * div);
 }
 
 /*
@@ -834,37 +839,46 @@ void spll_switchover(int new_ref)
 	        first ackt as a backup, intill all runtime parameters are learnt, then 
 	        using this function to switchover.
 	*/
-	s->mpll.adder_ref     =    s->bpll.adder_ref;
-	s->mpll.adder_out     =    s->bpll.adder_out;
-	s->mpll.tag_ref       =    s->bpll.tag_ref;
-	s->mpll.tag_out       =    s->bpll.tag_out;
-	s->mpll.tag_ref_d     =    s->bpll.tag_ref_d;
-	s->mpll.tag_out_d     =    s->bpll.tag_out_d;
-	s->mpll.seq_ref       =    s->bpll.seq_ref;
-	s->mpll.phase_shift_target     =    s->bpll.phase_shift_target;
-	s->mpll.phase_shift_current     =    s->bpll.phase_shift_current;
+	//s->mpll.adder_ref     =    s->bpll.adder_ref;
+	//s->mpll.adder_out     =    s->bpll.adder_out;
+	//s->mpll.tag_ref       =    s->bpll.tag_ref;
+	//s->mpll.tag_out       =    s->bpll.tag_out;
+	//s->mpll.tag_ref_d     =    s->bpll.tag_ref_d;
+	//s->mpll.tag_out_d     =    s->bpll.tag_out_d;
+	//s->mpll.seq_ref       =    s->bpll.seq_ref;
+	//spll_enable_tagger(s->mpll.id_ref, 0);
+	//TRACE("greg: old mpll.phase_shift_target = %d\n", s->mpll.phase_shift_target);
+	//TRACE("greg: bpll phase_val = %d\n", s->ptrackers[1].phase_val);
+	s->mpll.phase_shift_target     = s->bpll.phase_shift_target;
+	s->mpll.phase_shift_current		 = s->bpll.phase_shift_target;
+	s->mpll.adder_ref							 = s->bpll.phase_shift_target;
+	//TRACE("greg: new mpll.phase_shift_target = %d\n", s->mpll.phase_shift_target);
+	//s->mpll.phase_shift_current    =    s->bpll.phase_shift_current;
 	s->mpll.id_out     =    s->bpll.id_out;
 	s->mpll.id_ref       =  s->bpll.id_ref;
-	s->mpll.delock_count     =    s->bpll.delock_count;
-	s->mpll.dac_index     =    s->bpll.dac_index;
-	s->mpll.enabled     =    s->bpll.enabled;
-	s->mpll.err_d     =    s->bpll.err_d;
+	spll_enable_tagger(s->mpll.id_ref, 1);
+	spll_enable_tagger(s->mpll.id_out, 1);
+	//s->mpll.delock_count     =    s->bpll.delock_count;
+	//s->mpll.dac_index     =    s->bpll.dac_index;
+	//s->mpll.enabled     =    s->bpll.enabled;
+	//s->mpll.err_d     =    s->bpll.err_d;
 	
 	/*stop bpll*/
-	s->bpll.adder_ref     =    0;
-	s->bpll.adder_out     =    0;
-	s->bpll.tag_ref       =    -1;
-	s->bpll.tag_out       =    -1;
-	s->bpll.tag_ref_d     =    -1;
-	s->bpll.tag_out_d     =    -1;
-	s->bpll.seq_ref       =   0;
-	s->bpll.phase_shift_target     =    0;
-	s->bpll.phase_shift_current     = 0;
-	s->bpll.id_out     =    0;
-	s->bpll.delock_count     =   0;
-	s->bpll.dac_index     =    0;
-	s->bpll.enabled     =    0;
-	s->bpll.err_d     =    0;	
+	//s->bpll.adder_ref     =    0;
+	//s->bpll.adder_out     =    0;
+	//s->bpll.tag_ref       =    -1;
+	//s->bpll.tag_out       =    -1;
+	//s->bpll.tag_ref_d     =    -1;
+	//s->bpll.tag_out_d     =    -1;
+	//s->bpll.seq_ref       =   0;
+	//s->bpll.phase_shift_target     =    0;
+	//s->bpll.phase_shift_current     = 0;
+	//s->bpll.id_out     =    0;
+	//s->bpll.delock_count     =   0;
+	//s->bpll.dac_index     =    0;
+	//s->bpll.enabled     =    0;
+	//s->bpll.err_d     =    0;	
+	rts_update();
 }
 /*
  * called by PPSi from proto-ext-whiterabbit/state-wrs-s-lock.c via the following path

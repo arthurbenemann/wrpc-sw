@@ -201,7 +201,9 @@ int mpll_set_phase_shift(struct spll_main_state *s,
 				int desired_shift_ps)
 {
 	int div = (DIVIDE_DMTD_CLOCKS_BY_2 ? 2 : 1);
+	TRACE_DEV("MPLL: ph_target1: %d\n", s->phase_shift_target);
 	s->phase_shift_target = from_picos(desired_shift_ps) / div;
+	TRACE_DEV("MPLL: ph_target2: %d\n", s->phase_shift_target);
 	return 0;
 }
 

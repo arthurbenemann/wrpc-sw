@@ -34,7 +34,7 @@ static void clear_state()
     }
     pstate.flags = 0;
     pstate.current_ref = 0;//TODO[?]: init with -1 to make sure it does not much channel 0
-    pstate.backup_ref = 0; //TODO[?]: init with -1 to make sure it does not much channel 0
+    pstate.backup_ref = 1; //TODO[?]: init with -1 to make sure it does not much channel 0
     pstate.mode = RTS_MODE_DISABLED;
     pstate.ipc_count = 0;
 }
@@ -61,7 +61,7 @@ int rts_adjust_phase(int channel, int32_t phase_setpoint)
 	  * therefore, we multiply, the measured phase error of the OFM by 2
 	  * (really not sure it wil work)
 	  */ 
-      phase_setpoint = phase_setpoint << 1;
+      //gd phase_setpoint = phase_setpoint << 1;
       spll_set_backup_phase_shift(phase_setpoint); 
     }
 
@@ -119,6 +119,7 @@ int rts_backup_channel(int channel, int cmd)
 		case RTS_BACKUP_CH_ACTIVATE:
 		spll_switchover(pstate.backup_ref);
 		pstate.current_ref = pstate.backup_ref;
+		pstate.backup_ref = 0;
 		
 		TRACE("RT [backup port]: activated !!! : %d \n", channel);
 		break;
@@ -186,11 +187,11 @@ void rts_update(void)
         else {
             if(i==pstate.current_ref)
             {
-                spll_get_phase_shift(0, &CH.phase_current, &gCH.phase_target);
-		            if(spll_shifter_busy(0))
+                spll_get_phase_shift(i, &(CH.phase_current), &(gCH.phase_target), &gCH.err_d);
+		            if(spll_shifter_busy(i))
 		            	CH.flags |= CHAN_SHIFTING;
 						}
-            if(i==pstate.backup_ref)
+						else if(i==pstate.backup_ref)
             {
                 spll_get_backup_phase_shift(&CH.phase_current, &gCH.phase_target, &gCH.err_d);
 // 		            if(spll_shifter_busy(0))
@@ -241,12 +242,12 @@ static int rts_get_state_func(const struct minipc_pd *pd, uint32_t *args, void *
         tmp->channels[i].phase_loopback = htonl(pstate.channels[i].phase_loopback);
         tmp->channels[i].flags = htonl(pstate.channels[i].flags);
         if(i<2) {
-          TRACE("RT [chan: %d] setpoint: %d, loopback real: %d [cor:%d], prio: %d, cur: %d\n", 
-          i, tmp->channels[i].phase_setpoint, htonl(pstate.channels[i].phase_loopback),
+          TRACE("RT [chan: %d%c] setpoint: %d, loopback real: %d [cor:%d], prio: %d, cur: %d\n", 
+          i, i==pstate.current_ref?'a':' ', tmp->channels[i].phase_setpoint, htonl(pstate.channels[i].phase_loopback),
           tmp->channels[i].phase_loopback, tmp->channels[i].priority, 
           tmp->channels[i].phase_current);
-          TRACE("RT [chan: %d] ph_tar: %d, err_d: %d\n", i, greg_channels[i].phase_target,
-              greg_channels[i].err_d);
+          TRACE("RT [chan: %d%c] ph_tar: %d, err_d: %d (%d), flags: %x\n", i, i==pstate.current_ref?'a':' ',
+							greg_channels[i].phase_target, greg_channels[i].err_d, 16000 - greg_channels[i].err_d, tmp->channels[i].flags);
         }
     }
 

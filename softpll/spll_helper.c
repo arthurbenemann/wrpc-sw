@@ -114,12 +114,12 @@ void helper_start(struct spll_helper_state *s)
 
 void helper_switch_reference(struct spll_helper_state *s, int new_ref)
 {
-	spll_enable_tagger(s->ref_src, 0); // switch off the old one
+	//spll_enable_tagger(s->ref_src, 0); // switch off the old one
 	disable_irq();
 	s->ref_src = new_ref;
 	s->tag_d0 = -1;
 	s->p_setpoint = 0;
 	s->p_adder = 0;
 	enable_irq();
-	spll_enable_tagger(s->ref_src, 1); // switch on the new one TODO: not needed ?
+	//spll_enable_tagger(s->ref_src, 1); // switch on the new one TODO: not needed ?
 }
