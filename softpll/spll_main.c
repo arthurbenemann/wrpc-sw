@@ -72,6 +72,7 @@ void mpll_start(struct spll_main_state *s)
 
 	s->phase_shift_target = 0;
 	s->phase_shift_current = 0;
+	s->phase_shift_delta = 0;
 	s->sample_n = 0;
 	s->enabled = 1;
 	pi_init((spll_pi_t *)&s->pi);
@@ -200,9 +201,16 @@ static int32_t from_picos(int32_t ps)
 int mpll_set_phase_shift(struct spll_main_state *s,
 				int desired_shift_ps)
 {
+	static int fuck_the_request;
 	int div = (DIVIDE_DMTD_CLOCKS_BY_2 ? 2 : 1);
+	if(s->phase_shift_delta != 0 && !fuck_the_request) {
+		fuck_the_request = 1;
+		return 0;
+	}
 	TRACE_DEV("MPLL: ph_target1: %d\n", s->phase_shift_target);
 	s->phase_shift_target = from_picos(desired_shift_ps) / div;
+	//s->phase_shift_target += s->phase_shift_delta;
+	//s->phase_shift_target %= from_picos(16000);
 	TRACE_DEV("MPLL: ph_target2: %d\n", s->phase_shift_target);
 	return 0;
 }

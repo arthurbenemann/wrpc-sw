@@ -819,11 +819,37 @@ void check_vco_frequencies()
  * 
  * new_ref indicates the new active port (which is currently running as backup)
  */
+#ifdef CONFIG_PPSI /* use __div64_32 from ppsi library to save libgcc memory */
+static int32_t from_picos(int32_t ps) 
+{
+	  extern uint32_t __div64_32(uint64_t *n, uint32_t base);
+		  uint64_t ups = ps; 
+
+			  if (ps >= 0) {
+					    ups *= 1 << HPLL_N;
+							    __div64_32(&ups, CLOCK_PERIOD_PICOSECONDS);
+									    return ups;
+											  }
+				  ups = -ps * (1 << HPLL_N);
+					  __div64_32(&ups, CLOCK_PERIOD_PICOSECONDS);
+						  return -ups;
+}
+#else /* previous implementation: ptp-noposix has no __div64_32 available */
+static int32_t from_picos(int32_t ps) 
+{
+	  return (int32_t) ((int64_t) ps * (int64_t) (1 << HPLL_N) /
+				        (int64_t) CLOCK_PERIOD_PICOSECONDS);
+}
+#endif
+
 void spll_switchover(int new_ref)
 {
 	struct softpll_state *s = (struct softpll_state *) &softpll;
+	int32_t backup_phase, en;
 	
   TRACE("greg: switch to ref %d\n", new_ref);
+	spll_read_ptracker(new_ref, &backup_phase, &en);
+	TRACE("greg: b_phase: %d, en: %d\n", backup_phase, en);
 	/*switch over helper reference*/
 	helper_switch_reference(&s->helper,new_ref);
   TRACE("greg: helper switched\n");
@@ -849,15 +875,19 @@ void spll_switchover(int new_ref)
 	//spll_enable_tagger(s->mpll.id_ref, 0);
 	//TRACE("greg: old mpll.phase_shift_target = %d\n", s->mpll.phase_shift_target);
 	//TRACE("greg: bpll phase_val = %d\n", s->ptrackers[1].phase_val);
-	s->mpll.phase_shift_target     = s->bpll.phase_shift_target;
-	s->mpll.phase_shift_current		 = s->bpll.phase_shift_target;
-	s->mpll.adder_ref							 = s->bpll.phase_shift_target;
+	s->mpll.phase_shift_delta			 = from_picos(backup_phase);
+	s->mpll.phase_shift_target     = from_picos(backup_phase);
+	s->mpll.phase_shift_current		 = from_picos(backup_phase);
+	s->mpll.adder_ref							 = from_picos(backup_phase);
+	s->mpll.phase_shift_target  %= from_picos(16000);
+	s->mpll.phase_shift_current %= from_picos(16000);
+	s->mpll.adder_ref						%= from_picos(16000);
 	//TRACE("greg: new mpll.phase_shift_target = %d\n", s->mpll.phase_shift_target);
 	//s->mpll.phase_shift_current    =    s->bpll.phase_shift_current;
 	s->mpll.id_out     =    s->bpll.id_out;
 	s->mpll.id_ref       =  s->bpll.id_ref;
-	spll_enable_tagger(s->mpll.id_ref, 1);
-	spll_enable_tagger(s->mpll.id_out, 1);
+	//spll_enable_tagger(s->mpll.id_ref, 1);
+	//spll_enable_tagger(s->mpll.id_out, 1);
 	//s->mpll.delock_count     =    s->bpll.delock_count;
 	//s->mpll.dac_index     =    s->bpll.dac_index;
 	//s->mpll.enabled     =    s->bpll.enabled;

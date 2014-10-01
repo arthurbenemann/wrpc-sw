@@ -318,13 +318,13 @@ int bpll_update(struct spll_backup_state *s, int tag, int source)
 		 * TODO: question is whether the first value measured is somehow correct
 		 * 
 		 */
-		if(err!=0 && s->err_d == 0 && s->phase_shift_current == 0) //&& s->adder_ref == 0)
-		{
-		    s->phase_shift_target -= err;
-		//    //gd s->phase_shift_current= -err;
-		//    //gd s->adder_ref          = -err;
-		    TRACE_DEV("[bpll] initial set of setpoint: %d, err: %d\n", s->phase_shift_target, err);
-		}
+		//if(err!=0 && s->err_d == 0 && s->phase_shift_current == 0) //&& s->adder_ref == 0)
+		//{
+		//    s->phase_shift_target -= err;
+		////    //gd s->phase_shift_current= -err;
+		////    //gd s->adder_ref          = -err;
+		//    TRACE_DEV("[bpll] initial set of setpoint: %d, err: %d\n", s->phase_shift_target, err);
+		//}
 		/*
 		 * THe idea is that the change in the error should affect the change  of the 
 		 * phase shift (so setpoint), since the setpoint compensate the phase shift.
@@ -396,8 +396,9 @@ int bpll_set_phase_shift(struct spll_backup_state *s, int desired_shift_ps)
 	int div = (DIVIDE_DMTD_CLOCKS_BY_2 ? 2 : 1);
 	static int old_shift;
 	if(!old_shift) old_shift = from_picos(desired_shift_ps) / div;
-	s->phase_shift_target -= old_shift;
-	s->phase_shift_target += from_picos(desired_shift_ps) / div;
+	//s->phase_shift_target -= old_shift;
+	//s->phase_shift_target += from_picos(desired_shift_ps) / div;
+	s->phase_shift_target = from_picos(desired_shift_ps) / div;
 	old_shift = from_picos(desired_shift_ps) / div;
 	TRACE_DEV("[bpll] set target phaseshift %d (%d)\n", s->phase_shift_target,
 			desired_shift_ps);
