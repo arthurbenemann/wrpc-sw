@@ -530,18 +530,18 @@ int spll_read_ptracker(int channel, int32_t *phase_ps, int *enabled)
 	
 	int phase = st->phase_val;
 	
-	/*ML: if the timestamp is not corrected with the phase measurement, PPSi will try
-	 *    to compensate by setting setpoint. THe phase measurement should be more or 
-	 *    less the value of the setpoint. 
-	 *    By making the phase measurement equal to setpoint, there exist a feedback
-	 *    system: if the setpoint is wrong because of wrong timestamps,, PPSi will try to 
-	 *    compensate by adjusting the setpoint...
-	 */
-	if(s->bpll.enabled && channel == s->bpll.id_ref)
-	{
-	  phase = s->bpll.phase_shift_current;
-	  TRACE_DEV("[b-ptracker] set phase to setpoint: %d \n",phase);
-	}
+// 	/*ML: if the timestamp is not corrected with the phase measurement, PPSi will try
+// 	 *    to compensate by setting setpoint. THe phase measurement should be more or 
+// 	 *    less the value of the setpoint. 
+// 	 *    By making the phase measurement equal to setpoint, there exist a feedback
+// 	 *    system: if the setpoint is wrong because of wrong timestamps,, PPSi will try to 
+// 	 *    compensate by adjusting the setpoint...
+// 	 */
+// 	if(s->bpll.enabled && channel == s->bpll.id_ref)
+// 	{
+// 	  phase = s->bpll.phase_shift_current;
+// 	  TRACE_DEV("[b-ptracker] set phase to setpoint: %d \n",phase);
+// 	}
 	
 	if (phase < 0)
 		phase += (1 << HPLL_N);
@@ -828,6 +828,7 @@ void check_vco_frequencies()
 void spll_switchover(int new_ref)
 {
 	struct softpll_state *s = (struct softpll_state *) &softpll;
+	volatile struct spll_ptracker_state *st = &softpll.ptrackers[new_ref];
 	
 	/*switch over helper reference*/
 	helper_switch_reference(&s->helper,new_ref);
@@ -850,8 +851,17 @@ void spll_switchover(int new_ref)
 	s->mpll.tag_ref_d     =    s->bpll.tag_ref_d;
 	s->mpll.tag_out_d     =    s->bpll.tag_out_d;
 	s->mpll.seq_ref       =    s->bpll.seq_ref;
-	s->mpll.phase_shift_target     =    s->bpll.phase_shift_target;
-	s->mpll.phase_shift_current     =    s->bpll.phase_shift_current;
+	/*
+	 * Here is the intent:
+	 * - we set the measured phase value as the setpoint, this is to avoid jumps (we start
+	 *   with what is there.
+	 * - we let the PTP to calculate the setpoint after the switch over,
+	 * - the "correct" setpoint will be insterted as target, therefore it should 
+	 *   be smoothly applied
+	 */
+	s->mpll.phase_shift_target     =    st->phase_val;
+	s->mpll.phase_shift_current     =    st->phase_val;
+	/******************** end of interest *********************/
 	s->mpll.id_out     =    s->bpll.id_out;
 	s->mpll.id_ref       =  s->bpll.id_ref;
 	s->mpll.delock_count     =    s->bpll.delock_count;
