@@ -14,6 +14,8 @@
 #define __SPLL_MAIN_H
 
 #include "spll_common.h"
+#include "spll_backup.h"
+
 
 /* State of the Main PLL */
 struct spll_main_state {
@@ -52,5 +54,7 @@ int mpll_set_phase_shift(struct spll_main_state *s,
 				int desired_shift_ps);
 
 int mpll_shifter_busy(struct spll_main_state *s);
+
+int mpll_switchover(struct spll_main_state *mpll,struct spll_backup_state *bpll, int phase_val);
 
 #endif // __SPLL_MAIN_H

@@ -13,7 +13,7 @@
 #include "spll_debug.h"
 #include <pp-printf.h>
 #include "trace.h"
-
+#include "irq.h"
 #define MPLL_TAG_WRAPAROUND 100000000
 
 #define MATCH_NEXT_TAG 0
@@ -208,4 +208,61 @@ int mpll_set_phase_shift(struct spll_main_state *s,
 int mpll_shifter_busy(struct spll_main_state *s)
 {
 	return s->phase_shift_target != s->phase_shift_current;
+}
+
+int mpll_switchover(struct spll_main_state *mpll, struct spll_backup_state *bpll, int phase_val)
+{
+	/*switch over between bpll and mpll by copying the appropriate runtime and config
+	  data 
+	  TODO: copying of the config data probably not needed, but we need to ensure
+	  this is the same, it seems
+	  TODO: this function might need to get more universal, if possible, to enable
+	        switching over between backup port that is now being active and a newly
+	        up port which should be the active one (prio=0). In other words, we want to 
+	        switchover between working ports. this should be able having the new port 
+	        first ackt as a backup, intill all runtime parameters are learnt, then 
+	        using this function to switchover.
+	*/
+	disable_irq();
+	mpll->adder_ref           = bpll->adder_ref;
+	mpll->adder_out           = bpll->adder_out;
+	mpll->tag_ref             = bpll->tag_ref;
+	mpll->tag_out             = bpll->tag_out;
+	mpll->tag_ref_d           = bpll->tag_ref_d;
+	mpll->tag_out_d           = bpll->tag_out_d;
+	mpll->seq_ref             = bpll->seq_ref;
+	/*
+	 * Here is the intent:
+	 * - we set the measured phase value as the setpoint, this is to avoid jumps (we start
+	 *   with what is there.
+	 * - we let the PTP to calculate the setpoint after the switch over,
+	 * - the "correct" setpoint will be insterted as target, therefore it should 
+	 *   be smoothly applied
+	 */
+	mpll->phase_shift_target  = from_picos((phase_val % 16000));
+	mpll->phase_shift_current = from_picos((phase_val % 16000));
+	/******************** end of interest *********************/
+	mpll->id_out              = bpll->id_out;
+	mpll->id_ref              = bpll->id_ref;
+	mpll->delock_count        = bpll->delock_count;
+	mpll->dac_index           = bpll->dac_index;
+	mpll->enabled             = bpll->enabled;
+	mpll->err_d               = bpll->err_d;
+	
+	/*stop bpll*/
+	bpll->adder_ref           = 0;
+	bpll->adder_out           = 0;
+	bpll->tag_ref             = -1;
+	bpll->tag_out             = -1;
+	bpll->tag_ref_d           = -1;
+	bpll->tag_out_d           = -1;
+	bpll->seq_ref             = 0;
+	bpll->phase_shift_target  = 0;
+	bpll->phase_shift_current = 0;
+	bpll->id_out              = 0;
+	bpll->delock_count        = 0;
+	bpll->dac_index           = 0;
+	bpll->enabled             = 0;
+	bpll->err_d               = 0;
+	enable_irq();
 }

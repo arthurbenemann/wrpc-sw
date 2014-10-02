@@ -68,6 +68,7 @@ struct softpll_state {
 	int default_dac_main;
 	int delock_count;
 	int32_t mpll_shift_ps;
+	int switchover_cnt;
 
 	struct spll_helper_state helper;
 	struct spll_external_state ext;
@@ -271,7 +272,12 @@ static inline void update_loops(struct softpll_state *s, int tag_value, int tag_
 	
 	helper_update(&s->helper, tag_value, tag_source);
 
-	if(s->helper.ld.locked)
+	if(s->switchover_cnt > 0)
+	{
+		s->switchover_cnt--;
+		TRACE_DEV("Swtichover count down %d\n", s->switchover_cnt );
+	}
+	else if(s->helper.ld.locked)
 	{
 		mpll_update(&s->mpll, tag_value, tag_source);
 		bpll_update(&s->bpll, tag_value, tag_source);
@@ -350,6 +356,9 @@ void spll_init(int mode, int slave_ref_channel, int align_pps)
 	
 	s->mode = mode;
 	s->delock_count = 0;
+	
+	//to know that we are switching ove
+	s->switchover_cnt = 0;
 
 	SPLL->DAC_HPLL = 0;
 	SPLL->DAC_MAIN = 0;
@@ -378,7 +387,7 @@ void spll_init(int mode, int slave_ref_channel, int align_pps)
 
 	helper_init(&s->helper, helper_ref);
 	mpll_init(&s->mpll, slave_ref_channel, spll_n_chan_ref);
-
+	
 	for (i = 0; i < spll_n_chan_out - 1; i++) {
 		mpll_init(&s->aux[i].pll.dmtd, slave_ref_channel, spll_n_chan_ref + i + 1);
 		s->aux[i].seq_state = AUX_DISABLED;
@@ -830,60 +839,15 @@ void spll_switchover(int new_ref)
 	struct softpll_state *s = (struct softpll_state *) &softpll;
 	volatile struct spll_ptracker_state *st = &softpll.ptrackers[new_ref];
 	
+	//during the count down, only helper pll is updated on interrupt, mpll waits until count 
+	//down is finished
+	s->switchover_cnt = 10;
+		
 	/*switch over helper reference*/
 	helper_switch_reference(&s->helper,new_ref);
-	
-	/*switch over between bpll and mpll by copying the appropriate runtime and config
-	  data 
-	  TODO: copying of the config data probably not needed, but we need to ensure
-	  this is the same, it seems
-	  TODO: this function might need to get more universal, if possible, to enable
-	        switching over between backup port that is now being active and a newly
-	        up port which should be the active one (prio=0). In other words, we want to 
-	        switchover between working ports. this should be able having the new port 
-	        first ackt as a backup, intill all runtime parameters are learnt, then 
-	        using this function to switchover.
-	*/
-	s->mpll.adder_ref     =    s->bpll.adder_ref;
-	s->mpll.adder_out     =    s->bpll.adder_out;
-	s->mpll.tag_ref       =    s->bpll.tag_ref;
-	s->mpll.tag_out       =    s->bpll.tag_out;
-	s->mpll.tag_ref_d     =    s->bpll.tag_ref_d;
-	s->mpll.tag_out_d     =    s->bpll.tag_out_d;
-	s->mpll.seq_ref       =    s->bpll.seq_ref;
-	/*
-	 * Here is the intent:
-	 * - we set the measured phase value as the setpoint, this is to avoid jumps (we start
-	 *   with what is there.
-	 * - we let the PTP to calculate the setpoint after the switch over,
-	 * - the "correct" setpoint will be insterted as target, therefore it should 
-	 *   be smoothly applied
-	 */
-	s->mpll.phase_shift_target     =    st->phase_val;
-	s->mpll.phase_shift_current     =    st->phase_val;
-	/******************** end of interest *********************/
-	s->mpll.id_out     =    s->bpll.id_out;
-	s->mpll.id_ref       =  s->bpll.id_ref;
-	s->mpll.delock_count     =    s->bpll.delock_count;
-	s->mpll.dac_index     =    s->bpll.dac_index;
-	s->mpll.enabled     =    s->bpll.enabled;
-	s->mpll.err_d     =    s->bpll.err_d;
-	
-	/*stop bpll*/
-	s->bpll.adder_ref     =    0;
-	s->bpll.adder_out     =    0;
-	s->bpll.tag_ref       =    -1;
-	s->bpll.tag_out       =    -1;
-	s->bpll.tag_ref_d     =    -1;
-	s->bpll.tag_out_d     =    -1;
-	s->bpll.seq_ref       =   0;
-	s->bpll.phase_shift_target     =    0;
-	s->bpll.phase_shift_current     = 0;
-	s->bpll.id_out     =    0;
-	s->bpll.delock_count     =   0;
-	s->bpll.dac_index     =    0;
-	s->bpll.enabled     =    0;
-	s->bpll.err_d     =    0;	
+	/*switch over main pll*/
+	mpll_switchover(&s->mpll, &s->bpll, st->phase_val);
+
 }
 /*
  * called by PPSi from proto-ext-whiterabbit/state-wrs-s-lock.c via the following path
