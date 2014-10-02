@@ -32,8 +32,8 @@ static void clear_state()
 	    pstate.channels[i].flags = CHAN_REF_VALID;
     }
     pstate.flags = 0;
-    pstate.current_ref = 0;//TODO[?]: init with -1 to make sure it does not much channel 0
-    pstate.backup_ref = 0; //TODO[?]: init with -1 to make sure it does not much channel 0
+    pstate.current_ref = -1;//TODO[?]: init with -1 to make sure it does not much channel 0
+    pstate.backup_ref = -1; //TODO[?]: init with -1 to make sure it does not much channel 0
     pstate.mode = RTS_MODE_DISABLED;
     pstate.ipc_count = 0;
 }
@@ -120,11 +120,14 @@ int rts_backup_channel(int channel, int cmd)
 		case RTS_BACKUP_CH_ACTIVATE:
 		spll_switchover(pstate.backup_ref);
 		pstate.current_ref = pstate.backup_ref;
+		pstate.backup_ref = -1;
+		
 		
 		TRACE("RT [backup port]: activated !!! : %d \n", channel);
 		break;
 		case RTS_BACKUP_CH_DOWN:
-		spll_stop_backup(channel);		
+		spll_stop_backup(channel);	
+		pstate.backup_ref = -1;	
 		TRACE("RT [backup port]: down !!! : %d \n", channel);
 		break;
 	}
@@ -239,8 +242,8 @@ static int rts_get_state_func(const struct minipc_pd *pd, uint32_t *args, void *
         tmp->channels[i].phase_current = htonl(pstate.channels[i].phase_current);
         tmp->channels[i].phase_loopback = htonl(pstate.channels[i].phase_loopback);
         tmp->channels[i].flags = htonl(pstate.channels[i].flags);
-        if(i<2)
-        TRACE("RT [chan: %d] setpoint: %d, loopback real: %d [cor:%d], prio: %d, cur: %d\n", 
+        if(tmp->channels[i].flags & CHAN_PTRACKER_ENABLED)
+           TRACE("RT [chan: %d] setpoint: %d, loopback real: %d [cor:%d], prio: %d, cur: %d\n", 
         i, tmp->channels[i].phase_setpoint, htonl(pstate.channels[i].phase_loopback),
         tmp->channels[i].phase_loopback, tmp->channels[i].priority, 
         tmp->channels[i].phase_current);
