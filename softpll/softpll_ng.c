@@ -848,8 +848,9 @@ void spll_switchover(int new_ref)
 	int32_t backup_phase, en;
 	
   TRACE("greg: switch to ref %d\n", new_ref);
-	spll_read_ptracker(new_ref, &backup_phase, &en);
-	TRACE("greg: b_phase: %d, en: %d\n", backup_phase, en);
+	//spll_read_ptracker(new_ref, &backup_phase, &en);
+	//TRACE("greg: b_phase: %d, en: %d\n", backup_phase, en);
+	TRACE("greg: l_phase: %d\n", s->bpll.phase_loopback);
 	/*switch over helper reference*/
 	helper_switch_reference(&s->helper,new_ref);
   TRACE("greg: helper switched\n");
@@ -875,17 +876,18 @@ void spll_switchover(int new_ref)
 	//spll_enable_tagger(s->mpll.id_ref, 0);
 	//TRACE("greg: old mpll.phase_shift_target = %d\n", s->mpll.phase_shift_target);
 	//TRACE("greg: bpll phase_val = %d\n", s->ptrackers[1].phase_val);
-	s->mpll.phase_shift_delta			 = from_picos(backup_phase);
-	s->mpll.phase_shift_target     = from_picos(backup_phase);
-	s->mpll.phase_shift_current		 = from_picos(backup_phase);
-	s->mpll.adder_ref							 = from_picos(backup_phase);
-	s->mpll.phase_shift_target  %= from_picos(16000);
-	s->mpll.phase_shift_current %= from_picos(16000);
-	s->mpll.adder_ref						%= from_picos(16000);
-	//TRACE("greg: new mpll.phase_shift_target = %d\n", s->mpll.phase_shift_target);
-	//s->mpll.phase_shift_current    =    s->bpll.phase_shift_current;
-	s->mpll.id_out     =    s->bpll.id_out;
-	s->mpll.id_ref       =  s->bpll.id_ref;
+	s->mpll.phase_shift_delta			 = from_picos(s->bpll.phase_loopback);
+	s->mpll.skip_request	= 1;
+	s->mpll.phase_shift_target     = from_picos(s->bpll.phase_loopback);
+	s->mpll.phase_shift_current		 = from_picos(s->bpll.phase_loopback);
+	s->mpll.adder_ref							 = from_picos(s->bpll.phase_loopback);
+	s->mpll.adder_out							 = 0;
+	//s->mpll.phase_shift_target  %= from_picos(16000);
+	//s->mpll.phase_shift_current %= from_picos(16000);
+	//s->mpll.adder_ref						%= from_picos(16000);
+	s->mpll.id_ref     = 1; 
+	s->mpll.tag_ref    = -1;
+	s->mpll.tag_out    = -1;
 	//spll_enable_tagger(s->mpll.id_ref, 1);
 	//spll_enable_tagger(s->mpll.id_out, 1);
 	//s->mpll.delock_count     =    s->bpll.delock_count;
@@ -908,7 +910,7 @@ void spll_switchover(int new_ref)
 	//s->bpll.dac_index     =    0;
 	//s->bpll.enabled     =    0;
 	//s->bpll.err_d     =    0;	
-	rts_update();
+	//rts_update();
 }
 /*
  * called by PPSi from proto-ext-whiterabbit/state-wrs-s-lock.c via the following path

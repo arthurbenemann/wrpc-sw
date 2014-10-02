@@ -30,6 +30,7 @@ struct spll_backup_state {
 
 	int phase_shift_target;
 	int phase_shift_current;
+	int phase_loopback;
 	int id_ref, id_out;	/* IDs of the reference and the output channel */
 	int sample_n;
 	int delock_count;

@@ -260,6 +260,8 @@ void bpll_stop(struct spll_backup_state *s)
  */
 int bpll_update(struct spll_backup_state *s, int tag, int source)
 {
+	int en;
+
 	if(!s->enabled)
 	    return SPLL_LOCKED;
 
@@ -336,6 +338,7 @@ int bpll_update(struct spll_backup_state *s, int tag, int source)
 		//gd     s->phase_shift_target =- (err-s->err_d);	    
 		//gd }
 		
+		spll_read_ptracker(s->id_ref, &(s->phase_loopback), &en);
 		
 		s->err_d = err;
 		s->tag_out = -1;
@@ -398,7 +401,7 @@ int bpll_set_phase_shift(struct spll_backup_state *s, int desired_shift_ps)
 	if(!old_shift) old_shift = from_picos(desired_shift_ps) / div;
 	//s->phase_shift_target -= old_shift;
 	//s->phase_shift_target += from_picos(desired_shift_ps) / div;
-	s->phase_shift_target = from_picos(desired_shift_ps) / div;
+	//s->phase_shift_target = from_picos(desired_shift_ps) / div;
 	old_shift = from_picos(desired_shift_ps) / div;
 	TRACE_DEV("[bpll] set target phaseshift %d (%d)\n", s->phase_shift_target,
 			desired_shift_ps);

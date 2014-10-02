@@ -32,6 +32,7 @@ struct spll_main_state {
 	int phase_shift_target;
 	int phase_shift_current;
 	int phase_shift_delta;
+	int skip_request;
 	int id_ref, id_out;	/* IDs of the reference and the output channel */
 	int sample_n;
 	int delock_count;
