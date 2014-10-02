@@ -300,11 +300,12 @@ int bpll_update(struct spll_backup_state *s, int tag, int source)
 		   2**HPLL_N.
 
 		   Proper solution: tag sequence numbers */
-		if (s->ld.locked) {
+// 		if (s->ld.locked) 
+// 		{
 			err &= (1 << HPLL_N) - 1;
 			if (err & (1 << (HPLL_N - 1)))
 				err |= ~((1 << HPLL_N) - 1);
-		}
+// 		}
 
 #endif
 		
