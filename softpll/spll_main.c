@@ -199,6 +199,13 @@ static int32_t from_picos(int32_t ps)
 }
 #endif
 
+static int32_t to_picos(int32_t units)
+{
+	return (int32_t) (((int64_t) units *
+		(int64_t) CLOCK_PERIOD_PICOSECONDS) >> HPLL_N);
+}
+
+
 int mpll_set_phase_shift(struct spll_main_state *s,
 				int desired_shift_ps)
 {
@@ -207,11 +214,11 @@ int mpll_set_phase_shift(struct spll_main_state *s,
 		s->skip_request = 0;
 		return 0;
 	}
-	TRACE_DEV("MPLL: ph_target1: %d\n", s->phase_shift_target);
+	TRACE_DEV("MPLL: ph_target1: %d\n", to_picos(s->phase_shift_target));
 	s->phase_shift_target = from_picos(desired_shift_ps) / div;
 	s->phase_shift_target += s->phase_shift_delta;
 	s->phase_shift_target %= from_picos(16000);
-	TRACE_DEV("MPLL: ph_target2: %d\n", s->phase_shift_target);
+	TRACE_DEV("MPLL: ph_target2: %d\n", to_picos(s->phase_shift_target));
 	return 0;
 }
 

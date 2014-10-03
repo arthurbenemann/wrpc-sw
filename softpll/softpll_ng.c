@@ -847,6 +847,7 @@ void spll_switchover(int new_ref)
 	struct softpll_state *s = (struct softpll_state *) &softpll;
 	int32_t backup_phase, en;
 	
+	s->bpll.enabled = 0;
   TRACE("greg: switch to ref %d\n", new_ref);
 	//spll_read_ptracker(new_ref, &backup_phase, &en);
 	//TRACE("greg: b_phase: %d, en: %d\n", backup_phase, en);
@@ -876,41 +877,27 @@ void spll_switchover(int new_ref)
 	//spll_enable_tagger(s->mpll.id_ref, 0);
 	//TRACE("greg: old mpll.phase_shift_target = %d\n", s->mpll.phase_shift_target);
 	//TRACE("greg: bpll phase_val = %d\n", s->ptrackers[1].phase_val);
-	s->mpll.phase_shift_delta			 = from_picos(s->bpll.phase_loopback);
+	
+	/* One more dirty hack, but we already have plenty of them.
+	 * That one is to avoid working on the edges of phase values, i.e. 16000ps.
+	 * We don't want to shift e.g. 15900 when we could shift -100ps */
+	if(s->bpll.phase_loopback > 8000)
+		backup_phase = s->bpll.phase_loopback - 16000;
+	else if(s->bpll.phase_loopback < -8000)
+		backup_phase = s->bpll.phase_loopback + 16000;
+	else
+		backup_phase = s->bpll.phase_loopback;
+	s->mpll.phase_shift_delta			 = from_picos(backup_phase);
 	s->mpll.skip_request	= 1;
-	s->mpll.phase_shift_target     = from_picos(s->bpll.phase_loopback);
-	s->mpll.phase_shift_current		 = from_picos(s->bpll.phase_loopback);
-	s->mpll.adder_ref							 = from_picos(s->bpll.phase_loopback);
+	s->mpll.phase_shift_target     = from_picos(backup_phase);
+	s->mpll.phase_shift_current		 = from_picos(backup_phase);
+	s->mpll.adder_ref							 = from_picos(backup_phase);
 	s->mpll.adder_out							 = 0;
-	//s->mpll.phase_shift_target  %= from_picos(16000);
-	//s->mpll.phase_shift_current %= from_picos(16000);
-	//s->mpll.adder_ref						%= from_picos(16000);
 	s->mpll.id_ref     = 1; 
 	s->mpll.tag_ref    = -1;
 	s->mpll.tag_out    = -1;
-	//spll_enable_tagger(s->mpll.id_ref, 1);
-	//spll_enable_tagger(s->mpll.id_out, 1);
-	//s->mpll.delock_count     =    s->bpll.delock_count;
-	//s->mpll.dac_index     =    s->bpll.dac_index;
-	//s->mpll.enabled     =    s->bpll.enabled;
-	//s->mpll.err_d     =    s->bpll.err_d;
-	
-	/*stop bpll*/
-	//s->bpll.adder_ref     =    0;
-	//s->bpll.adder_out     =    0;
-	//s->bpll.tag_ref       =    -1;
-	//s->bpll.tag_out       =    -1;
-	//s->bpll.tag_ref_d     =    -1;
-	//s->bpll.tag_out_d     =    -1;
-	//s->bpll.seq_ref       =   0;
-	//s->bpll.phase_shift_target     =    0;
-	//s->bpll.phase_shift_current     = 0;
-	//s->bpll.id_out     =    0;
-	//s->bpll.delock_count     =   0;
-	//s->bpll.dac_index     =    0;
-	//s->bpll.enabled     =    0;
-	//s->bpll.err_d     =    0;	
-	//rts_update();
+
+	rts_update();
 }
 /*
  * called by PPSi from proto-ext-whiterabbit/state-wrs-s-lock.c via the following path

@@ -232,6 +232,9 @@ void bpll_start(struct spll_backup_state *s)
 
 	s->phase_shift_target = 0;
 	s->phase_shift_current = 0;
+	s->phase_loopback = 0;
+	s->discard = 0;
+	s->once_discarded = 0;
 	s->sample_n = 0;
 	s->enabled = 1;
 
@@ -261,6 +264,7 @@ void bpll_stop(struct spll_backup_state *s)
 int bpll_update(struct spll_backup_state *s, int tag, int source)
 {
 	int en;
+	int32_t phase;
 
 	if(!s->enabled)
 	    return SPLL_LOCKED;
@@ -338,7 +342,30 @@ int bpll_update(struct spll_backup_state *s, int tag, int source)
 		//gd     s->phase_shift_target =- (err-s->err_d);	    
 		//gd }
 		
-		spll_read_ptracker(s->id_ref, &(s->phase_loopback), &en);
+		spll_read_ptracker(s->id_ref, &phase, &en);
+		/* if there is larger jump in phase, this might mean that the switchover has
+		 * started and the measurement is wrong, I think we need some HDL assist
+		 * here. */
+		if(phase!=0 && en &&
+			 (s->phase_loopback == 0 ||
+				(s->discard > 1000 && !s->once_discarded) ||
+				(phase < s->phase_loopback + 100 && phase > s->phase_loopback - 100)))
+		{
+			//if(s->discard > 1000) {
+			//	if(phase!=s->phase_loopback)
+			//		TRACE_DEV("greg:, new phase_loopback: %d\n", phase);
+			//	s->phase_loopback = phase;
+			//}
+			//else
+			//	s->discard++;
+			if(phase!=s->phase_loopback)
+					TRACE_DEV("greg:, new phase_loopback: %d\n", phase);
+			s->phase_loopback = phase;
+			s->once_discarded = 1;
+			s->discard = 0;
+		}
+		else if(phase!=0)
+			s->discard++;
 		
 		s->err_d = err;
 		s->tag_out = -1;
@@ -400,7 +427,7 @@ int bpll_set_phase_shift(struct spll_backup_state *s, int desired_shift_ps)
 	static int old_shift;
 	if(!old_shift) old_shift = from_picos(desired_shift_ps) / div;
 	//s->phase_shift_target -= old_shift;
-	//s->phase_shift_target += from_picos(desired_shift_ps) / div;
+	s->phase_shift_target = desired_shift_ps; //from_picos(desired_shift_ps) / div;
 	//s->phase_shift_target = from_picos(desired_shift_ps) / div;
 	old_shift = from_picos(desired_shift_ps) / div;
 	TRACE_DEV("[bpll] set target phaseshift %d (%d)\n", s->phase_shift_target,
