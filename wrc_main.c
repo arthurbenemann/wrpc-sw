@@ -235,6 +235,11 @@ int main(void)
 	usleep_init();
 	shell_init();
 
+#ifdef CONFIG_P2P
+        wrc_ptp_set_sync_mech(WRC_P2P);
+#elif CONFIG_E2E
+        wrc_ptp_set_sync_mech(WRC_E2E);
+#endif
 	wrc_ptp_set_mode(WRC_MODE_SLAVE);
 	wrc_ptp_start();
 
