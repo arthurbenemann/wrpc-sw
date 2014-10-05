@@ -358,11 +358,12 @@ int bpll_update(struct spll_backup_state *s, int tag, int source)
 			//}
 			//else
 			//	s->discard++;
-			if(phase!=s->phase_loopback)
-					TRACE_DEV("greg:, new phase_loopback: %d\n", phase);
-			s->phase_loopback = phase;
-			s->once_discarded = 1;
+			if(s->discard > 1000)
+				s->once_discarded = 1;
 			s->discard = 0;
+			if(phase!=s->phase_loopback)
+					TRACE_DEV("greg:, new phase_loopback: %d %c\n", phase, s->once_discarded?'!':' ');
+			s->phase_loopback = phase;
 		}
 		else if(phase!=0)
 			s->discard++;
