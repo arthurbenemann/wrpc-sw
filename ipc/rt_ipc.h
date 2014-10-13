@@ -110,6 +110,8 @@ struct rts_pll_state {
 	uint32_t ipc_count;
 	
 	uint32_t debug_data[8];
+	
+	int switchover_ocured;
 };
 
 /* API */

@@ -41,6 +41,11 @@ static void clear_state()
 /* Sets the phase setpoint on a given channel */
 int rts_adjust_phase(int channel, int32_t phase_setpoint)
 {
+    if(pstate.switchover_ocured == 1)
+    {
+	pstate.switchover_ocured = 0;
+	return (int)pstate.channels[channel].phase_loopback;
+    }
     TRACE("Adjusting phase: ref channel %d, setpoint=%d ps.\n", channel, phase_setpoint);
     if(pstate.current_ref == channel)
          spll_set_phase_shift(0, phase_setpoint);
@@ -67,6 +72,7 @@ int rts_adjust_phase(int channel, int32_t phase_setpoint)
 
     
     pstate.channels[channel].phase_setpoint = phase_setpoint;
+
     return 0;
 }
 
@@ -113,11 +119,13 @@ int rts_backup_channel(int channel, int cmd)
 	{
 		/* activate backup and remember on which port it is*/
 		case RTS_BACKUP_CH_LOCK:
+		pstate.switchover_ocured = 0;
 		pstate.backup_ref = channel;
 		spll_start_backup(channel);
 		TRACE("RT [backup port]: locked !!! : %d \n", channel);
 		break;
 		case RTS_BACKUP_CH_ACTIVATE:
+		pstate.switchover_ocured = 1;
 		spll_switchover(pstate.backup_ref);
 		pstate.current_ref = pstate.backup_ref;
 		pstate.backup_ref = -1;
@@ -193,7 +201,7 @@ void rts_update(void)
 		            if(spll_shifter_busy(0))
 		            	CH.flags |= CHAN_SHIFTING;
 						}
-            if(i==pstate.backup_ref)
+            else if(i==pstate.backup_ref)
             {
                 spll_get_backup_phase_shift(&CH.phase_current, NULL);
 // 		            if(spll_shifter_busy(0))
