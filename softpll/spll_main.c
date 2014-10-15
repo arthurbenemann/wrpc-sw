@@ -95,6 +95,14 @@ int mpll_update(struct spll_main_state *s, int tag, int source)
 {
 	if(!s->enabled)
 	    return SPLL_LOCKED;
+	
+	int hw_status = spll_channel_status(s->id_ref);
+	if(s->hw_status_d == 1 && hw_status == 0) // link went down
+	{
+	    s->hw_status_d = hw_status;
+	    return SPLL_CH_DOWN;
+	}
+	s->hw_status_d = hw_status;
 
 	int err, y;
 	int en;
@@ -240,7 +248,7 @@ int mpll_switchover(struct spll_main_state *mpll, struct spll_backup_state *bpll
 	        first ackt as a backup, intill all runtime parameters are learnt, then 
 	        using this function to switchover.
 	*/
-	disable_irq();
+// 	disable_irq();
 	mpll->adder_ref           = from_picos((bpll->phase_good_val % 16000));//bpll->adder_ref;
 	mpll->adder_out           = 0; //bpll->adder_out;
 	mpll->tag_ref             = bpll->tag_ref;
@@ -281,7 +289,7 @@ int mpll_switchover(struct spll_main_state *mpll, struct spll_backup_state *bpll
 	mpll->enabled             = bpll->enabled;
 	mpll->err_d               = bpll->err_d;
 	mpll->ld.lock_cnt         = mpll->ld.lock_samples;
-	
+	mpll->hw_status_d         = 1; //up
 	/*stop bpll*/
 	bpll->adder_ref           = 0;
 	bpll->adder_out           = 0;
@@ -297,7 +305,7 @@ int mpll_switchover(struct spll_main_state *mpll, struct spll_backup_state *bpll
 	bpll->dac_index           = 0;
 	bpll->enabled             = 0;
 	bpll->err_d               = 0;
-	enable_irq();
-	rts_update();
+// 	enable_irq();
+// 	rts_update();
 	return 0;
 }

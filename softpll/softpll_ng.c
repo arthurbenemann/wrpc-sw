@@ -18,6 +18,7 @@ volatile struct SPLL_WB *SPLL;
 volatile struct PPSG_WB *PPSG;
 
 int spll_n_chan_ref, spll_n_chan_out;
+int spll_current_ref, spll_backup_ref;
 
 /*
  * The includes below contain code (not only declarations) to enable
@@ -280,7 +281,13 @@ static inline void update_loops(struct softpll_state *s, int tag_value, int tag_
 // 	else 
 	if(s->helper.ld.locked)
 	{
-		mpll_update(&s->mpll, tag_value, tag_source);
+		if(mpll_update(&s->mpll, tag_value, tag_source) == SPLL_CH_DOWN && s->bpll.enabled)
+		{
+			spll_switchover(s->bpll.id_ref);
+			helper_update(&s->helper, tag_value, tag_source);
+			mpll_update(&s->mpll, tag_value, tag_source);
+			
+		}
 		bpll_update(&s->bpll, tag_value, tag_source);
 
 		if(s->seq_state == SEQ_READY) {
@@ -300,21 +307,22 @@ void show_debug(int irq, struct spll_main_state *ms, struct spll_backup_state *b
 	int i;
 	if(ms->enabled)
 	TRACE_DEV("[mpll %d] tag: out=%d, ref=%d | adder: out=%d, "
-	          "ref=%d | id: out=%d, ref=%d | err=%d | locked=%d lock_cnt=%d | gphase_vad = %d \n",
+	          "ref=%d | id: out=%d, ref=%d | err=%d | locked=%d lock_cnt=%d | "
+	          "gphase_vad = %d | hw_stat=%d [0x%x] \n",
 	           irq, ms->tag_out_d, ms->tag_ref_d, ms->adder_out, ms->adder_ref, 
 	           ms->id_out, ms->id_ref, ms->err_d, ms->ld.locked, ms->ld.lock_cnt, 
-	           ms->phase_good_val); 
+	           ms->phase_good_val,spll_channel_status(ms->id_ref), SPLL->PSR); 
 	if(bs->enabled)
 	TRACE_DEV("[bpll %d] tag: out=%d, ref=%d | adder: out=%d, "
-	          "ref=%d | id: out=%d, ref=%d | err=%d | locked=%d lock_cnt=%d | gphase_vad = %d\n",
+	          "ref=%d | id: out=%d, ref=%d | err=%d | locked=%d lock_cnt=%d | "
+	          "gphase_vad = %d | hw_stat=%d [0x%x]\n",
 	           irq, bs->tag_out_d, bs->tag_ref_d, bs->adder_out, bs->adder_ref, 
 	           bs->id_out, bs->id_ref, bs->err_d, bs->ld.locked, ms->ld.lock_cnt,
-	           bs->phase_good_val); 
+	           bs->phase_good_val, spll_channel_status(bs->id_ref), SPLL->PSR); 
 	if(bs->enabled)
 	TRACE_DEV("[bpll->ld %d] locked=%d, lock_cnt=%d | lock_samples=%d, delock_samples=%d, "
                  "lock_changed=%d", irq, bs->ld.locked, bs->ld.lock_cnt , bs->ld.lock_samples, 
 	           bs->ld.delock_samples ,bs->ld.lock_changed);
-	 	
 	for(i=0;i<18;i++)
 	{
 		register struct spll_ptracker_state *st = ptrackers + i;
@@ -327,7 +335,7 @@ void show_debug(int irq, struct spll_main_state *ms, struct spll_backup_state *b
 void _irq_entry()
 {
 	struct softpll_state *s = (struct softpll_state *)&softpll;
-/* check if there are more tags in the FIFO */
+/* check if there are more tags in the FIFO */	
 	while (!(SPLL->TRR_CSR & SPLL_TRR_CSR_EMPTY)) {
 	
 		volatile uint32_t trr = SPLL->TRR_R0;
@@ -337,7 +345,10 @@ void _irq_entry()
 		sequencing_fsm(s, tag_value, tag_source);
 		update_loops(s, tag_value, tag_source);
 	}
-
+	
+	//do it after update_loops(), can be changed inside
+	spll_current_ref = s->mpll.id_ref;
+	spll_backup_ref  = s->bpll.id_ref;
 	irq_count++;
 // 	if((irq_count % 1000)==10)
 // 		show_debug(irq_count,&s->mpll, &s->bpll,s->ptrackers);
@@ -361,6 +372,9 @@ void spll_init(int mode, int slave_ref_channel, int align_pps)
 
 	spll_n_chan_ref = SPLL_CSR_N_REF_R(csr); // id of reference channels (max 32, val =18)
 	spll_n_chan_out = SPLL_CSR_N_OUT_R(csr); // id of output channels    (max 8, val=1)
+	
+	spll_current_ref = -1;
+	spll_backup_ref = -1;
 	
 	s->mode = mode;
 	s->delock_count = 0;
@@ -897,9 +911,20 @@ void spll_stop_backup(int new_ref)
 	
 }
 
-
 void show_info()
 {
 	struct softpll_state *s = (struct softpll_state *)&softpll;
 	show_debug(irq_count,&s->mpll, &s->bpll,s->ptrackers);
+}
+int spll_channel_status(int channel)
+{
+	return (0x1 & (SPLL->PSR >> channel));
+}
+
+int spll_check_switchover(int current_ref, int backup_ref)
+{
+	if(current_ref == spll_current_ref && backup_ref == spll_backup_ref)
+		return 0;
+	else 
+		return 1; 
 }

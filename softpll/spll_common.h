@@ -21,6 +21,7 @@
 
 #include "spll_defs.h"
 
+#define SPLL_CH_DOWN	2
 #define SPLL_LOCKED 	1
 #define SPLL_LOCKING 	0
 
