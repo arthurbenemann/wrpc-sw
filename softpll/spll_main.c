@@ -95,14 +95,6 @@ int mpll_update(struct spll_main_state *s, int tag, int source)
 {
 	if(!s->enabled)
 	    return SPLL_LOCKED;
-	
-	int hw_status = spll_channel_status(s->id_ref);
-	if(s->hw_status_d == 1 && hw_status == 0) // link went down
-	{
-	    s->hw_status_d = hw_status;
-	    return SPLL_CH_DOWN;
-	}
-	s->hw_status_d = hw_status;
 
 	int err, y;
 	int en;
@@ -233,6 +225,16 @@ int mpll_set_phase_shift(struct spll_main_state *s,
 int mpll_shifter_busy(struct spll_main_state *s)
 {
 	return s->phase_shift_target != s->phase_shift_current;
+}
+
+int mpll_down(struct spll_main_state *s, uint32_t hw_st)
+{
+	int hw_status   = 0x1 & (hw_st >> s->id_ref);
+	int hw_status_d = s->hw_status_d;
+	s->hw_status_d  = hw_status;
+	if(hw_status_d == 1 && hw_status == 0) // link went down
+	    return 1;
+	return 0;
 }
 
 int mpll_switchover(struct spll_main_state *mpll, struct spll_backup_state *bpll, int phase_val)

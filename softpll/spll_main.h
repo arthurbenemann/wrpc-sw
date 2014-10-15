@@ -41,6 +41,7 @@ struct spll_main_state {
 	int dac_index;
 	int enabled;
 	int err_d;
+	int hw_status_d;
 };
 
 void mpll_init(struct spll_main_state *s, int id_ref,
@@ -58,5 +59,7 @@ int mpll_set_phase_shift(struct spll_main_state *s,
 int mpll_shifter_busy(struct spll_main_state *s);
 
 int mpll_switchover(struct spll_main_state *mpll,struct spll_backup_state *bpll, int phase_val);
+
+int mpll_down(struct spll_main_state *s, uint32_t hw_st);
 
 #endif // __SPLL_MAIN_H

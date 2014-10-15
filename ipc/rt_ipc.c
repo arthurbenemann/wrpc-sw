@@ -41,12 +41,12 @@ static void clear_state()
 static void clear_switchover_occured()
 {
     pstate.switchover_ocured = 0;
-    TRACE("Cleared switch over occured");
+    TRACE("Cleared switch over occured\n");
 }
 static void set_switchover_occured()
 {
     pstate.switchover_ocured = 1;
-    TRACE("Set switch over occured");
+    TRACE("Set switch over occured\n");
 }
 static void set_backup_channel(int channel)
 {
@@ -195,9 +195,15 @@ void rts_update(void)
 {
     int i;
     int n_ref;
-		int enabled;
+    int enabled;
 		
     spll_get_num_channels(&n_ref, NULL);
+    if(pstate.backup_ref != -1 && spll_check_switchover(pstate.current_ref,pstate.backup_ref) == 1 )
+    {
+		pstate.current_ref = pstate.backup_ref;
+		pstate.backup_ref  = -1;
+		set_switchover_occured();
+    }
 
     pstate.flags = (spll_check_lock(0) ? RTS_DMTD_LOCKED | RTS_REF_LOCKED : 0);
     for(i=0;i<RTS_PLL_CHANNELS;i++)

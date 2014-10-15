@@ -264,13 +264,13 @@ int bpll_update(struct spll_backup_state *s, int tag, int source)
 	if(!s->enabled)
 	    return SPLL_LOCKED;
 
-	int hw_status = spll_channel_status(s->id_ref);
-	if(s->hw_status_d && !hw_status) // link went down
-	{
-	    s->hw_status_d = hw_status;
-	    return SPLL_DOWN;
-	}
-	s->hw_status_d = hw_status;
+// 	int hw_status = spll_channel_status(s->id_ref);
+// 	if(s->hw_status_d && !hw_status) // link went down
+// 	{
+// 	    s->hw_status_d = hw_status;
+// 	    return SPLL_DOWN;
+// 	}
+// 	s->hw_status_d = hw_status;
 	
 	int err = 0;
 	int en;

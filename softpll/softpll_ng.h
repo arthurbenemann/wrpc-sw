@@ -138,7 +138,7 @@ void spll_start_backup(int new_ref);
 
 void spll_stop_backup(int new_ref);
 
-int spll_channel_status(int channel);
+int spll_check_switchover(int current_ref, int backup_ref);
 
 #endif // __SOFTPLL_NG_H
 
