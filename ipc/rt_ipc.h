@@ -86,6 +86,8 @@ struct rts_pll_state {
 		int32_t phase_current;
 		/* TX-RX Loopback phase measurement in picoseconds. */
 		int32_t phase_loopback;
+		/* TX-Rx looback stable measurement of the phase*/
+		int32_t phase_good_val;
 		/* flags (per channel - see CHAN_xxx defines) */
 		uint32_t flags;
 	} channels[RTS_PLL_CHANNELS];
@@ -111,7 +113,7 @@ struct rts_pll_state {
 	
 	uint32_t debug_data[8];
 	
-	int switchover_ocured;
+	uint32_t switchover_ocured;
 };
 
 /* API */
@@ -139,6 +141,8 @@ int rts_enable_ptracker(int channel, int enable);
 
 /* Enabled/disables phase tracking on a particular port */
 int rts_debug_command(int param, int value);
+
+void show_info();
 
 #ifdef RTIPC_EXPORT_STRUCTURES
 

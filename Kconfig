@@ -15,7 +15,7 @@ config WR_NODE
 
 config PRINT_BUFSIZE
 	int
-	default 256
+	default 512
 
 config PRINTF_XINT
 	boolean

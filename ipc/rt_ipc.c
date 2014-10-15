@@ -36,17 +36,33 @@ static void clear_state()
     pstate.backup_ref = -1; //TODO[?]: init with -1 to make sure it does not much channel 0
     pstate.mode = RTS_MODE_DISABLED;
     pstate.ipc_count = 0;
+    pstate.switchover_ocured = 0;
 }
-
+static void clear_switchover_occured()
+{
+    pstate.switchover_ocured = 0;
+    TRACE("Cleared switch over occured");
+}
+static void set_switchover_occured()
+{
+    pstate.switchover_ocured = 1;
+    TRACE("Set switch over occured");
+}
+static void set_backup_channel(int channel)
+{
+    pstate.backup_ref = channel;
+}
 /* Sets the phase setpoint on a given channel */
 int rts_adjust_phase(int channel, int32_t phase_setpoint)
 {
-    if(pstate.switchover_ocured == 1)
+    TRACE("Adjusting phase: ref channel %d, setpoint=%d ps [switchover occured=%d,"
+    " loopback_phase=%d]\n", channel, phase_setpoint, pstate.switchover_ocured,
+    (int)pstate.channels[channel].phase_loopback);
+    if(pstate.switchover_ocured == 1 && pstate.current_ref == channel)
     {
-	pstate.switchover_ocured = 0;
-	return (int)pstate.channels[channel].phase_loopback;
+	clear_switchover_occured();
+	return (int)pstate.channels[channel].phase_good_val;
     }
-    TRACE("Adjusting phase: ref channel %d, setpoint=%d ps.\n", channel, phase_setpoint);
     if(pstate.current_ref == channel)
          spll_set_phase_shift(0, phase_setpoint);
     else if(pstate.backup_ref == channel)
@@ -120,7 +136,7 @@ int rts_backup_channel(int channel, int cmd)
 		/* activate backup and remember on which port it is*/
 		case RTS_BACKUP_CH_LOCK:
 		pstate.switchover_ocured = 0;
-		pstate.backup_ref = channel;
+		set_backup_channel(channel);
 		spll_start_backup(channel);
 		TRACE("RT [backup port]: locked !!! : %d \n", channel);
 		break;
@@ -128,14 +144,14 @@ int rts_backup_channel(int channel, int cmd)
 		pstate.switchover_ocured = 1;
 		spll_switchover(pstate.backup_ref);
 		pstate.current_ref = pstate.backup_ref;
-		pstate.backup_ref = -1;
+		set_backup_channel(-1);
 		
 		
 		TRACE("RT [backup port]: activated !!! : %d \n", channel);
 		break;
 		case RTS_BACKUP_CH_DOWN:
 		spll_stop_backup(channel);	
-		pstate.backup_ref = -1;	
+		set_backup_channel(-1);
 		TRACE("RT [backup port]: down !!! : %d \n", channel);
 		break;
 	}
@@ -191,32 +207,34 @@ void rts_update(void)
         CH.phase_current = 0;
 //        CH.phase_setpoint = 0;
         CH.phase_loopback = 0;
+        CH.phase_good_val = 0;
 
         if(i >= n_ref)
             CH.flags = CHAN_DISABLED;
         else {
             if(i==pstate.current_ref)
             {
-                spll_get_phase_shift(0, &CH.phase_current, NULL);
+                spll_get_phase_shift(0, &CH.phase_current, NULL,  &CH.phase_good_val);
 		            if(spll_shifter_busy(0))
 		            	CH.flags |= CHAN_SHIFTING;
 						}
             else if(i==pstate.backup_ref)
             {
-                spll_get_backup_phase_shift(&CH.phase_current, NULL);
+                spll_get_backup_phase_shift(&CH.phase_current, NULL, &CH.phase_good_val);
 // 		            if(spll_shifter_busy(0))
 // 		            	CH.flags |= CHAN_SHIFTING;
 						}
 
             if(spll_read_ptracker(i, &CH.phase_loopback, &enabled))
 	            CH.flags |= CHAN_PMEAS_READY;
-	          
+// 	          
 	          CH.flags |= (enabled ? CHAN_PTRACKER_ENABLED : 0);
 
         }
 
 #undef CH
     }
+    show_info();
 }
 
 
@@ -249,6 +267,7 @@ static int rts_get_state_func(const struct minipc_pd *pd, uint32_t *args, void *
         tmp->channels[i].phase_setpoint = htonl(pstate.channels[i].phase_setpoint);
         tmp->channels[i].phase_current = htonl(pstate.channels[i].phase_current);
         tmp->channels[i].phase_loopback = htonl(pstate.channels[i].phase_loopback);
+        tmp->channels[i].phase_good_val = htonl(pstate.channels[i].phase_good_val);
         tmp->channels[i].flags = htonl(pstate.channels[i].flags);
         if(tmp->channels[i].flags & CHAN_PTRACKER_ENABLED)
            TRACE("RT [chan: %d] setpoint: %d, loopback real: %d [cor:%d], prio: %d, cur: %d\n", 

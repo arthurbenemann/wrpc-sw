@@ -11,6 +11,7 @@
 
 #include "spll_main.h"
 #include "spll_debug.h"
+#include "softpll_ng.h"
 #include <pp-printf.h>
 #include "trace.h"
 #include "irq.h"
@@ -72,6 +73,8 @@ void mpll_start(struct spll_main_state *s)
 
 	s->phase_shift_target = 0;
 	s->phase_shift_current = 0;
+	s->phase_good_val=-1;
+	s->after_switchover = 0;
 	s->sample_n = 0;
 	s->enabled = 1;
 	pi_init((spll_pi_t *)&s->pi);
@@ -94,6 +97,8 @@ int mpll_update(struct spll_main_state *s, int tag, int source)
 	    return SPLL_LOCKED;
 
 	int err, y;
+	int en;
+	int32_t phase=0;	
 
 	if (source == s->id_ref)
 		s->tag_ref = tag;
@@ -138,9 +143,14 @@ int mpll_update(struct spll_main_state *s, int tag, int source)
 
 #endif
 		s->err_d = err;
-		y = pi_update((spll_pi_t *)&s->pi, err);
-		SPLL->DAC_MAIN = SPLL_DAC_MAIN_VALUE_W(y)
-			| SPLL_DAC_MAIN_DAC_SEL_W(s->dac_index);
+// 		if ((s->ld.locked && abs(err) < 50) || ! s->ld.locked || s->after_switchover)
+		{
+			y = pi_update((spll_pi_t *)&s->pi, err);
+			SPLL->DAC_MAIN = SPLL_DAC_MAIN_VALUE_W(y)
+			      | SPLL_DAC_MAIN_DAC_SEL_W(s->dac_index);
+			if(abs(err)<50 && s->ld.locked ) 
+				s->after_switchover = 0;
+		}
 
 		spll_debug(DBG_MAIN | DBG_REF, s->tag_ref + s->adder_ref, 0);
 		spll_debug(DBG_MAIN | DBG_TAG, s->tag_out + s->adder_out, 0);
@@ -168,7 +178,14 @@ int mpll_update(struct spll_main_state *s, int tag, int source)
 			}
 		}
 		if (ld_update((spll_lock_det_t *)&s->ld, err))
+		{
+			if(s->ld.lock_cnt == s->ld.lock_samples)
+			{
+			    spll_read_ptracker(s->id_ref, &phase, &en);
+			    if(en && phase) s->phase_good_val = phase;
+			}
 			return SPLL_LOCKED;
+		}
 	}
 
 	return SPLL_LOCKING;
@@ -224,8 +241,8 @@ int mpll_switchover(struct spll_main_state *mpll, struct spll_backup_state *bpll
 	        using this function to switchover.
 	*/
 	disable_irq();
-	mpll->adder_ref           = bpll->adder_ref;
-	mpll->adder_out           = bpll->adder_out;
+	mpll->adder_ref           = from_picos((bpll->phase_good_val % 16000));//bpll->adder_ref;
+	mpll->adder_out           = 0; //bpll->adder_out;
 	mpll->tag_ref             = bpll->tag_ref;
 	mpll->tag_out             = bpll->tag_out;
 	mpll->tag_ref_d           = bpll->tag_ref_d;
@@ -239,8 +256,23 @@ int mpll_switchover(struct spll_main_state *mpll, struct spll_backup_state *bpll
 	 * - the "correct" setpoint will be insterted as target, therefore it should 
 	 *   be smoothly applied
 	 */
-	mpll->phase_shift_target  = from_picos((phase_val % 16000));
-	mpll->phase_shift_current = from_picos((phase_val % 16000));
+	TRACE_DEV("Switchover: "
+	"phase_val=%d, " 
+	"good_phase_val=%d "
+	"phase_shift_target=%d "
+	"delock_count=%d "
+	"err_d=%d"
+	"\n", 
+	phase_val, 
+	bpll->phase_good_val,
+	from_picos((bpll->phase_good_val % 16000)),
+	bpll->delock_count,
+	bpll->err_d
+	);
+	mpll->phase_shift_target  = from_picos((bpll->phase_good_val % 16000));//from_picos((phase_val % 16000));
+	mpll->phase_shift_current = from_picos((bpll->phase_good_val % 16000));//from_picos((phase_val % 16000));
+	mpll->phase_good_val      = bpll->phase_good_val;
+	mpll->after_switchover    = 1;
 	/******************** end of interest *********************/
 	mpll->id_out              = bpll->id_out;
 	mpll->id_ref              = bpll->id_ref;
@@ -248,6 +280,7 @@ int mpll_switchover(struct spll_main_state *mpll, struct spll_backup_state *bpll
 	mpll->dac_index           = bpll->dac_index;
 	mpll->enabled             = bpll->enabled;
 	mpll->err_d               = bpll->err_d;
+	mpll->ld.lock_cnt         = mpll->ld.lock_samples;
 	
 	/*stop bpll*/
 	bpll->adder_ref           = 0;
@@ -265,4 +298,6 @@ int mpll_switchover(struct spll_main_state *mpll, struct spll_backup_state *bpll
 	bpll->enabled             = 0;
 	bpll->err_d               = 0;
 	enable_irq();
+	rts_update();
+	return 0;
 }

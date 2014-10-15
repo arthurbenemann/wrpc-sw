@@ -272,12 +272,13 @@ static inline void update_loops(struct softpll_state *s, int tag_value, int tag_
 	
 	helper_update(&s->helper, tag_value, tag_source);
 
-	if(s->switchover_cnt > 0)
-	{
-		s->switchover_cnt--;
-		TRACE_DEV("Swtichover count down %d\n", s->switchover_cnt );
-	}
-	else if(s->helper.ld.locked)
+// 	if(s->switchover_cnt > 0)
+// 	{
+// 		s->switchover_cnt--;
+// 		TRACE_DEV("Swtichover count down %d\n", s->switchover_cnt );
+// 	}
+// 	else 
+	if(s->helper.ld.locked)
 	{
 		mpll_update(&s->mpll, tag_value, tag_source);
 		bpll_update(&s->bpll, tag_value, tag_source);
@@ -299,14 +300,21 @@ void show_debug(int irq, struct spll_main_state *ms, struct spll_backup_state *b
 	int i;
 	if(ms->enabled)
 	TRACE_DEV("[mpll %d] tag: out=%d, ref=%d | adder: out=%d, "
-	          "ref=%d | id: out=%d, ref=%d | err=%d \n",irq, ms->tag_out_d, 
-	           ms->tag_ref_d, ms->adder_out, ms->adder_ref, ms->id_out, ms->id_ref, 
-	           ms->err_d); 
+	          "ref=%d | id: out=%d, ref=%d | err=%d | locked=%d lock_cnt=%d | gphase_vad = %d \n",
+	           irq, ms->tag_out_d, ms->tag_ref_d, ms->adder_out, ms->adder_ref, 
+	           ms->id_out, ms->id_ref, ms->err_d, ms->ld.locked, ms->ld.lock_cnt, 
+	           ms->phase_good_val); 
 	if(bs->enabled)
 	TRACE_DEV("[bpll %d] tag: out=%d, ref=%d | adder: out=%d, "
-	          "ref=%d | id: out=%d, ref=%d | err=%d \n",irq, bs->tag_out_d, 
-	           bs->tag_ref_d, bs->adder_out, bs->adder_ref, bs->id_out, bs->id_ref, 
-	           bs->err_d); 	
+	          "ref=%d | id: out=%d, ref=%d | err=%d | locked=%d lock_cnt=%d | gphase_vad = %d\n",
+	           irq, bs->tag_out_d, bs->tag_ref_d, bs->adder_out, bs->adder_ref, 
+	           bs->id_out, bs->id_ref, bs->err_d, bs->ld.locked, ms->ld.lock_cnt,
+	           bs->phase_good_val); 
+	if(bs->enabled)
+	TRACE_DEV("[bpll->ld %d] locked=%d, lock_cnt=%d | lock_samples=%d, delock_samples=%d, "
+                 "lock_changed=%d", irq, bs->ld.locked, bs->ld.lock_cnt , bs->ld.lock_samples, 
+	           bs->ld.delock_samples ,bs->ld.lock_changed);
+	 	
 	for(i=0;i<18;i++)
 	{
 		register struct spll_ptracker_state *st = ptrackers + i;
@@ -331,8 +339,8 @@ void _irq_entry()
 	}
 
 	irq_count++;
-	if((irq_count % 600)==10)
-		show_debug(irq_count,&s->mpll, &s->bpll,s->ptrackers);
+// 	if((irq_count % 1000)==10)
+// 		show_debug(irq_count,&s->mpll, &s->bpll,s->ptrackers);
 
 	clear_irq();
 }
@@ -508,7 +516,7 @@ void spll_set_backup_phase_shift(int32_t value_picoseconds)
 	set_backup_phase_shift(value_picoseconds);
 }
 
-void spll_get_phase_shift(int channel, int32_t *current, int32_t *target)
+void spll_get_phase_shift(int channel, int32_t *current, int32_t *target, int32_t *good_phase_val)
 {
 	volatile struct spll_main_state *st = (struct spll_main_state *)
 	    (!channel ? &softpll.mpll : &softpll.aux[channel - 1].pll.dmtd);
@@ -517,12 +525,14 @@ void spll_get_phase_shift(int channel, int32_t *current, int32_t *target)
 		*current = to_picos(st->phase_shift_current * div);
 	if (target)
 		*target = to_picos(st->phase_shift_target * div);
+	if (good_phase_val)
+		*good_phase_val = st->phase_good_val; // in p
 }
 
 /*
  * 
  */
-void spll_get_backup_phase_shift(int32_t *current, int32_t *target)
+void spll_get_backup_phase_shift(int32_t *current, int32_t *target, int32_t *good_phase_val)
 {
 	volatile struct spll_backup_state *st = (struct spll_backup_state *)&softpll.bpll;
 	int div = (DIVIDE_DMTD_CLOCKS_BY_2 ? 2 : 1);
@@ -530,6 +540,8 @@ void spll_get_backup_phase_shift(int32_t *current, int32_t *target)
 		*current = to_picos(st->phase_shift_current * div);
 	if (target)
 		*target = to_picos(st->phase_shift_target * div);
+	if (good_phase_val)
+		*good_phase_val = st->phase_good_val; // in p	
 }
 
 int spll_read_ptracker(int channel, int32_t *phase_ps, int *enabled)
@@ -883,4 +895,11 @@ void spll_stop_backup(int new_ref)
 	struct softpll_state *s = (struct softpll_state *) &softpll;
 	bpll_stop(&s->bpll);
 	
+}
+
+
+void show_info()
+{
+	struct softpll_state *s = (struct softpll_state *)&softpll;
+	show_debug(irq_count,&s->mpll, &s->bpll,s->ptrackers);
 }

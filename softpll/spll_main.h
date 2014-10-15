@@ -33,6 +33,8 @@ struct spll_main_state {
 
 	int phase_shift_target;
 	int phase_shift_current;
+	int after_switchover;
+	int phase_good_val;
 	int id_ref, id_out;	/* IDs of the reference and the output channel */
 	int sample_n;
 	int delock_count;

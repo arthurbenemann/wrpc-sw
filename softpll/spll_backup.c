@@ -202,7 +202,7 @@ void bpll_init(struct spll_backup_state *s, int id_ref, int id_out)
 	s->enabled = 0;
 
 	/* Freqency branch lock detection */
-	s->ld.threshold = 1200;
+	s->ld.threshold = 50;
 	s->ld.lock_samples = 1000;
 	s->ld.delock_samples = 100;
 	s->id_ref = id_ref;
@@ -232,6 +232,7 @@ void bpll_start(struct spll_backup_state *s)
 
 	s->phase_shift_target = 0;
 	s->phase_shift_current = 0;
+	s->phase_good_val=-1;
 	s->sample_n = 0;
 	s->enabled = 1;
 
@@ -264,6 +265,8 @@ int bpll_update(struct spll_backup_state *s, int tag, int source)
 	    return SPLL_LOCKED;
 
 	int err = 0;
+	int en;
+	int32_t phase=0;
 
 	if (source == s->id_ref)
 		s->tag_ref = tag;
@@ -329,8 +332,15 @@ int bpll_update(struct spll_backup_state *s, int tag, int source)
 				s->adder_ref--;
 			}
 // 		}
-// 		if (ld_update((spll_lock_det_t *)&s->ld, err))
+		if (ld_update((spll_lock_det_t *)&s->ld, err))
+		{
+			if(s->ld.lock_cnt == s->ld.lock_samples)
+			{
+			    spll_read_ptracker(s->id_ref, &phase, &en);
+			    if(en && phase) s->phase_good_val = phase;
+			}
 			return SPLL_LOCKED;
+		}
 	}
 
 	return SPLL_LOCKING;
