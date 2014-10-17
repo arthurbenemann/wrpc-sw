@@ -33,6 +33,7 @@ MEMORY
 {
     ram : ORIGIN = 0x00000000, LENGTH = 0x7000
     mbox : ORIGIN = 0x7000, LENGTH = 0x1000
+    stack : ORIGIN = 0x8000, LENGTH = 0x2000
 }
 
 SECTIONS
@@ -62,7 +63,7 @@ SECTIONS
 	} > mbox
 
 	/* First location in stack is highest address in RAM */
-	PROVIDE(_fstack = ORIGIN(ram) + LENGTH(ram) - 4);
+	PROVIDE(_fstack = ORIGIN(stack)+LENGTH(stack) - 4);
 }
 
 /* We need to provide mprintf to ptp-noposix object files, if missing */
