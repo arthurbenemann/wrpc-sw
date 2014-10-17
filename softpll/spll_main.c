@@ -77,6 +77,7 @@ void mpll_start(struct spll_main_state *s)
 	s->after_switchover = 0;
 	s->sample_n = 0;
 	s->enabled = 1;
+	s->fifo=0;
 	pi_init((spll_pi_t *)&s->pi);
 	ld_init((spll_lock_det_t *)&s->ld);
 
@@ -143,6 +144,8 @@ int mpll_update(struct spll_main_state *s, int tag, int source)
 
 #endif
 		s->err_d = err;
+		s->err_history[s->pointer++] = err;
+ 		if(s->pointer == ERR_HIST_LEN) s->pointer = 0;
 // 		if ((s->ld.locked && abs(err) < 50) || ! s->ld.locked || s->after_switchover)
 		{
 			y = pi_update((spll_pi_t *)&s->pi, err);
@@ -239,6 +242,7 @@ int mpll_down(struct spll_main_state *s, uint32_t hw_st)
 
 int mpll_switchover(struct spll_main_state *mpll, struct spll_backup_state *bpll, int phase_val)
 {
+	int i;
 	/*switch over between bpll and mpll by copying the appropriate runtime and config
 	  data 
 	  TODO: copying of the config data probably not needed, but we need to ensure
@@ -266,19 +270,7 @@ int mpll_switchover(struct spll_main_state *mpll, struct spll_backup_state *bpll
 	 * - the "correct" setpoint will be insterted as target, therefore it should 
 	 *   be smoothly applied
 	 */
-	TRACE_DEV("Switchover: "
-	"phase_val=%d, " 
-	"good_phase_val=%d "
-	"phase_shift_target=%d "
-	"delock_count=%d "
-	"err_d=%d"
-	"\n", 
-	phase_val, 
-	bpll->phase_good_val,
-	from_picos((bpll->phase_good_val % 16000)),
-	bpll->delock_count,
-	bpll->err_d
-	);
+
 	mpll->phase_shift_target  = from_picos((bpll->phase_good_val % 16000));//from_picos((phase_val % 16000));
 	mpll->phase_shift_current = from_picos((bpll->phase_good_val % 16000));//from_picos((phase_val % 16000));
 	mpll->phase_good_val      = bpll->phase_good_val;
@@ -308,6 +300,29 @@ int mpll_switchover(struct spll_main_state *mpll, struct spll_backup_state *bpll
 	bpll->enabled             = 0;
 	bpll->err_d               = 0;
 // 	enable_irq();
-// 	rts_update();
+	rts_update();
+	
+	TRACE_DEV("Switchover: "
+	"phase_val=%d, " 
+	"good_phase_val=%d "
+	"phase_shift_target=%d "
+	"delock_count=%d "
+	"err_d=%d, "
+	"mpll pointer=%d, "
+	"bpll pointer=%d "
+	"\n", 
+	phase_val, 
+	bpll->phase_good_val,
+	from_picos((bpll->phase_good_val % 16000)),
+	bpll->delock_count,
+	bpll->err_d,
+	mpll->pointer,
+	bpll->pointer
+	);
+ 	for (i=0; i < ERR_HIST_LEN; i++)
+		TRACE_DEV("%2d: %3d|%d, ", i%ERR_HIST_LEN, 
+		mpll->err_history[(i+mpll->pointer)%ERR_HIST_LEN],
+		bpll->err_history[(i+bpll->pointer)%ERR_HIST_LEN]);
+	TRACE_DEV("\n");
 	return 0;
 }

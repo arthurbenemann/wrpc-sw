@@ -19,7 +19,7 @@ volatile struct PPSG_WB *PPSG;
 
 int spll_n_chan_ref, spll_n_chan_out;
 int spll_current_ref, spll_backup_ref;
-
+// int fifo_cnt = 0;
 /*
  * The includes below contain code (not only declarations) to enable
  * the compiler to inline functions where necessary and save some CPU
@@ -305,10 +305,10 @@ void show_debug(int irq, struct spll_main_state *ms, struct spll_backup_state *b
 	if(ms->enabled)
 	TRACE_DEV("[mpll %d] tag: out=%d, ref=%d | adder: out=%d, "
 	          "ref=%d | id: out=%d, ref=%d | err=%d | locked=%d lock_cnt=%d | "
-	          "gphase_vad = %d | hw_stat=%d \n",
+	          "gphase_vad = %d | hw_stat=%d | fifo_cnt=%d \n",
 	           irq, ms->tag_out_d, ms->tag_ref_d, ms->adder_out, ms->adder_ref, 
 	           ms->id_out, ms->id_ref, ms->err_d, ms->ld.locked, ms->ld.lock_cnt, 
-	           ms->phase_good_val,ms->hw_status_d); 
+	           ms->phase_good_val,ms->hw_status_d,ms->fifo); 
 	if(bs->enabled)
 	TRACE_DEV("[bpll %d] tag: out=%d, ref=%d | adder: out=%d, "
 	          "ref=%d | id: out=%d, ref=%d | err=%d | locked=%d lock_cnt=%d | "
@@ -332,7 +332,10 @@ void show_debug(int irq, struct spll_main_state *ms, struct spll_backup_state *b
 void _irq_entry()
 {
 	struct softpll_state *s = (struct softpll_state *)&softpll;
+	int i = 0;
 	s->hw_status_d = SPLL->PSR;
+// 	fifo_cnt = 0;
+	s->mpll.fifo=0;
 /* check if there are more tags in the FIFO */	
 	while (!(SPLL->TRR_CSR & SPLL_TRR_CSR_EMPTY)) {
 	
@@ -342,12 +345,15 @@ void _irq_entry()
 
 		sequencing_fsm(s, tag_value, tag_source);
 		update_loops(s, tag_value, tag_source);
+		i++;
 	}
-	
+	s->mpll.fifo = i;
 	//do it after update_loops(), can be changed inside
 	spll_current_ref = s->mpll.id_ref;
 	spll_backup_ref  = s->bpll.id_ref;
 	irq_count++;
+// 	if(s->mpll.ld.locked && s->bpll.ld.locked&& (irq_count%1000 == 0 || s->bpll.err_d > 20 || s->mpll.err_d > 20 || s->hw_status_d == 0x2))
+// 	TRACE_DEV("IRQ: Me:%3d Be:%3d HW:%d\n", s->mpll.err_d ,s->bpll.err_d, s->hw_status_d);
 // 	if((irq_count % 1000)==10)
 // 		show_debug(irq_count,&s->mpll, &s->bpll,s->ptrackers);
 

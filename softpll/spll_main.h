@@ -42,6 +42,9 @@ struct spll_main_state {
 	int enabled;
 	int err_d;
 	int hw_status_d;
+	int fifo;
+	int err_history[ERR_HIST_LEN];
+	int pointer;	
 };
 
 void mpll_init(struct spll_main_state *s, int id_ref,

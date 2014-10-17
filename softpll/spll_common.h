@@ -25,6 +25,8 @@
 #define SPLL_LOCKED 	1
 #define SPLL_LOCKING 	0
 
+#define ERR_HIST_LEN 2
+
 /* Number of reference/output channels. We don't plan to have more than one
    SoftPLL instantiation per project, so these can remain global. */
 extern int spll_n_chan_ref, spll_n_chan_out;

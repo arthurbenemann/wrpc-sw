@@ -37,6 +37,8 @@ struct spll_backup_state {
 	int dac_index;
 	int enabled;
 	int err_d;
+	int err_history[ERR_HIST_LEN];
+	int pointer;
 };
 
 void bpll_init(struct spll_backup_state *s, int id_ref,

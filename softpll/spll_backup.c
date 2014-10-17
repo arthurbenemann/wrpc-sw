@@ -321,6 +321,9 @@ int bpll_update(struct spll_backup_state *s, int tag, int source)
 #endif
 		
 		s->err_d = err;
+		s->err_history[s->pointer++] = err;
+ 		if(s->pointer == ERR_HIST_LEN) s->pointer = 0;
+		
 		s->tag_out = -1;
 		s->tag_ref = -1;
 
