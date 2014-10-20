@@ -237,6 +237,7 @@ void bpll_start(struct spll_backup_state *s)
 	s->enabled = 1;
 
 	spll_enable_tagger(s->id_ref, 1);
+	spll_debug(DBG_EVENT | DBG_BACKUP, DBG_EVT_START, 1);
 }
 
 void bpll_stop(struct spll_backup_state *s)
@@ -323,6 +324,12 @@ int bpll_update(struct spll_backup_state *s, int tag, int source)
 		s->err_d = err;
 		s->err_history[s->pointer++] = err;
  		if(s->pointer == ERR_HIST_LEN) s->pointer = 0;
+		
+		spll_debug(DBG_BACKUP | DBG_REF, s->tag_ref + s->adder_ref, 0);
+		spll_debug(DBG_BACKUP | DBG_TAG, s->tag_out + s->adder_out, 0);
+		spll_debug(DBG_BACKUP | DBG_ERR, err, 0);
+		spll_debug(DBG_BACKUP | DBG_SAMPLE_ID, s->sample_n++, 1);
+// 		spll_debug(DBG_BACKUP | DBG_Y, y, 1);
 		
 		s->tag_out = -1;
 		s->tag_ref = -1;
