@@ -875,8 +875,8 @@ void spll_switchover(int new_ref)
 
 	spll_debug(DBG_EVENT | DBG_MAIN,   DBG_EVT_SWITCHOVER, 1);
 	spll_debug(DBG_EVENT | DBG_BACKUP, DBG_EVT_SWITCHOVER, 1);
+	spll_debug(DBG_EVENT | DBG_BACKUP, DBG_EVT_SWITCHOVER, 1); //because of how the read program works
 	spll_debug(DBG_EVENT | DBG_HELPER, DBG_EVT_SWITCHOVER, 1);
-	spll_debug(DBG_EVENT | DBG_HELPER, DBG_EVT_SWITCHOVER, 1); //because of how the read program works
 	
 	/*switch over helper reference*/
 	helper_switch_reference(&s->helper,new_ref);

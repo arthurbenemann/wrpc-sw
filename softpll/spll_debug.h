@@ -34,7 +34,9 @@ integral/proportional gains on the response of the system.
 
 #define DBG_EVT_START 1		/* PLL has just started */
 #define DBG_EVT_LOCKED 2	/* PLL has just become locked */
-#define DBG_EVT_SWITCHOVER 3
+#define DBG_EVT_SWITCHOVER 4
+#define DBG_EVT_STARTBACKUP 8
+
 
 /* Writes a parameter to the debug FIFO.
 

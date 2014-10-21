@@ -237,7 +237,9 @@ void bpll_start(struct spll_backup_state *s)
 	s->enabled = 1;
 
 	spll_enable_tagger(s->id_ref, 1);
-	spll_debug(DBG_EVENT | DBG_BACKUP, DBG_EVT_START, 1);
+	spll_debug(DBG_EVENT | DBG_BACKUP, DBG_EVT_STARTBACKUP, 1);
+	spll_debug(DBG_EVENT | DBG_MAIN, DBG_EVT_STARTBACKUP, 1);
+	spll_debug(DBG_EVENT | DBG_HELPER, DBG_EVT_STARTBACKUP, 1);
 }
 
 void bpll_stop(struct spll_backup_state *s)
