@@ -48,7 +48,7 @@ int helper_update(struct spll_helper_state *s, int tag,
 		spll_debug(DBG_REF | DBG_HELPER, s->p_setpoint, 0);
 
 		if (s->tag_d0 < 0) {
-			s->p_setpoint = tag;
+			s->p_setpoint = tag + (1 << HPLL_N);
 			s->tag_d0 = tag;
 
 			return SPLL_LOCKING;
