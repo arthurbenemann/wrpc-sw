@@ -55,6 +55,7 @@ void mpll_init(struct spll_main_state *s, int id_ref,
 
 	pi_init((spll_pi_t *)&s->pi);
 	ld_init((spll_lock_det_t *)&s->ld);
+	
 }
 
 void mpll_start(struct spll_main_state *s)
@@ -80,6 +81,14 @@ void mpll_start(struct spll_main_state *s)
 	s->fifo=0;
 	pi_init((spll_pi_t *)&s->pi);
 	ld_init((spll_lock_det_t *)&s->ld);
+	
+	//average
+	avg_init((spll_avg_t *)&s->avg_err_short,4);
+	avg_init((spll_avg_t *)&s->avg_err_long ,10);
+	avg_init((spll_avg_t *)&s->avg_y_long   ,10);
+	avg_dump((spll_avg_t *)&s->avg_err_short, "init ERR short");
+	avg_dump((spll_avg_t *)&s->avg_err_long,  "init ERR long ");
+	avg_dump((spll_avg_t *)&s->avg_y_long,    "init Y   long ");
 
 	spll_enable_tagger(s->id_ref, 1);
 	spll_enable_tagger(s->id_out, 1);
@@ -144,8 +153,10 @@ int mpll_update(struct spll_main_state *s, int tag, int source)
 
 #endif
 		s->err_d = err;
-		s->err_history[s->pointer++] = err;
- 		if(s->pointer == ERR_HIST_LEN) s->pointer = 0;
+		avg_update((spll_avg_t *)&s->avg_err_short, err);
+		avg_update((spll_avg_t *)&s->avg_err_long,  err);
+// 		s->err_history[s->pointer++] = err;
+//  		if(s->pointer == ERR_HIST_LEN) s->pointer = 0;
 // 		if ((s->ld.locked && abs(err) < 50) || ! s->ld.locked || s->after_switchover)
 		{
 			y = pi_update((spll_pi_t *)&s->pi, err);
@@ -153,10 +164,13 @@ int mpll_update(struct spll_main_state *s, int tag, int source)
 			      | SPLL_DAC_MAIN_DAC_SEL_W(s->dac_index);
 			if(abs(err)<50 && s->ld.locked ) 
 				s->after_switchover = 0;
+			avg_update((spll_avg_t *)&s->avg_y_long, y);
 		}
-
-		spll_debug(DBG_MAIN | DBG_REF, s->tag_ref + s->adder_ref, 0);
-		spll_debug(DBG_MAIN | DBG_TAG, s->tag_out + s->adder_out, 0);
+		
+// 		spll_debug(DBG_MAIN | DBG_REF, s->tag_ref + s->adder_ref, 0);
+// 		spll_debug(DBG_MAIN | DBG_TAG, s->tag_out + s->adder_out, 0);
+		spll_debug(DBG_MAIN | DBG_REF, avg_get((spll_avg_t *)&s->avg_y_long, AVG_HIST_RECENT), 0);
+		spll_debug(DBG_MAIN | DBG_TAG, avg_get((spll_avg_t *)&s->avg_err_short, AVG_HIST_RECENT), 0);
 		spll_debug(DBG_MAIN | DBG_ERR, err, 0);
 		spll_debug(DBG_MAIN | DBG_SAMPLE_ID, s->sample_n++, 0);
 		spll_debug(DBG_MAIN | DBG_Y, y, 1);

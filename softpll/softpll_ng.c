@@ -613,16 +613,23 @@ void spll_show_stats()
   
 	if (softpll.mode > 0)
 		    TRACE_DEV("softpll: irqs %d; seq %s; mode %s; "
-		     "alignment_state %s; hLocked-%s; mLocked-%s; hPiY=%d; mPiY=%d; DelCnt=%d; "
-		     "\n",
+		     "alignment_state %s; hLocked-%s; mLocked-%s; bLocked-%s;"
+		     "hPiY=%d; mPiY=%d; DelCnt=%d; mPLLerr:%6d; bPLLerr:%6d \n",
 		     irq_count, 
 		     stringlist_lookup(seq_states, softpll.seq_state), 
 		     stringlist_lookup(softpll_modes, softpll.mode),
 		     stringlist_lookup(align_states, softpll.ext.align_state), 
 		     (softpll.helper.ld.locked ? "yes":" no"), 
 		     (softpll.mpll.ld.locked ? "yes":" no"),
+		     (softpll.bpll.ld.locked ? "yes":" no"),
 		     softpll.helper.pi.y, softpll.mpll.pi.y,
-		     softpll.delock_count);
+		     softpll.delock_count,
+		     softpll.mpll.err_d,
+		     softpll.bpll.err_d
+		    );
+	avg_dump((spll_avg_t *)&softpll.mpll.avg_y_long,   "Y   long ");
+	avg_dump((spll_avg_t *)&softpll.mpll.avg_err_long, "ERR long");
+	avg_dump((spll_avg_t *)&softpll.mpll.avg_err_short,"ERR short");
 }
 
 int spll_shifter_busy(int channel)

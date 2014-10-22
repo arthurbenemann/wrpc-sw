@@ -26,6 +26,10 @@
 #define SPLL_LOCKING 	0
 
 #define ERR_HIST_LEN 2
+#define AVG_HIST_LEN    2
+#define AVG_HIST_RECENT  0
+#define AVG_HIST_OLDEST  (AVG_HIST_LEN-1)
+
 
 /* Number of reference/output channels. We don't plan to have more than one
    SoftPLL instantiation per project, so these can remain global. */
@@ -84,6 +88,16 @@ struct stringlist_entry {
 	const char *str;
 };
 
+typedef struct {
+	int cnt;
+	int prev_avg[AVG_HIST_LEN];
+	int log2_n_avg;          //log2 of average n
+	int ready;
+// 	int64_t acc;
+	int acc;
+} spll_avg_t;
+
+
 /* initializes the PI controller state. Currently almost a stub. */
 void pi_init(spll_pi_t *pi);
 
@@ -102,5 +116,10 @@ void biquad_init(spll_biquad_t *bq, const int *coefs, int shift);
 int biquad_update(spll_biquad_t *bq, int x);
 
 const char *stringlist_lookup(const struct stringlist_entry *slist, int id);
+
+void avg_init(spll_avg_t *a, int log2_n_avg);
+int avg_update(spll_avg_t *a, int val);
+int avg_get(spll_avg_t *a, int hist);
+void avg_dump(spll_avg_t *a, char *name);
 
 #endif // __SPLL_COMMON_H

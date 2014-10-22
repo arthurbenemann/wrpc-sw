@@ -23,6 +23,9 @@ struct spll_main_state {
 
 	spll_pi_t pi;
 	spll_lock_det_t ld;
+	spll_avg_t avg_err_short;
+	spll_avg_t avg_err_long;
+	spll_avg_t avg_y_long;
 
 	int adder_ref, adder_out, tag_ref, tag_out, tag_ref_d, tag_out_d;
 
@@ -43,8 +46,8 @@ struct spll_main_state {
 	int err_d;
 	int hw_status_d;
 	int fifo;
-	int err_history[ERR_HIST_LEN];
-	int pointer;	
+// 	int err_history[ERR_HIST_LEN];
+// 	int pointer;	
 };
 
 void mpll_init(struct spll_main_state *s, int id_ref,
