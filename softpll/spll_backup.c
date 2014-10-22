@@ -199,7 +199,7 @@
  */
 void bpll_init(struct spll_backup_state *s, int id_ref, int id_out)
 {
-	s->delock_count = 0;
+// 	s->delock_count = 0;
 	s->enabled = 0;
 
 	/* Freqency branch lock detection */
@@ -208,8 +208,8 @@ void bpll_init(struct spll_backup_state *s, int id_ref, int id_out)
 	s->ld.delock_samples = 100;
 	s->id_ref = id_ref;
 	s->id_out = id_out;
-	s->dac_index = id_out - spll_n_chan_ref; //TODO:probably not needed, T
-	TRACE_DEV("[bpll] ref %d out %d idx %x", s->id_ref, s->id_out, s->dac_index);
+// 	s->dac_index = id_out - spll_n_chan_ref; //TODO:probably not needed, T
+// 	TRACE_DEV("[bpll] ref %d out %d", s->id_ref, s->id_out);
 }
 
 /*
@@ -219,7 +219,7 @@ void bpll_init(struct spll_backup_state *s, int id_ref, int id_out)
  */
 void bpll_start(struct spll_backup_state *s)
 {
-	TRACE_DEV("[bpll] Start backup channel %d\n", s->id_ref);
+// 	TRACE_DEV("[bpll] Start backup channel %d\n", s->id_ref);
 
 	s->adder_ref = s->adder_out = 0;
 	s->tag_ref = -1;
@@ -236,6 +236,7 @@ void bpll_start(struct spll_backup_state *s)
 	s->phase_good_val=-1;
 	s->sample_n = 0;
 	s->enabled = 1;
+	s->holdover=0;
 	
 	avg_init((spll_avg_t *)&s->avg_err_short,4);
 	avg_init((spll_avg_t *)&s->avg_err_long ,10);
@@ -326,15 +327,16 @@ int bpll_update(struct spll_backup_state *s, int tag, int source)
 // 		}
 
 #endif
-		
-		s->err_d = err;
+		if(s->holdover==0)
+		    s->err_d = err;
 		avg_update((spll_avg_t *)&s->avg_err_short, err);
 		avg_update((spll_avg_t *)&s->avg_err_long,  err);
 // 		s->err_history[s->pointer++] = err;
 //  		if(s->pointer == ERR_HIST_LEN) s->pointer = 0;
 		
-		spll_debug(DBG_BACKUP | DBG_REF, s->tag_ref + s->adder_ref, 0);
+// 		spll_debug(DBG_BACKUP | DBG_REF, s->tag_ref + s->adder_ref, 0);
 		spll_debug(DBG_BACKUP | DBG_TAG, s->tag_out + s->adder_out, 0);
+		spll_debug(DBG_BACKUP | DBG_REF, s->err_d, 0);
 		spll_debug(DBG_BACKUP | DBG_AVG_L, avg_get((spll_avg_t *)&s->avg_err_long, AVG_HIST_RECENT), 0);
 		spll_debug(DBG_BACKUP | DBG_AVG_S, avg_get((spll_avg_t *)&s->avg_err_short, AVG_HIST_RECENT), 0);
 		
@@ -406,7 +408,7 @@ int bpll_set_phase_shift(struct spll_backup_state *s, int desired_shift_ps)
 {
 	int div = (DIVIDE_DMTD_CLOCKS_BY_2 ? 2 : 1);
 	s->phase_shift_target = from_picos(desired_shift_ps) / div;
-	TRACE_DEV("[bpll] set target phaseshift %d\n", s->phase_shift_target);
+// 	TRACE_DEV("[bpll] set target phaseshift %d\n", s->phase_shift_target);
 	return 0;
 }
 

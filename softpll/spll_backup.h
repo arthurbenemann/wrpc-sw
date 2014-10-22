@@ -35,9 +35,10 @@ struct spll_backup_state {
 	int phase_good_val; //ps (divided)
 	int id_ref, id_out;	/* IDs of the reference and the output channel */
 	int sample_n;
-	int delock_count;
-	int dac_index;
+// 	int delock_count;
+// 	int dac_index;
 	int enabled;
+	int holdover;
 	int err_d;
 // 	int err_history[ERR_HIST_LEN];
 // 	int pointer;

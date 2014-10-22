@@ -184,7 +184,7 @@ void avg_init(spll_avg_t *a, int log2_n_avg)
 {
 	int i  = 0;
 	a->acc = 0;
-	a->cnt = 1;
+	a->cnt = 0;
 	for(i=0;i<AVG_HIST_LEN;i++)
 		a->prev_avg[i] = 0;
 	a->log2_n_avg = log2_n_avg;
@@ -208,7 +208,7 @@ int avg_update(spll_avg_t *a, int val)
 			a->prev_avg[i] = a->prev_avg[i-1];
 		a->prev_avg[AVG_HIST_RECENT] = (a->acc >> a->log2_n_avg);
 		a->ready = 1;
-		a->cnt   = 1;
+		a->cnt   = 0;
 		a->acc   = 0;
 		if(a->ready <= 0) 
 			a->ready++;// gets 1 when all historry filled in
@@ -219,7 +219,7 @@ int avg_update(spll_avg_t *a, int val)
 int avg_get(spll_avg_t *a, int hist)
 {
 	if(hist > AVG_HIST_OLDEST)
-	  return 0;
+	  return 0;	
 	return a->prev_avg[hist];
 }
 

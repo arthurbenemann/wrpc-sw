@@ -49,6 +49,7 @@ void mpll_init(struct spll_main_state *s, int id_ref,
 	s->ld.delock_samples = 100;
 	s->id_ref = id_ref;
 	s->id_out = id_out;
+	s->holdover=0;
 	s->dac_index = id_out - spll_n_chan_ref;
 
 	TRACE_DEV("ref %d out %d idx %x", s->id_ref, s->id_out, s->dac_index);
@@ -60,7 +61,7 @@ void mpll_init(struct spll_main_state *s, int id_ref,
 
 void mpll_start(struct spll_main_state *s)
 {
-	TRACE_DEV("MPLL_Start [dac %d]\n", s->dac_index);
+// 	TRACE_DEV("MPLL_Start [dac %d]\n", s->dac_index);
 
 	s->adder_ref = s->adder_out = 0;
 	s->tag_ref = -1;
@@ -79,13 +80,14 @@ void mpll_start(struct spll_main_state *s)
 	s->sample_n = 0;
 	s->enabled = 1;
 	s->fifo=0;
+	s->holdover=0;
 	pi_init((spll_pi_t *)&s->pi);
 	ld_init((spll_lock_det_t *)&s->ld);
 	
 	//average
 	avg_init((spll_avg_t *)&s->avg_err_short,4);
 	avg_init((spll_avg_t *)&s->avg_err_long ,10);
-	avg_init((spll_avg_t *)&s->avg_y_long   ,10);
+	avg_init((spll_avg_t *)&s->avg_y_long   ,7);
 // 	avg_dump((spll_avg_t *)&s->avg_err_short, "init ERR short");
 // 	avg_dump((spll_avg_t *)&s->avg_err_long,  "init ERR long ");
 // 	avg_dump((spll_avg_t *)&s->avg_y_long,    "init Y   long ");
@@ -152,14 +154,19 @@ int mpll_update(struct spll_main_state *s, int tag, int source)
 		}
 
 #endif
-		s->err_d = err;
+		if(s->holdover==0)
+		    s->err_d = err;
 		avg_update((spll_avg_t *)&s->avg_err_short, err);
 		avg_update((spll_avg_t *)&s->avg_err_long,  err);
 // 		s->err_history[s->pointer++] = err;
 //  		if(s->pointer == ERR_HIST_LEN) s->pointer = 0;
 // 		if ((s->ld.locked && abs(err) < 50) || ! s->ld.locked || s->after_switchover)
 		{
-			y = pi_update((spll_pi_t *)&s->pi, err);
+			if(s->holdover==0)
+				y = pi_update((spll_pi_t *)&s->pi, err);
+			else
+				y = avg_get((spll_avg_t *)&s->avg_y_long, AVG_HIST_RECENT);
+			
 			SPLL->DAC_MAIN = SPLL_DAC_MAIN_VALUE_W(y)
 			      | SPLL_DAC_MAIN_DAC_SEL_W(s->dac_index);
 			if(abs(err)<50 && s->ld.locked ) 
@@ -167,8 +174,9 @@ int mpll_update(struct spll_main_state *s, int tag, int source)
 			avg_update((spll_avg_t *)&s->avg_y_long, y);
 		}
 		
-		spll_debug(DBG_MAIN | DBG_REF, s->tag_ref + s->adder_ref, 0);
+// 		spll_debug(DBG_MAIN | DBG_REF, s->tag_ref + s->adder_ref, 0);
 // 		spll_debug(DBG_MAIN | DBG_TAG, s->tag_out + s->adder_out, 0);
+		spll_debug(DBG_MAIN | DBG_REF,   avg_get((spll_avg_t *)&s->avg_y_long, AVG_HIST_OLDEST), 0);
 		spll_debug(DBG_MAIN | DBG_TAG,   avg_get((spll_avg_t *)&s->avg_y_long, AVG_HIST_RECENT), 0);
 		spll_debug(DBG_MAIN | DBG_AVG_L, avg_get((spll_avg_t *)&s->avg_err_long, AVG_HIST_RECENT), 0);
 		spll_debug(DBG_MAIN | DBG_AVG_S, avg_get((spll_avg_t *)&s->avg_err_short, AVG_HIST_RECENT), 0);
@@ -293,8 +301,8 @@ int mpll_switchover(struct spll_main_state *mpll, struct spll_backup_state *bpll
 	/******************** end of interest *********************/
 	mpll->id_out              = bpll->id_out;
 	mpll->id_ref              = bpll->id_ref;
-	mpll->delock_count        = bpll->delock_count;
-	mpll->dac_index           = bpll->dac_index;
+// 	mpll->delock_count        = bpll->delock_count;
+// 	mpll->dac_index           = bpll->dac_index;
 	mpll->enabled             = bpll->enabled;
 	mpll->err_d               = bpll->err_d;
 	mpll->ld.lock_cnt         = mpll->ld.lock_samples;
@@ -310,8 +318,8 @@ int mpll_switchover(struct spll_main_state *mpll, struct spll_backup_state *bpll
 	bpll->phase_shift_target  = 0;
 	bpll->phase_shift_current = 0;
 	bpll->id_out              = 0;
-	bpll->delock_count        = 0;
-	bpll->dac_index           = 0;
+// 	bpll->delock_count        = 0;
+// 	bpll->dac_index           = 0;
 	bpll->enabled             = 0;
 	bpll->err_d               = 0;
 // 	enable_irq();

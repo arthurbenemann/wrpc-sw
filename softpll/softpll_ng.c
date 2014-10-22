@@ -269,6 +269,37 @@ static inline void sequencing_fsm(struct softpll_state *s, int tag_value, int ta
 	}
 }
 
+int spll_ctr_holdover(struct spll_main_state *ms, struct spll_backup_state *bs)
+{
+	int avg_l;
+	int avg_s;
+	if(ms->ld.locked == 0 || bs->ld.locked == 0)
+	{
+		ms->holdover = 0;
+		bs->holdover = 0;
+		return 0;
+	}
+	else
+	{
+		avg_l = avg_get((spll_avg_t *)&bs->avg_err_long, AVG_HIST_RECENT);
+		avg_s = avg_get((spll_avg_t *)&bs->avg_err_short, AVG_HIST_RECENT);
+		if(abs(avg_l-avg_s) > 50)
+		{
+			ms->holdover = 1;
+			bs->holdover = 1;
+// 			TRACE_DEV("Holdover on\n" );
+		}
+		else
+		{
+			ms->holdover = 0;
+			bs->holdover = 0;
+// 			TRACE_DEV("Holdover off\n" );
+		}
+	}
+	return 0;
+  
+}
+
 static inline void update_loops(struct softpll_state *s, int tag_value, int tag_source)
 {
 	
@@ -282,6 +313,7 @@ static inline void update_loops(struct softpll_state *s, int tag_value, int tag_
 // 	else 
 	if(s->helper.ld.locked)
 	{
+		spll_ctr_holdover(&s->mpll, &s->bpll);
 		if(mpll_down(&s->mpll,s->hw_status_d) == 1 && s->bpll.enabled)
 			spll_switchover(s->bpll.id_ref);
 		mpll_update(&s->mpll, tag_value, tag_source);
@@ -298,37 +330,37 @@ static inline void update_loops(struct softpll_state *s, int tag_value, int tag_
 		}
 	}
 }
-void show_debug(int irq, struct spll_main_state *ms, struct spll_backup_state *bs,
-		struct spll_ptracker_state *ptrackers)
-{
-	int i;
-	if(ms->enabled)
-	TRACE_DEV("[mpll %d] tag: out=%d, ref=%d | adder: out=%d, "
-	          "ref=%d | id: out=%d, ref=%d | err=%d | locked=%d lock_cnt=%d | "
-	          "gphase_vad = %d | hw_stat=%d | fifo_cnt=%d \n",
-	           irq, ms->tag_out_d, ms->tag_ref_d, ms->adder_out, ms->adder_ref, 
-	           ms->id_out, ms->id_ref, ms->err_d, ms->ld.locked, ms->ld.lock_cnt, 
-	           ms->phase_good_val,ms->hw_status_d,ms->fifo); 
-	if(bs->enabled)
-	TRACE_DEV("[bpll %d] tag: out=%d, ref=%d | adder: out=%d, "
-	          "ref=%d | id: out=%d, ref=%d | err=%d | locked=%d lock_cnt=%d | "
-	          "gphase_vad = %d \n",
-	           irq, bs->tag_out_d, bs->tag_ref_d, bs->adder_out, bs->adder_ref, 
-	           bs->id_out, bs->id_ref, bs->err_d, bs->ld.locked, ms->ld.lock_cnt,
-	           bs->phase_good_val); 
-	if(bs->enabled)
-	TRACE_DEV("[bpll->ld %d] locked=%d, lock_cnt=%d | lock_samples=%d, delock_samples=%d, "
-                 "lock_changed=%d", irq, bs->ld.locked, bs->ld.lock_cnt , bs->ld.lock_samples, 
-	           bs->ld.delock_samples ,bs->ld.lock_changed);
-	for(i=0;i<18;i++)
-	{
-		register struct spll_ptracker_state *st = ptrackers + i;
-		if(st->enabled) 
-		TRACE_DEV("[tracker %d] avg_cnt: %d,  n_avg: %d, acc: %d, ready: %d, "
-		" phase_val: %d\n", i,st->avg_count,st->n_avg,st->acc, st->ready, 
-		st->phase_val); 
-	}
-}
+// void show_debug(int irq, struct spll_main_state *ms, struct spll_backup_state *bs,
+// 		struct spll_ptracker_state *ptrackers)
+// {
+// 	int i;
+// 	if(ms->enabled)
+// 	TRACE_DEV("[mpll %d] tag: out=%d, ref=%d | adder: out=%d, "
+// 	          "ref=%d | id: out=%d, ref=%d | err=%d | locked=%d lock_cnt=%d | "
+// 	          "gphase_vad = %d | hw_stat=%d | fifo_cnt=%d \n",
+// 	           irq, ms->tag_out_d, ms->tag_ref_d, ms->adder_out, ms->adder_ref, 
+// 	           ms->id_out, ms->id_ref, ms->err_d, ms->ld.locked, ms->ld.lock_cnt, 
+// 	           ms->phase_good_val,ms->hw_status_d,ms->fifo); 
+// 	if(bs->enabled)
+// 	TRACE_DEV("[bpll %d] tag: out=%d, ref=%d | adder: out=%d, "
+// 	          "ref=%d | id: out=%d, ref=%d | err=%d | locked=%d lock_cnt=%d | "
+// 	          "gphase_vad = %d \n",
+// 	           irq, bs->tag_out_d, bs->tag_ref_d, bs->adder_out, bs->adder_ref, 
+// 	           bs->id_out, bs->id_ref, bs->err_d, bs->ld.locked, ms->ld.lock_cnt,
+// 	           bs->phase_good_val); 
+// 	if(bs->enabled)
+// 	TRACE_DEV("[bpll->ld %d] locked=%d, lock_cnt=%d | lock_samples=%d, delock_samples=%d, "
+//                  "lock_changed=%d", irq, bs->ld.locked, bs->ld.lock_cnt , bs->ld.lock_samples, 
+// 	           bs->ld.delock_samples ,bs->ld.lock_changed);
+// 	for(i=0;i<18;i++)
+// 	{
+// 		register struct spll_ptracker_state *st = ptrackers + i;
+// 		if(st->enabled) 
+// 		TRACE_DEV("[tracker %d] avg_cnt: %d,  n_avg: %d, acc: %d, ready: %d, "
+// 		" phase_val: %d\n", i,st->avg_count,st->n_avg,st->acc, st->ready, 
+// 		st->phase_val); 
+// 	}
+// }
 void _irq_entry()
 {
 	struct softpll_state *s = (struct softpll_state *)&softpll;
@@ -614,7 +646,7 @@ void spll_show_stats()
 	if (softpll.mode > 0)
 		    TRACE_DEV("softpll: irqs %d; seq %s; mode %s; "
 		     "alignment_state %s; hLocked-%s; mLocked-%s; bLocked-%s;"
-		     "hPiY=%d; mPiY=%d; DelCnt=%d; mPLLerr:%6d; bPLLerr:%6d \n",
+		     "hPiY=%d; mPiY=%d; DelCnt=%d; mPLLerr:%6d; bPLLerr:%6d, holdover:%d \n",
 		     irq_count, 
 		     stringlist_lookup(seq_states, softpll.seq_state), 
 		     stringlist_lookup(softpll_modes, softpll.mode),
@@ -625,13 +657,9 @@ void spll_show_stats()
 		     softpll.helper.pi.y, softpll.mpll.pi.y,
 		     softpll.delock_count,
 		     softpll.mpll.err_d,
-		     softpll.bpll.err_d
+		     softpll.bpll.err_d,
+		     softpll.mpll.holdover
 		    );
-	avg_dump((spll_avg_t *)&softpll.mpll.avg_y_long,   "mPLL: Y   long ");
-	avg_dump((spll_avg_t *)&softpll.mpll.avg_err_long, "mPLL: ERR long");
-	avg_dump((spll_avg_t *)&softpll.mpll.avg_err_short,"mPLL: ERR short");
-	avg_dump((spll_avg_t *)&softpll.bpll.avg_err_long, "bPLL: ERR long");
-	avg_dump((spll_avg_t *)&softpll.bpll.avg_err_short,"bPLL: ERR short");	
 }
 
 int spll_shifter_busy(int channel)
@@ -929,11 +957,11 @@ void spll_stop_backup(int new_ref)
 	
 }
 
-void show_info()
-{
-	struct softpll_state *s = (struct softpll_state *)&softpll;
-	show_debug(irq_count,&s->mpll, &s->bpll,s->ptrackers);
-}
+// void show_info()
+// {
+// 	struct softpll_state *s = (struct softpll_state *)&softpll;
+// 	show_debug(irq_count,&s->mpll, &s->bpll,s->ptrackers);
+// }
 
 int spll_check_switchover(int current_ref, int backup_ref)
 {

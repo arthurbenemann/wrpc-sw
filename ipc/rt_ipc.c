@@ -276,11 +276,11 @@ static int rts_get_state_func(const struct minipc_pd *pd, uint32_t *args, void *
         tmp->channels[i].phase_loopback = htonl(pstate.channels[i].phase_loopback);
         tmp->channels[i].phase_good_val = htonl(pstate.channels[i].phase_good_val);
         tmp->channels[i].flags = htonl(pstate.channels[i].flags);
-        if(tmp->channels[i].flags & CHAN_PTRACKER_ENABLED)
-           TRACE("RT [chan: %d] setpoint: %d, loopback real: %d [cor:%d], prio: %d, cur: %d\n", 
-        i, tmp->channels[i].phase_setpoint, htonl(pstate.channels[i].phase_loopback),
-        tmp->channels[i].phase_loopback, tmp->channels[i].priority, 
-        tmp->channels[i].phase_current);
+//         if(tmp->channels[i].flags & CHAN_PTRACKER_ENABLED)
+//            TRACE("RT [chan: %d] setpoint: %d, loopback real: %d [cor:%d], prio: %d, cur: %d\n", 
+//         i, tmp->channels[i].phase_setpoint, htonl(pstate.channels[i].phase_loopback),
+//         tmp->channels[i].phase_loopback, tmp->channels[i].priority, 
+//         tmp->channels[i].phase_current);
     }
 
     return 0;

@@ -140,5 +140,7 @@ void spll_stop_backup(int new_ref);
 
 int spll_check_switchover(int current_ref, int backup_ref);
 
+
+
 #endif // __SOFTPLL_NG_H
 
