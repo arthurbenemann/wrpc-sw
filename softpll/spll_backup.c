@@ -178,6 +178,7 @@
 
 #include "spll_backup.h"
 #include "spll_debug.h"
+#include "spll_ptracker.h"
 #include <pp-printf.h>
 #include "trace.h"
 
@@ -235,7 +236,10 @@ void bpll_start(struct spll_backup_state *s)
 	s->phase_good_val=-1;
 	s->sample_n = 0;
 	s->enabled = 1;
-
+	
+	avg_init((spll_avg_t *)&s->avg_err_short,4);
+	avg_init((spll_avg_t *)&s->avg_err_long ,10);
+		
 	spll_enable_tagger(s->id_ref, 1);
 	spll_debug(DBG_EVENT | DBG_BACKUP, DBG_EVT_STARTBACKUP, 1);
 	spll_debug(DBG_EVENT | DBG_MAIN, DBG_EVT_STARTBACKUP, 1);
@@ -324,11 +328,16 @@ int bpll_update(struct spll_backup_state *s, int tag, int source)
 #endif
 		
 		s->err_d = err;
-		s->err_history[s->pointer++] = err;
- 		if(s->pointer == ERR_HIST_LEN) s->pointer = 0;
+		avg_update((spll_avg_t *)&s->avg_err_short, err);
+		avg_update((spll_avg_t *)&s->avg_err_long,  err);
+// 		s->err_history[s->pointer++] = err;
+//  		if(s->pointer == ERR_HIST_LEN) s->pointer = 0;
 		
 		spll_debug(DBG_BACKUP | DBG_REF, s->tag_ref + s->adder_ref, 0);
 		spll_debug(DBG_BACKUP | DBG_TAG, s->tag_out + s->adder_out, 0);
+		spll_debug(DBG_BACKUP | DBG_AVG_L, avg_get((spll_avg_t *)&s->avg_err_long, AVG_HIST_RECENT), 0);
+		spll_debug(DBG_BACKUP | DBG_AVG_S, avg_get((spll_avg_t *)&s->avg_err_short, AVG_HIST_RECENT), 0);
+		
 		spll_debug(DBG_BACKUP | DBG_ERR, err, 0);
 		spll_debug(DBG_BACKUP | DBG_SAMPLE_ID, s->sample_n++, 1);
 // 		spll_debug(DBG_BACKUP | DBG_Y, y, 1);

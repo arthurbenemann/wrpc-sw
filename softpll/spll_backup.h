@@ -20,7 +20,9 @@ struct spll_backup_state {
 	int state;
 
 	spll_lock_det_t ld;
-
+	spll_avg_t avg_err_short;
+	spll_avg_t avg_err_long;
+	
 	int adder_ref, adder_out, tag_ref, tag_out, tag_ref_d, tag_out_d;
 
 	// tag sequencing stuff
@@ -37,8 +39,8 @@ struct spll_backup_state {
 	int dac_index;
 	int enabled;
 	int err_d;
-	int err_history[ERR_HIST_LEN];
-	int pointer;
+// 	int err_history[ERR_HIST_LEN];
+// 	int pointer;
 };
 
 void bpll_init(struct spll_backup_state *s, int id_ref,

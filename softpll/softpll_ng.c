@@ -627,9 +627,11 @@ void spll_show_stats()
 		     softpll.mpll.err_d,
 		     softpll.bpll.err_d
 		    );
-	avg_dump((spll_avg_t *)&softpll.mpll.avg_y_long,   "Y   long ");
-	avg_dump((spll_avg_t *)&softpll.mpll.avg_err_long, "ERR long");
-	avg_dump((spll_avg_t *)&softpll.mpll.avg_err_short,"ERR short");
+	avg_dump((spll_avg_t *)&softpll.mpll.avg_y_long,   "mPLL: Y   long ");
+	avg_dump((spll_avg_t *)&softpll.mpll.avg_err_long, "mPLL: ERR long");
+	avg_dump((spll_avg_t *)&softpll.mpll.avg_err_short,"mPLL: ERR short");
+	avg_dump((spll_avg_t *)&softpll.bpll.avg_err_long, "bPLL: ERR long");
+	avg_dump((spll_avg_t *)&softpll.bpll.avg_err_short,"bPLL: ERR short");	
 }
 
 int spll_shifter_busy(int channel)

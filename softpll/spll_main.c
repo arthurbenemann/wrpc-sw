@@ -86,9 +86,9 @@ void mpll_start(struct spll_main_state *s)
 	avg_init((spll_avg_t *)&s->avg_err_short,4);
 	avg_init((spll_avg_t *)&s->avg_err_long ,10);
 	avg_init((spll_avg_t *)&s->avg_y_long   ,10);
-	avg_dump((spll_avg_t *)&s->avg_err_short, "init ERR short");
-	avg_dump((spll_avg_t *)&s->avg_err_long,  "init ERR long ");
-	avg_dump((spll_avg_t *)&s->avg_y_long,    "init Y   long ");
+// 	avg_dump((spll_avg_t *)&s->avg_err_short, "init ERR short");
+// 	avg_dump((spll_avg_t *)&s->avg_err_long,  "init ERR long ");
+// 	avg_dump((spll_avg_t *)&s->avg_y_long,    "init Y   long ");
 
 	spll_enable_tagger(s->id_ref, 1);
 	spll_enable_tagger(s->id_out, 1);
@@ -167,10 +167,11 @@ int mpll_update(struct spll_main_state *s, int tag, int source)
 			avg_update((spll_avg_t *)&s->avg_y_long, y);
 		}
 		
-// 		spll_debug(DBG_MAIN | DBG_REF, s->tag_ref + s->adder_ref, 0);
+		spll_debug(DBG_MAIN | DBG_REF, s->tag_ref + s->adder_ref, 0);
 // 		spll_debug(DBG_MAIN | DBG_TAG, s->tag_out + s->adder_out, 0);
-		spll_debug(DBG_MAIN | DBG_REF, avg_get((spll_avg_t *)&s->avg_y_long, AVG_HIST_RECENT), 0);
-		spll_debug(DBG_MAIN | DBG_TAG, avg_get((spll_avg_t *)&s->avg_err_short, AVG_HIST_RECENT), 0);
+		spll_debug(DBG_MAIN | DBG_TAG,   avg_get((spll_avg_t *)&s->avg_y_long, AVG_HIST_RECENT), 0);
+		spll_debug(DBG_MAIN | DBG_AVG_L, avg_get((spll_avg_t *)&s->avg_err_long, AVG_HIST_RECENT), 0);
+		spll_debug(DBG_MAIN | DBG_AVG_S, avg_get((spll_avg_t *)&s->avg_err_short, AVG_HIST_RECENT), 0);
 		spll_debug(DBG_MAIN | DBG_ERR, err, 0);
 		spll_debug(DBG_MAIN | DBG_SAMPLE_ID, s->sample_n++, 0);
 		spll_debug(DBG_MAIN | DBG_Y, y, 1);
