@@ -197,6 +197,10 @@ config P2P
 
 endchoice
 
+config PPSI_DEFAULT
+        string
+        default wrpc_defconfig if E2E
+        default wrpc_pdelay_defconfig if P2P
 
 config DETERMINISTIC_BINARY
 	depends on DEVELOPER

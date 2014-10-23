@@ -127,10 +127,10 @@ endif
 PPSI_USER_CFLAGS += -DDIAG_PUTS=uart_sw_write_string
 
 $(obj-ppsi):
-	test -f $(PPSI)/.config || $(MAKE) -C $(PPSI) wrpc_defconfig
+	test -f $(PPSI)/.config || $(MAKE) -C $(PPSI) $(CONFIG_PPSI_DEFAULT)
 	$(MAKE) -C $(PPSI) WRPCSW_ROOT=.. \
 		CROSS_COMPILE=$(CROSS_COMPILE) CONFIG_NO_PRINTF=y \
-		USER_CFLAGS="$(PPSI_USER_CFLAGS)"
+		USER_CFLAGS="$(PPSI_USER_CFLAGS)" 
 
 sdb-lib/libsdbfs.a:
 	$(MAKE) -C sdb-lib
