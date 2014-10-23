@@ -277,6 +277,8 @@ int spll_ctr_holdover(struct spll_main_state *ms, struct spll_backup_state *bs)
 	{
 		ms->holdover = 0;
 		bs->holdover = 0;
+		ms->holdover_cnt=0;
+// 		TRACE_DEV("Holdover off -> unlocked\n" );
 		return 0;
 	}
 	else
@@ -284,16 +286,22 @@ int spll_ctr_holdover(struct spll_main_state *ms, struct spll_backup_state *bs)
 		avg_l = avg_get((spll_avg_t *)&bs->avg_err_long, AVG_HIST_RECENT);
 		avg_s = avg_get((spll_avg_t *)&bs->avg_err_short, AVG_HIST_RECENT);
 		
-		if(abs(avg_l-avg_s) > 50 && ms->holdover == 0 && ms->holdover == 0)
+		if(ms->holdover == 1 && ms->holdover == 1 && ms->holdover_cnt < 300)
+		{
+			ms->holdover_cnt++;
+		}
+		else if(abs(avg_l-avg_s) > 50 && ms->holdover == 0 && ms->holdover == 0)
 		{
 			ms->holdover = 1;
 			bs->holdover = 1;
+			ms->holdover_cnt=0;
 			TRACE_DEV("Holdover on\n" );
 		}
 		else if(abs(avg_l-avg_s) < 40 && ms->holdover == 1 && ms->holdover == 1)
 		{
 			ms->holdover = 0;
 			bs->holdover = 0;
+			ms->holdover_cnt=0;
 			TRACE_DEV("Holdover off\n" );
 		}
 	}

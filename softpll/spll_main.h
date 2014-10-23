@@ -47,6 +47,7 @@ struct spll_main_state {
 	int hw_status_d;
 	int fifo;
 	int holdover;
+	int holdover_cnt;
 // 	int err_history[ERR_HIST_LEN];
 // 	int pointer;	
 };

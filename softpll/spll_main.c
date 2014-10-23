@@ -50,6 +50,7 @@ void mpll_init(struct spll_main_state *s, int id_ref,
 	s->id_ref = id_ref;
 	s->id_out = id_out;
 	s->holdover=0;
+	s->holdover_cnt=0;
 	s->dac_index = id_out - spll_n_chan_ref;
 
 	TRACE_DEV("ref %d out %d idx %x", s->id_ref, s->id_out, s->dac_index);
@@ -324,6 +325,11 @@ int mpll_switchover(struct spll_main_state *mpll, struct spll_backup_state *bpll
 	bpll->enabled             = 0;
 	bpll->err_d               = 0;
 // 	enable_irq();
+	
+	mpll->holdover = 0;
+	bpll->holdover = 0;
+	mpll->holdover_cnt=0;
+	bpll->ld.locked = 0;
 	
 	rts_update();
 
