@@ -283,17 +283,18 @@ int spll_ctr_holdover(struct spll_main_state *ms, struct spll_backup_state *bs)
 	{
 		avg_l = avg_get((spll_avg_t *)&bs->avg_err_long, AVG_HIST_RECENT);
 		avg_s = avg_get((spll_avg_t *)&bs->avg_err_short, AVG_HIST_RECENT);
-		if(abs(avg_l-avg_s) > 50)
+		
+		if(abs(avg_l-avg_s) > 50 && ms->holdover == 0 && ms->holdover == 0)
 		{
 			ms->holdover = 1;
 			bs->holdover = 1;
-// 			TRACE_DEV("Holdover on\n" );
+			TRACE_DEV("Holdover on\n" );
 		}
-		else
+		else if(abs(avg_l-avg_s) < 40 && ms->holdover == 1 && ms->holdover == 1)
 		{
 			ms->holdover = 0;
 			bs->holdover = 0;
-// 			TRACE_DEV("Holdover off\n" );
+			TRACE_DEV("Holdover off\n" );
 		}
 	}
 	return 0;
@@ -660,6 +661,9 @@ void spll_show_stats()
 		     softpll.bpll.err_d,
 		     softpll.mpll.holdover
 		    );
+		    avg_dump((spll_avg_t *)&softpll.mpll.avg_y_long,   "Y   long");
+		    avg_dump((spll_avg_t *)&softpll.bpll.avg_err_long, "ERR long");
+		    avg_dump((spll_avg_t *)&softpll.bpll.avg_err_short,"ERR short");
 }
 
 int spll_shifter_busy(int channel)

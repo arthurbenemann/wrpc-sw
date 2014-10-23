@@ -28,7 +28,7 @@
 #define ERR_HIST_LEN 2
 #define AVG_HIST_LEN    2
 #define AVG_HIST_RECENT  0
-#define AVG_HIST_OLDEST  (AVG_HIST_LEN-1)
+#define AVG_HIST_OLDEST  1 // (AVG_HIST_LEN-1)
 
 
 /* Number of reference/output channels. We don't plan to have more than one

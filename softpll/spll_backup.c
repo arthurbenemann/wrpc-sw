@@ -203,7 +203,7 @@ void bpll_init(struct spll_backup_state *s, int id_ref, int id_out)
 	s->enabled = 0;
 
 	/* Freqency branch lock detection */
-	s->ld.threshold = 50;
+	s->ld.threshold = 40;
 	s->ld.lock_samples = 1000;
 	s->ld.delock_samples = 100;
 	s->id_ref = id_ref;

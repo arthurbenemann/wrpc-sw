@@ -200,7 +200,7 @@ int avg_update(spll_avg_t *a, int val)
 	if(a->cnt == (0x1 << a->log2_n_avg))
 	{
 		
-		if(a->log2_n_avg == 10)
+// 		if(a->log2_n_avg == 10)
 // 		TRACE_DEV("[avg dump: %s] acc=%8d, cnt:%8d, log2_n_avg:%4d, ready=%1d, AVG[0]=%8d, AVG[1]=%8d, y=%d\n", 
 // 		"Y ERR update",a->acc, a->cnt, a->log2_n_avg, a->ready, a->prev_avg[0], a->prev_avg[1],val);
 		
@@ -218,7 +218,7 @@ int avg_update(spll_avg_t *a, int val)
 
 int avg_get(spll_avg_t *a, int hist)
 {
-	if(hist > AVG_HIST_OLDEST)
+	if(hist > 1)
 	  return 0;	
 	return a->prev_avg[hist];
 }

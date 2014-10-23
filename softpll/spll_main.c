@@ -165,13 +165,14 @@ int mpll_update(struct spll_main_state *s, int tag, int source)
 			if(s->holdover==0)
 				y = pi_update((spll_pi_t *)&s->pi, err);
 			else
-				y = avg_get((spll_avg_t *)&s->avg_y_long, AVG_HIST_RECENT);
+				y = avg_get((spll_avg_t *)&s->avg_y_long, AVG_HIST_OLDEST);
 			
 			SPLL->DAC_MAIN = SPLL_DAC_MAIN_VALUE_W(y)
 			      | SPLL_DAC_MAIN_DAC_SEL_W(s->dac_index);
 			if(abs(err)<50 && s->ld.locked ) 
 				s->after_switchover = 0;
-			avg_update((spll_avg_t *)&s->avg_y_long, y);
+			if(s->holdover==0)
+				avg_update((spll_avg_t *)&s->avg_y_long, y);
 		}
 		
 // 		spll_debug(DBG_MAIN | DBG_REF, s->tag_ref + s->adder_ref, 0);
