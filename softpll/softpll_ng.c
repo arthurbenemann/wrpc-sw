@@ -295,18 +295,84 @@ int spll_ctr_holdover(struct spll_main_state *ms, struct spll_backup_state *bs)
 			ms->holdover = 1;
 			bs->holdover = 1;
 			ms->holdover_cnt=0;
-			TRACE_DEV("Holdover on\n" );
+// 			TRACE_DEV("Holdover on\n" );
 		}
 		else if(abs(avg_l-avg_s) < 40 && ms->holdover == 1 && ms->holdover == 1)
 		{
 			ms->holdover = 0;
 			bs->holdover = 0;
 			ms->holdover_cnt=0;
-			TRACE_DEV("Holdover off\n" );
+// 			TRACE_DEV("Holdover off\n" );
 		}
 	}
 	return 0;
   
+}
+
+
+int spll_predown_detect(struct spll_main_state *ms, struct spll_backup_state *bs)
+{
+	int bs_avg_l,ms_avg_l;
+	int bs_avg_s,ms_avg_s;
+	
+	if(ms->enabled == 0) return 0;
+	
+	if(bs->enabled == 0) return 0;
+	
+	if(ms->ld.locked == 0 || bs->ld.locked == 0)
+	{
+		ms->min    = 0;
+		ms->max    = 0;
+		ms->mtie_d = 0;
+		ms->down_qulifier = 0;
+		ms->down_qulifier_cnt = 0;
+		bs->stabilize_cntdown = 0x1<<10;
+		return 0;
+	}
+	else if(bs->stabilize_cntdown > 0)
+		bs->stabilize_cntdown--;
+	else
+	{
+		bs_avg_l = avg_get((spll_avg_t *)&bs->avg_err_long , AVG_HIST_RECENT);
+		bs_avg_s = avg_get((spll_avg_t *)&bs->avg_err_short, AVG_HIST_RECENT);
+		ms_avg_l = avg_get((spll_avg_t *)&ms->avg_err_long,  AVG_HIST_RECENT);
+		ms_avg_s = avg_get((spll_avg_t *)&ms->avg_err_short, AVG_HIST_RECENT);		
+
+		if(ms_avg_s < ms->min)        ms->min    = ms_avg_s;
+		if(ms_avg_s > ms->max)        ms->max    = ms_avg_s;
+		if(ms->avg_err_long.acc == 0)
+		{ 
+			ms->mtie_d = abs(ms->max - ms->min);
+// 			TRACE_DEV("[update MTIE] max: %d, min: %d mtie: %d \n",
+// 			ms->max, ms->min, ms->mtie_d);
+			ms->min    = 0;
+			ms->max    = 0;
+		}
+		
+		if(ms->down_qulifier > 0)
+			ms->down_qulifier--;
+		else if(ms->mtie_d != 0 && abs(ms_avg_l - ms_avg_s) > ms->mtie_d) 
+		{
+			TRACE_DEV("[Prequalifier] ms_avg_l: %d, ms_avg_s: %d ms_mtie_d: %d \n",
+			ms_avg_l, ms_avg_s, ms->mtie_d );
+			ms->down_qulifier = 500;
+		}
+		
+		if(abs(bs_avg_l - bs_avg_s) > 50 && ms->down_qulifier > 0)
+		{
+		
+			TRACE_DEV("[Pre-detection of switchover] bs_avg_l: %d, bs_avg_s: %d "
+			"max: %d, min: %d mtie: %d prequalifier_cnt: %d\n",
+			bs_avg_l , bs_avg_s, ms->max, ms->min, ms->mtie_d, ms->down_qulifier);
+			ms->min    = 0;
+			ms->max    = 0;
+			ms->mtie_d = 0;
+			ms->down_qulifier = 0;
+			ms->down_qulifier_cnt = 0;
+			return 1;
+		}
+	}
+	return 0;
 }
 
 static inline void update_loops(struct softpll_state *s, int tag_value, int tag_source)
@@ -322,9 +388,17 @@ static inline void update_loops(struct softpll_state *s, int tag_value, int tag_
 // 	else 
 	if(s->helper.ld.locked)
 	{
-		spll_ctr_holdover(&s->mpll, &s->bpll);
-		if(mpll_down(&s->mpll,s->hw_status_d) == 1 && s->bpll.enabled)
-			spll_switchover(s->bpll.id_ref);
+// 		spll_ctr_holdover(&s->mpll, &s->bpll);
+		if(spll_predown_detect(&s->mpll, &s->bpll) == 0) 
+			spll_switchover(s->bpll.id_ref);	
+		else if(s->bpll.enabled && mpll_down(&s->mpll,s->hw_status_d))
+		{
+			TRACE_DEV("Detected hw switchover: "
+			"max: %d, min: %d mtie: %d prequalifier_cnt: %d\n",
+			s->mpll.max, s->mpll.min, s->mpll.mtie_d, s->mpll.down_qulifier);
+			spll_switchover(s->bpll.id_ref);	
+		}
+		
 		mpll_update(&s->mpll, tag_value, tag_source);
 		bpll_update(&s->bpll, tag_value, tag_source);
 
@@ -334,7 +408,6 @@ static inline void update_loops(struct softpll_state *s, int tag_value, int tag_
 				for (i = 0; i < spll_n_chan_out - 1; i++)
 					mpll_update(&s->aux[i].pll.dmtd, tag_value, tag_source);
 			}
-
 			update_ptrackers(s, tag_value, tag_source);
 		}
 	}
@@ -653,6 +726,7 @@ void spll_show_stats()
   
   
 	if (softpll.mode > 0)
+	{
 		    TRACE_DEV("softpll: irqs %d; seq %s; mode %s; "
 		     "alignment_state %s; hLocked-%s; mLocked-%s; bLocked-%s;"
 		     "hPiY=%d; mPiY=%d; DelCnt=%d; mPLLerr:%6d; bPLLerr:%6d, holdover:%d \n",
@@ -669,9 +743,17 @@ void spll_show_stats()
 		     softpll.bpll.err_d,
 		     softpll.mpll.holdover
 		    );
-		    avg_dump((spll_avg_t *)&softpll.mpll.avg_y_long,   "Y   long");
-		    avg_dump((spll_avg_t *)&softpll.bpll.avg_err_long, "ERR long");
-		    avg_dump((spll_avg_t *)&softpll.bpll.avg_err_short,"ERR short");
+		    avg_dump((spll_avg_t *)&softpll.mpll.avg_y_long,   "m_y");
+
+		    avg_dump((spll_avg_t *)&softpll.mpll.avg_err_long, "m_err_l");
+		    avg_dump((spll_avg_t *)&softpll.mpll.avg_err_short,"m_err_s");
+
+		    avg_dump((spll_avg_t *)&softpll.bpll.avg_err_long, "b_err_l");
+		    avg_dump((spll_avg_t *)&softpll.bpll.avg_err_short,"b_err_s");
+	
+		    TRACE_DEV("| m_err_max: %4d m_err_min: %4d m_err_mtie: %d \n", 
+		    softpll.mpll.max,softpll.mpll.min, softpll.mpll.mtie_d);
+	}	    
 }
 
 int spll_shifter_busy(int channel)

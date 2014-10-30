@@ -93,7 +93,6 @@ typedef struct {
 	int prev_avg[AVG_HIST_LEN];
 	int log2_n_avg;          //log2 of average n
 	int ready;
-// 	int64_t acc;
 	int acc;
 } spll_avg_t;
 

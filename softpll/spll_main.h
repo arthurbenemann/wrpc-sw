@@ -48,6 +48,11 @@ struct spll_main_state {
 	int fifo;
 	int holdover;
 	int holdover_cnt;
+	int min;
+	int max;
+	int mtie_d;
+	int down_qulifier;
+	int down_qulifier_cnt;
 // 	int err_history[ERR_HIST_LEN];
 // 	int pointer;	
 };

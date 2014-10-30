@@ -40,6 +40,7 @@ struct spll_backup_state {
 	int enabled;
 	int holdover;
 	int err_d;
+	int stabilize_cntdown;
 // 	int err_history[ERR_HIST_LEN];
 // 	int pointer;
 };

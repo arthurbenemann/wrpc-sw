@@ -89,6 +89,11 @@ void mpll_start(struct spll_main_state *s)
 	avg_init((spll_avg_t *)&s->avg_err_short,4);
 	avg_init((spll_avg_t *)&s->avg_err_long ,10);
 	avg_init((spll_avg_t *)&s->avg_y_long   ,7);
+	s->max = 0;
+	s->min = 0;
+	s->mtie_d = 0;
+	s->down_qulifier = 0;
+	s->down_qulifier_cnt = 0;
 // 	avg_dump((spll_avg_t *)&s->avg_err_short, "init ERR short");
 // 	avg_dump((spll_avg_t *)&s->avg_err_long,  "init ERR long ");
 // 	avg_dump((spll_avg_t *)&s->avg_y_long,    "init Y   long ");

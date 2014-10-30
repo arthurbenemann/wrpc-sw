@@ -237,6 +237,7 @@ void bpll_start(struct spll_backup_state *s)
 	s->sample_n = 0;
 	s->enabled = 1;
 	s->holdover=0;
+	s->stabilize_cntdown = 0;
 	
 	avg_init((spll_avg_t *)&s->avg_err_short,4);
 	avg_init((spll_avg_t *)&s->avg_err_long ,10);
