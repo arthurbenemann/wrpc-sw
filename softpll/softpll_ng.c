@@ -343,19 +343,18 @@ int spll_predown_detect(struct spll_main_state *ms, struct spll_backup_state *bs
 		if(ms->avg_err_long.acc == 0)
 		{ 
 			ms->mtie_d = abs(ms->max - ms->min);
-// 			TRACE_DEV("[update MTIE] max: %d, min: %d mtie: %d \n",
-// 			ms->max, ms->min, ms->mtie_d);
-			ms->min    = 0;
-			ms->max    = 0;
+			if(ms->mtie_d < 15) ms->mtie_d  = 15; // min mtie
+// 			ms->min    = ms->min >> 1;
+// 			ms->max    = ms->max >> 1;
 		}
 		
 		if(ms->down_qulifier > 0)
 			ms->down_qulifier--;
-		else if(ms->mtie_d != 0 && abs(ms_avg_l - ms_avg_s) > ms->mtie_d) 
+		else if(ms->mtie_d != 0 && abs(ms_avg_l - ms_avg_s) > ((3*ms->mtie_d) >> 3)) 
 		{
 			TRACE_DEV("[Prequalifier] ms_avg_l: %d, ms_avg_s: %d ms_mtie_d: %d \n",
 			ms_avg_l, ms_avg_s, ms->mtie_d );
-			ms->down_qulifier = 500;
+			ms->down_qulifier = 1000;
 		}
 		
 		if(abs(bs_avg_l - bs_avg_s) > 50 && ms->down_qulifier > 0)
@@ -389,14 +388,14 @@ static inline void update_loops(struct softpll_state *s, int tag_value, int tag_
 	if(s->helper.ld.locked)
 	{
 // 		spll_ctr_holdover(&s->mpll, &s->bpll);
-		if(spll_predown_detect(&s->mpll, &s->bpll) == 0) 
+		if(s->bpll.enabled == 1 && spll_predown_detect(&s->mpll, &s->bpll) == 1) 
 			spll_switchover(s->bpll.id_ref);	
-		else if(s->bpll.enabled && mpll_down(&s->mpll,s->hw_status_d))
+		else if(s->bpll.enabled  == 1 && mpll_down(&s->mpll,s->hw_status_d) == 1)
 		{
 			TRACE_DEV("Detected hw switchover: "
-			"max: %d, min: %d mtie: %d prequalifier_cnt: %d\n",
+			"max: %d, min: %d mtie: %d prequalifier_cnt: %d, \n",
 			s->mpll.max, s->mpll.min, s->mpll.mtie_d, s->mpll.down_qulifier);
-			spll_switchover(s->bpll.id_ref);	
+			spll_switchover(s->bpll.id_ref);
 		}
 		
 		mpll_update(&s->mpll, tag_value, tag_source);
