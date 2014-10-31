@@ -8,10 +8,22 @@
 const char *build_revision;
 const char *build_date;
 
+extern uint32_t _endram;
+extern uint32_t _fstack;
+#define ENDRAM_MAGIC 0xbadc0ffe
+
+static void check_stack(void)
+{
+	while (_endram != ENDRAM_MAGIC) {
+		mprintf("Stack overflow!\n");
+		timer_delay_ms(1000);
+	}
+}
+
 int main(void)
 {
 	uint32_t start_tics = timer_get_tics();
-
+	_endram = ENDRAM_MAGIC;
 	uart_init_hw();
 	
 	TRACE("WR Switch Real Time Subsystem (c) CERN 2011 - 2014\n");
@@ -34,6 +46,7 @@ int main(void)
 	    rts_update();
 	    rtipc_action();
 		spll_update();
+		check_stack();
 	}
 
 	return 0;

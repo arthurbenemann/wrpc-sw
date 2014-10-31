@@ -335,7 +335,9 @@ static struct minipc_ch *server;
 int rtipc_init(void)
 {
 	/* The mailbox is mapped at 0x7000 in the linker script */
-	server = minipc_server_create("mem:7000", 0);
+// 	server = minipc_server_create("mem:E000", 0);
+// 	server = minipc_server_create("mem:7000", 0);
+	server = minipc_server_create("mem:F000", 0);
 	if (!server)
 		return 1;
 
