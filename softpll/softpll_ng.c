@@ -983,7 +983,7 @@ void spll_switchover(struct softpll_state *s)
 	spll_debug(DBG_EVENT | DBG_HELPER, DBG_EVT_SWITCHOVER, 1);
 	
 	disable_irq();
-	
+	mpll_fast_holdover(&s->mpll);
 	/*switch over helper reference*/
 	helper_switch_reference(&s->helper,new_ref);
 	/*switch over main pll*/

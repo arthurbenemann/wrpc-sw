@@ -342,3 +342,11 @@ int mpll_switchover(struct spll_main_state *mpll, struct spll_backup_state *bpll
 
 	return 0;
 }
+int mpll_fast_holdover(struct spll_main_state *s)
+{
+	int y;
+	y = avg_get((spll_avg_t *)&s->avg_y_long, AVG_HIST_RECENT);
+	SPLL->DAC_MAIN = SPLL_DAC_MAIN_VALUE_W(y) | SPLL_DAC_MAIN_DAC_SEL_W(s->dac_index);
+	spll_debug(DBG_MAIN | DBG_Y, y, 1);
+	return 0;
+}

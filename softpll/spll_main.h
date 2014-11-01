@@ -75,4 +75,6 @@ int mpll_switchover(struct spll_main_state *mpll,struct spll_backup_state *bpll,
 
 int mpll_down(struct spll_main_state *s, uint32_t hw_st);
 
+int mpll_fast_holdover(struct spll_main_state *s);
+
 #endif // __SPLL_MAIN_H
