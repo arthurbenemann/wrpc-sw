@@ -72,8 +72,9 @@ struct softpll_state {
 	int default_dac_main;
 	int delock_count;
 	int32_t mpll_shift_ps;
-	int switchover_cnt;
+	int switchover;
 	uint32_t hw_status_d;
+	int switchover_irq_cnt;
 
 	struct spll_helper_state helper;
 	struct spll_external_state ext;

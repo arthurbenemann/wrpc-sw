@@ -44,6 +44,7 @@ struct spll_main_state {
 	int dac_index;
 	int enabled;
 	int err_d;
+	int err_slow_drift_corr;
 	int hw_status_d;
 	int fifo;
 	int holdover;

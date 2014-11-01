@@ -41,12 +41,12 @@ static void clear_state()
 static void clear_switchover_occured()
 {
     pstate.switchover_ocured = 0;
-    TRACE("Cleared switch over occured\n");
+//     TRACE("Cleared switch over occured\n");
 }
 static void set_switchover_occured()
 {
     pstate.switchover_ocured = 1;
-    TRACE("Set switch over occured\n");
+//     TRACE("Set switch over occured\n");
 }
 static void set_backup_channel(int channel)
 {

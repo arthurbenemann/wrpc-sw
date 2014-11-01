@@ -312,25 +312,17 @@ int spll_predown_detect(struct spll_main_state *ms, struct spll_backup_state *bs
 		{ 
 			ms->mtie_d = abs(ms->max - ms->min);
 			if(ms->mtie_d < 15) ms->mtie_d  = 15; // min mtie
-// 			ms->min    = ms->min >> 1;
-// 			ms->max    = ms->max >> 1;
 		}
 		
 		if(ms->down_qulifier > 0)
 			ms->down_qulifier--;
 		else if(ms->mtie_d != 0 && abs(ms_avg_l - ms_avg_s) > ((3*ms->mtie_d) >> 3)) 
 		{
-			TRACE_DEV("[Prequalifier] ms_avg_l: %d, ms_avg_s: %d ms_mtie_d: %d \n",
-			ms_avg_l, ms_avg_s, ms->mtie_d );
 			ms->down_qulifier = 1000;
 		}
 		
 		if(abs(bs_avg_l - bs_avg_s) > 50 && ms->down_qulifier > 0)
 		{
-		
-			TRACE_DEV("[Pre-detection of switchover] bs_avg_l: %d, bs_avg_s: %d "
-			"max: %d, min: %d mtie: %d prequalifier_cnt: %d\n",
-			bs_avg_l , bs_avg_s, ms->max, ms->min, ms->mtie_d, ms->down_qulifier);
 			ms->min    = 0;
 			ms->max    = 0;
 			ms->mtie_d = 0;
@@ -347,29 +339,19 @@ static inline void update_loops(struct softpll_state *s, int tag_value, int tag_
 	
 	helper_update(&s->helper, tag_value, tag_source);
 
-// 	if(s->switchover_cnt > 0)
-// 	{
-// 		s->switchover_cnt--;
-// 		TRACE_DEV("Swtichover count down %d\n", s->switchover_cnt );
-// 	}
-// 	else 
+
 	if(s->helper.ld.locked)
 	{
-// 		spll_ctr_holdover(&s->mpll, &s->bpll);
 		if(s->bpll.enabled == 1 && spll_predown_detect(&s->mpll, &s->bpll) == 1) 
 		{
 			s->bpll.enabled = 0;
 			spll_switchover(s);	
-			TRACE_DEV("Detected pre-down, after switchover : s->bpll.enabled: %d\n", s->bpll.enabled);
 		}
-		else if(s->bpll.enabled  == 1 && mpll_down(&s->mpll,s->hw_status_d) == 1)
+		else 
+		if(s->bpll.enabled  == 1 && mpll_down(&s->mpll,s->hw_status_d) == 1)
 		{
-			TRACE_DEV("Detected hw switchover: "
-			"max: %d, min: %d mtie: %d prequalifier_cnt: %d, \n",
-			s->mpll.max, s->mpll.min, s->mpll.mtie_d, s->mpll.down_qulifier);
 			s->bpll.enabled = 0;
 			spll_switchover(s);
-			TRACE_DEV("after switchover s->bpll.enabled: %d\n", s->bpll.enabled);
 		}
 		
 		mpll_update(&s->mpll, tag_value, tag_source);
@@ -428,19 +410,30 @@ void _irq_entry()
 		volatile uint32_t trr = SPLL->TRR_R0;
 		int tag_source = SPLL_TRR_R0_CHAN_ID_R(trr);
 		int tag_value  = SPLL_TRR_R0_VALUE_R(trr);
-
+		i++;
+		if(s->switchover  == 1) continue;
 		sequencing_fsm(s, tag_value, tag_source);
 		update_loops(s, tag_value, tag_source);
-		i++;
+		
 	}
 	s->mpll.fifo = i;
 	//do it after update_loops(), can be changed inside
-	if(spll_check_switchover(s->mpll.id_ref,s->bpll.id_ref)==1)
+// 	if(spll_check_switchover(s->mpll.id_ref,s->bpll.id_ref)==1)
+// 	{
+// 	      spll_current_ref = s->mpll.id_ref;
+// 	      spll_backup_ref  = s->bpll.id_ref;
+// 	      rts_update();
+// 	}
+	spll_current_ref = s->mpll.id_ref;
+	spll_backup_ref  = s->bpll.id_ref;
+
+	if(s->switchover==1)
 	{
-	      spll_current_ref = s->mpll.id_ref;
-	      spll_backup_ref  = s->bpll.id_ref;
+	      s->switchover = 0;
 	      rts_update();
+	      s->switchover_irq_cnt = s->mpll.fifo;
 	}
+
 	irq_count++;
 
 	clear_irq();
@@ -470,7 +463,7 @@ void spll_init(int mode, int slave_ref_channel, int align_pps)
 	s->delock_count = 0;
 	s->hw_status_d = SPLL->PSR;
 	//to know that we are switching ove
-	s->switchover_cnt = 0;
+	s->switchover = 0;
 
 	SPLL->DAC_HPLL = 0;
 	SPLL->DAC_MAIN = 0;
@@ -701,7 +694,8 @@ void spll_show_stats()
 	{
 		    TRACE_DEV("softpll: irqs %d; seq %s; mode %s; "
 		     "alignment_state %s; hLocked-%s; mLocked-%s; bLocked-%s;"
-		     "hPiY=%d; mPiY=%d; DelCnt=%d; mPLLerr:%6d; bPLLerr:%6d, holdover:%d \n",
+		     "hPiY=%d; mPiY=%d; DelCnt=%d; mPLLerr:%6d; bPLLerr:%6d, holdover:%d"
+		     "fifordcnt:%d, fifords-over_cnt:%d \n",
 		     irq_count, 
 		     stringlist_lookup(seq_states, softpll.seq_state), 
 		     stringlist_lookup(softpll_modes, softpll.mode),
@@ -713,7 +707,9 @@ void spll_show_stats()
 		     softpll.delock_count,
 		     softpll.mpll.err_d,
 		     softpll.bpll.err_d,
-		     softpll.mpll.holdover
+		     softpll.mpll.holdover,
+		     softpll.mpll.fifo,
+		     softpll.switchover_irq_cnt
 		    );
 		    avg_dump((spll_avg_t *)&softpll.mpll.avg_y_long,   "m_y");
 		    avg_dump((spll_avg_t *)&softpll.helper.avg_y_long,   "h_y");
@@ -977,8 +973,6 @@ void spll_switchover(struct softpll_state *s)
 	
 	//during the count down, only helper pll is updated on interrupt, mpll waits until count 
 	//down is finished
-	s->switchover_cnt = 10;
-
 	spll_debug(DBG_EVENT | DBG_MAIN,   DBG_EVT_SWITCHOVER, 1);
 	spll_debug(DBG_EVENT | DBG_BACKUP, DBG_EVT_SWITCHOVER, 1);
 	spll_debug(DBG_EVENT | DBG_HELPER, DBG_EVT_SWITCHOVER, 1);
@@ -990,6 +984,7 @@ void spll_switchover(struct softpll_state *s)
 	helper_switch_reference(&s->helper,new_ref);
 	/*switch over main pll*/
 	mpll_switchover(&s->mpll, &s->bpll, st->phase_val);
+	s->switchover = 1;
 	enable_irq();
 	
 	//TODO: disable old tagger..

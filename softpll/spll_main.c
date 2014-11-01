@@ -94,6 +94,7 @@ void mpll_start(struct spll_main_state *s)
 	s->mtie_d = 0;
 	s->down_qulifier = 0;
 	s->down_qulifier_cnt = 0;
+	s->err_slow_drift_corr = 0;
 // 	avg_dump((spll_avg_t *)&s->avg_err_short, "init ERR short");
 // 	avg_dump((spll_avg_t *)&s->avg_err_long,  "init ERR long ");
 // 	avg_dump((spll_avg_t *)&s->avg_y_long,    "init Y   long ");
@@ -164,8 +165,9 @@ int mpll_update(struct spll_main_state *s, int tag, int source)
 		    s->err_d = err;
 		avg_update((spll_avg_t *)&s->avg_err_short, err);
 		avg_update((spll_avg_t *)&s->avg_err_long,  err);
-// 		s->err_history[s->pointer++] = err;
-//  		if(s->pointer == ERR_HIST_LEN) s->pointer = 0;
+		err = err + s->err_slow_drift_corr;
+		if(s->err_slow_drift_corr > 0) s->err_slow_drift_corr--;
+		if(s->err_slow_drift_corr < 0) s->err_slow_drift_corr++;
 // 		if ((s->ld.locked && abs(err) < 50) || ! s->ld.locked || s->after_switchover)
 		{
 			if(s->holdover==0)
@@ -183,7 +185,8 @@ int mpll_update(struct spll_main_state *s, int tag, int source)
 		
 // 		spll_debug(DBG_MAIN | DBG_REF, s->tag_ref + s->adder_ref, 0);
 // 		spll_debug(DBG_MAIN | DBG_TAG, s->tag_out + s->adder_out, 0);
-		spll_debug(DBG_MAIN | DBG_REF,   avg_get((spll_avg_t *)&s->avg_y_long, AVG_HIST_OLDEST), 0);
+// 		spll_debug(DBG_MAIN | DBG_REF,   avg_get((spll_avg_t *)&s->avg_y_long, AVG_HIST_OLDEST), 0);
+		spll_debug(DBG_MAIN | DBG_REF,   s->err_d, 0);
 		spll_debug(DBG_MAIN | DBG_TAG,   avg_get((spll_avg_t *)&s->avg_y_long, AVG_HIST_RECENT), 0);
 		spll_debug(DBG_MAIN | DBG_AVG_L, avg_get((spll_avg_t *)&s->avg_err_long, AVG_HIST_RECENT), 0);
 		spll_debug(DBG_MAIN | DBG_AVG_S, avg_get((spll_avg_t *)&s->avg_err_short, AVG_HIST_RECENT), 0);
@@ -201,11 +204,13 @@ int mpll_update(struct spll_main_state *s, int tag, int source)
 		}
 
 		if (s->ld.locked) {
-			if (s->phase_shift_current < s->phase_shift_target) {
+			if (s->phase_shift_current < s->phase_shift_target) 
+			{
 				s->phase_shift_current++;
 				s->adder_ref++;
-			} else if (s->phase_shift_current >
-				   s->phase_shift_target) {
+			}
+			else if (s->phase_shift_current > s->phase_shift_target) 
+			{
 				s->phase_shift_current--;
 				s->adder_ref--;
 			}
@@ -312,6 +317,7 @@ int mpll_switchover(struct spll_main_state *mpll, struct spll_backup_state *bpll
 // 	mpll->dac_index           = bpll->dac_index;
 	mpll->enabled             = 1;//bpll->enabled;
 	mpll->err_d               = bpll->err_d;
+	mpll->err_slow_drift_corr = -bpll->err_d;
 	mpll->ld.lock_cnt         = mpll->ld.lock_samples;
 	mpll->hw_status_d         = 1; //up
 	/*stop bpll*/

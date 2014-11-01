@@ -220,8 +220,6 @@ int avg_get(spll_avg_t *a, int hist)
 
 void avg_dump(spll_avg_t *a, char *name)
 {
-// 	TRACE_DEV("[avg dump: %s] acc=%8d, cnt:%8d, log2_n_avg:%4d, ready=%1d, AVG[0]=%8d, AVG[1]=%8d\n", 
-// 	name,a->acc, a->cnt, a->log2_n_avg, a->ready, a->prev_avg[0], a->prev_avg[1]);
 	TRACE_DEV("avg  %s: %8d | ", name, a->prev_avg[0]);
 
 }
