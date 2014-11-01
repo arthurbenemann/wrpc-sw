@@ -81,7 +81,8 @@ int helper_update(struct spll_helper_state *s, int tag,
 
 		y = pi_update((spll_pi_t *)&s->pi, err);
 		SPLL->DAC_HPLL = y;
-
+		
+		avg_update((spll_avg_t *)&s->avg_y_long, y);
 		spll_debug(DBG_SAMPLE_ID | DBG_HELPER, s->sample_n++, 0);
 		spll_debug(DBG_Y | DBG_HELPER, y, 0);
 		spll_debug(DBG_ERR | DBG_HELPER, err, 1);
@@ -105,7 +106,8 @@ void helper_start(struct spll_helper_state *s)
 
 	pi_init((spll_pi_t *)&s->pi);
 	ld_init((spll_lock_det_t *)&s->ld);
-
+	avg_init((spll_avg_t *)&s->avg_y_long   ,7);
+	
 	biquad_init(&s->precomp, helper_precomp_coefs, 16);
 
 	spll_enable_tagger(s->ref_src, 1);
@@ -123,4 +125,12 @@ void helper_switch_reference(struct spll_helper_state *s, int new_ref)
 	s->ld.lock_cnt = s->ld.lock_samples;
 // 	enable_irq();
 // 	spll_enable_tagger(s->ref_src, 1); // switch on the new one TODO: not needed ?
+}
+int helper_fast_holdover(struct spll_helper_state *s)
+{
+	int y;
+	y = avg_get((spll_avg_t *)&s->avg_y_long, AVG_HIST_RECENT);
+	SPLL->DAC_HPLL = y;
+	spll_debug(DBG_Y | DBG_HELPER, y, 1);
+	return 0;
 }

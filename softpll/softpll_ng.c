@@ -716,6 +716,7 @@ void spll_show_stats()
 		     softpll.mpll.holdover
 		    );
 		    avg_dump((spll_avg_t *)&softpll.mpll.avg_y_long,   "m_y");
+		    avg_dump((spll_avg_t *)&softpll.helper.avg_y_long,   "h_y");
 
 		    avg_dump((spll_avg_t *)&softpll.mpll.avg_err_long, "m_err_l");
 		    avg_dump((spll_avg_t *)&softpll.mpll.avg_err_short,"m_err_s");
@@ -984,6 +985,7 @@ void spll_switchover(struct softpll_state *s)
 	
 	disable_irq();
 	mpll_fast_holdover(&s->mpll);
+	helper_fast_holdover(&s->helper);
 	/*switch over helper reference*/
 	helper_switch_reference(&s->helper,new_ref);
 	/*switch over main pll*/

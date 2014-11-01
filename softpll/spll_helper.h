@@ -34,6 +34,7 @@ struct spll_helper_state {
 	spll_pi_t pi;
 	spll_lock_det_t ld;
 	spll_biquad_t precomp;
+	spll_avg_t avg_y_long;
 };
 
 void helper_init(struct spll_helper_state *s, int ref_channel);
@@ -42,5 +43,5 @@ int helper_update(struct spll_helper_state *s, int tag,
 
 void helper_start(struct spll_helper_state *s);
 void helper_switch_reference(struct spll_helper_state *s, int new_ref);
-
+int helper_fast_holdover(struct spll_helper_state *s);
 #endif // __SPLL_HELPER_H
