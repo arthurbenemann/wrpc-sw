@@ -26,14 +26,7 @@ int spll_current_ref, spll_backup_ref;
  * cycles
  */
 
-#include "spll_defs.h"
-#include "spll_common.h"
-#include "spll_debug.h"
-#include "spll_helper.h"
-#include "spll_backup.h"
-#include "spll_main.h"
-#include "spll_ptracker.h"
-#include "spll_external.h"
+
 
 #define MAIN_CHANNEL (spll_n_chan_ref)
 
@@ -53,32 +46,7 @@ int spll_current_ref, spll_backup_ref;
 #define AUX_ALIGN_PHASE 3
 #define AUX_READY 4
 
-struct spll_aux_state {
-	int seq_state;
-	int32_t phase_target;
-	union {
-		struct spll_main_state dmtd;
-		/* spll_external_state ch_bb */
-	} pll;
-};
-
-struct softpll_state {
-	int mode;
-	int seq_state;
-	int dac_timeout;
-	int default_dac_main;
-	int delock_count;
-	int32_t mpll_shift_ps;
-	int switchover_cnt;
-	uint32_t hw_status_d;
-
-	struct spll_helper_state helper;
-	struct spll_external_state ext;
-	struct spll_main_state mpll;
-	struct spll_backup_state bpll; // backup main pll
-	struct spll_aux_state aux[MAX_CHAN_AUX];
-	struct spll_ptracker_state ptrackers[MAX_PTRACKERS];
-};
+#include "spll_debug.h"
 
 static const struct stringlist_entry seq_states [] =
 {
@@ -326,7 +294,7 @@ int spll_predown_detect(struct spll_main_state *ms, struct spll_backup_state *bs
 		ms->mtie_d = 0;
 		ms->down_qulifier = 0;
 		ms->down_qulifier_cnt = 0;
-		bs->stabilize_cntdown = 0x1<<10;
+		bs->stabilize_cntdown = 0x1<<11;
 		return 0;
 	}
 	else if(bs->stabilize_cntdown > 0)
@@ -389,13 +357,19 @@ static inline void update_loops(struct softpll_state *s, int tag_value, int tag_
 	{
 // 		spll_ctr_holdover(&s->mpll, &s->bpll);
 		if(s->bpll.enabled == 1 && spll_predown_detect(&s->mpll, &s->bpll) == 1) 
-			spll_switchover(s->bpll.id_ref);	
+		{
+			s->bpll.enabled = 0;
+			spll_switchover(s);	
+			TRACE_DEV("Detected pre-down, after switchover : s->bpll.enabled: %d\n", s->bpll.enabled);
+		}
 		else if(s->bpll.enabled  == 1 && mpll_down(&s->mpll,s->hw_status_d) == 1)
 		{
 			TRACE_DEV("Detected hw switchover: "
 			"max: %d, min: %d mtie: %d prequalifier_cnt: %d, \n",
 			s->mpll.max, s->mpll.min, s->mpll.mtie_d, s->mpll.down_qulifier);
-			spll_switchover(s->bpll.id_ref);
+			s->bpll.enabled = 0;
+			spll_switchover(s);
+			TRACE_DEV("after switchover s->bpll.enabled: %d\n", s->bpll.enabled);
 		}
 		
 		mpll_update(&s->mpll, tag_value, tag_source);
@@ -447,9 +421,8 @@ void _irq_entry()
 	struct softpll_state *s = (struct softpll_state *)&softpll;
 	int i = 0;
 	s->hw_status_d = SPLL->PSR;
-// 	fifo_cnt = 0;
 	s->mpll.fifo=0;
-/* check if there are more tags in the FIFO */	
+	/* check if there are more tags in the FIFO */	
 	while (!(SPLL->TRR_CSR & SPLL_TRR_CSR_EMPTY)) {
 	
 		volatile uint32_t trr = SPLL->TRR_R0;
@@ -462,13 +435,13 @@ void _irq_entry()
 	}
 	s->mpll.fifo = i;
 	//do it after update_loops(), can be changed inside
-	spll_current_ref = s->mpll.id_ref;
-	spll_backup_ref  = s->bpll.id_ref;
+	if(spll_check_switchover(s->mpll.id_ref,s->bpll.id_ref)==1)
+	{
+	      spll_current_ref = s->mpll.id_ref;
+	      spll_backup_ref  = s->bpll.id_ref;
+	      rts_update();
+	}
 	irq_count++;
-// 	if(s->mpll.ld.locked && s->bpll.ld.locked&& (irq_count%1000 == 0 || s->bpll.err_d > 20 || s->mpll.err_d > 20 || s->hw_status_d == 0x2))
-// 	TRACE_DEV("IRQ: Me:%3d Be:%3d HW:%d\n", s->mpll.err_d ,s->bpll.err_d, s->hw_status_d);
-// 	if((irq_count % 1000)==10)
-// 		show_debug(irq_count,&s->mpll, &s->bpll,s->ptrackers);
 
 	clear_irq();
 }
@@ -994,9 +967,11 @@ void check_vco_frequencies()
  * 
  * new_ref indicates the new active port (which is currently running as backup)
  */
-void spll_switchover(int new_ref)
+// void spll_switchover(int new_ref)
+void spll_switchover(struct softpll_state *s)
 {
-	struct softpll_state *s = (struct softpll_state *) &softpll;
+// 	struct softpll_state *s = (struct softpll_state *) &softpll;
+	int new_ref = s->bpll.id_ref;
 	volatile struct spll_ptracker_state *st = &softpll.ptrackers[new_ref];
 	
 	//during the count down, only helper pll is updated on interrupt, mpll waits until count 
@@ -1005,13 +980,22 @@ void spll_switchover(int new_ref)
 
 	spll_debug(DBG_EVENT | DBG_MAIN,   DBG_EVT_SWITCHOVER, 1);
 	spll_debug(DBG_EVENT | DBG_BACKUP, DBG_EVT_SWITCHOVER, 1);
-	spll_debug(DBG_EVENT | DBG_BACKUP, DBG_EVT_SWITCHOVER, 1); //because of how the read program works
 	spll_debug(DBG_EVENT | DBG_HELPER, DBG_EVT_SWITCHOVER, 1);
+	
+	disable_irq();
 	
 	/*switch over helper reference*/
 	helper_switch_reference(&s->helper,new_ref);
 	/*switch over main pll*/
 	mpll_switchover(&s->mpll, &s->bpll, st->phase_val);
+	enable_irq();
+	
+	//TODO: disable old tagger..
+	
+	spll_debug(DBG_EVENT | DBG_MAIN,   DBG_EVT_SWITCHOVER, 1);
+	spll_debug(DBG_EVENT | DBG_BACKUP, DBG_EVT_SWITCHOVER, 1);
+	spll_debug(DBG_EVENT | DBG_HELPER, DBG_EVT_SWITCHOVER, 1);	
+// 	enable_irq();
 
 }
 /*

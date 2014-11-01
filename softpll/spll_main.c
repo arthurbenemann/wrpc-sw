@@ -310,7 +310,7 @@ int mpll_switchover(struct spll_main_state *mpll, struct spll_backup_state *bpll
 	mpll->id_ref              = bpll->id_ref;
 // 	mpll->delock_count        = bpll->delock_count;
 // 	mpll->dac_index           = bpll->dac_index;
-	mpll->enabled             = bpll->enabled;
+	mpll->enabled             = 1;//bpll->enabled;
 	mpll->err_d               = bpll->err_d;
 	mpll->ld.lock_cnt         = mpll->ld.lock_samples;
 	mpll->hw_status_d         = 1; //up
@@ -325,6 +325,7 @@ int mpll_switchover(struct spll_main_state *mpll, struct spll_backup_state *bpll
 	bpll->phase_shift_target  = 0;
 	bpll->phase_shift_current = 0;
 	bpll->id_out              = 0;
+	bpll->id_ref              = 0;
 // 	bpll->delock_count        = 0;
 // 	bpll->dac_index           = 0;
 	bpll->enabled             = 0;
@@ -336,29 +337,8 @@ int mpll_switchover(struct spll_main_state *mpll, struct spll_backup_state *bpll
 	mpll->holdover_cnt=0;
 	bpll->ld.locked = 0;
 	
-	rts_update();
+// 	rts_update();
+//         enable_irq();
 
-// 	TRACE_DEV("Switchover: "
-// 	"phase_val=%d, " 
-// 	"good_phase_val=%d "
-// 	"phase_shift_target=%d "
-// 	"delock_count=%d "
-// 	"err_d=%d, "
-// 	"mpll pointer=%d, "
-// 	"bpll pointer=%d "
-// 	"\n", 
-// 	phase_val, 
-// 	bpll->phase_good_val,
-// 	from_picos((bpll->phase_good_val % 16000)),
-// 	bpll->delock_count,
-// 	bpll->err_d,
-// 	mpll->pointer,
-// 	bpll->pointer
-// 	);
-//  	for (i=0; i < ERR_HIST_LEN; i++)
-// 		TRACE_DEV("%2d: %3d|%d, ", i%ERR_HIST_LEN, 
-// 		mpll->err_history[(i+mpll->pointer)%ERR_HIST_LEN],
-// 		bpll->err_history[(i+bpll->pointer)%ERR_HIST_LEN]);
-// 	TRACE_DEV("\n");
 	return 0;
 }

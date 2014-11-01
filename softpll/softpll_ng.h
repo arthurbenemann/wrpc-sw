@@ -47,6 +47,42 @@
 #define SPLL_OSC_DMTD 1
 #define SPLL_OSC_EXT 2
 
+#include "spll_defs.h"
+#include "spll_common.h"
+
+#include "spll_helper.h"
+#include "spll_backup.h"
+#include "spll_main.h"
+#include "spll_ptracker.h"
+#include "spll_external.h"
+
+struct spll_aux_state {
+	int seq_state;
+	int32_t phase_target;
+	union {
+		struct spll_main_state dmtd;
+		/* spll_external_state ch_bb */
+	} pll;
+};
+
+struct softpll_state {
+	int mode;
+	int seq_state;
+	int dac_timeout;
+	int default_dac_main;
+	int delock_count;
+	int32_t mpll_shift_ps;
+	int switchover_cnt;
+	uint32_t hw_status_d;
+
+	struct spll_helper_state helper;
+	struct spll_external_state ext;
+	struct spll_main_state mpll;
+	struct spll_backup_state bpll; // backup main pll
+	struct spll_aux_state aux[MAX_CHAN_AUX];
+	struct spll_ptracker_state ptrackers[MAX_PTRACKERS];
+};
+
 /* Note on channel naming:
  - ref_channel means a PHY recovered clock input. There can be one (as in WR core) or more (WR switch).
  - out_channel means an output channel, which represents PLL feedback signal from a local, tunable oscillator. Every SPLL implementation
@@ -132,7 +168,8 @@ int spll_get_dac(int out_channel);
 
 void check_vco_frequencies();
 
-void spll_switchover(int new_ref);
+// void spll_switchover(int new_ref);
+void spll_switchover(struct softpll_state *s);
 
 void spll_start_backup(int new_ref);
 

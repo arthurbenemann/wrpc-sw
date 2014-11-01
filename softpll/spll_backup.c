@@ -240,7 +240,7 @@ void bpll_start(struct spll_backup_state *s)
 	s->stabilize_cntdown = 0;
 	
 	avg_init((spll_avg_t *)&s->avg_err_short,4);
-	avg_init((spll_avg_t *)&s->avg_err_long ,10);
+	avg_init((spll_avg_t *)&s->avg_err_long ,9);
 		
 	spll_enable_tagger(s->id_ref, 1);
 	spll_debug(DBG_EVENT | DBG_BACKUP, DBG_EVT_STARTBACKUP, 1);
