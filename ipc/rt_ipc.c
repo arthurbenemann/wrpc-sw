@@ -34,6 +34,7 @@ static void clear_state()
     pstate.flags = 0;
     pstate.current_ref = -1;//TODO[?]: init with -1 to make sure it does not much channel 0
     pstate.backup_ref = -1; //TODO[?]: init with -1 to make sure it does not much channel 0
+    pstate.old_ref = -1; //TODO[?]: init with -1 to make sure it does not much channel 0
     pstate.mode = RTS_MODE_DISABLED;
     pstate.ipc_count = 0;
     pstate.switchover_ocured = 0;
@@ -146,6 +147,7 @@ int rts_backup_channel(int channel, int cmd)
 // 		spll_switchover(pstate.backup_ref);
 // 		pstate.current_ref = pstate.backup_ref;
 		set_backup_channel(-1);
+		pstate.old_ref    = -1; 
 		
 		
 		TRACE("RT [backup port]: activated !!! : %d \n", channel);
@@ -201,6 +203,7 @@ void rts_update(void)
     if(pstate.backup_ref != -1 && spll_check_switchover(pstate.current_ref,pstate.backup_ref) == 1 )
     {
 		pstate.current_ref = pstate.backup_ref;
+		pstate.old_ref     = pstate.backup_ref;
 		pstate.backup_ref  = -1;
 		set_switchover_occured();
     }
