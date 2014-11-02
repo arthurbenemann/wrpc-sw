@@ -351,7 +351,7 @@ int spll_predown_detect(struct spll_main_state *ms, struct spll_backup_state *bs
 		ms->max    = 0;
 		ms->mtie_d = 0;
 		ms->down_qulifier = 0;
-		bs->stabilize_cntdown = 0x1<<11;
+		bs->stabilize_cntdown = 0x1<<13;
 		return 0;
 	}
 	else if(bs->stabilize_cntdown > 0)
