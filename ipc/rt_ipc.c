@@ -144,7 +144,7 @@ int rts_backup_channel(int channel, int cmd)
 		pstate.switchover_ocured = 1;
 		TRACE("switchover detected by wrsw_hall, finally but we are already done\n");
 // 		spll_switchover(pstate.backup_ref);
-		pstate.current_ref = pstate.backup_ref;
+// 		pstate.current_ref = pstate.backup_ref;
 		set_backup_channel(-1);
 		
 		
