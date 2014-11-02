@@ -65,6 +65,21 @@ struct spll_aux_state {
 	} pll;
 };
 
+struct spll_switchover_state {
+	int occured;
+	int trigger_src;
+	int ms_avg_long;
+	int ms_avg_short;
+	int bs_avg_long;
+	int bs_avg_short;
+	int ms_max;
+	int ms_min;
+	int ms_mtied;
+	int ms_down_qualifier_cnt;
+	int old_active_chan;
+	int new_active_chan;
+};
+
 struct softpll_state {
 	int mode;
 	int seq_state;
@@ -80,6 +95,7 @@ struct softpll_state {
 	struct spll_external_state ext;
 	struct spll_main_state mpll;
 	struct spll_backup_state bpll; // backup main pll
+	struct spll_switchover_state swover;
 	struct spll_aux_state aux[MAX_CHAN_AUX];
 	struct spll_ptracker_state ptrackers[MAX_PTRACKERS];
 };

@@ -72,6 +72,16 @@ static const struct stringlist_entry softpll_modes [] =
 	{ SPLL_MODE_DISABLED,            "disabled    (4)" }
 };
 
+#define SWOVER_UNDEFINED     0
+#define SWOVER_PRE_HW_DETECT 1
+#define SWOVER_HW_DETECT     2
+static const struct stringlist_entry swovr_types [] =
+{
+	{ SWOVER_UNDEFINED,    "undifiend source      (0)" },
+	{ SWOVER_PRE_HW_DETECT,"pre-hardware detection(1)" },
+	{ SWOVER_HW_DETECT,    "hardware detection    (2)" }};
+
+
 #define ALIGN_STATE_EXT_OFF 0
 #define ALIGN_STATE_START 1
 #define ALIGN_STATE_INIT_CSYNC 2
@@ -236,6 +246,54 @@ static inline void sequencing_fsm(struct softpll_state *s, int tag_value, int ta
 		}
 	}
 }
+void spll_init_swover(struct spll_switchover_state *s)
+{
+	s->occured     = 0;
+	s->trigger_src = 0;
+	s->ms_avg_long = 0;
+	s->ms_avg_short= 0;
+	s->bs_avg_long = 0;
+	s->bs_avg_short= 0;
+	s->ms_max      = 0;
+	s->ms_min      = 0;
+	s->ms_mtied    = 0;
+	s->ms_down_qualifier_cnt= 0;
+	s->old_active_chan = -1;
+	s->new_active_chan = -1;
+  
+}
+
+
+void spll_update_swover(struct spll_switchover_state *s, struct spll_main_state *mpll, struct spll_backup_state *bpll, int type)
+{
+	
+	s->occured     = 1;
+	s->trigger_src = type;
+	s->ms_avg_long = avg_get((spll_avg_t *)&mpll->avg_err_long, AVG_HIST_RECENT);
+	s->ms_avg_short= avg_get((spll_avg_t *)&mpll->avg_err_short, AVG_HIST_RECENT);
+	s->bs_avg_long = avg_get((spll_avg_t *)&bpll->avg_err_long, AVG_HIST_RECENT);
+	s->bs_avg_short= avg_get((spll_avg_t *)&bpll->avg_err_short, AVG_HIST_RECENT);
+	s->ms_max      = mpll->max;
+	s->ms_min      = mpll->min;
+	s->ms_mtied    = mpll->mtie_d;
+	s->ms_down_qualifier_cnt= mpll->down_qulifier;
+	s->old_active_chan = mpll->id_ref;
+	s->new_active_chan = bpll->id_ref;
+}
+
+int spll_update_dump(struct spll_switchover_state *s)
+{
+	
+	if(s->occured == 0) return 0;
+	TRACE_DEV("\n\n\n[switchover occured %2d -> %2d] type: %s | ms_avg_l: %4d |"
+	" ms_avg_s: %4d | bs_avg_l: %4d | bs_avg_s: %4d | ms_max: %4d | ms_min: %4d  | "
+	"ms_mtie: %4d | ms_down_quantiier: %4d \n\n\n\n", s->old_active_chan, s->new_active_chan,
+	stringlist_lookup(swovr_types,s->trigger_src), s->ms_avg_long,s->ms_avg_short,
+	s->bs_avg_long, s->bs_avg_short, s->ms_max, s->ms_min, s->ms_mtied, 
+	s->ms_down_qualifier_cnt);
+	spll_init_swover(s);
+	return 0;
+}
 
 int spll_ctr_holdover(struct spll_main_state *ms, struct spll_backup_state *bs)
 {
@@ -293,7 +351,6 @@ int spll_predown_detect(struct spll_main_state *ms, struct spll_backup_state *bs
 		ms->max    = 0;
 		ms->mtie_d = 0;
 		ms->down_qulifier = 0;
-		ms->down_qulifier_cnt = 0;
 		bs->stabilize_cntdown = 0x1<<11;
 		return 0;
 	}
@@ -323,11 +380,10 @@ int spll_predown_detect(struct spll_main_state *ms, struct spll_backup_state *bs
 		
 		if(abs(bs_avg_l - bs_avg_s) > 50 && ms->down_qulifier > 0)
 		{
-			ms->min    = 0;
-			ms->max    = 0;
-			ms->mtie_d = 0;
-			ms->down_qulifier = 0;
-			ms->down_qulifier_cnt = 0;
+// 			ms->min    = 0;
+// 			ms->max    = 0;
+// 			ms->mtie_d = 0;
+// 			ms->down_qulifier = 0;
 			return 1;
 		}
 	}
@@ -344,12 +400,14 @@ static inline void update_loops(struct softpll_state *s, int tag_value, int tag_
 	{
 		if(s->bpll.enabled == 1 && spll_predown_detect(&s->mpll, &s->bpll) == 1) 
 		{
+			spll_update_swover(&s->swover,&s->mpll, &s->bpll,SWOVER_PRE_HW_DETECT);
 			s->bpll.enabled = 0;
 			spll_switchover(s);	
 		}
 		else 
 		if(s->bpll.enabled  == 1 && mpll_down(&s->mpll,s->hw_status_d) == 1)
 		{
+			spll_update_swover(&s->swover,&s->mpll, &s->bpll,SWOVER_HW_DETECT);
 			s->bpll.enabled = 0;
 			spll_switchover(s);
 		}
@@ -417,13 +475,6 @@ void _irq_entry()
 		
 	}
 	s->mpll.fifo = i;
-	//do it after update_loops(), can be changed inside
-// 	if(spll_check_switchover(s->mpll.id_ref,s->bpll.id_ref)==1)
-// 	{
-// 	      spll_current_ref = s->mpll.id_ref;
-// 	      spll_backup_ref  = s->bpll.id_ref;
-// 	      rts_update();
-// 	}
 	spll_current_ref = s->mpll.id_ref;
 	spll_backup_ref  = s->bpll.id_ref;
 
@@ -492,6 +543,7 @@ void spll_init(int mode, int slave_ref_channel, int align_pps)
 
 	helper_init(&s->helper, helper_ref);
 	mpll_init(&s->mpll, slave_ref_channel, spll_n_chan_ref);
+	spll_init_swover(&s->swover);
 	
 	for (i = 0; i < spll_n_chan_out - 1; i++) {
 		mpll_init(&s->aux[i].pll.dmtd, slave_ref_channel, spll_n_chan_ref + i + 1);
@@ -722,6 +774,8 @@ void spll_show_stats()
 	
 		    TRACE_DEV("| m_err_max: %4d m_err_min: %4d m_err_mtie: %d \n", 
 		    softpll.mpll.max,softpll.mpll.min, softpll.mpll.mtie_d);
+		    
+		    spll_update_dump((struct spll_switchover_state *)&softpll.swover);
 	}	    
 }
 

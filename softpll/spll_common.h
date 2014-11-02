@@ -97,6 +97,7 @@ typedef struct {
 } spll_avg_t;
 
 
+
 /* initializes the PI controller state. Currently almost a stub. */
 void pi_init(spll_pi_t *pi);
 

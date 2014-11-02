@@ -93,7 +93,6 @@ void mpll_start(struct spll_main_state *s)
 	s->min = 0;
 	s->mtie_d = 0;
 	s->down_qulifier = 0;
-	s->down_qulifier_cnt = 0;
 	s->err_slow_drift_corr = 0;
 // 	avg_dump((spll_avg_t *)&s->avg_err_short, "init ERR short");
 // 	avg_dump((spll_avg_t *)&s->avg_err_long,  "init ERR long ");
