@@ -53,6 +53,10 @@ typedef struct {
 	int family;
 // MAC address
 	mac_addr_t mac;
+// MAC address for multicast multi subscription
+	mac_addr_t mac_multicast;
+// If there is multicast multi subscription set to 1
+        int multi_membership;
 // Destination MASC address, filled by recvfrom() function on interfaces bound to multiple addresses
 	mac_addr_t mac_dest;
 // IP address
@@ -96,10 +100,14 @@ typedef struct _wr_timestamp wr_timestamp_t;
 // - initializes connection with the mighty HAL daemon
 int ptpd_netif_init();
 
-// Creates UDP or Ethernet RAW socket (determined by sock_type) bound to bind_addr. If PTPD_FLAG_MULTICAST is set, the socket is
-// automatically added to multicast group. User can specify physical_port field to bind the socket to specific switch port only.
+// Creates UDP or Ethernet RAW socket (determined by sock_type) bound to bind_addr. If PTPD_FLAG_MULTICAST is set, the socket can
+// join another multicast group. User can specify physical_port field to bind the socket to specific switch port only.
 wr_socket_t *ptpd_netif_create_socket(int sock_type, int flags,
 				      wr_sockaddr_t * bind_addr);
+
+// Adds a second mac address to the same socket. It simulates the behaviour of
+// unix sockets that can accept more than one multicast address.
+int ptpd_netif_multicast_group(wr_socket_t * sock, wr_sockaddr_t * bind_addr);
 
 // Sends a UDP/RAW packet (data, data_length) to address provided in wr_sockaddr_t.
 // For raw frames, mac/ethertype needs to be provided, for UDP - ip/port.

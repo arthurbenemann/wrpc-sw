@@ -94,6 +94,9 @@ wr_socket_t *ptpd_netif_create_socket(int sock_type, int flags,
 
 	memcpy(&sock->bind_addr, bind_addr, sizeof(wr_sockaddr_t));
 
+        if( flags == PTPD_FLAGS_MULTICAST)
+                sock->bind_addr.multi_membership = 0x1;
+
 	/*get mac from endpoint */
 	get_mac_addr(sock->local_mac);
 
@@ -107,6 +110,30 @@ wr_socket_t *ptpd_netif_create_socket(int sock_type, int flags,
 	sock->in_use = 1;
 
 	return (wr_socket_t *) (sock);
+}
+
+/*
+ * Add a second mac address to the same socket, it emulates the
+ * behaviour of multicast unix sockets, which can accept more
+ * than one multicast address. So far in this implementation
+ * it is just one.
+ */
+int ptpd_netif_multicast_group(wr_socket_t * sock, wr_sockaddr_t * bind_addr)
+{
+        uint8_t multi_mac;
+	struct my_socket *s = (struct my_socket *) sock;
+
+        /* check if the socket it is configured for mulit multicast */
+        if (!s->bind_addr.multi_membership)
+                return -1;
+
+        /* check if it is a multicast address */
+        if (bind_addr->mac[0] & 0x1)
+                return -1;
+
+        memcpy(&s->bind_addr.mac_multicast, bind_addr->mac, sizeof(mac_addr_t));
+
+        return 0;
 }
 
 int ptpd_netif_close_socket(wr_socket_t * sock)
@@ -144,7 +171,7 @@ void ptpd_netif_linearize_rx_timestamp(wr_timestamp_t * ts, int32_t dmtd_phase,
   nsec_r = ts->nsec;
 /* The falling edge TS is the rising - 1 thick if the "rising counter ahead" bit is set. */
  	nsec_f = cntr_ahead ? ts->nsec - (clock_period / 1000) : ts->nsec;
-        
+
 
 /* Adjust the rising edge timestamp phase so that it "jumps" roughly around the point
    where the counter value changes */
@@ -153,14 +180,14 @@ void ptpd_netif_linearize_rx_timestamp(wr_timestamp_t * ts, int32_t dmtd_phase,
 		phase_r += clock_period;
 
 /* Do the same with the phase for the falling edge, but additionally shift it by extra 180 degrees
-  (so that it matches the falling edge counter) */ 
+  (so that it matches the falling edge counter) */
 	int phase_f = ts->raw_phase - transition_point + (clock_period / 2);
 	if(phase_f < 0)
 		phase_f += clock_period;
 	if(phase_f >= clock_period)
 		phase_f -= clock_period;
 
-/* If we are within +- 25% from the transition in the rising edge counter, pick the falling one */	
+/* If we are within +- 25% from the transition in the rising edge counter, pick the falling one */
   if( phase_r > 3 * clock_period / 4 || phase_r < clock_period / 4 )
   {
 		ts->nsec = nsec_f;
@@ -325,9 +352,17 @@ void update_rx_queues()
 
 	for (i = 0; i < NET_MAX_SOCKETS; i++) {
 		s = &socks[i];
+
 		if (s->in_use && !memcmp(hdr.dstmac, s->bind_addr.mac, 6)
 		    && hdr.ethtype == s->bind_addr.ethertype)
-			break;	/*they match */
+			break; /* they match */
+
+                /* if one interface joined multiple multicast groups */
+                if (s->bind_addr.multi_membership) {
+                        if (s->in_use && !memcmp(hdr.dstmac, s->bind_addr.mac_multicast, 6)
+                            && hdr.ethtype == s->bind_addr.ethertype)
+                                break; /* they match */
+                }
 		s = NULL;
 	}
 
