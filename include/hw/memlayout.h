@@ -11,6 +11,7 @@ extern unsigned char *BASE_SYSCON;
 extern unsigned char *BASE_UART;
 extern unsigned char *BASE_ONEWIRE;
 extern unsigned char *BASE_ETHERBONE_CFG;
+extern unsigned char *BASE_ETHERBONE_MASTER_CFG;
 
 #define FMC_EEPROM_ADR 0x50
 

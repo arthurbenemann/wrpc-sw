@@ -94,6 +94,8 @@ void setIP(unsigned char *IP)
 {
 	volatile unsigned int *eb_ip =
 	    (unsigned int *)(BASE_ETHERBONE_CFG + EB_IPV4);
+	volatile unsigned int *ebm_ip = 
+			(unsigned int *)(BASE_ETHERBONE_MASTER_CFG + EB_IPV4);
 	unsigned int ip;
 
 	memcpy(myIP, IP, 4);
@@ -101,6 +103,10 @@ void setIP(unsigned char *IP)
 	ip = (myIP[0] << 24) | (myIP[1] << 16) | (myIP[2] << 8) | (myIP[3]);
 	while (*eb_ip != ip)
 		*eb_ip = ip;
+
+	if(ebm_ip != EB_IPV4) //which means BASE_ETHERBONE_MASTER_CFG != 0
+		while(*ebm_ip != ip)
+			*ebm_ip = ip;
 
 	needIP = (ip == 0);
 	if (!needIP) {
