@@ -132,6 +132,8 @@ void spll_stop_channel(int out_channel);
 /* Returns non-zero if output channel (out_channel) is locked to a WR reference */
 int spll_check_lock(int out_channel);
 
+uint32_t spll_get_hw_status();
+
 /* Sets phase setpoint for given output channel. */
 void spll_set_phase_shift(int out_channel, int32_t value_picoseconds);
 void spll_set_backup_phase_shift(int32_t value_picoseconds);

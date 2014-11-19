@@ -94,7 +94,12 @@ struct rts_pll_state {
 
 	/* flags (global - RTS_xxx defines) */
 	uint32_t flags;
-
+	
+	/* state of all the ports as seen by softPLL
+	 * bit 0 = port 0, bit 1 = port 1 ...
+	 * value 0 = link down | value 1 = link up*/
+	uint32_t port_status;
+	
 	/* duration of current holdover period in 10us units */
 	int32_t holdover_duration;
 

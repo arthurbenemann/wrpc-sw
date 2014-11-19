@@ -32,9 +32,10 @@ static void clear_state()
 	    pstate.channels[i].flags = CHAN_REF_VALID;
     }
     pstate.flags = 0;
-    pstate.current_ref = -1;//TODO[?]: init with -1 to make sure it does not much channel 0
-    pstate.backup_ref = -1; //TODO[?]: init with -1 to make sure it does not much channel 0
-    pstate.old_ref = -1; //TODO[?]: init with -1 to make sure it does not much channel 0
+    pstate.port_status = 0;
+    pstate.current_ref = REF_NONE;
+    pstate.backup_ref = REF_NONE; 
+    pstate.old_ref = REF_NONE; 
     pstate.mode = RTS_MODE_DISABLED;
     pstate.ipc_count = 0;
     pstate.switchover_ocured = 0;
@@ -49,9 +50,17 @@ static void set_switchover_occured()
     pstate.switchover_ocured = 1;
 //     TRACE("Set switch over occured\n");
 }
+static void set_current_channel(int channel)
+{
+    pstate.current_ref = channel;
+}
 static void set_backup_channel(int channel)
 {
     pstate.backup_ref = channel;
+}
+static void set_old_channel(int channel)
+{
+    pstate.old_ref = channel;
 }
 /* Sets the phase setpoint on a given channel */
 int rts_adjust_phase(int channel, int32_t phase_setpoint)
@@ -108,7 +117,7 @@ int rts_set_mode(int mode)
 		{ RTS_MODE_GM_FREERUNNING, SPLL_MODE_FREE_RUNNING_MASTER, 1, "Grand Master (free-running clock)" },
 		{ RTS_MODE_BC, SPLL_MODE_SLAVE, 0, "Boundary Clock (slave)" },
 		{ RTS_MODE_DISABLED, SPLL_MODE_DISABLED, 1, "PLL disabled" },
-		{ RTS_MODE_BC_BACKUP, SPLL_MODE_BACKUP_SLAVE, 2, "Activate backup" }, //not used for the time being, separat functin to manage backup port
+// 		{ RTS_MODE_BC_BACKUP, SPLL_MODE_BACKUP_SLAVE, 2, "Activate backup" }, //not used for the time being, separat functin to manage backup port
 		{ 0,0,0, NULL }
 	};
 
@@ -118,12 +127,19 @@ int rts_set_mode(int mode)
 		if(mode == options[i].mode_rt)
 		{
 			TRACE("RT: Setting mode to %s.\n", options[i].desc);
-			if(options[i].do_init > 1)
-				TRACE("RT: switchover here.\n");
-			else if(options[i].do_init)
+// 			if(options[i].do_init > 1)
+// 				TRACE("RT: switchover here.\n");
+// 			else 
+			if(options[i].do_init)
 				spll_init(options[i].mode_spll, 0, 1);
 			else
 				spll_init(SPLL_MODE_DISABLED, 0, 0);
+			
+			//reset stuff
+			set_current_channel(REF_NONE);
+			set_backup_channel(REF_NONE); 
+			set_old_channel(REF_NONE);
+			clear_switchover_occured();
 		}
 
 	return 0;
@@ -136,25 +152,22 @@ int rts_backup_channel(int channel, int cmd)
 	{
 		/* activate backup and remember on which port it is*/
 		case RTS_BACKUP_CH_LOCK:
-		pstate.switchover_ocured = 0;
+		clear_switchover_occured();
 		set_backup_channel(channel);
 		spll_start_backup(channel);
 		TRACE("RT [backup port]: locked !!! : %d \n", channel);
 		break;
 		case RTS_BACKUP_CH_ACTIVATE:
-		pstate.switchover_ocured = 1;
-		TRACE("switchover detected by wrsw_hall, finally but we are already done\n");
-// 		spll_switchover(pstate.backup_ref);
-// 		pstate.current_ref = pstate.backup_ref;
-		set_backup_channel(-1);
-		pstate.old_ref    = -1; 
-		
-		
+		set_switchover_occured();
+		TRACE("switchover detected by wrsw_hall, finally but we are already done |"
+		" %d \n", channel);
+		set_backup_channel(REF_NONE);
+		set_old_channel(REF_NONE); 
 		TRACE("RT [backup port]: activated !!! : %d \n", channel);
 		break;
 		case RTS_BACKUP_CH_DOWN:
 		spll_stop_backup(channel);	
-		set_backup_channel(-1);
+		set_backup_channel(REF_NONE);
 		TRACE("RT [backup port]: down !!! : %d \n", channel);
 		break;
 	}
@@ -172,18 +185,21 @@ int rts_lock_channel(int channel, int priority)
     }
 
 
-	TRACE("RT [slave]: Locking to: %d (prio %d)\n", channel, priority);
+	TRACE("RT [slave]: Locking to: %d (prio %d) current ref %d \n", 
+	channel, priority, pstate.current_ref);
 	pstate.channels[channel].priority = priority;
-	if(priority == 0) 
+// 	if(priority == 0) 
+	if(priority == 0 || pstate.current_ref == REF_NONE)
 	{
+		TRACE("RT [slave]: set current_ref [%d] to  %d)\n", pstate.current_ref, channel);
 		spll_init(SPLL_MODE_SLAVE, channel, 0);
-		pstate.current_ref = channel;
+		set_current_channel(channel);
 	}
 	else
 	{
 		rts_backup_channel(channel, RTS_BACKUP_CH_LOCK);
 	}
-    
+
 
 	return 0;
 }
@@ -200,15 +216,39 @@ void rts_update(void)
     int enabled;
 		
     spll_get_num_channels(&n_ref, NULL);
-    if(pstate.backup_ref != -1 && spll_check_switchover(pstate.current_ref,pstate.backup_ref) == 1 )
+    if(pstate.backup_ref != REF_NONE && spll_check_switchover(pstate.current_ref,pstate.backup_ref) == 1 )
     {
-		pstate.current_ref = pstate.backup_ref;
-		pstate.old_ref     = pstate.backup_ref;
-		pstate.backup_ref  = -1;
-		set_switchover_occured();
+		//TODO: problem when false switchover detection
+// 		//sanity check: verify whether the backup (to be current) is physically working
+// 		if((0x1 & (spll_get_hw_status()>> pstate.backup_ref)) == 0x0) // fake switchover we are screwed...
+// 		{
+// 			//the only thing we can do... RESET ...
+// 			set_old_channel(REF_NONE);
+// 			set_current_channel(REF_NONE);
+// 			set_backup_channel(REF_NONE);		  
+// 		}
+// 		else
+		{
+			set_old_channel(pstate.current_ref);
+			set_current_channel(pstate.backup_ref);
+			set_backup_channel(REF_NONE);
+			set_switchover_occured();
+		}
     }
-
     pstate.flags = (spll_check_lock(0) ? RTS_DMTD_LOCKED | RTS_REF_LOCKED : 0);
+    pstate.port_status = spll_get_hw_status();
+    
+    /* this seems like a hack but... it turns out that there is a considerable time needed
+     * to update *_ref after the hw_status_d knows the link is dowwn...  BUG: ??
+     * so to make sure the data that goes to wrsw_hal is synched.. we do the trick
+     */
+    if(pstate.current_ref != REF_NONE) pstate.port_status |= 0x1 << pstate.current_ref;
+    if(pstate.current_ref == REF_NONE) pstate.port_status &= ~(0x1 << pstate.current_ref);
+//     if(pstate.backup_ref  != REF_NONE) pstate.port_status |= 0x1 << pstate.backup_ref;
+    
+    TRACE("RT update: current_ref: %d, backup ref:  %d | hw_status()=0x%x : port_status=0x%x\n", 
+    pstate.current_ref, pstate.backup_ref, spll_get_hw_status(), pstate.port_status);
+
     for(i=0;i<RTS_PLL_CHANNELS;i++)
     {
 #define CH pstate.channels[i]
@@ -265,7 +305,9 @@ static int rts_get_state_func(const struct minipc_pd *pd, uint32_t *args, void *
     /* gaaaah, somebody should write a SWIG plugin for generating this stuff. */
     tmp->current_ref = htonl(pstate.current_ref);
     tmp->backup_ref = htonl(pstate.backup_ref);
+    tmp->old_ref = htonl(pstate.old_ref);
     tmp->flags = htonl(pstate.flags);
+    tmp->port_status = htonl(pstate.port_status);
     tmp->holdover_duration = htonl(pstate.holdover_duration);
     tmp->mode = htonl(pstate.mode);
 		tmp->delock_count = spll_get_delock_count();
@@ -285,7 +327,8 @@ static int rts_get_state_func(const struct minipc_pd *pd, uint32_t *args, void *
 //         tmp->channels[i].phase_loopback, tmp->channels[i].priority, 
 //         tmp->channels[i].phase_current);
     }
-
+    TRACE("HAL pstate update: current: %d, backup:  %d, old %d | hw_port_status=0x%x\n", 
+    pstate.current_ref, pstate.backup_ref, pstate.old_ref, pstate.port_status);
     return 0;
 }
 

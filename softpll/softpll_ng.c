@@ -627,6 +627,12 @@ int spll_check_lock(int channel)
 		    && softpll.aux[channel - 1].pll.dmtd.ld.locked;
 }
 
+uint32_t spll_get_hw_status()
+{
+// 	TRACE_DEV("softpll.hw_status_d=0x%x\n", softpll.hw_status_d);
+	return softpll.hw_status_d;
+}
+
 static int32_t to_picos(int32_t units)
 {
 	return (int32_t) (((int64_t) units *
