@@ -398,13 +398,13 @@ static inline void update_loops(struct softpll_state *s, int tag_value, int tag_
 
 	if(s->helper.ld.locked)
 	{
-		if(s->bpll.enabled == 1 && spll_predown_detect(&s->mpll, &s->bpll) == 1) 
-		{
-			spll_update_swover(&s->swover,&s->mpll, &s->bpll,SWOVER_PRE_HW_DETECT);
-			s->bpll.enabled = 0;
-			spll_switchover(s);	
-		}
-		else 
+// 		if(s->bpll.enabled == 1 && spll_predown_detect(&s->mpll, &s->bpll) == 1) 
+// 		{
+// 			spll_update_swover(&s->swover,&s->mpll, &s->bpll,SWOVER_PRE_HW_DETECT);
+// 			s->bpll.enabled = 0;
+// 			spll_switchover(s);	
+// 		}
+// 		else 
 		if(s->bpll.enabled  == 1 && mpll_down(&s->mpll,s->hw_status_d) == 1)
 		{
 			spll_update_swover(&s->swover,&s->mpll, &s->bpll,SWOVER_HW_DETECT);

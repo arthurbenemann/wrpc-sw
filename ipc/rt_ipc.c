@@ -26,7 +26,7 @@ static void clear_state()
 	int i;
 	for(i=0;i<RTS_PLL_CHANNELS;i++)
 	{
-	    pstate.channels[i].priority = 0;
+	    pstate.channels[i].priority = -1;
 	    pstate.channels[i].phase_setpoint = 0;
 	    pstate.channels[i].phase_loopback = 0;
 	    pstate.channels[i].flags = CHAN_REF_VALID;
@@ -189,7 +189,7 @@ int rts_lock_channel(int channel, int priority)
 	channel, priority, pstate.current_ref);
 	pstate.channels[channel].priority = priority;
 // 	if(priority == 0) 
-	if(priority == 0 || pstate.current_ref == REF_NONE)
+	if(priority < 0 || pstate.current_ref == REF_NONE)
 	{
 		TRACE("RT [slave]: set current_ref [%d] to  %d)\n", pstate.current_ref, channel);
 		spll_init(SPLL_MODE_SLAVE, channel, 0);
@@ -242,9 +242,11 @@ void rts_update(void)
      * to update *_ref after the hw_status_d knows the link is dowwn...  BUG: ??
      * so to make sure the data that goes to wrsw_hal is synched.. we do the trick
      */
-    if(pstate.current_ref != REF_NONE) pstate.port_status |= 0x1 << pstate.current_ref;
-    if(pstate.current_ref == REF_NONE) pstate.port_status &= ~(0x1 << pstate.current_ref);
-//     if(pstate.backup_ref  != REF_NONE) pstate.port_status |= 0x1 << pstate.backup_ref;
+    if(pstate.backup_ref  != REF_NONE && pstate.current_ref != REF_NONE) 
+       pstate.port_status |= 0x1 << pstate.current_ref;
+    if(pstate.backup_ref  == REF_NONE && pstate.current_ref != REF_NONE) 
+       pstate.port_status &= ~(0x1 << pstate.backup_ref);
+
     
     TRACE("RT update: current_ref: %d, backup ref:  %d | hw_status()=0x%x : port_status=0x%x\n", 
     pstate.current_ref, pstate.backup_ref, spll_get_hw_status(), pstate.port_status);
