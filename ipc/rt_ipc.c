@@ -248,8 +248,8 @@ void rts_update(void)
        pstate.port_status &= ~(0x1 << pstate.backup_ref);
 
     
-    TRACE("RT update: current_ref: %d, backup ref:  %d | hw_status()=0x%x : port_status=0x%x\n", 
-    pstate.current_ref, pstate.backup_ref, spll_get_hw_status(), pstate.port_status);
+//     TRACE("RT update: current_ref: %d, backup ref:  %d | hw_status()=0x%x : port_status=0x%x\n", 
+//     pstate.current_ref, pstate.backup_ref, spll_get_hw_status(), pstate.port_status);
 
     for(i=0;i<RTS_PLL_CHANNELS;i++)
     {
@@ -289,6 +289,11 @@ void rts_update(void)
 //     show_info();
 }
 
+void rts_state_info_dump()
+{
+    TRACE("HAL pstate update [cnt=%d]: current: %d, backup:  %d, old %d | hw_port_status=0x%x\n", 
+    pstate.ipc_count, pstate.current_ref, pstate.backup_ref, pstate.old_ref, pstate.port_status);
+}
 
 /* fixme: this assumes the host is BE */
 static int htonl(int i)
@@ -329,8 +334,6 @@ static int rts_get_state_func(const struct minipc_pd *pd, uint32_t *args, void *
 //         tmp->channels[i].phase_loopback, tmp->channels[i].priority, 
 //         tmp->channels[i].phase_current);
     }
-    TRACE("HAL pstate update: current: %d, backup:  %d, old %d | hw_port_status=0x%x\n", 
-    pstate.current_ref, pstate.backup_ref, pstate.old_ref, pstate.port_status);
     return 0;
 }
 

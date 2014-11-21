@@ -744,6 +744,8 @@ void spll_get_num_channels(int *n_ref, int *n_out)
 		*n_out = spll_n_chan_out;
 }
 
+extern void rts_state_info_dump();
+
 void spll_show_stats()
 {
   
@@ -782,6 +784,7 @@ void spll_show_stats()
 		    softpll.mpll.max,softpll.mpll.min, softpll.mpll.mtie_d);
 		    
 		    spll_update_dump((struct spll_switchover_state *)&softpll.swover);
+		    rts_state_info_dump();
 	}	    
 }
 
