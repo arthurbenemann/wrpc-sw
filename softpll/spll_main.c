@@ -24,7 +24,7 @@
 #undef WITH_SEQUENCING
 
 void mpll_init(struct spll_main_state *s, int id_ref,
-		      int id_out)
+		      int id_out, int priority)
 {
 	/* Frequency branch PI controller */
 	s->pi.y_min = 5;
@@ -52,6 +52,7 @@ void mpll_init(struct spll_main_state *s, int id_ref,
 	s->holdover=0;
 	s->holdover_cnt=0;
 	s->dac_index = id_out - spll_n_chan_ref;
+	s->priority = priority;
 
 	TRACE_DEV("ref %d out %d idx %x", s->id_ref, s->id_out, s->dac_index);
 

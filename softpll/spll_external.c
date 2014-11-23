@@ -42,7 +42,7 @@ void external_init(volatile struct spll_external_state *s, int ext_ref,
 
 
     helper_init(s->helper, idx);
-    mpll_init(s->main, idx, spll_n_chan_ref);
+    mpll_init(s->main, idx, spll_n_chan_ref, -1 /*priority*/);
 
     s->align_state = ALIGN_STATE_EXT_OFF;
     s->enabled = 0;

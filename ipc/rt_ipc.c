@@ -76,7 +76,7 @@ int rts_adjust_phase(int channel, int32_t phase_setpoint)
     if(pstate.current_ref == channel)
          spll_set_phase_shift(0, phase_setpoint);
     else if(pstate.backup_ref == channel)
-	  spll_set_backup_phase_shift(phase_setpoint);
+	  spll_set_backup_phase_shift(channel, phase_setpoint);
 //     {
 // 	 /* This is kind of a hack:
 // 	  * The Offset from master (OFM) is calculated as: 
@@ -131,9 +131,9 @@ int rts_set_mode(int mode)
 // 				TRACE("RT: switchover here.\n");
 // 			else 
 			if(options[i].do_init)
-				spll_init(options[i].mode_spll, 0, 1);
+				spll_init(options[i].mode_spll, 0, 1, -1 /*priority*/);
 			else
-				spll_init(SPLL_MODE_DISABLED, 0, 0);
+				spll_init(SPLL_MODE_DISABLED, 0, 0, -1 /*priority*/);
 			
 			//reset stuff
 			set_current_channel(REF_NONE);
@@ -154,7 +154,7 @@ int rts_backup_channel(int channel, int cmd)
 		case RTS_BACKUP_CH_LOCK:
 		clear_switchover_occured();
 		set_backup_channel(channel);
-		spll_start_backup(channel);
+		spll_start_backup(channel,0);
 		TRACE("RT [backup port]: locked !!! : %d \n", channel);
 		break;
 		case RTS_BACKUP_CH_ACTIVATE:
@@ -192,12 +192,16 @@ int rts_lock_channel(int channel, int priority)
 	if(priority < 0 || pstate.current_ref == REF_NONE)
 	{
 		TRACE("RT [slave]: set current_ref [%d] to  %d)\n", pstate.current_ref, channel);
-		spll_init(SPLL_MODE_SLAVE, channel, 0);
+		spll_init(SPLL_MODE_SLAVE, channel, 0, priority);
 		set_current_channel(channel);
 	}
 	else
 	{
-		rts_backup_channel(channel, RTS_BACKUP_CH_LOCK);
+// 		rts_backup_channel(channel, RTS_BACKUP_CH_LOCK);
+		clear_switchover_occured();
+		set_backup_channel(channel);
+		spll_start_backup(channel, priority);
+		TRACE("RT [backup port]: locked !!! : %d \n", channel);
 	}
 
 
@@ -272,7 +276,7 @@ void rts_update(void)
 						}
             else if(i==pstate.backup_ref)
             {
-                spll_get_backup_phase_shift(&CH.phase_current, NULL, &CH.phase_good_val);
+                spll_get_backup_phase_shift(i, &CH.phase_current, NULL, &CH.phase_good_val);
 // 		            if(spll_shifter_busy(0))
 // 		            	CH.flags |= CHAN_SHIFTING;
 						}

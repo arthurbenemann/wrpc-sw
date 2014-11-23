@@ -212,7 +212,7 @@ void bpll_init(struct spll_backup_state *s)
  * - enabling of tagging on the feedback channel (id_out) as it is already in place 
  * - initializing PI/LD
  */
-void bpll_start(struct spll_backup_state *s, int id_ref, int id_out)
+void bpll_start(struct spll_backup_state *s, int id_ref, int id_out, int priority)
 {
 	s->id_ref = id_ref;
 	s->id_out = id_out;
@@ -234,6 +234,7 @@ void bpll_start(struct spll_backup_state *s, int id_ref, int id_out)
 	s->enabled = 1;
 	s->holdover=0;
 	s->stabilize_cntdown = 0;
+	s->priority = priority;
 	
 	avg_init((spll_avg_t *)&s->avg_err_short,4);
 	avg_init((spll_avg_t *)&s->avg_err_long ,10);
@@ -262,6 +263,7 @@ void bpll_stop(struct spll_backup_state *s)
 	s->err_d               = 0;
 	s->holdover            = 0;
 	s->ld.locked           = 0;
+	s->priority            = -1;
 }
 
 /*

@@ -53,12 +53,13 @@ struct spll_main_state {
 	int max;
 	int mtie_d;
 	int down_qulifier;
+	int priority;
 // 	int err_history[ERR_HIST_LEN];
 // 	int pointer;	
 };
 
 void mpll_init(struct spll_main_state *s, int id_ref,
-		      int id_out);
+		      int id_out, int priority);
 
 void mpll_stop(struct spll_main_state *s);
 

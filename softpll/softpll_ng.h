@@ -95,6 +95,7 @@ struct softpll_state {
 	struct spll_external_state ext;
 	struct spll_main_state mpll;
 	struct spll_backup_state bpll; // backup main pll
+// 	struct spll_multibackup_state xpll; //multibackup pll
 	struct spll_switchover_state swover;
 	struct spll_aux_state aux[MAX_CHAN_AUX];
 	struct spll_ptracker_state ptrackers[MAX_PTRACKERS];
@@ -115,7 +116,7 @@ Initializes the SoftPLL to work in mode (mode). Extra parameters depend on choic
   rising edge of 10 MHz external clock that comes immediately after a PPS pulse
 - for SPLL_MODE_SLAVE: (ref_channel) indicates the reference channel to which we are locking our PLL. 
 */
-void spll_init(int mode, int ref_channel, int align_pps);
+void spll_init(int mode, int ref_channel, int align_pps, int priority);
 
 /* Disables the SoftPLL and cleans up stuff */
 void spll_shutdown();
@@ -135,11 +136,11 @@ int spll_check_lock(int out_channel);
 uint32_t spll_get_hw_status();
 
 /* Sets phase setpoint for given output channel. */
-void spll_set_phase_shift(int out_channel, int32_t value_picoseconds);
-void spll_set_backup_phase_shift(int32_t value_picoseconds);
+void spll_set_phase_shift(int channel, int32_t value_picoseconds);
+void spll_set_backup_phase_shift(int channel, int32_t value_picoseconds);
 /* Retreives the current phase shift and desired setpoint for given output channel */
 void spll_get_phase_shift(int channel, int32_t *current, int32_t *target, int32_t *good_phase_val);
-void spll_get_backup_phase_shift(int32_t *current, int32_t *target, int32_t *good_phase_val);
+void spll_get_backup_phase_shift(int channel, int32_t *current, int32_t *target, int32_t *good_phase_val);
 /* Returns non-zero if the given output channel is busy phase shifting to a new preset */
 int spll_shifter_busy(int out_channel);
 
@@ -190,7 +191,7 @@ void check_vco_frequencies();
 // void spll_switchover(int new_ref);
 void spll_switchover(struct softpll_state *s);
 
-void spll_start_backup(int new_ref);
+void spll_start_backup(int new_ref, int priority);
 
 void spll_stop_backup(int new_ref);
 

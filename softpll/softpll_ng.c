@@ -489,7 +489,7 @@ void _irq_entry()
 
 	clear_irq();
 }
-void spll_init(int mode, int slave_ref_channel, int align_pps)
+void spll_init(int mode, int slave_ref_channel, int align_pps, int priority)
 {
 	static const char *modes[] = { "", "grandmaster", "freemaster", "slave", "disabled" };
 	volatile int dummy;
@@ -542,12 +542,12 @@ void spll_init(int mode, int slave_ref_channel, int align_pps)
 		helper_ref = spll_n_chan_ref; // Master/GM mode: lock the helper to the local ref clock
 
 	helper_init(&s->helper, helper_ref);
-	mpll_init(&s->mpll, slave_ref_channel, spll_n_chan_ref);
+	mpll_init(&s->mpll, slave_ref_channel, spll_n_chan_ref, priority);
 	bpll_init(&s->bpll);
 	spll_init_swover(&s->swover);
 	
 	for (i = 0; i < spll_n_chan_out - 1; i++) {
-		mpll_init(&s->aux[i].pll.dmtd, slave_ref_channel, spll_n_chan_ref + i + 1);
+		mpll_init(&s->aux[i].pll.dmtd, slave_ref_channel, spll_n_chan_ref + i + 1,  -1 /*prio*/);
 		s->aux[i].seq_state = AUX_DISABLED;
 	}
 	
@@ -661,15 +661,15 @@ void spll_set_phase_shift(int channel, int32_t value_picoseconds)
 		set_phase_shift(channel, value_picoseconds);
 }
 
-static void set_backup_phase_shift(int32_t value_picoseconds)
+static void set_backup_phase_shift(int channel, int32_t value_picoseconds)
 {
 	struct spll_backup_state *st = (struct spll_backup_state *) &softpll.bpll;
 	bpll_set_phase_shift(st, value_picoseconds);
 }
 
-void spll_set_backup_phase_shift(int32_t value_picoseconds)
+void spll_set_backup_phase_shift(int channel, int32_t value_picoseconds)
 {
-	set_backup_phase_shift(value_picoseconds);
+	set_backup_phase_shift(channel, value_picoseconds);
 }
 
 void spll_get_phase_shift(int channel, int32_t *current, int32_t *target, int32_t *good_phase_val)
@@ -688,9 +688,10 @@ void spll_get_phase_shift(int channel, int32_t *current, int32_t *target, int32_
 /*
  * 
  */
-void spll_get_backup_phase_shift(int32_t *current, int32_t *target, int32_t *good_phase_val)
+void spll_get_backup_phase_shift(int channel, int32_t *current, int32_t *target, int32_t *good_phase_val)
 {
 	volatile struct spll_backup_state *st = (struct spll_backup_state *)&softpll.bpll;
+// 	volatile struct spll_backup_state *st = (struct spll_backup_state *)&softpll.xpll.bpll[channel];
 	int div = (DIVIDE_DMTD_CLOCKS_BY_2 ? 2 : 1);
 	if (current)
 		*current = to_picos(st->phase_shift_current * div);
@@ -1077,10 +1078,10 @@ void spll_switchover(struct softpll_state *s)
  * 7) wrpc-sw/ipc/rt_ipc.c: spll_switchover()
  * TODO: this  "path" seems a bit overkill, can it be simplified ?
  */
-void spll_start_backup(int new_ref)
+void spll_start_backup(int new_ref,int priority)
 {
 	struct softpll_state *s = (struct softpll_state *) &softpll;
-	bpll_start(&s->bpll,new_ref, spll_n_chan_ref);
+	bpll_start(&s->bpll,new_ref, s->mpll.id_out, priority);
 	
 }
 /*
