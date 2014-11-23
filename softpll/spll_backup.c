@@ -299,9 +299,10 @@ int bpll_update(struct spll_backup_state *s, int tag, int source)
 
 	if (source == s->id_ref)
 		s->tag_ref = tag;
-
-	if (source == s->id_out)
+	else if (source == s->id_out)
 		s->tag_out = tag;
+	else
+		return SPLL_LOCKED;
 
 	if (s->tag_ref >= 0) {
 		if(s->tag_ref_d >= 0 && s->tag_ref_d > s->tag_ref)
@@ -428,4 +429,16 @@ int bpll_set_phase_shift(struct spll_backup_state *s, int desired_shift_ps)
 int bpll_shifter_busy(struct spll_backup_state *s)
 {
 	return s->phase_shift_target != s->phase_shift_current;
+}
+void bpll_show_stats(struct spll_backup_state *s)
+{
+  
+	
+	TRACE_DEV("| bPLL@ %2d bL-%s, bErr:%6d",
+		 s->id_ref,
+		(s->ld.locked ? "yes":" no"),
+		 s->err_d);
+
+// 	avg_dump((spll_avg_t *)&softpll.bpll.avg_err_long, "b_err_l");
+// 	avg_dump((spll_avg_t *)&softpll.bpll.avg_err_short,"b_err_s");
 }

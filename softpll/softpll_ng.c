@@ -50,26 +50,26 @@ int spll_current_ref, spll_backup_ref;
 
 static const struct stringlist_entry seq_states [] =
 {
-	{ SEQ_START_EXT,       "start-ext      " },
-	{ SEQ_WAIT_EXT,        "wait-ext       " },
-	{ SEQ_START_HELPER,    "start-helper   " },
-	{ SEQ_WAIT_HELPER,     "wait-helper    " },
-	{ SEQ_START_MAIN,      "start-main     " },
-	{ SEQ_WAIT_MAIN,       "wait-main      " },
-	{ SEQ_DISABLED,        "disabled       " },
-	{ SEQ_READY,           "ready          " },
-	{ SEQ_CLEAR_DACS,      "clear-dacs     " },
-	{ SEQ_WAIT_CLEAR_DACS, "wait-clear-dacs" },
+	{ SEQ_START_EXT,       "start-ext  " },
+	{ SEQ_WAIT_EXT,        "wait-ext   " },
+	{ SEQ_START_HELPER,    "startHelper" },
+	{ SEQ_WAIT_HELPER,     "wait-helper" },
+	{ SEQ_START_MAIN,      "start-main " },
+	{ SEQ_WAIT_MAIN,       "wait-main  " },
+	{ SEQ_DISABLED,        "disabled   " },
+	{ SEQ_READY,           "ready      " },
+	{ SEQ_CLEAR_DACS,      "clear-dacs " },
+	{ SEQ_WAIT_CLEAR_DACS, "waitCLRdacs" },
 	{ 0, NULL }
 };
 
 static const struct stringlist_entry softpll_modes [] =
 {
-	{ 0,                             "undifiend   (0)" },
-	{ SPLL_MODE_GRAND_MASTER,        "grandmaster (1)" },
-	{ SPLL_MODE_FREE_RUNNING_MASTER, "free master (2)" },
-	{ SPLL_MODE_SLAVE,               "slave       (3)" },
-	{ SPLL_MODE_DISABLED,            "disabled    (4)" }
+	{ 0,                             "undifiend(0)" },
+	{ SPLL_MODE_GRAND_MASTER,        "GMaster  (1)" },
+	{ SPLL_MODE_FREE_RUNNING_MASTER, "FMaster  (2)" },
+	{ SPLL_MODE_SLAVE,               "slave    (3)" },
+	{ SPLL_MODE_DISABLED,            "disabled (4)" }
 };
 
 #define SWOVER_UNDEFINED     0
@@ -665,6 +665,7 @@ static void set_backup_phase_shift(int channel, int32_t value_picoseconds)
 {
 	struct spll_backup_state *st = (struct spll_backup_state *) &softpll.bpll;
 	bpll_set_phase_shift(st, value_picoseconds);
+
 }
 
 void spll_set_backup_phase_shift(int channel, int32_t value_picoseconds)
@@ -691,7 +692,6 @@ void spll_get_phase_shift(int channel, int32_t *current, int32_t *target, int32_
 void spll_get_backup_phase_shift(int channel, int32_t *current, int32_t *target, int32_t *good_phase_val)
 {
 	volatile struct spll_backup_state *st = (struct spll_backup_state *)&softpll.bpll;
-// 	volatile struct spll_backup_state *st = (struct spll_backup_state *)&softpll.xpll.bpll[channel];
 	int div = (DIVIDE_DMTD_CLOCKS_BY_2 ? 2 : 1);
 	if (current)
 		*current = to_picos(st->phase_shift_current * div);
@@ -754,39 +754,45 @@ void spll_show_stats()
   
 	if (softpll.mode > 0)
 	{
-		    TRACE_DEV("softpll: irqs %d; seq %s; mode %s; "
-		     "alignment_state %s; hLocked-%s; mLocked-%s; bLocked-%s;"
-		     "hPiY=%d; mPiY=%d; DelCnt=%d; mPLLerr:%6d; bPLLerr:%6d, holdover:%d"
-		     "fifordcnt:%d, fifords-over_cnt:%d \n",
+		TRACE_DEV("softpll[%8d]; seq %s; mode %s; "
+		     "algn_state %s; hL-%s; mL-%s; "
+		     "hPiY=%d; mPiY=%d; DelCnt=%d; mErr:%6d; ",
+// 		     " holdover:%d", fifordcnt:%d, fifords-over_cnt:%d \n",
 		     irq_count, 
 		     stringlist_lookup(seq_states, softpll.seq_state), 
 		     stringlist_lookup(softpll_modes, softpll.mode),
 		     stringlist_lookup(align_states, softpll.ext.align_state), 
 		     (softpll.helper.ld.locked ? "yes":" no"), 
 		     (softpll.mpll.ld.locked ? "yes":" no"),
-		     (softpll.bpll.ld.locked ? "yes":" no"),
+// 		     (softpll.bpll.ld.locked ? "yes":" no"),
 		     softpll.helper.pi.y, softpll.mpll.pi.y,
 		     softpll.delock_count,
-		     softpll.mpll.err_d,
-		     softpll.bpll.err_d,
-		     softpll.mpll.holdover,
-		     softpll.mpll.fifo,
-		     softpll.switchover_irq_cnt
+		     softpll.mpll.err_d
+// 		     softpll.bpll.err_d,
+// 		     softpll.mpll.holdover,
+// 		     softpll.mpll.fifo,
+// 		     softpll.switchover_irq_cnt
 		    );
-		    avg_dump((spll_avg_t *)&softpll.mpll.avg_y_long,   "m_y");
-		    avg_dump((spll_avg_t *)&softpll.helper.avg_y_long,   "h_y");
+// 		    avg_dump((spll_avg_t *)&softpll.mpll.avg_y_long,   "m_y");
+// 		    avg_dump((spll_avg_t *)&softpll.helper.avg_y_long,   "h_y");
+// 
+// 		    avg_dump((spll_avg_t *)&softpll.mpll.avg_err_long, "m_err_l");
+// 		    avg_dump((spll_avg_t *)&softpll.mpll.avg_err_short,"m_err_s");
 
-		    avg_dump((spll_avg_t *)&softpll.mpll.avg_err_long, "m_err_l");
-		    avg_dump((spll_avg_t *)&softpll.mpll.avg_err_short,"m_err_s");
+// 		    avg_dump((spll_avg_t *)&softpll.bpll.avg_err_long, "b_err_l");
+// 		    avg_dump((spll_avg_t *)&softpll.bpll.avg_err_short,"b_err_s");
 
-		    avg_dump((spll_avg_t *)&softpll.bpll.avg_err_long, "b_err_l");
-		    avg_dump((spll_avg_t *)&softpll.bpll.avg_err_short,"b_err_s");
-	
-		    TRACE_DEV("| m_err_max: %4d m_err_min: %4d m_err_mtie: %d \n", 
-		    softpll.mpll.max,softpll.mpll.min, softpll.mpll.mtie_d);
-		    
-		    spll_update_dump((struct spll_switchover_state *)&softpll.swover);
-		    rts_state_info_dump();
+// 		    TRACE_DEV("| m_err_max: %4d m_err_min: %4d m_err_mtie: %d \n", 
+// 		    softpll.mpll.max,softpll.mpll.min, softpll.mpll.mtie_d);
+
+		rts_state_info_dump();
+		
+		if(softpll.bpll.enabled)
+			 bpll_show_stats(&softpll.bpll);
+		
+		TRACE_DEV("\n");
+		spll_update_dump((struct spll_switchover_state *)&softpll.swover);
+		
 	}	    
 }
 

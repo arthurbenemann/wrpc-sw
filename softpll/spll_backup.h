@@ -58,5 +58,5 @@ int bpll_set_phase_shift(struct spll_backup_state *s,
 				int desired_shift_ps);
 
 int bpll_shifter_busy(struct spll_backup_state *s);
-
+void bpll_show_stats(struct spll_backup_state *s);
 #endif // __SPLL_MAIN_H

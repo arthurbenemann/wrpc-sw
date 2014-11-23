@@ -295,7 +295,7 @@ void rts_update(void)
 
 void rts_state_info_dump()
 {
-    TRACE("HAL pstate update [cnt=%d]: current: %d, backup:  %d, old %d | hw_port_status=0x%x\n", 
+    TRACE("| HAL[%6d]: act:%2d: bkp: %d, old %d [HW=0x%2x] ", 
     pstate.ipc_count, pstate.current_ref, pstate.backup_ref, pstate.old_ref, pstate.port_status);
 }
 
