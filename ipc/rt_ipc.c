@@ -222,6 +222,7 @@ void rts_update(void)
     spll_get_num_channels(&n_ref, NULL);
     if(pstate.backup_ref != REF_NONE && spll_check_switchover(pstate.current_ref,pstate.backup_ref) == 1 )
     {
+		TRACE_DEV("[rts_update()] \n");
 		//TODO: problem when false switchover detection
 // 		//sanity check: verify whether the backup (to be current) is physically working
 // 		if((0x1 & (spll_get_hw_status()>> pstate.backup_ref)) == 0x0) // fake switchover we are screwed...
@@ -272,8 +273,11 @@ void rts_update(void)
             {
                 spll_get_phase_shift(0, &CH.phase_current, NULL,  &CH.phase_good_val);
 		            if(spll_shifter_busy(0))
+			    {
 		            	CH.flags |= CHAN_SHIFTING;
-						}
+// 		            	TRACE("phase shifting \n"); 
+			    }
+		}
             else if(i==pstate.backup_ref)
             {
                 spll_get_backup_phase_shift(i, &CH.phase_current, NULL, &CH.phase_good_val);
@@ -333,11 +337,20 @@ static int rts_get_state_func(const struct minipc_pd *pd, uint32_t *args, void *
         tmp->channels[i].phase_good_val = htonl(pstate.channels[i].phase_good_val);
         tmp->channels[i].flags = htonl(pstate.channels[i].flags);
 //         if(tmp->channels[i].flags & CHAN_PTRACKER_ENABLED)
-//            TRACE("RT [chan: %d] setpoint: %d, loopback real: %d [cor:%d], prio: %d, cur: %d\n", 
+//         TRACE("RT [chan: %d] setpoint: %d, loopback real: %d [cor:%d], prio: %d, cur: %d"
+//         "phase_val_valid %d [flags=0x%x]\n", 
 //         i, tmp->channels[i].phase_setpoint, htonl(pstate.channels[i].phase_loopback),
 //         tmp->channels[i].phase_loopback, tmp->channels[i].priority, 
-//         tmp->channels[i].phase_current);
+//         tmp->channels[i].phase_current, (tmp->channels[i].flags  & CHAN_PMEAS_READY ? 1 : 0),
+//         tmp->channels[i].flags);
     }
+//         TRACE("RT [chan: %d] setpoint: %d, loopback real: %d [cor:%d], prio: %d, cur: %d"
+//         "phase_val_valid %d [flags=0x%x]\n", 
+//         1, tmp->channels[1].phase_setpoint, htonl(pstate.channels[1].phase_loopback),
+//         tmp->channels[1].phase_loopback, tmp->channels[1].priority, 
+//         tmp->channels[1].phase_current, (tmp->channels[1].flags  & CHAN_PMEAS_READY ? 1 : 0),
+//         tmp->channels[1].flags);
+    
     return 0;
 }
 

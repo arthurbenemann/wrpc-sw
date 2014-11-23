@@ -52,9 +52,12 @@
 
 #include "spll_helper.h"
 #include "spll_backup.h"
+#include "spll_multibackup.h"
 #include "spll_main.h"
 #include "spll_ptracker.h"
 #include "spll_external.h"
+
+#define MULTI_BACKUP
 
 struct spll_aux_state {
 	int seq_state;
@@ -94,8 +97,11 @@ struct softpll_state {
 	struct spll_helper_state helper;
 	struct spll_external_state ext;
 	struct spll_main_state mpll;
+#ifdef MULTI_BACKUP	
+	struct spll_multibackup_state xpll; //multibackup pll
+#else
 	struct spll_backup_state bpll; // backup main pll
-// 	struct spll_multibackup_state xpll; //multibackup pll
+#endif
 	struct spll_switchover_state swover;
 	struct spll_aux_state aux[MAX_CHAN_AUX];
 	struct spll_ptracker_state ptrackers[MAX_PTRACKERS];

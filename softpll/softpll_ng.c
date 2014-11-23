@@ -405,15 +405,27 @@ static inline void update_loops(struct softpll_state *s, int tag_value, int tag_
 // 			spll_switchover(s);	
 // 		}
 // 		else 
+#ifdef MULTI_BACKUP
+		int bid = xpll_get_first_backup(&s->xpll);
+		if(bid  >=0 && mpll_down(&s->mpll,s->hw_status_d) == 1)
+		{
+			spll_update_swover(&s->swover,&s->mpll, &s->xpll.bpll[bid],SWOVER_HW_DETECT);
+			s->xpll.bpll[bid].enabled = 0;
+			spll_switchover(s); // curret bpll gets disabled (enabled=0) so it will be ignored
+		}
+		
+		mpll_update(&s->mpll, tag_value, tag_source);
+		xpll_update(&s->xpll, tag_value, tag_source);
+#else
 		if(s->bpll.enabled  == 1 && mpll_down(&s->mpll,s->hw_status_d) == 1)
 		{
 			spll_update_swover(&s->swover,&s->mpll, &s->bpll,SWOVER_HW_DETECT);
 			s->bpll.enabled = 0;
 			spll_switchover(s);
 		}
-		
 		mpll_update(&s->mpll, tag_value, tag_source);
 		bpll_update(&s->bpll, tag_value, tag_source);
+#endif
 
 		if(s->seq_state == SEQ_READY) {
 			if(s->mode == SPLL_MODE_SLAVE) {
@@ -476,7 +488,11 @@ void _irq_entry()
 	}
 	s->mpll.fifo = i;
 	spll_current_ref = s->mpll.id_ref;
+#ifdef MULTI_BACKUP
+	spll_backup_ref  = xpll_get_first_backup(&s->xpll);
+#else
 	spll_backup_ref  = s->bpll.id_ref;
+#endif
 
 	if(s->switchover==1)
 	{
@@ -543,7 +559,11 @@ void spll_init(int mode, int slave_ref_channel, int align_pps, int priority)
 
 	helper_init(&s->helper, helper_ref);
 	mpll_init(&s->mpll, slave_ref_channel, spll_n_chan_ref, priority);
+#ifdef MULTI_BACKUP
+	xpll_init(&s->xpll);
+#else
 	bpll_init(&s->bpll);
+#endif
 	spll_init_swover(&s->swover);
 	
 	for (i = 0; i < spll_n_chan_out - 1; i++) {
@@ -663,8 +683,13 @@ void spll_set_phase_shift(int channel, int32_t value_picoseconds)
 
 static void set_backup_phase_shift(int channel, int32_t value_picoseconds)
 {
+#ifdef MULTI_BACKUP
+	struct spll_multibackup_state *st = (struct spll_multibackup_state *) &softpll.xpll;
+	xpll_set_phase_shift(channel, st, value_picoseconds);
+#else
 	struct spll_backup_state *st = (struct spll_backup_state *) &softpll.bpll;
 	bpll_set_phase_shift(st, value_picoseconds);
+#endif
 
 }
 
@@ -691,7 +716,11 @@ void spll_get_phase_shift(int channel, int32_t *current, int32_t *target, int32_
  */
 void spll_get_backup_phase_shift(int channel, int32_t *current, int32_t *target, int32_t *good_phase_val)
 {
+#ifdef MULTI_BACKUP
+	volatile struct spll_backup_state *st = (struct spll_backup_state *)&softpll.xpll.bpll[channel];
+#else
 	volatile struct spll_backup_state *st = (struct spll_backup_state *)&softpll.bpll;
+#endif
 	int div = (DIVIDE_DMTD_CLOCKS_BY_2 ? 2 : 1);
 	if (current)
 		*current = to_picos(st->phase_shift_current * div);
@@ -787,8 +816,12 @@ void spll_show_stats()
 
 		rts_state_info_dump();
 		
+#ifdef MULTI_BACKUP
+		xpll_show_stats((struct spll_multibackup_state *)&softpll.xpll);		
+#else
 		if(softpll.bpll.enabled)
-			 bpll_show_stats(&softpll.bpll);
+			 bpll_show_stats((struct spll_backup_state *)&softpll.bpll);
+#endif
 		
 		TRACE_DEV("\n");
 		spll_update_dump((struct spll_switchover_state *)&softpll.swover);
@@ -1039,7 +1072,11 @@ void check_vco_frequencies()
 void spll_switchover(struct softpll_state *s)
 {
 // 	struct softpll_state *s = (struct softpll_state *) &softpll;
+#ifdef MULTI_BACKUP
+	int new_ref = s->swover.new_active_chan;//xpll_get_first_backup(&s->xpll);
+#else
 	int new_ref = s->bpll.id_ref;
+#endif
 	volatile struct spll_ptracker_state *st = &softpll.ptrackers[new_ref];
 	
 	//during the count down, only helper pll is updated on interrupt, mpll waits until count 
@@ -1054,7 +1091,11 @@ void spll_switchover(struct softpll_state *s)
 	/*switch over helper reference*/
 	helper_switch_reference(&s->helper,new_ref);
 	/*switch over main pll*/
+#ifdef MULTI_BACKUP
+	mpll_switchover(&s->mpll, &s->xpll.bpll[new_ref], st->phase_val);
+#else
 	mpll_switchover(&s->mpll, &s->bpll, st->phase_val);
+#endif
 	s->switchover = 1;
 	enable_irq();
 	
@@ -1087,7 +1128,11 @@ void spll_switchover(struct softpll_state *s)
 void spll_start_backup(int new_ref,int priority)
 {
 	struct softpll_state *s = (struct softpll_state *) &softpll;
+#ifdef MULTI_BACKUP
+	xpll_start(&s->xpll,new_ref, s->mpll.id_out, priority);
+#else
 	bpll_start(&s->bpll,new_ref, s->mpll.id_out, priority);
+#endif
 	
 }
 /*
@@ -1097,7 +1142,12 @@ void spll_start_backup(int new_ref,int priority)
 void spll_stop_backup(int new_ref)
 {
 	struct softpll_state *s = (struct softpll_state *) &softpll;
+#ifdef MULTI_BACKUP
+	xpll_stop(&s->xpll,new_ref);
+#else
 	bpll_stop(&s->bpll);
+#endif
+	
 	
 }
 
@@ -1112,5 +1162,10 @@ int spll_check_switchover(int current_ref, int backup_ref)
 	if(current_ref == spll_current_ref && backup_ref == spll_backup_ref)
 		return 0;
 	else 
+	{
+		TRACE_DEV("[spll_check_switchover()]current_ref = %d | spll_current_ref =%d"
+		" | backup_ref =%d | spll_backup_ref = %d\n",current_ref,spll_current_ref, 
+		backup_ref, spll_backup_ref);
 		return 1; 
+	}
 }
