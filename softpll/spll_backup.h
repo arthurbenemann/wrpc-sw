@@ -45,12 +45,11 @@ struct spll_backup_state {
 // 	int pointer;
 };
 
-void bpll_init(struct spll_backup_state *s, int id_ref,
-		      int id_out);
+void bpll_init(struct spll_backup_state *s);
 
 void bpll_stop(struct spll_backup_state *s);
 
-void bpll_start(struct spll_backup_state *s);
+void bpll_start(struct spll_backup_state *s, int id_ref, int id_out);
 
 int bpll_update(struct spll_backup_state *s, int tag, int source);
 

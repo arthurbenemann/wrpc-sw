@@ -543,6 +543,7 @@ void spll_init(int mode, int slave_ref_channel, int align_pps)
 
 	helper_init(&s->helper, helper_ref);
 	mpll_init(&s->mpll, slave_ref_channel, spll_n_chan_ref);
+	bpll_init(&s->bpll);
 	spll_init_swover(&s->swover);
 	
 	for (i = 0; i < spll_n_chan_out - 1; i++) {
@@ -1079,8 +1080,7 @@ void spll_switchover(struct softpll_state *s)
 void spll_start_backup(int new_ref)
 {
 	struct softpll_state *s = (struct softpll_state *) &softpll;
-	bpll_init(&s->bpll, new_ref, spll_n_chan_ref);
-	bpll_start(&s->bpll);
+	bpll_start(&s->bpll,new_ref, spll_n_chan_ref);
 	
 }
 /*

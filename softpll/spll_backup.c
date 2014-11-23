@@ -197,19 +197,14 @@
  *   TODO: later, we might want to implement something like ld() but checking whether the
  *         active channel is ok with respect to backup(s), even voting logic (brrr) 
  */
-void bpll_init(struct spll_backup_state *s, int id_ref, int id_out)
+void bpll_init(struct spll_backup_state *s)
 {
-// 	s->delock_count = 0;
 	s->enabled = 0;
 
 	/* Freqency branch lock detection */
 	s->ld.threshold = 30;
 	s->ld.lock_samples = 1000;
 	s->ld.delock_samples = 100;
-	s->id_ref = id_ref;
-	s->id_out = id_out;
-// 	s->dac_index = id_out - spll_n_chan_ref; //TODO:probably not needed, T
-// 	TRACE_DEV("[bpll] ref %d out %d", s->id_ref, s->id_out);
 }
 
 /*
@@ -217,10 +212,11 @@ void bpll_init(struct spll_backup_state *s, int id_ref, int id_out)
  * - enabling of tagging on the feedback channel (id_out) as it is already in place 
  * - initializing PI/LD
  */
-void bpll_start(struct spll_backup_state *s)
+void bpll_start(struct spll_backup_state *s, int id_ref, int id_out)
 {
-// 	TRACE_DEV("[bpll] Start backup channel %d\n", s->id_ref);
-
+	s->id_ref = id_ref;
+	s->id_out = id_out;
+	
 	s->adder_ref = s->adder_out = 0;
 	s->tag_ref = -1;
 	s->tag_out = -1;
