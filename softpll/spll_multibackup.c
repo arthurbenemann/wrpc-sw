@@ -108,7 +108,7 @@ void xpll_stop(struct spll_multibackup_state *s, int id_ref)
 		for (i=bid;i<BACKUP_ENTRIES_NUM-1;i++)
 			s->bids[i] = s->bids[i+1];
 		
-		for (i=bid;i<BACKUP_ENTRIES_NUM-1;i++)
+		for (i=0;i<BACKUP_ENTRIES_NUM-1;i++)
 			TRACE("[xpll_stop()] bids[%d] = %d \n", i, s->bids[i]);
 	}
 	else

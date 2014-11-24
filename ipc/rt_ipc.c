@@ -335,6 +335,7 @@ static int rts_get_state_func(const struct minipc_pd *pd, uint32_t *args, void *
     tmp->current_ref = htonl(pstate.current_ref);
     tmp->backup_ref = htonl(pstate.backup_ref);
     tmp->old_ref = htonl(pstate.old_ref);
+    tmp->backup_mask = htonl(pstate.backup_mask);
     tmp->flags = htonl(pstate.flags);
     tmp->port_status = htonl(pstate.port_status);
     tmp->holdover_duration = htonl(pstate.holdover_duration);
