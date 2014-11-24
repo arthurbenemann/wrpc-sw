@@ -76,7 +76,7 @@ int rts_adjust_phase(int channel, int32_t phase_setpoint)
     }
     if(pstate.current_ref == channel)
          spll_set_phase_shift(0, phase_setpoint);
-    else if(pstate.backup_ref == channel)
+    else //if(pstate.backup_ref == channel)
 	  spll_set_backup_phase_shift(channel, phase_setpoint);
 //     {
 // 	 /* This is kind of a hack:
