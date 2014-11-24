@@ -103,16 +103,16 @@ void xpll_stop(struct spll_multibackup_state *s, int id_ref)
 		for (i=0;i<BACKUP_ENTRIES_NUM;i++)
 			if(id_ref == s->bids[i])
 				bid = i;
-		TRACE("[xpll_stop()]: removing port %d being backup nr =%d\n",id_ref,bid);
+// 		TRACE("[xpll_stop()]: removing port %d being backup nr =%d\n",id_ref,bid);
 		if(bid >= 0) //return; //found nothing
 		for (i=bid;i<BACKUP_ENTRIES_NUM-1;i++)
 			s->bids[i] = s->bids[i+1];
 		
-		for (i=0;i<BACKUP_ENTRIES_NUM-1;i++)
-			TRACE("[xpll_stop()] bids[%d] = %d \n", i, s->bids[i]);
+// 		for (i=0;i<BACKUP_ENTRIES_NUM-1;i++)
+// 			TRACE("[xpll_stop()] bids[%d] = %d \n", i, s->bids[i]);
 	}
-	else
-		TRACE("[xpll_stop()] no more backups\n");
+// 	else
+// 		TRACE("[xpll_stop()] no more backups\n");
 	
 }
 
