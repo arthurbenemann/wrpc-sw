@@ -203,7 +203,12 @@ void spll_stop_backup(int new_ref);
 
 int spll_check_switchover(int current_ref, int backup_ref);
 
+// int spll_get_role(int channel);
+// 
+// uint32_t spll_get_current_ref();
+// uint32_t spll_get_backup_refs();
 
+uint32_t spll_get_refs(uint32_t *current, uint32_t *first_backup, uint32_t *backup_mask);
 
 #endif // __SOFTPLL_NG_H
 

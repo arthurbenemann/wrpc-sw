@@ -46,6 +46,9 @@ int spll_current_ref, spll_backup_ref;
 #define AUX_ALIGN_PHASE 3
 #define AUX_READY 4
 
+// defined also in rt_ipc.h - make sure these are in sync
+#define REF_NONE 255 
+
 #include "spll_debug.h"
 
 static const struct stringlist_entry seq_states [] =
@@ -697,6 +700,66 @@ void spll_set_backup_phase_shift(int channel, int32_t value_picoseconds)
 {
 	set_backup_phase_shift(channel, value_picoseconds);
 }
+
+// int spll_get_role(int channel)
+// {
+// 	volatile struct softpll_state *s = (struct softpll_state *)&softpll;
+// 	if(s->mpll.id_ref == channel)
+// 		return CHAN_ACTIVE_REF;
+// #ifdef MULTI_BACKUP
+// 	if(s->xpll.bpll[channel].enabled)
+// #else
+// 	if(s->bpll.id_ref == channel)
+// #endif
+// 		return CHAN_BACKUP_REF;
+// 	return 0;
+// }
+
+uint32_t spll_get_refs(uint32_t *current, uint32_t *first_backup, uint32_t *backup_mask)
+{
+	volatile struct softpll_state *s = (struct softpll_state *)&softpll;
+	uint32_t old_cur = *current;
+	if(s->mpll.enabled)
+		*current = (uint32_t)s->mpll.id_ref;
+	else
+		*current = (uint32_t)REF_NONE;
+#ifdef MULTI_BACKUP
+	
+	if(s->xpll.bpll[s->xpll.bids[0]].enabled)
+		*first_backup = (uint32_t)s->xpll.bids[0];
+	else
+		*first_backup = (uint32_t)REF_NONE;
+	*backup_mask = s->xpll.backup_mask;
+#else
+	if(s->bpll.enabled)
+		*first_backup = (uint32_t)s->bpll.id_ref;
+	else
+		*first_backup = (uint32_t)REF_NONE;
+	*backup_mask = (uint32_t)(0x1<<s->bpll.id_ref);
+#endif
+	if(old_cur !=-1 && old_cur != *current)
+		return old_cur;
+	else
+		return (uint32_t)REF_NONE;
+}
+
+// uint32_t spll_get_current_ref()
+// {
+// 	volatile struct softpll_state *s = (struct softpll_state *)&softpll;
+// 	if(s->mpll.enabled)
+// 		return (uint32_t)s->mpll.id_ref;
+// 	else
+// 		return (uint32_t)REF_NONE;
+// }
+// uint32_t spll_get_backup_refs()
+// {
+// 	volatile struct softpll_state *s = (struct softpll_state *)&softpll;
+// #ifdef MULTI_BACKUP
+// 	return s->xpll.backup_mask;
+// #else
+// 	return (uint32_t)(0x1<<s->bpll.id_ref);
+// #endif
+// }
 
 void spll_get_phase_shift(int channel, int32_t *current, int32_t *target, int32_t *good_phase_val)
 {

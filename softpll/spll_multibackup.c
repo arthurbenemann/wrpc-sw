@@ -33,6 +33,7 @@ void xpll_init(struct spll_multibackup_state *s)
 		s->bids[i] = BACKUP_EMPTY_ID; // always empty/disabled backup
 	
 	s->backup_number = 0;
+	s->backup_mask   = 0;
 }
 
 void xpll_start(struct spll_multibackup_state *s,int id_ref, int id_out, int priority)
@@ -42,20 +43,33 @@ void xpll_start(struct spll_multibackup_state *s,int id_ref, int id_out, int pri
 		new_id = 0;
 	else
 	{
-		for (i = (BACKUP_ENTRIES_NUM-2); i >= 0;i++)
+		for (i = 1;i<BACKUP_ENTRIES_NUM;i++)
 		{
 			bid = s->bids[i]; 
-			if(s->bpll[bid].enabled == 0 && s->bpll[bid].priority > priority)
+			if(s->bpll[bid].enabled == 0)
+			{
+				new_id = i;
+				break;
+			}
+		}
+	}
+/** later - according to prio
+	{
+		for (i = (BACKUP_ENTRIES_NUM-2); i >= 0;i--)
+		{
+			bid = s->bids[i]; 
+			if(s->bpll[bid].enabled == 1 && s->bpll[bid].priority > priority)
 			{
 				s->bids[i+1] = bid; // move
 			}
-			else
+			else if(s->bpll[bid].enabled == 1 && s->bpll[bid].priority <= priority)
 			{
 				new_id = i+1;
 				break;
 			}
 		}
 	}
+*/
 	if(new_id < 0)
 	{
 		//TODO: handle this exception somehow
@@ -65,6 +79,7 @@ void xpll_start(struct spll_multibackup_state *s,int id_ref, int id_out, int pri
 	s->bids[new_id] = id_ref;
 	bpll_start(&s->bpll[id_ref],id_ref, id_out, priority);
 	s->backup_number++;
+	s->backup_mask |= (0x1 << id_ref);
 	TRACE("[xpll_start()] added backup: bids[%d]=%d |  backup_number=%d | prio %d\n",
 	new_id, id_ref, s->backup_number,priority);
 	
@@ -73,6 +88,7 @@ void xpll_start(struct spll_multibackup_state *s,int id_ref, int id_out, int pri
 void xpll_stop(struct spll_multibackup_state *s, int id_ref)
 {
 	bpll_stop(&s->bpll[id_ref]);
+	s->backup_mask &= ~(0x1 << id_ref);
 	if(s->backup_number > 0) //sanity check
 		s->backup_number--;
 	else
@@ -108,7 +124,7 @@ void xpll_show_stats(struct spll_multibackup_state *s)
 	int i, bid, bpll_cnt = 0;
 	if(!s->backup_number) 
 	{
-	    TRACE_DEV("| no backup timing");
+	    TRACE_DEV("| no backup timing channel");
 	    return;
 	}
 

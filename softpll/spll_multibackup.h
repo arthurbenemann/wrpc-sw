@@ -24,6 +24,7 @@ struct spll_multibackup_state {
 // 	int bids[BACKUP_PRIO_NUM][BACKUP_PRIO_PORT_NUM];
 	int bids[BACKUP_ENTRIES_NUM];
 	int backup_number;
+	uint32_t backup_mask;
 	struct spll_backup_state bpll[BACKUP_ENTRIES_NUM]; // backup main pll
 };
 

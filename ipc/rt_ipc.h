@@ -109,6 +109,9 @@ struct rts_pll_state {
 	/* backup reference source - or REF_NONE if no backup */
 	uint32_t backup_ref;
 	
+	/* mask of backup orts */
+	uint32_t backup_mask;
+
 	/*keeps the id of the reference that has just gone down*/
 	uint32_t old_ref;
 	
