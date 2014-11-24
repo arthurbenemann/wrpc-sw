@@ -409,12 +409,14 @@ static inline void update_loops(struct softpll_state *s, int tag_value, int tag_
 // 		}
 // 		else 
 #ifdef MULTI_BACKUP
-		int bid = xpll_get_first_backup(&s->xpll);
+		int bid = spll_backup_ref;//xpll_get_first_backup(&s->xpll);
 		if(bid  >=0 && mpll_down(&s->mpll,s->hw_status_d) == 1)
 		{
 			spll_update_swover(&s->swover,&s->mpll, &s->xpll.bpll[bid],SWOVER_HW_DETECT);
-			s->xpll.bpll[bid].enabled = 0;
+// 			s->xpll.bpll[bid].enabled = 0;//inside spll_switchover()
 			spll_switchover(s); // curret bpll gets disabled (enabled=0) so it will be ignored
+			s->xpll.backup_mask &= ~(0x1 << bid);
+			if(s->xpll.backup_number > 0) s->xpll.backup_number--;
 		}
 		
 		mpll_update(&s->mpll, tag_value, tag_source);
@@ -492,7 +494,8 @@ void _irq_entry()
 	s->mpll.fifo = i;
 	spll_current_ref = s->mpll.id_ref;
 #ifdef MULTI_BACKUP
-	spll_backup_ref  = xpll_get_first_backup(&s->xpll);
+	// updated onyl here !!!! to synch | this func also updates list of bacups
+	spll_backup_ref  = xpll_get_first_backup(&s->xpll); 
 #else
 	spll_backup_ref  = s->bpll.id_ref;
 #endif

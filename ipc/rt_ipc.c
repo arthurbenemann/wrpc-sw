@@ -154,21 +154,18 @@ int rts_backup_channel(int channel, int cmd)
 		/* activate backup and remember on which port it is*/
 		case RTS_BACKUP_CH_LOCK:
 		clear_switchover_occured();
-// 		set_backup_channel(channel);
 		spll_start_backup(channel,0);
 		TRACE("RT [backup port]: locked !!! : %d \n", channel);
 		break;
 		case RTS_BACKUP_CH_ACTIVATE:
-		set_switchover_occured();
+// 		set_switchover_occured();
 		TRACE("switchover detected by wrsw_hall, finally but we are already done |"
 		" %d \n", channel);
-// 		set_backup_channel(REF_NONE);
-// 		set_old_channel(REF_NONE); 
-		TRACE("RT [backup port]: activated !!! : %d \n", channel);
+		set_old_channel(REF_NONE); //ack from HAL !!!! this allows to synchronized between hal and softPLL
+		TRACE("RT [backup port]: activated !!! [port %d going down] \n", channel);
 		break;
 		case RTS_BACKUP_CH_DOWN:
 		spll_stop_backup(channel);	
-// 		set_backup_channel(REF_NONE);
 		TRACE("RT [backup port]: down !!! : %d \n", channel);
 		break;
 	}
@@ -225,8 +222,12 @@ void rts_update(void)
     ret = spll_get_refs(&pstate.current_ref, &pstate.backup_ref, &pstate.backup_mask);
     if(ret != REF_NONE) // switchover occured
     {
-		set_switchover_occured();
-		set_old_channel(ret);
+		set_switchover_occured(); // this is only for debug printing
+		set_old_channel(ret); // this is needed for HAL !!!
+		spll_stop_backup(pstate.current_ref);//active which used to be backup (backup chan must be stopped)
+		TRACE("rts_update 1: switchover detected setting old port=%d | backup_mask=0x%x\n", 
+		      ret, pstate.backup_mask);
+		ret = spll_get_refs(&pstate.current_ref, &pstate.backup_ref, &pstate.backup_mask);     
     }
 /**	  
     if(pstate.backup_ref != REF_NONE && spll_check_switchover(pstate.current_ref,pstate.backup_ref) == 1 )

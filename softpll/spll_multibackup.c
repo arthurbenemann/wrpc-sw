@@ -38,7 +38,7 @@ void xpll_init(struct spll_multibackup_state *s)
 
 void xpll_start(struct spll_multibackup_state *s,int id_ref, int id_out, int priority)
 {
-	int new_id = -1,i, bid;
+	int new_id = -1,i, bid, backup_number=1;
 	if(s->bpll[s->bids[0]].enabled == 0) // no backup ports yet
 		new_id = 0;
 	else
@@ -46,11 +46,13 @@ void xpll_start(struct spll_multibackup_state *s,int id_ref, int id_out, int pri
 		for (i = 1;i<BACKUP_ENTRIES_NUM;i++)
 		{
 			bid = s->bids[i]; 
-			if(s->bpll[bid].enabled == 0)
+			if(s->bpll[bid].enabled == 0 && i == s->backup_number)
 			{
 				new_id = i;
 				break;
 			}
+			else
+				backup_number++;
 		}
 	}
 /** later - according to prio
@@ -87,12 +89,31 @@ void xpll_start(struct spll_multibackup_state *s,int id_ref, int id_out, int pri
 
 void xpll_stop(struct spll_multibackup_state *s, int id_ref)
 {
+	int i,bid = -1;
+	//it might have been already releazed when switchover
+	//generally, if switch-over, we handle the backup_number and mask elsewhere
+	//           if disconnectign the port, we handle this stuff here
+	if(s->bpll[id_ref].enabled == 1 && s->backup_number > 0)
+		s->backup_number--;
 	bpll_stop(&s->bpll[id_ref]);
 	s->backup_mask &= ~(0x1 << id_ref);
-	if(s->backup_number > 0) //sanity check
-		s->backup_number--;
+	
+	if(s->backup_number > 0)
+	{
+		for (i=0;i<BACKUP_ENTRIES_NUM;i++)
+			if(id_ref == s->bids[i])
+				bid = i;
+		TRACE("[xpll_stop()]: removing port %d being backup nr =%d\n",id_ref,bid);
+		if(bid >= 0) //return; //found nothing
+		for (i=bid;i<BACKUP_ENTRIES_NUM-1;i++)
+			s->bids[i] = s->bids[i+1];
+		
+		for (i=bid;i<BACKUP_ENTRIES_NUM-1;i++)
+			TRACE("[xpll_stop()] bids[%d] = %d \n", i, s->bids[i]);
+	}
 	else
-		TRACE("MultiBackup->ERROR[xpll_stop()]: to many backup ports stopped\n");
+		TRACE("[xpll_stop()] no more backups\n");
+	
 }
 
 int xpll_update(struct spll_multibackup_state *s, int tag, int source)
@@ -104,11 +125,13 @@ int xpll_update(struct spll_multibackup_state *s, int tag, int source)
 	for (i=0;i<BACKUP_ENTRIES_NUM;i++)
 	{
 		bid = s->bids[i]; 
-		if(s->bpll[bid].enabled == 0 || bpll_cnt > s->backup_number) 
+		if(s->bpll[bid].enabled == 0 && bpll_cnt >= s->backup_number) 
 			return SPLL_LOCKED; // no more backup ports 
-		
-		bpll_update(&s->bpll[bid], tag, source); // update
-		bpll_cnt++;
+		else if(s->bpll[bid].enabled == 1)
+		{
+			bpll_update(&s->bpll[bid], tag, source); // update
+			bpll_cnt++;
+		}
 	}
 	return SPLL_LOCKING;
 }
@@ -142,10 +165,11 @@ void xpll_show_stats(struct spll_multibackup_state *s)
 
 int xpll_get_first_backup(struct spll_multibackup_state *s)
 {
-	if(!s->backup_number) 
-	    return -1;
-
-	if(s->bpll[s->bids[0]].enabled == 1) 
-		return s->bids[0];
+	int i;
+	for (i=0;i<BACKUP_ENTRIES_NUM;i++)
+	{
+		if(s->bpll[s->bids[i]].enabled == 1)
+			return s->bids[i];
+	}
 	return -1;
 }
