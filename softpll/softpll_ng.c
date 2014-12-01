@@ -115,6 +115,7 @@ static volatile int ptracker_mask = 0;
  * switch modes (and we won't like messing around with ptrackers
  * there) */
 
+
 static inline void start_ptrackers(struct softpll_state *s)
 {
 	int i;
@@ -1197,6 +1198,7 @@ void check_vco_frequencies()
  * new_ref indicates the new active port (which is currently running as backup)
  */
 // void spll_switchover(int new_ref)
+
 void spll_switchover(struct softpll_state *s)
 {
 // 	struct softpll_state *s = (struct softpll_state *) &softpll;
@@ -1212,7 +1214,11 @@ void spll_switchover(struct softpll_state *s)
 	spll_debug(DBG_EVENT | DBG_MAIN,   DBG_EVT_SWITCHOVER, 1);
 	spll_debug(DBG_EVENT | DBG_BACKUP, DBG_EVT_SWITCHOVER, 1);
 	spll_debug(DBG_EVENT | DBG_HELPER, DBG_EVT_SWITCHOVER, 1);
-	
+#ifdef MULTI_BACKUP
+	spll_debug(DBG_EVENT | DBG_BACKUP |(0x1<<4) , DBG_EVT_SWITCHOVER, 1);
+	spll_debug(DBG_EVENT | DBG_BACKUP |(0x2<<4) , DBG_EVT_SWITCHOVER, 1);
+	spll_debug(DBG_EVENT | DBG_BACKUP |(0x3<<4) , DBG_EVT_SWITCHOVER, 1);
+#endif
 	disable_irq();
 	mpll_fast_holdover(&s->mpll);
 	helper_fast_holdover(&s->helper);
@@ -1230,10 +1236,13 @@ void spll_switchover(struct softpll_state *s)
 	//TODO: disable old tagger..
 	
 	spll_debug(DBG_EVENT | DBG_MAIN,   DBG_EVT_SWITCHOVER, 1);
-	spll_debug(DBG_EVENT | DBG_BACKUP, DBG_EVT_SWITCHOVER, 1);
-	spll_debug(DBG_EVENT | DBG_HELPER, DBG_EVT_SWITCHOVER, 1);	
-// 	enable_irq();
-
+	spll_debug(DBG_EVENT | DBG_BACKUP, DBG_EVT_SWITCHOVER, 1);	
+	spll_debug(DBG_EVENT | DBG_HELPER, DBG_EVT_SWITCHOVER, 1);
+#ifdef MULTI_BACKUP
+	spll_debug(DBG_EVENT | DBG_BACKUP |(0x1<<4) , DBG_EVT_SWITCHOVER, 1);
+	spll_debug(DBG_EVENT | DBG_BACKUP |(0x2<<4) , DBG_EVT_SWITCHOVER, 1);
+	spll_debug(DBG_EVENT | DBG_BACKUP |(0x3<<4) , DBG_EVT_SWITCHOVER, 1);
+#endif
 }
 /*
  * called by PPSi from proto-ext-whiterabbit/state-wrs-s-lock.c via the following path

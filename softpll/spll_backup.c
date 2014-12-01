@@ -181,6 +181,7 @@
 #include "spll_ptracker.h"
 #include <pp-printf.h>
 #include "trace.h"
+#include "spll_multibackup.h"
 
 #define MPLL_TAG_WRAPAROUND 100000000
 
@@ -189,6 +190,16 @@
 #define MATCH_WAIT_OUT 2
 
 #undef WITH_SEQUENCING
+
+static inline void xpll_debug(struct spll_backup_state *s, int what, int value, int last)
+{
+	int bid = 3;
+	if(s->xpll->bids[0] == s->id_ref) bid = 0; else
+	if(s->xpll->bids[1] == s->id_ref) bid = 1; else
+	if(s->xpll->bids[2] == s->id_ref) bid = 2; else
+	if(s->xpll->bids[3] == s->id_ref) bid = 3; else return;
+	spll_debug((what | ((0x3 & bid) << 4)), value, last);
+}
 
 /* initialization of pll "configuration" (unlike runtime data as in bpll_start())
  * copied from mpll except, just missing:
@@ -240,7 +251,8 @@ void bpll_start(struct spll_backup_state *s, int id_ref, int id_out, int priorit
 	avg_init((spll_avg_t *)&s->avg_err_long ,10);
 		
 	spll_enable_tagger(s->id_ref, 1);
-	spll_debug(DBG_EVENT | DBG_BACKUP, DBG_EVT_STARTBACKUP, 1);
+// 	spll_debug(DBG_EVENT | DBG_BACKUP, DBG_EVT_STARTBACKUP, 1);
+	xpll_debug(s, DBG_EVENT | DBG_BACKUP, DBG_EVT_STARTBACKUP, 1);
 	spll_debug(DBG_EVENT | DBG_MAIN, DBG_EVT_STARTBACKUP, 1);
 	spll_debug(DBG_EVENT | DBG_HELPER, DBG_EVT_STARTBACKUP, 1);
 }
@@ -345,18 +357,21 @@ int bpll_update(struct spll_backup_state *s, int tag, int source)
 		    s->err_d = err;
 		avg_update((spll_avg_t *)&s->avg_err_short, err);
 		avg_update((spll_avg_t *)&s->avg_err_long,  err);
-// 		s->err_history[s->pointer++] = err;
-//  		if(s->pointer == ERR_HIST_LEN) s->pointer = 0;
+
+// 		spll_debug(DBG_BACKUP | DBG_TAG, s->tag_out + s->adder_out, 0);
+// 		spll_debug(DBG_BACKUP | DBG_REF, s->err_d, 0);
+// 		spll_debug(DBG_BACKUP | DBG_AVG_L, avg_get((spll_avg_t *)&s->avg_err_long, AVG_HIST_RECENT), 0);
+// 		spll_debug(DBG_BACKUP | DBG_AVG_S, avg_get((spll_avg_t *)&s->avg_err_short, AVG_HIST_RECENT), 0);
+// 		spll_debug(DBG_BACKUP | DBG_ERR, err, 0);
+// 		spll_debug(DBG_BACKUP | DBG_SAMPLE_ID, s->sample_n++, 1);
+
+		xpll_debug(s, DBG_BACKUP | DBG_TAG, s->tag_out + s->adder_out, 0);
+		xpll_debug(s, DBG_BACKUP | DBG_REF, s->err_d, 0);
+		xpll_debug(s, DBG_BACKUP | DBG_AVG_L, avg_get((spll_avg_t *)&s->avg_err_long, AVG_HIST_RECENT), 0);
+		xpll_debug(s, DBG_BACKUP | DBG_AVG_S, avg_get((spll_avg_t *)&s->avg_err_short, AVG_HIST_RECENT), 0);
+		xpll_debug(s, DBG_BACKUP | DBG_ERR, err, 0);
+		xpll_debug(s, DBG_BACKUP | DBG_SAMPLE_ID, s->sample_n++, 1);
 		
-// 		spll_debug(DBG_BACKUP | DBG_REF, s->tag_ref + s->adder_ref, 0);
-		spll_debug(DBG_BACKUP | DBG_TAG, s->tag_out + s->adder_out, 0);
-		spll_debug(DBG_BACKUP | DBG_REF, s->err_d, 0);
-		spll_debug(DBG_BACKUP | DBG_AVG_L, avg_get((spll_avg_t *)&s->avg_err_long, AVG_HIST_RECENT), 0);
-		spll_debug(DBG_BACKUP | DBG_AVG_S, avg_get((spll_avg_t *)&s->avg_err_short, AVG_HIST_RECENT), 0);
-		
-		spll_debug(DBG_BACKUP | DBG_ERR, err, 0);
-		spll_debug(DBG_BACKUP | DBG_SAMPLE_ID, s->sample_n++, 1);
-// 		spll_debug(DBG_BACKUP | DBG_Y, y, 1);
 		
 		s->tag_out = -1;
 		s->tag_ref = -1;

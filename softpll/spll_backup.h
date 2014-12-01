@@ -65,6 +65,7 @@ struct spll_backup_state {
 // 	int err_history[ERR_HIST_LEN];
 // 	int pointer;
 	int priority;
+	struct spll_multibackup_state *xpll;
 };
 
 void bpll_init(struct spll_backup_state *s);

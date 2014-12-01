@@ -28,10 +28,14 @@ integral/proportional gains on the response of the system.
 #define DBG_SAMPLE_ID 6
 #define DBG_AVG_S 7
 
-#define DBG_HELPER 0x20		/* Sample source: Helper PLL */
-#define DBG_EXT 0x40		/* Sample source: External Reference PLL */
-#define DBG_BACKUP 0x10
-#define DBG_MAIN 0x0		/* ...          : Main PLL */
+#define DBG_MAIN      0x00		/* ...          : Main PLL */
+#define DBG_HELPER    0x10		/* Sample source: Helper PLL */
+#define DBG_EXT       0x20		/* Sample source: External Reference PLL */
+#define DBG_BACKUP    0x40
+#define DBG_BACKUP_0  0x40
+#define DBG_BACKUP_1  0x50
+#define DBG_BACKUP_2  0x60
+#define DBG_BACKUP_3  0x70
 
 #define DBG_EVT_START 1		/* PLL has just started */
 #define DBG_EVT_LOCKED 2	/* PLL has just become locked */

@@ -26,7 +26,10 @@ void xpll_init(struct spll_multibackup_state *s)
 	int i;
 	//init all backups
 	for (i=0; i < BACKUP_ENTRIES_NUM; i++)
+	{
 		bpll_init(&s->bpll[i]);
+		s->bpll[i].xpll = s;
+	}
 
 	//clear table of backups
 	for (i=0; i < BACKUP_ENTRIES_NUM; i++)
