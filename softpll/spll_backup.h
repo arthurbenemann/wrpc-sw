@@ -15,6 +15,27 @@
 
 #include "spll_common.h"
 
+#define BACKUP_PORTS         18
+
+struct spll_switchover_state {
+	int occured;
+	int trigger_src;
+	int ms_avg_long;
+	int ms_avg_short;
+	int bs_avg_long;
+	int bs_avg_short;
+	int xs_avg_long[BACKUP_PORTS];
+	int xs_avg_short[BACKUP_PORTS];
+	int ms_max;
+	int ms_min;
+	int ms_mtied;
+	int ms_down_qualifier_cnt;
+	int old_active_chan;
+	int new_active_chan;
+	uint32_t backup_mask;
+};
+
+
 /* State of the backup PLL */
 struct spll_backup_state {
 	int state;
@@ -59,4 +80,5 @@ int bpll_set_phase_shift(struct spll_backup_state *s,
 
 int bpll_shifter_busy(struct spll_backup_state *s);
 void bpll_show_stats(struct spll_backup_state *s);
+int bpll_avg_check(struct spll_backup_state *s, int *bs_avg_l, int *bs_avg_s);
 #endif // __SPLL_MAIN_H

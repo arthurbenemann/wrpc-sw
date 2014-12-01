@@ -263,6 +263,15 @@ void spll_init_swover(struct spll_switchover_state *s)
 	s->ms_down_qualifier_cnt= 0;
 	s->old_active_chan = -1;
 	s->new_active_chan = -1;
+#ifdef MULTI_BACKUP
+	int i;
+	for (i=0;i<BACKUP_PORTS; i++)
+	{
+		s->xs_avg_long[i] =0;
+		s->xs_avg_short[i] =0;
+	}
+	s->backup_mask = 0;
+#endif
   
 }
 
@@ -290,10 +299,14 @@ int spll_update_dump(struct spll_switchover_state *s)
 	if(s->occured == 0) return 0;
 	TRACE_DEV("\n\n\n[switchover occured %2d -> %2d] type: %s | ms_avg_l: %4d |"
 	" ms_avg_s: %4d | bs_avg_l: %4d | bs_avg_s: %4d | ms_max: %4d | ms_min: %4d  | "
-	"ms_mtie: %4d | ms_down_quantiier: %4d \n\n\n\n", s->old_active_chan, s->new_active_chan,
+	"ms_mtie: %4d | ms_down_quantiier: %4d ", s->old_active_chan, s->new_active_chan,
 	stringlist_lookup(swovr_types,s->trigger_src), s->ms_avg_long,s->ms_avg_short,
 	s->bs_avg_long, s->bs_avg_short, s->ms_max, s->ms_min, s->ms_mtied, 
 	s->ms_down_qualifier_cnt);
+#ifdef MULTI_BACKUP
+	xpll_switchover_dump(s);
+#endif
+	TRACE_DEV("\n\n\n\n");
 	spll_init_swover(s);
 	return 0;
 }
@@ -393,6 +406,43 @@ int spll_predown_detect(struct spll_main_state *ms, struct spll_backup_state *bs
 	return 0;
 }
 
+#define AVG_LS_THRESHOLD 30
+
+int spll_multi_predown_detect(struct spll_main_state *ms, struct spll_multibackup_state *bs)
+{
+	int bs_avg_l;
+	int bs_avg_s;
+	int bs_avg_ls;
+	int i;
+	int detect_mask = 0;
+	
+	if(ms->enabled == 0 || bs->backup_number == 0 || bs->backup_mask == 0) return 0;
+
+/*	ms_avg_l = avg_get((spll_avg_t *)&ms->avg_err_long,  AVG_HIST_RECENT);
+	ms_avg_s = avg_get((spll_avg_t *)&ms->avg_err_short, AVG_HIST_RECENT);*/	
+	
+	for (i=0;i<BACKUP_ENTRIES_NUM;i++)
+	{
+		if(0x1 & (bs->backup_mask >> i))
+		{
+			bs_avg_ls = bpll_avg_check(&bs->bpll[i], &bs_avg_l, &bs_avg_s);
+			if(bs_avg_ls > -1 && bs_avg_ls > AVG_LS_THRESHOLD)
+			{
+// 				TRACE_DEV("backup %d  exceeded  avg l-s: %d | ", i, bs_avg_ls);
+// 				avg_dump((spll_avg_t *)&bs->bpll[i].avg_err_long,  "m_err_l");
+// 				avg_dump((spll_avg_t *)&bs->bpll[i].avg_err_short, "m_err_s");
+// 				TRACE_DEV("\n");
+				detect_mask |= (0x1 & (bs->backup_mask >> i));
+			}
+		}
+	  
+	}
+	if(detect_mask == bs->backup_mask)
+		return 1;
+	else 
+		return 0;
+}
+
 static inline void update_loops(struct softpll_state *s, int tag_value, int tag_source)
 {
 	
@@ -413,10 +463,22 @@ static inline void update_loops(struct softpll_state *s, int tag_value, int tag_
 		if(bid  >=0 && mpll_down(&s->mpll,s->hw_status_d) == 1)
 		{
 			spll_update_swover(&s->swover,&s->mpll, &s->xpll.bpll[bid],SWOVER_HW_DETECT);
+			xpll_update_switchover(&s->swover, &s->xpll);
 // 			s->xpll.bpll[bid].enabled = 0;//inside spll_switchover()
 			spll_switchover(s); // curret bpll gets disabled (enabled=0) so it will be ignored
 			s->xpll.backup_mask &= ~(0x1 << bid);
 			if(s->xpll.backup_number > 0) s->xpll.backup_number--;
+			xpll_avg_check_restabilize(&s->xpll);
+		}
+		else if(spll_multi_predown_detect(&s->mpll, &s->xpll))
+		{
+			spll_update_swover(&s->swover,&s->mpll, &s->xpll.bpll[bid],SWOVER_PRE_HW_DETECT);
+			xpll_update_switchover(&s->swover, &s->xpll);
+// 			s->xpll.bpll[bid].enabled = 0;//inside spll_switchover()
+			spll_switchover(s); // curret bpll gets disabled (enabled=0) so it will be ignored
+			s->xpll.backup_mask &= ~(0x1 << bid);
+			if(s->xpll.backup_number > 0) s->xpll.backup_number--;
+			xpll_avg_check_restabilize(&s->xpll);
 		}
 		
 		mpll_update(&s->mpll, tag_value, tag_source);

@@ -173,3 +173,39 @@ int xpll_get_first_backup(struct spll_multibackup_state *s)
 	}
 	return -1;
 }
+
+int xpll_avg_check_restabilize(struct spll_multibackup_state *s)
+{
+	int i;
+	for (i=0;i<BACKUP_ENTRIES_NUM;i++)
+	{
+		if(0x1 & (s->backup_mask >> i))
+			 s->bpll[i].stabilize_cntdown = 0x1<<13;
+	}
+}
+
+void xpll_update_switchover(struct spll_switchover_state *so, struct spll_multibackup_state *xs)
+{
+	int i;
+	so->backup_mask = xs->backup_mask;
+	for (i=0;i<BACKUP_PORTS;i++)
+	{
+		if(0x1 & (xs->backup_mask >> i))
+		{
+			so->xs_avg_long[i] = avg_get((spll_avg_t *)&xs->bpll[i].avg_err_long, AVG_HIST_OLDEST);
+			so->xs_avg_short[i] = avg_get((spll_avg_t *)&xs->bpll[i].avg_err_short, AVG_HIST_OLDEST);
+		}			 
+	}
+}
+void xpll_switchover_dump(struct spll_switchover_state *so)
+{
+	int i;
+	TRACE_DEV("\n");
+	for (i=0;i<BACKUP_PORTS;i++)
+	{
+		if(0x1 & (so->backup_mask >> i))
+		      TRACE_DEV("[p%2d] avg_l: %4d | avg_s: %4d | diff: %4d [0x%x]\n", i, 
+		      so->xs_avg_long[i], so->xs_avg_short[i],
+		      abs(so->xs_avg_long[i] - so->xs_avg_short[i]), so->backup_mask);
+	}
+}

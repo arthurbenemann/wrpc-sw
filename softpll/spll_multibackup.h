@@ -14,11 +14,15 @@
 #define __SPLL_MULTIBACKUP_H
 
 #include "spll_common.h"
-#define BACKUP_PORTS         18
+#include "spll_backup.h"
+
+// #define BACKUP_PORTS         18
 #define BACKUP_ENTRIES_NUM  (BACKUP_PORTS+1)
 #define BACKUP_EMPTY_ID      BACKUP_PORTS
 #define BACKUP_PRIO_NUM      3
 #define BACKUP_PRIO_PORT_NUM 6
+
+// #include "softpll_ng.h"
 /* State of the backup PLL */
 struct spll_multibackup_state {
 // 	int bids[BACKUP_PRIO_NUM][BACKUP_PRIO_PORT_NUM];
@@ -42,4 +46,7 @@ int xpll_set_phase_shift(int channel, struct spll_multibackup_state *s, int desi
 void xpll_show_stats(struct spll_multibackup_state *s);
 
 int xpll_get_first_backup(struct spll_multibackup_state *s);
+int xpll_avg_check_restabilize(struct spll_multibackup_state *s);
+void xpll_update_switchover(struct spll_switchover_state *so, struct spll_multibackup_state *xs);
+void xpll_switchover_dump(struct spll_switchover_state *so);
 #endif // __SPLL_MULTIBACKUP_H

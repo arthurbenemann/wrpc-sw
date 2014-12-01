@@ -442,3 +442,28 @@ void bpll_show_stats(struct spll_backup_state *s)
 // 	avg_dump((spll_avg_t *)&softpll.bpll.avg_err_long, "b_err_l");
 // 	avg_dump((spll_avg_t *)&softpll.bpll.avg_err_short,"b_err_s");
 }
+
+int bpll_avg_check(struct spll_backup_state *s, int *bs_avg_l, int *bs_avg_s)
+{
+	if(s->ld.locked == 0)
+	{
+		s->stabilize_cntdown = 0x1<<13;
+		return -1;
+	}
+	else if(s->stabilize_cntdown > 0)
+	{
+		s->stabilize_cntdown--;
+		return -1;
+	}
+	else
+	{
+		if(s->stabilize_cntdown == 0)
+		{
+			s->stabilize_cntdown--;
+			TRACE_DEV("backup %d  stabilized, start pre-down detection\n",s->id_ref);
+		}
+		*bs_avg_l = avg_get((spll_avg_t *)&s->avg_err_long , AVG_HIST_RECENT);
+		*bs_avg_s = avg_get((spll_avg_t *)&s->avg_err_short, AVG_HIST_RECENT);
+		return abs(*bs_avg_l - *bs_avg_s);
+	}
+}
