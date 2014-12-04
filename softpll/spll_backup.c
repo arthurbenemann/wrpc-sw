@@ -247,12 +247,15 @@ void bpll_start(struct spll_backup_state *s, int id_ref, int id_out, int priorit
 	s->stabilize_cntdown = 0;
 	s->priority = priority;
 	
-	avg_init((spll_avg_t *)&s->avg_err_short,4);
+	avg_init((spll_avg_t *)&s->avg_err_short,3);
 	avg_init((spll_avg_t *)&s->avg_err_long ,10);
 		
 	spll_enable_tagger(s->id_ref, 1);
-// 	spll_debug(DBG_EVENT | DBG_BACKUP, DBG_EVT_STARTBACKUP, 1);
-	xpll_debug(s, DBG_EVENT | DBG_BACKUP, DBG_EVT_STARTBACKUP, 1);
+	// start on all ports (this is for convenience when testing)
+	spll_debug(DBG_EVENT | DBG_BACKUP, DBG_EVT_STARTBACKUP, 1);
+	spll_debug(DBG_EVENT | DBG_BACKUP |(0x1<<4) , DBG_EVT_SWITCHOVER, 1);
+	spll_debug(DBG_EVENT | DBG_BACKUP |(0x2<<4) , DBG_EVT_SWITCHOVER, 1);
+	spll_debug(DBG_EVENT | DBG_BACKUP |(0x3<<4) , DBG_EVT_SWITCHOVER, 1);
 	spll_debug(DBG_EVENT | DBG_MAIN, DBG_EVT_STARTBACKUP, 1);
 	spll_debug(DBG_EVENT | DBG_HELPER, DBG_EVT_STARTBACKUP, 1);
 }

@@ -124,7 +124,12 @@ int xpll_update(struct spll_multibackup_state *s, int tag, int source)
 	int i, bid, bpll_cnt = 0;
 	if(!s->backup_number) 
 	    return SPLL_LOCKED; // no backup ports, desolee
-		
+	
+	for (i=0;i< s->backup_number;i++)
+		bpll_update(&s->bpll[s->bids[i]], tag, source);
+	
+	return SPLL_LOCKED; 
+/**
 	for (i=0;i<BACKUP_ENTRIES_NUM;i++)
 	{
 		bid = s->bids[i]; 
@@ -137,6 +142,7 @@ int xpll_update(struct spll_multibackup_state *s, int tag, int source)
 		}
 	}
 	return SPLL_LOCKING;
+*/
 }
 
 int xpll_set_phase_shift(int channel, struct spll_multibackup_state *s, int desired_shift_ps)
@@ -180,10 +186,9 @@ int xpll_get_first_backup(struct spll_multibackup_state *s)
 int xpll_avg_check_restabilize(struct spll_multibackup_state *s)
 {
 	int i;
-	for (i=0;i<BACKUP_ENTRIES_NUM;i++)
+	for (i=0;i< s->backup_number;i++)
 	{
-		if(0x1 & (s->backup_mask >> i))
-			 s->bpll[i].stabilize_cntdown = 0x1<<13;
+		s->bpll[s->bids[i]].stabilize_cntdown = 0x1<<13;
 	}
 }
 
@@ -191,13 +196,10 @@ void xpll_update_switchover(struct spll_switchover_state *so, struct spll_multib
 {
 	int i;
 	so->backup_mask = xs->backup_mask;
-	for (i=0;i<BACKUP_PORTS;i++)
+	for (i=0;i< xs->backup_number;i++)
 	{
-		if(0x1 & (xs->backup_mask >> i))
-		{
-			so->xs_avg_long[i] = avg_get((spll_avg_t *)&xs->bpll[i].avg_err_long, AVG_HIST_OLDEST);
-			so->xs_avg_short[i] = avg_get((spll_avg_t *)&xs->bpll[i].avg_err_short, AVG_HIST_OLDEST);
-		}			 
+		so->xs_avg_long[xs->bids[i]] = avg_get((spll_avg_t *)&xs->bpll[xs->bids[i]].avg_err_long, AVG_HIST_RECENT);
+		so->xs_avg_short[xs->bids[i]] = avg_get((spll_avg_t *)&xs->bpll[xs->bids[i]].avg_err_short, AVG_HIST_RECENT);
 	}
 }
 void xpll_switchover_dump(struct spll_switchover_state *so)
