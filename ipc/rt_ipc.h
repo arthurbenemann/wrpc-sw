@@ -20,6 +20,8 @@
 #define CHAN_SHIFTING (1<<5)
 /* Channel is busy adjusting phase */
 #define CHAN_PTRACKER_ENABLED (1<<6)
+/* Channel needs to inform about new "good phase value" (NOTE: backup channel only) */
+#define CHAN_UPDATE_PHASE (1<<7)
 
 /* DMTD clock is present */
 #define RTS_DMTD_LOCKED (1<<0)

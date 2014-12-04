@@ -37,6 +37,7 @@ void xpll_init(struct spll_multibackup_state *s)
 	
 	s->backup_number = 0;
 	s->backup_mask   = 0;
+	s->after_switchover_cnt = 0;
 }
 
 void xpll_start(struct spll_multibackup_state *s,int id_ref, int id_out, int priority)
@@ -85,6 +86,7 @@ void xpll_start(struct spll_multibackup_state *s,int id_ref, int id_out, int pri
 	bpll_start(&s->bpll[id_ref],id_ref, id_out, priority);
 	s->backup_number++;
 	s->backup_mask |= (0x1 << id_ref);
+	s->phase_update_mask = 0;
 	TRACE("[xpll_start()] added backup: bids[%d]=%d |  backup_number=%d | prio %d\n",
 	new_id, id_ref, s->backup_number,priority);
 	
@@ -127,6 +129,11 @@ int xpll_update(struct spll_multibackup_state *s, int tag, int source)
 	
 	for (i=0;i< s->backup_number;i++)
 		bpll_update(&s->bpll[s->bids[i]], tag, source);
+	
+	if(s->after_switchover_cnt == 1) 
+		s->phase_update_mask = s->backup_mask;
+	
+	if(s->after_switchover_cnt > 0) s->after_switchover_cnt--;
 	
 	return SPLL_LOCKED; 
 /**

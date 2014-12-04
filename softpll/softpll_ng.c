@@ -487,7 +487,9 @@ static inline void update_loops(struct softpll_state *s, int tag_value, int tag_
 			spll_switchover(s); // curret bpll gets disabled (enabled=0) so it will be ignored
 			s->xpll.backup_mask &= ~(0x1 << bid);
 			if(s->xpll.backup_number > 0) s->xpll.backup_number--;
-			xpll_avg_check_restabilize(&s->xpll);
+// 			xpll_avg_check_restabilize(&s->xpll);
+			s->xpll.bpll[s->xpll.bids[0]].stabilize_cntdown = 0x1<<13; //enought to restabilize single
+			s->xpll.after_switchover_cnt = 0x1<<13; 
 		}
 		else if(spll_multi_predown_detect(&s->mpll, &s->xpll, &s->swover))
 		{
@@ -498,6 +500,7 @@ static inline void update_loops(struct softpll_state *s, int tag_value, int tag_
 			if(s->xpll.backup_number > 0) s->xpll.backup_number--;
 // 			xpll_avg_check_restabilize(&s->xpll);
 			s->xpll.bpll[s->xpll.bids[0]].stabilize_cntdown = 0x1<<13; //enought to restabilize single
+			s->xpll.after_switchover_cnt = 0x1<<13; 
 		}
 		
 		mpll_update(&s->mpll, tag_value, tag_source);
@@ -855,13 +858,13 @@ void spll_get_phase_shift(int channel, int32_t *current, int32_t *target, int32_
 	if (target)
 		*target = to_picos(st->phase_shift_target * div);
 	if (good_phase_val)
-		*good_phase_val = st->phase_good_val; // in p
+		*good_phase_val = st->phase_good_val; // in [ps]
 }
 
 /*
  * 
  */
-void spll_get_backup_phase_shift(int channel, int32_t *current, int32_t *target, int32_t *good_phase_val)
+int spll_get_backup_phase_shift(int channel, int32_t *current, int32_t *target, int32_t *good_phase_val)
 {
 #ifdef MULTI_BACKUP
 	volatile struct spll_backup_state *st = (struct spll_backup_state *)&softpll.xpll.bpll[channel];
@@ -874,7 +877,15 @@ void spll_get_backup_phase_shift(int channel, int32_t *current, int32_t *target,
 	if (target)
 		*target = to_picos(st->phase_shift_target * div);
 	if (good_phase_val)
-		*good_phase_val = st->phase_good_val; // in p	
+		*good_phase_val = st->phase_good_val; // in [ps]	
+		
+	if(st->xpll->phase_update_mask & (0x1 << channel))
+	{
+		st->xpll->phase_update_mask = st->xpll->phase_update_mask & ~(0x1 << channel);
+		return 1;
+	}
+	else 
+		return 0;
 }
 
 int spll_read_ptracker(int channel, int32_t *phase_ps, int *enabled)

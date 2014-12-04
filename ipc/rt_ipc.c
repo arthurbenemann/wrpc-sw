@@ -48,8 +48,8 @@ static void clear_switchover_occured()
 }
 static void set_switchover_occured()
 {
+    //mask with ports to inform about the update
     pstate.switchover_ocured = 1;
-//     TRACE("Set switch over occured\n");
 }
 static void set_current_channel(int channel)
 {
@@ -67,12 +67,23 @@ static void set_old_channel(int channel)
 int rts_adjust_phase(int channel, int32_t phase_setpoint)
 {
     TRACE("Adjusting phase: ref channel %d, setpoint=%d ps [switchover occured=%d,"
-    " loopback_phase=%d]\n", channel, phase_setpoint, pstate.switchover_ocured,
-    (int)pstate.channels[channel].phase_loopback);
+    " loopback_phase=%d, flags=0x%x, backup update req %d, phase good_value=%d]\n", 
+    channel, phase_setpoint, 
+    pstate.switchover_ocured,(int)pstate.channels[channel].phase_loopback, 
+    pstate.channels[channel].flags, pstate.channels[channel].flags & CHAN_UPDATE_PHASE != 0,
+    pstate.channels[channel].phase_good_val);
     if(pstate.switchover_ocured == 1 && pstate.current_ref == channel)
     {
 	clear_switchover_occured();
+	TRACE("udpated new active after switchover\n");
 	return (int)pstate.channels[channel].phase_good_val;
+    }
+    if(pstate.switchover_ocured == 0 && (pstate.channels[channel].flags & CHAN_UPDATE_PHASE) !=0)
+    {
+	TRACE("updated backups after switchover\n");
+	pstate.channels[channel].flags &= ~CHAN_UPDATE_PHASE;
+	return -1;
+// 	return (int)pstate.channels[channel].phase_loopback;
     }
     if(pstate.current_ref == channel)
          spll_set_phase_shift(0, phase_setpoint);
@@ -153,7 +164,7 @@ int rts_backup_channel(int channel, int cmd)
 	{
 		/* activate backup and remember on which port it is*/
 		case RTS_BACKUP_CH_LOCK:
-		clear_switchover_occured();
+// 		clear_switchover_occured(); //TODO: probably not needed here
 		spll_start_backup(channel,0);
 		TRACE("RT [backup port]: locked !!! : %d \n", channel);
 		break;
@@ -195,9 +206,7 @@ int rts_lock_channel(int channel, int priority)
 	}
 	else
 	{
-// 		rts_backup_channel(channel, RTS_BACKUP_CH_LOCK);
-		clear_switchover_occured();
-// 		set_backup_channel(channel);
+// 		clear_switchover_occured(); //TODO: not sure it's needed here
 		spll_start_backup(channel, priority);
 		TRACE("RT [backup port]: locked !!! : %d \n", channel);
 	}
@@ -227,7 +236,7 @@ void rts_update(void)
 		spll_stop_backup(pstate.current_ref);//active which used to be backup (backup chan must be stopped)
 		TRACE("rts_update 1: switchover detected setting old port=%d | backup_mask=0x%x\n", 
 		      ret, pstate.backup_mask);
-		ret = spll_get_refs(&pstate.current_ref, &pstate.backup_ref, &pstate.backup_mask);     
+// 		ret = spll_get_refs(&pstate.current_ref, &pstate.backup_ref, &pstate.backup_mask);     
     }
 /**	  
     if(pstate.backup_ref != REF_NONE && spll_check_switchover(pstate.current_ref,pstate.backup_ref) == 1 )
@@ -272,7 +281,7 @@ void rts_update(void)
     for(i=0;i<RTS_PLL_CHANNELS;i++)
     {
 #define CH pstate.channels[i]
-        CH.flags = 0;
+        CH.flags &= CHAN_UPDATE_PHASE; // remember this utnil cleared by rts_adjust_phase()
         CH.phase_loopback = 0;
         CH.phase_current = 0;
 //        CH.phase_setpoint = 0;
@@ -293,7 +302,8 @@ void rts_update(void)
 		}
             else if(0x1 & (pstate.backup_mask >> i)) //if(i==pstate.backup_ref)
             {
-                spll_get_backup_phase_shift(i, &CH.phase_current, NULL, &CH.phase_good_val);
+                if(spll_get_backup_phase_shift(i, &CH.phase_current, NULL, &CH.phase_good_val))
+			CH.flags |= CHAN_UPDATE_PHASE;
 // 		            if(spll_shifter_busy(0))
 // 		            	CH.flags |= CHAN_SHIFTING;
 						}
