@@ -935,12 +935,137 @@ void spll_get_num_channels(int *n_ref, int *n_out)
 
 extern void rts_state_info_dump();
 
+int spll_dump_mpll()
+{
+#define HANG_CNT 1
+	static int err_d, hanged;
+
+
+  	if (softpll.mode > 0 && softpll.mpll.enabled)
+	{
+	
+		if(softpll.mpll.err_d != 0 && err_d == softpll.mpll.err_d && hanged == 0)
+		{
+			hanged = HANG_CNT;
+			//show the stuff, no return
+		}
+		else
+		{
+			if(err_d == softpll.mpll.err_d && hanged > 0)
+				hanged--;
+			else
+			{
+				err_d  = softpll.mpll.err_d; 
+				hanged = HANG_CNT;
+			}
+			return 0;
+		}
+	}
+	else 	    
+	{
+		hanged = HANG_CNT;
+		return 0;
+	}
+			
+	  TRACE_DEV("\n\n================== serious dump ==================\n"
+	  	"1:  %6d, "               // "state = %d, "
+	  	"2:  %6d |  %6d |  %6d |, " // "pi: integrator = %d | x = %d | y = %d |, "
+	  	   //"ld: lock_cnt = %d | 
+	  	   //"lock_samples = %d | 
+	  	   //"delock_samples = %d | 
+	  	   //"threshold = %d | 
+	  	   //"locked= %d | 
+	  	   //"lock_changed = %d |, "
+	  	"3:  %6d |  %6d |  %6d |  %6d |  %6d |  %6d |, "
+	  	"4:  %6d, " //"avg_err_short = %d, " //11
+	  	"5:  %6d, " //"avg_err_long = %d, "12
+	  	"6:  %6d, " //"avg_y_long = %d, "13
+	  	"7:  %6d,\n", //"adder_ref = %d, "14
+	  	softpll.mpll.state,
+		softpll.mpll.pi.integrator,
+		softpll.mpll.pi.x,
+		softpll.mpll.pi.y,
+		softpll.mpll.ld.lock_cnt,
+		softpll.mpll.ld.lock_samples,
+		softpll.mpll.ld.delock_samples,
+		softpll.mpll.ld.threshold,
+		softpll.mpll.ld.locked,
+		softpll.mpll.ld.lock_changed,
+		softpll.mpll.avg_err_short.prev_avg[0],
+		softpll.mpll.avg_err_long.prev_avg[0],
+		softpll.mpll.avg_y_long.prev_avg[0],
+		softpll.mpll.adder_ref);	     
+	  TRACE_DEV(  
+	  	"8:  %6d, "  //"adder_out = %d, "15
+	  	"9:  %6d, "  //"tag_ref = %d, " 16
+	  	"10: %6d, "  //"tag_out = %d, " 17   
+	  	"11: %6d, "  //"tag_ref_d = %d, " 18
+	  	"12: %6d, " //"tag_out_d = %d, "19
+	  	"13: %6d, "  //"seq_ref = %d, " 20
+	  	"14: %6d, " //"seq_out = %d, "21
+	  	"15: %6d, " //"match_state = %d, "22
+	  	"16: %6d, " //"match_seq = %d, "23
+	  	"17: %6d, " //"phase_shift_target = %d, "24   
+	  	"18: %6d, " //"phase_shift_current = %d, "25  
+	  	"19: %6d, " //"after_switchover = %d, "26
+	  	"20: %6d, " //"phase_good_val = %d, "27
+	  	"21: %6d,\n ", //"id_ref = %d, "28
+		softpll.mpll.adder_out, 
+		softpll.mpll.tag_ref, 
+		softpll.mpll.tag_out, 
+		softpll.mpll.tag_ref_d, 
+		softpll.mpll.tag_out_d,
+		softpll.mpll.seq_ref, 
+		softpll.mpll.seq_out,
+		softpll.mpll.match_state,
+		softpll.mpll.match_seq,
+		softpll.mpll.phase_shift_target,
+		softpll.mpll.phase_shift_current,
+		softpll.mpll.after_switchover,
+		softpll.mpll.phase_good_val,
+		softpll.mpll.id_ref);
+	  
+	   TRACE_DEV(
+	  	"22: %6d, " //"id_out = %d, "29
+	  	"23: %6d, " //"sample_n = %d, "30             
+	  	"24: %6d, " //"delock_count = %d, "31
+	  	"25: %6d, " //"dac_index = %d, "32
+	  	"26: %6d, " //"enabled = %d, "33
+	  	"27: %6d, " //"err_d = %d, "34
+	  	"28: %6d, " //"err_slow_drift_corr = %d, "35  
+	  	"29: %6d, " //"hw_status_d = %d, "36
+	  	"30: %6d, " //"fifo = %d, "37
+	  	"31: %6d, " //"holdover = %d, "38
+	  	"32: %6d, " //"holdover_cnt = %d \n"39
+	  	"33: %6d, " //"min = %d \n"40
+	  	"34: %6d, " //"max = %d \n"41
+	  	"35: %6d, " //"mtie_d = %d \n"42
+	  	"36: %6d, " //"down_qulifier = %d \n"43
+	  	"37: %6d\n ", //"priority = %d \n",44
+		softpll.mpll.id_out,
+		softpll.mpll.sample_n,
+		softpll.mpll.delock_count,
+		softpll.mpll.dac_index,
+		softpll.mpll.enabled,
+		softpll.mpll.err_d,
+		softpll.mpll.err_slow_drift_corr,
+		softpll.mpll.hw_status_d,
+		softpll.mpll.fifo,
+		softpll.mpll.holdover,
+		softpll.mpll.holdover_cnt,
+		softpll.mpll.min,
+		softpll.mpll.max,
+		softpll.mpll.mtie_d,
+		softpll.mpll.down_qulifier,
+		softpll.mpll.priority);
+	return 1;
+}
 void spll_show_stats()
 {
-  
-  
+	
 	if (softpll.mode > 0)
 	{
+		if(spll_dump_mpll()) return;
 		TRACE_DEV("softpll[%8d]; seq %s; mode %s; "
 		     "algn_state %s; hL-%s; mL-%s; "
 		     "hPiY=%d; mPiY=%d; DelCnt=%d; mErr:%6d; ",
@@ -984,8 +1109,10 @@ void spll_show_stats()
 		TRACE_DEV("\n");
 		spll_update_dump((struct spll_switchover_state *)&softpll.swover);
 		
-	}	    
+	}
 }
+
+
 
 int spll_shifter_busy(int channel)
 {
@@ -1314,8 +1441,8 @@ void spll_stop_backup(int new_ref)
 	bpll_stop(&s->bpll);
 #endif
 	
-	
 }
+
 
 // void show_info()
 // {
