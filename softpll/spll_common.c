@@ -127,7 +127,12 @@ Channels (spll_n_chan_ref ... spll_n_chan_out + spll_n_chan_ref-1) are the outpu
 
 void spll_enable_tagger(int channel, int enable)
 {
-	TRACE_DEV("EnableTagger %d %d\n", channel, enable);
+	TRACE_DEV("EnableTagger %d %d [OCER 0x%x, RCER 0x%x]\n", channel, enable, SPLL->OCER, SPLL->RCER);
+	if (channel < 0)
+	{
+		TRACE_DEV("Trying to control >negative< channel, something is wrong, ignoring \n");
+		return;
+	}
 	if (channel >= spll_n_chan_ref) {	/* Output channel? */
 		if (enable)
 			SPLL->OCER |= 1 << (channel - spll_n_chan_ref);

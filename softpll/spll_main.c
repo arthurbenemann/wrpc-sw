@@ -292,8 +292,8 @@ int mpll_switchover(struct spll_main_state *mpll, struct spll_backup_state *bpll
 // 	disable_irq();
 	mpll->adder_ref           = from_picos((bpll->phase_good_val % 16000));//bpll->adder_ref;
 	mpll->adder_out           = 0; //bpll->adder_out;
-	mpll->tag_ref             = bpll->tag_ref;
-	mpll->tag_out             = bpll->tag_out;
+	mpll->tag_ref             = -1;//bpll->tag_ref;
+	mpll->tag_out             = -1;//bpll->tag_out;
 	mpll->tag_ref_d           = bpll->tag_ref_d;
 	mpll->tag_out_d           = bpll->tag_out_d;
 	mpll->seq_ref             = bpll->seq_ref;
@@ -320,7 +320,11 @@ int mpll_switchover(struct spll_main_state *mpll, struct spll_backup_state *bpll
 	mpll->err_slow_drift_corr = -bpll->err_d;
 	mpll->ld.lock_cnt         = mpll->ld.lock_samples;
 	mpll->hw_status_d         = 1; //up
-	/*stop bpll*/
+	mpll->holdover = 0;
+	mpll->holdover_cnt=0;
+
+	/*stop clear*/
+	bpll->enabled             = 0;
 	bpll->adder_ref           = 0;
 	bpll->adder_out           = 0;
 	bpll->tag_ref             = -1;
@@ -330,22 +334,13 @@ int mpll_switchover(struct spll_main_state *mpll, struct spll_backup_state *bpll
 	bpll->seq_ref             = 0;
 	bpll->phase_shift_target  = 0;
 	bpll->phase_shift_current = 0;
-	bpll->id_out              = 0;
-	bpll->id_ref              = 0;
-// 	bpll->delock_count        = 0;
-// 	bpll->dac_index           = 0;
-	bpll->enabled             = 0;
+	bpll->id_out              = -1;
+	bpll->id_ref              = -1;
 	bpll->err_d               = 0;
-// 	enable_irq();
+	bpll->holdover            = 0;
+	bpll->ld.locked           = 0;
+	bpll->priority            = -1;
 	
-	mpll->holdover = 0;
-	bpll->holdover = 0;
-	mpll->holdover_cnt=0;
-	bpll->ld.locked = 0;
-	
-// 	rts_update();
-//         enable_irq();
-
 	return 0;
 }
 int mpll_fast_holdover(struct spll_main_state *s)
