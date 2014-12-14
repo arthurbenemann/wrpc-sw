@@ -44,7 +44,6 @@ static void clear_state()
 static void clear_switchover_occured()
 {
     pstate.switchover_ocured = 0;
-//     TRACE("Cleared switch over occured\n");
 }
 static void set_switchover_occured()
 {
@@ -83,32 +82,12 @@ int rts_adjust_phase(int channel, int32_t phase_setpoint)
 	TRACE("updated backups after switchover\n");
 	pstate.channels[channel].flags &= ~CHAN_UPDATE_PHASE;
 	return -1;
-// 	return (int)pstate.channels[channel].phase_loopback;
     }
     if(pstate.current_ref == channel)
          spll_set_phase_shift(0, phase_setpoint);
-    else //if(pstate.backup_ref == channel)
+    else
 	  spll_set_backup_phase_shift(channel, phase_setpoint);
-//     {
-// 	 /* This is kind of a hack:
-// 	  * The Offset from master (OFM) is calculated as: 
-// 	  * offset = t1-(t2-phase) + delayMM/2
-// 	  * delayMM= [t4-t1] - [t3-(t2-phase)]
-// 	  * so
-// 	  * offset = t1-t2 + [(t4-t1)-t3-t2)] + phase - phase/2
-// 	  * so, if we don't enhance the timestamp with the phase measurement, the error
-// 	  * of the calculated OFM should be:
-// 	  * error = phase - phase/2 = phase/2
-// 	  * this error is provided as a setpoint. for the backup port, the setpoint is made
-// 	  * equal to the phase measurement, so we get phase/2 correction instead of phase.
-// 	  * therefore, we multiply, the measured phase error of the OFM by 2
-// 	  * (really not sure it wil work)
-// 	  */ 
-//       phase_setpoint = phase_setpoint << 1;
-//       spll_set_backup_phase_shift(phase_setpoint); 
-//     }
 
-    
     pstate.channels[channel].phase_setpoint = phase_setpoint;
 
     return 0;
@@ -129,7 +108,6 @@ int rts_set_mode(int mode)
 		{ RTS_MODE_GM_FREERUNNING, SPLL_MODE_FREE_RUNNING_MASTER, 1, "Grand Master (free-running clock)" },
 		{ RTS_MODE_BC, SPLL_MODE_SLAVE, 0, "Boundary Clock (slave)" },
 		{ RTS_MODE_DISABLED, SPLL_MODE_DISABLED, 1, "PLL disabled" },
-// 		{ RTS_MODE_BC_BACKUP, SPLL_MODE_BACKUP_SLAVE, 2, "Activate backup" }, //not used for the time being, separat functin to manage backup port
 		{ 0,0,0, NULL }
 	};
 
@@ -139,9 +117,6 @@ int rts_set_mode(int mode)
 		if(mode == options[i].mode_rt)
 		{
 			TRACE("RT: Setting mode to %s.\n", options[i].desc);
-// 			if(options[i].do_init > 1)
-// 				TRACE("RT: switchover here.\n");
-// 			else 
 			if(options[i].do_init)
 				spll_init(options[i].mode_spll, 0, 1, -1 /*priority*/);
 			else
@@ -164,12 +139,10 @@ int rts_backup_channel(int channel, int cmd)
 	{
 		/* activate backup and remember on which port it is*/
 		case RTS_BACKUP_CH_LOCK:
-// 		clear_switchover_occured(); //TODO: probably not needed here
 		spll_start_backup(channel,0);
 		TRACE("RT [backup port]: locked !!! : %d \n", channel);
 		break;
 		case RTS_BACKUP_CH_ACTIVATE:
-// 		set_switchover_occured();
 		TRACE("switchover detected by wrsw_hall, finally but we are already done |"
 		" %d \n", channel);
 		set_old_channel(REF_NONE); //ack from HAL !!!! this allows to synchronized between hal and softPLL
@@ -197,16 +170,13 @@ int rts_lock_channel(int channel, int priority)
 	TRACE("RT [slave]: Locking to: %d (prio %d) current ref %d \n", 
 	channel, priority, pstate.current_ref);
 	pstate.channels[channel].priority = priority;
-// 	if(priority == 0) 
 	if(priority < 0 || pstate.current_ref == REF_NONE)
 	{
 		TRACE("RT [slave]: set current_ref [%d] to  %d)\n", pstate.current_ref, channel);
 		spll_init(SPLL_MODE_SLAVE, channel, 0, priority);
-// 		set_current_channel(channel);
 	}
 	else
 	{
-// 		clear_switchover_occured(); //TODO: not sure it's needed here
 		spll_start_backup(channel, priority);
 		TRACE("RT [backup port]: locked !!! : %d \n", channel);
 	}
@@ -236,7 +206,6 @@ void rts_update(void)
 		spll_stop_backup(pstate.current_ref);//active which used to be backup (backup chan must be stopped)
 		TRACE("rts_update 1: switchover detected setting old port=%d | backup_mask=0x%x\n", 
 		      ret, pstate.backup_mask);
-// 		ret = spll_get_refs(&pstate.current_ref, &pstate.backup_ref, &pstate.backup_mask);     
     }
 /**	  
     if(pstate.backup_ref != REF_NONE && spll_check_switchover(pstate.current_ref,pstate.backup_ref) == 1 )
@@ -273,10 +242,8 @@ void rts_update(void)
     if(pstate.backup_ref  == REF_NONE && pstate.current_ref != REF_NONE) 
        pstate.port_status &= ~(0x1 << pstate.backup_ref);
 */
-	pstate.port_status = spll_get_hw_status();// | 0xFFFFF &((0x1 << pstate.current_ref) | pstate.backup_mask);
+	pstate.port_status = spll_get_hw_status();
 	
-//     TRACE("RT update: current_ref: %d, backup ref:  %d | hw_status()=0x%x : port_status=0x%x\n", 
-//     pstate.current_ref, pstate.backup_ref, spll_get_hw_status(), pstate.port_status);
 
     for(i=0;i<RTS_PLL_CHANNELS;i++)
     {
@@ -297,20 +264,17 @@ void rts_update(void)
 		            if(spll_shifter_busy(0))
 			    {
 		            	CH.flags |= CHAN_SHIFTING;
-// 		            	TRACE("phase shifting \n"); 
 			    }
 		}
             else if(0x1 & (pstate.backup_mask >> i)) //if(i==pstate.backup_ref)
             {
                 if(spll_get_backup_phase_shift(i, &CH.phase_current, NULL, &CH.phase_good_val))
 			CH.flags |= CHAN_UPDATE_PHASE;
-// 		            if(spll_shifter_busy(0))
-// 		            	CH.flags |= CHAN_SHIFTING;
 						}
 
             if(spll_read_ptracker(i, &CH.phase_loopback, &enabled))
 	            CH.flags |= CHAN_PMEAS_READY;
-// 	          
+
 	          CH.flags |= (enabled ? CHAN_PTRACKER_ENABLED : 0);
 
         }
@@ -362,13 +326,6 @@ static int rts_get_state_func(const struct minipc_pd *pd, uint32_t *args, void *
         tmp->channels[i].phase_good_val = htonl(pstate.channels[i].phase_good_val);
         tmp->channels[i].flags = htonl(pstate.channels[i].flags);
     }
-//         TRACE("RT [chan: %d] setpoint: %d, loopback real: %d [cor:%d], prio: %d, cur: %d "
-//         "phase_val_valid %d [flags=0x%x]\n", 
-//         1, tmp->channels[1].phase_setpoint, htonl(pstate.channels[1].phase_loopback),
-//         tmp->channels[1].phase_loopback, tmp->channels[1].priority, 
-//         tmp->channels[1].phase_current, (tmp->channels[1].flags  & CHAN_PMEAS_READY ? 1 : 0),
-//         tmp->channels[1].flags);
-    
     return 0;
 }
 
@@ -420,9 +377,7 @@ static struct minipc_ch *server;
 
 int rtipc_init(void)
 {
-	/* The mailbox is mapped at 0x7000 in the linker script */
-// 	server = minipc_server_create("mem:E000", 0);
-// 	server = minipc_server_create("mem:7000", 0);
+	/* The mailbox is mapped at 0xF000 in the linker script */
 	server = minipc_server_create("mem:F000", 0);
 	if (!server)
 		return 1;
