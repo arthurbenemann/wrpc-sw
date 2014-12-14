@@ -1442,7 +1442,22 @@ void spll_stop_backup(int new_ref)
 #endif
 	
 }
-
+/*
+ * updates back port(s) after switchover, if multi-backup, the list is updated and the 
+ * previously backup and now active is deleted from the backup list.
+ * always clears the data-structure of the removed backup (used only after switchover)
+ */
+void spll_update_backups(int removed_backup_id)
+{
+	struct softpll_state *s = (struct softpll_state *) &softpll;
+#ifdef MULTI_BACKUP
+	xpll_clear(&s->xpll,removed_backup_id);
+#else
+	bpll_clear(&s->bpll);
+#endif
+	
+	
+}
 
 // void show_info()
 // {

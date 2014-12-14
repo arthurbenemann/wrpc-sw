@@ -52,5 +52,5 @@ int xpll_avg_check_restabilize(struct spll_multibackup_state *s);
 void xpll_update_switchover(struct spll_switchover_state *so, struct spll_multibackup_state *xs);
 void xpll_switchover_dump(struct spll_switchover_state *so);
 
-
+void xpll_clear(struct spll_multibackup_state *s, int id_ref);
 #endif // __SPLL_MULTIBACKUP_H

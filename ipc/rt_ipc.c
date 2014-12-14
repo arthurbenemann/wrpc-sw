@@ -203,7 +203,7 @@ void rts_update(void)
     {
 		set_switchover_occured(); // this is only for debug printing
 		set_old_channel(ret); // this is needed for HAL !!!
-		spll_stop_backup(pstate.current_ref);//active which used to be backup (backup chan must be stopped)
+		spll_update_backups(pstate.current_ref);//active which used to be backup (backup chan must be stopped)
 		TRACE("rts_update 1: switchover detected setting old port=%d | backup_mask=0x%x\n", 
 		      ret, pstate.backup_mask);
     }

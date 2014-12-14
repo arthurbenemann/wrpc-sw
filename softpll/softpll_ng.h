@@ -195,5 +195,8 @@ int spll_check_switchover(int current_ref, int backup_ref);
 
 uint32_t spll_get_refs(uint32_t *current, uint32_t *first_backup, uint32_t *backup_mask);
 
+
+void spll_update_backups(int removed_backup_id);
+
 #endif // __SOFTPLL_NG_H
 

@@ -263,6 +263,10 @@ void bpll_start(struct spll_backup_state *s, int id_ref, int id_out, int priorit
 void bpll_stop(struct spll_backup_state *s)
 {
 	spll_enable_tagger(s->id_ref, 0);
+	bpll_clear(s);
+}	
+void bpll_clear(struct spll_backup_state *s)
+{
 	s->enabled             = 0;
 	s->adder_ref           = 0;
 	s->adder_out           = 0;
@@ -273,8 +277,8 @@ void bpll_stop(struct spll_backup_state *s)
 	s->seq_ref             = 0;
 	s->phase_shift_target  = 0;
 	s->phase_shift_current = 0;
-	s->id_out              = 0;
-	s->id_ref              = 0;
+	s->id_out              = -1;
+	s->id_ref              = -1;
 	s->err_d               = 0;
 	s->holdover            = 0;
 	s->ld.locked           = 0;

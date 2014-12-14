@@ -71,7 +71,7 @@ struct spll_backup_state {
 void bpll_init(struct spll_backup_state *s);
 
 void bpll_stop(struct spll_backup_state *s);
-
+void bpll_clear(struct spll_backup_state *s);
 void bpll_start(struct spll_backup_state *s, int id_ref, int id_out, int priority);
 
 int bpll_update(struct spll_backup_state *s, int tag, int source);
