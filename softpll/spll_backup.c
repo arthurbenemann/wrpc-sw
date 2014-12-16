@@ -173,6 +173,11 @@
  * TODO: probably needs more beautiful solution later
  * 
  *-------------------------------------------------------------------------------------------
+ * KNOWN problems/BUGs:
+ * 1) the active port that is detected to go down is exptected to really go down, i.e.
+ *    pre-hardware detection of down is expected to be correct and the real hardware down 
+ *    happens. The case when pre-detection si false, is not handled.
+ * 2)
  */
 
 #include "spll_backup.h"
