@@ -71,18 +71,7 @@ int rts_adjust_phase(int channel, int32_t phase_setpoint)
     pstate.switchover_ocured,(int)pstate.channels[channel].phase_loopback, 
     pstate.channels[channel].flags, (pstate.channels[channel].flags & CHAN_UPDATE_PHASE) != 0,
     pstate.channels[channel].phase_good_val);
-    if(pstate.switchover_ocured == 1 && pstate.current_ref == channel)
-    {
-	clear_switchover_occured();
-	TRACE("udpated new active after switchover\n");
-	return (int)pstate.channels[channel].phase_good_val;
-    }
-    if(pstate.switchover_ocured == 0 && (pstate.channels[channel].flags & CHAN_UPDATE_PHASE) !=0)
-    {
-	TRACE("updated backups after switchover\n");
-	pstate.channels[channel].flags &= ~CHAN_UPDATE_PHASE;
-	return -1;
-    }
+
     if(pstate.current_ref == channel)
          spll_set_phase_shift(0, phase_setpoint);
     else
@@ -90,6 +79,13 @@ int rts_adjust_phase(int channel, int32_t phase_setpoint)
 
     pstate.channels[channel].phase_setpoint = phase_setpoint;
 
+    /* Notification to higher layers (PPSi) that something is up and backup_state should be
+     * read. Sure, we could read backup_state all the time but why to multiply ipc traffic.
+     */
+    if(pstate.switchover_ocured == 1 && pstate.current_ref == channel)
+	return 1;
+    if(pstate.switchover_ocured == 0 && (pstate.channels[channel].flags & CHAN_UPDATE_PHASE)!=0)
+	return 1;
     return 0;
 }
 
