@@ -129,6 +129,23 @@ struct rts_pll_state {
 	uint32_t switchover_ocured;
 };
 
+/* backup-chan-related flags that are passed "directly" to PPSi
+ * (wrpc-sw/rt_ipc  => wrsw_hal/rt_client  => wrsw_hal/hal_exports  => ppsi/time-wrs/wrs-time)
+ */
+#define BPLL_SWITCHOVER   (1<<0)
+#define BPLL_UPDATE_PHASE (1<<1)
+#define BPLL_UNLOCKED     (1<<2)
+
+/* structure to be passed to PPSi in order to facilitate backup cotnrol*/
+struct rts_bpll_state {
+  	/* TX-Rx looback stable measurement of the phase*/
+	int32_t phase_good_val;
+	/* backup port flags */
+	uint32_t flags;
+	/* active port*/
+	int32_t active_chan;
+};
+
 /* API */
 
 /* Connects to the RT CPU */
@@ -148,6 +165,9 @@ int rts_lock_channel(int channel, int priority);
 
 /* Manage backup channel (BC mode only) */
 int rts_backup_channel(int channel, int cmd);
+
+/* Get state of the backup stuff, i.e. good phase, switchover & update notifications */
+int rts_get_backup_state(struct rts_bpll_state *s, int channel );
 
 /* Enabled/disables phase tracking on a particular port */
 int rts_enable_ptracker(int channel, int enable);
@@ -225,6 +245,16 @@ static struct minipc_pd rtipc_rts_backup_channel_struct = {
 	    MINIPC_ARG_END
 	},
 };
+
+static struct minipc_pd rtipc_rts_get_backup_state_struct = {
+	.name = "yyyy",
+	.retval = MINIPC_ARG_ENCODE(MINIPC_ATYPE_INT, struct rts_bpll_state),
+	.args = {
+	    MINIPC_ARG_ENCODE(MINIPC_ATYPE_INT, int ),
+	    MINIPC_ARG_END
+	},
+};
+
 
 #endif
 

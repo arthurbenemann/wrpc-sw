@@ -69,7 +69,7 @@ int rts_adjust_phase(int channel, int32_t phase_setpoint)
     " loopback_phase=%d, flags=0x%x, backup update req %d, phase good_value=%d]\n", 
     channel, phase_setpoint, 
     pstate.switchover_ocured,(int)pstate.channels[channel].phase_loopback, 
-    pstate.channels[channel].flags, pstate.channels[channel].flags & CHAN_UPDATE_PHASE != 0,
+    pstate.channels[channel].flags, (pstate.channels[channel].flags & CHAN_UPDATE_PHASE) != 0,
     pstate.channels[channel].phase_good_val);
     if(pstate.switchover_ocured == 1 && pstate.current_ref == channel)
     {
@@ -131,6 +131,7 @@ int rts_set_mode(int mode)
 
 	return 0;
 }
+
 
 /* Manage the backup channel, called by wrsw_hal via IPC */
 int rts_backup_channel(int channel, int cmd)
@@ -290,12 +291,37 @@ void rts_state_info_dump()
     pstate.ipc_count, pstate.current_ref, pstate.backup_ref, pstate.old_ref, 
     pstate.port_status, pstate.backup_mask);
 }
-
 /* fixme: this assumes the host is BE */
 static int htonl(int i)
 {
     return i;
 }
+
+int rts_get_backup_state(struct rts_bpll_state *s, int channel)
+{
+	uint32_t flags = 0;
+	if(channel < 0) return -1;	  
+	
+	if(pstate.switchover_ocured == 1 && pstate.current_ref == channel)
+	{
+		clear_switchover_occured();
+		TRACE("BPLL_SWITCHOVER\n");
+		flags = BPLL_SWITCHOVER;
+	}
+	else if((pstate.channels[channel].flags & CHAN_UPDATE_PHASE) !=0)
+	{
+		TRACE("BPLL_UPDATE_PHASE\n");
+		pstate.channels[channel].flags &= ~CHAN_UPDATE_PHASE;
+		flags = BPLL_UPDATE_PHASE;
+	}
+	s->flags         = htonl(flags);
+	s->phase_good_val= htonl(pstate.channels[channel].phase_good_val);
+	s->active_chan   = htonl(pstate.current_ref);
+	TRACE("Backup state ret: flags=0x%x, phase_good_val=%d, active_chan=%d \n",
+	      s->flags, s->phase_good_val, s->active_chan);
+	return 0;
+}
+
 
 
 static int rts_get_state_func(const struct minipc_pd *pd, uint32_t *args, void *ret)
@@ -328,6 +354,14 @@ static int rts_get_state_func(const struct minipc_pd *pd, uint32_t *args, void *
     }
     return 0;
 }
+
+static int rts_get_backup_state_func(const struct minipc_pd *pd, uint32_t *args, void *ret)
+{
+	struct rts_bpll_state *state = (struct rts_bpll_state *)ret;
+	rts_get_backup_state(state, args[0]);
+	return 0;
+}
+
 
 static int rts_set_mode_func(const struct minipc_pd *pd, uint32_t *args, void *ret)
 {
@@ -389,6 +423,7 @@ int rtipc_init(void)
 	rtipc_rts_enable_ptracker_struct.f = rts_enable_ptracker_func;
 	rtipc_rts_debug_command_struct.f = rts_debug_command_func;
 	rtipc_rts_backup_channel_struct.f = rts_backup_channel_func;
+	rtipc_rts_get_backup_state_struct.f = rts_get_backup_state_func;
 	
 	minipc_export(server, &rtipc_rts_set_mode_struct);
 	minipc_export(server, &rtipc_rts_get_state_struct);
@@ -397,6 +432,7 @@ int rtipc_init(void)
   minipc_export(server, &rtipc_rts_enable_ptracker_struct);
   minipc_export(server, &rtipc_rts_debug_command_struct);
   minipc_export(server, &rtipc_rts_backup_channel_struct);
+  minipc_export(server, &rtipc_rts_get_backup_state_struct);
 
 
 	return 0;
