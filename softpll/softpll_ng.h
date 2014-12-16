@@ -198,5 +198,7 @@ uint32_t spll_get_refs(uint32_t *current, uint32_t *first_backup, uint32_t *back
 
 void spll_update_backups(int removed_backup_id);
 
+int spll_check_backup_lock(int channel);
+
 #endif // __SOFTPLL_NG_H
 

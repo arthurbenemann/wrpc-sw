@@ -19,6 +19,9 @@
 
 #include <softpll_ng.h>
 
+
+#define CHAN_ALL_BACKUP_FLAGS (CHAN_UPDATE_PHASE | CHAN_BACKUP_UNLOCKED)
+
 static struct rts_pll_state pstate;
 
 static void clear_state()
@@ -84,7 +87,7 @@ int rts_adjust_phase(int channel, int32_t phase_setpoint)
      */
     if(pstate.switchover_ocured == 1 && pstate.current_ref == channel)
 	return 1;
-    if(pstate.switchover_ocured == 0 && (pstate.channels[channel].flags & CHAN_UPDATE_PHASE)!=0)
+    if(pstate.switchover_ocured == 0 && (pstate.channels[channel].flags & CHAN_ALL_BACKUP_FLAGS)!=0)
 	return 1;
     return 0;
 }
@@ -267,7 +270,9 @@ void rts_update(void)
             {
                 if(spll_get_backup_phase_shift(i, &CH.phase_current, NULL, &CH.phase_good_val))
 			CH.flags |= CHAN_UPDATE_PHASE;
-						}
+		if(spll_check_backup_lock(i) == 0)
+			CH.flags |= CHAN_BACKUP_UNLOCKED;
+		}
 
             if(spll_read_ptracker(i, &CH.phase_loopback, &enabled))
 	            CH.flags |= CHAN_PMEAS_READY;
@@ -295,22 +300,29 @@ static int htonl(int i)
 
 int rts_get_backup_state(struct rts_bpll_state *s, int channel)
 {
-	uint32_t flags = 0;
+	
 	if(channel < 0) return -1;	  
+	
+	uint32_t active_flags = 0;
 	
 	if(pstate.switchover_ocured == 1 && pstate.current_ref == channel)
 	{
 		clear_switchover_occured();
 		TRACE("BPLL_SWITCHOVER\n");
-		flags = BPLL_SWITCHOVER;
+		active_flags = BPLL_SWITCHOVER;
 	}
-	else if((pstate.channels[channel].flags & CHAN_UPDATE_PHASE) !=0)
+	if(pstate.channels[channel].flags & CHAN_UPDATE_PHASE)
 	{
 		TRACE("BPLL_UPDATE_PHASE\n");
+		active_flags |= BPLL_UPDATE_PHASE;
 		pstate.channels[channel].flags &= ~CHAN_UPDATE_PHASE;
-		flags = BPLL_UPDATE_PHASE;
 	}
-	s->flags         = htonl(flags);
+	if(pstate.channels[channel].flags & CHAN_BACKUP_UNLOCKED)
+	{
+		TRACE("CHAN_BACKUP_UNLOCKED\n");
+		active_flags |= BPLL_UNLOCKED;
+	}
+	s->flags         = htonl(active_flags);
 	s->phase_good_val= htonl(pstate.channels[channel].phase_good_val);
 	s->active_chan   = htonl(pstate.current_ref);
 	TRACE("Backup state ret: flags=0x%x, phase_good_val=%d, active_chan=%d \n",

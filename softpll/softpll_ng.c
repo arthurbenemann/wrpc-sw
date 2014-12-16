@@ -1477,3 +1477,12 @@ int spll_check_switchover(int current_ref, int backup_ref)
 		return 1; 
 	}
 }
+
+int spll_check_backup_lock(int channel)
+{
+#ifdef MULTI_BACKUP
+	return softpll.xpll.bpll[channel].ld.locked;
+#else
+	return softpll.bpll.ld.locked;
+#endif
+}

@@ -172,7 +172,6 @@
  * softpll->mpll
  * TODO: probably needs more beautiful solution later
  * 
- * -
  *-------------------------------------------------------------------------------------------
  */
 

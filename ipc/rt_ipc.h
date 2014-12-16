@@ -22,6 +22,8 @@
 #define CHAN_PTRACKER_ENABLED (1<<6)
 /* Channel needs to inform about new "good phase value" (NOTE: backup channel only) */
 #define CHAN_UPDATE_PHASE (1<<7)
+/* Channel is backup and get unlocked - this will trigger a forced reset of the  setpoint in wr_servo*/
+#define CHAN_BACKUP_UNLOCKED (1<<8)
 
 /* DMTD clock is present */
 #define RTS_DMTD_LOCKED (1<<0)
