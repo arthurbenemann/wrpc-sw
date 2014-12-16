@@ -584,7 +584,6 @@ void _irq_entry()
 	if(s->switchover==1)
 	{
 	      s->switchover = 0;
-	      rts_update();
 	      s->swover.switchover_irq_cnt = s->mpll.fifo;
 	}
 
