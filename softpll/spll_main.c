@@ -290,7 +290,7 @@ int mpll_switchover(struct spll_main_state *mpll, struct spll_backup_state *bpll
 	        using this function to switchover.
 	*/
 // 	disable_irq();
-	mpll->adder_ref           = from_picos((bpll->phase_good_val % 16000));//bpll->adder_ref;
+	mpll->adder_ref           = from_picos((bpll->phase_good_val % CLOCK_PERIOD_PICOSECONDS));
 	mpll->adder_out           = 0; //bpll->adder_out;
 	mpll->tag_ref             = -1;//bpll->tag_ref;
 	mpll->tag_out             = -1;//bpll->tag_out;
@@ -306,8 +306,8 @@ int mpll_switchover(struct spll_main_state *mpll, struct spll_backup_state *bpll
 	 *   be smoothly applied
 	 */
 
-	mpll->phase_shift_target  = from_picos((bpll->phase_good_val % 16000));//from_picos((phase_val % 16000));
-	mpll->phase_shift_current = from_picos((bpll->phase_good_val % 16000));//from_picos((phase_val % 16000));
+	mpll->phase_shift_target  = from_picos((bpll->phase_good_val % CLOCK_PERIOD_PICOSECONDS));
+	mpll->phase_shift_current = from_picos((bpll->phase_good_val % CLOCK_PERIOD_PICOSECONDS));
 	mpll->phase_good_val      = bpll->phase_good_val;
 	mpll->after_switchover    = 1;
 	/******************** end of interest *********************/
