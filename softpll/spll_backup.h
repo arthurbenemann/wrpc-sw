@@ -26,12 +26,14 @@ struct spll_switchover_state {
 	int bs_avg_short;
 	int xs_avg_long[BACKUP_PORTS];
 	int xs_avg_short[BACKUP_PORTS];
+	int xs_avg_ls[BACKUP_PORTS];
 	int ms_max;
 	int ms_min;
 	int ms_mtied;
 	int ms_down_qualifier_cnt;
 	int old_active_chan;
 	int new_active_chan;
+	int switchover_irq_cnt;
 	uint32_t backup_mask;
 };
 

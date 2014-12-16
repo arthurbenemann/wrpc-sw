@@ -218,8 +218,8 @@ void xpll_switchover_dump(struct spll_switchover_state *so)
 	for (i=0;i<BACKUP_PORTS;i++)
 	{
 		if(0x1 & (so->backup_mask >> i))
-		      TRACE_DEV("[p%2d] avg_l: %4d | avg_s: %4d | diff: %4d [0x%x]\n", i, 
+		      TRACE_DEV("[p%2d] avg_l: %4d | avg_s: %4d | diff: %4d [checked: %4d] | mask:0x%x\n", i, 
 		      so->xs_avg_long[i], so->xs_avg_short[i],
-		      abs(so->xs_avg_long[i] - so->xs_avg_short[i]), so->backup_mask);
+		      abs(so->xs_avg_long[i] - so->xs_avg_short[i]),so->xs_avg_ls[i], so->backup_mask);
 	}
 }

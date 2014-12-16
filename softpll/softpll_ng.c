@@ -282,12 +282,10 @@ void spll_update_swover(struct spll_switchover_state *s, struct spll_main_state 
 	
 	s->occured     = 1;
 	s->trigger_src = type;
-#ifdef NON_OPTIMAL
 	s->ms_avg_long = avg_get((spll_avg_t *)&mpll->avg_err_long, AVG_HIST_RECENT);
 	s->ms_avg_short= avg_get((spll_avg_t *)&mpll->avg_err_short, AVG_HIST_RECENT);
 	s->bs_avg_long = avg_get((spll_avg_t *)&bpll->avg_err_long, AVG_HIST_RECENT);
 	s->bs_avg_short= avg_get((spll_avg_t *)&bpll->avg_err_short, AVG_HIST_RECENT);
-#endif
 	s->ms_max      = mpll->max;
 	s->ms_min      = mpll->min;
 	s->ms_mtied    = mpll->mtie_d;
@@ -302,10 +300,10 @@ int spll_update_dump(struct spll_switchover_state *s)
 	if(s->occured == 0) return 0;
 	TRACE_DEV("\n\n\n[switchover occured %2d -> %2d] type: %s | ms_avg_l: %4d |"
 	" ms_avg_s: %4d | bs_avg_l: %4d | bs_avg_s: %4d | ms_max: %4d | ms_min: %4d  | "
-	"ms_mtie: %4d | ms_down_quantiier: %4d ", s->old_active_chan, s->new_active_chan,
+	"ms_mtie: %4d | ms_down_quantiier: %4d | irq_cnt=%4d ", s->old_active_chan, s->new_active_chan,
 	stringlist_lookup(swovr_types,s->trigger_src), s->ms_avg_long,s->ms_avg_short,
 	s->bs_avg_long, s->bs_avg_short, s->ms_max, s->ms_min, s->ms_mtied, 
-	s->ms_down_qualifier_cnt);
+	s->ms_down_qualifier_cnt, s->switchover_irq_cnt);
 #ifdef MULTI_BACKUP
 	if(s->trigger_src == SWOVER_PRE_HW_DETECT) xpll_switchover_dump(s);
 #endif
@@ -426,10 +424,9 @@ int spll_multi_predown_detect(struct spll_main_state *ms, struct spll_multibacku
 	for (i=0;i < bs->backup_number; i++)
 	{
 		bs_avg_ls = bpll_avg_check(&bs->bpll[bs->bids[i]], &bs_avg_l, &bs_avg_s);
-// 		so->xs_avg_long[bs->bids[i]]  = bs_avg_l;
-// 		so->xs_avg_short[bs->bids[i]] = bs_avg_s;
 		if(bs_avg_ls > AVG_LS_THRESHOLD)
 			cnt_bad++;
+		so->xs_avg_ls[bs->bids[i]] = bs_avg_ls;
        }
        if (cnt_bad == bs->backup_number)
        {
@@ -483,7 +480,7 @@ static inline void update_loops(struct softpll_state *s, int tag_value, int tag_
 		if(bid  >=0 && mpll_down(&s->mpll,s->hw_status_d) == 1)
 		{
 			spll_update_swover(&s->swover,&s->mpll, &s->xpll.bpll[bid],SWOVER_HW_DETECT);
-// 			xpll_update_switchover(&s->swover, &s->xpll);
+			xpll_update_switchover(&s->swover, &s->xpll);
 			spll_switchover(s); // curret bpll gets disabled (enabled=0) so it will be ignored
 			s->xpll.backup_mask &= ~(0x1 << bid);
 			if(s->xpll.backup_number > 0) s->xpll.backup_number--;
@@ -494,7 +491,7 @@ static inline void update_loops(struct softpll_state *s, int tag_value, int tag_
 		else if(spll_multi_predown_detect(&s->mpll, &s->xpll, &s->swover))
 		{
 			spll_update_swover(&s->swover,&s->mpll, &s->xpll.bpll[bid],SWOVER_PRE_HW_DETECT);
-// 			xpll_update_switchover(&s->swover, &s->xpll);
+			xpll_update_switchover(&s->swover, &s->xpll);
 			spll_switchover(s); // curret bpll gets disabled (enabled=0) so it will be ignored
 			s->xpll.backup_mask &= ~(0x1 << bid);
 			if(s->xpll.backup_number > 0) s->xpll.backup_number--;
@@ -588,7 +585,7 @@ void _irq_entry()
 	{
 	      s->switchover = 0;
 	      rts_update();
-	      s->switchover_irq_cnt = s->mpll.fifo;
+	      s->swover.switchover_irq_cnt = s->mpll.fifo;
 	}
 
 	irq_count++;

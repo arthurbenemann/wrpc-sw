@@ -85,10 +85,13 @@ int rts_adjust_phase(int channel, int32_t phase_setpoint)
     /* Notification to higher layers (PPSi) that something is up and backup_state should be
      * read. Sure, we could read backup_state all the time but why to multiply ipc traffic.
      */
-    if(pstate.switchover_ocured == 1 && pstate.current_ref == channel)
+    if( (pstate.switchover_ocured == 1 && pstate.current_ref == channel) ||
+        (pstate.switchover_ocured == 0 && (pstate.channels[channel].flags & 
+         CHAN_ALL_BACKUP_FLAGS)!=0))
+    {
+	TRACE("check backup state \n");
 	return 1;
-    if(pstate.switchover_ocured == 0 && (pstate.channels[channel].flags & CHAN_ALL_BACKUP_FLAGS)!=0)
-	return 1;
+    }
     return 0;
 }
 
