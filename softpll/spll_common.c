@@ -81,6 +81,7 @@ int ld_update(spll_lock_det_t *ld, int y)
 			ld->lock_cnt = 0;
 			ld->lock_changed = 1;
 			ld->locked = 0;
+			ld->unlocked_d = 1;
 			return -1;
 		}
 	}
@@ -92,6 +93,20 @@ void ld_init(spll_lock_det_t *ld)
 	ld->locked = 0;
 	ld->lock_cnt = 0;
 	ld->lock_changed = 0;
+	ld->unlocked_d = 0;
+}
+
+int ld_unlock_d(spll_lock_det_t *ld)
+{
+	if(ld->locked == 1 && ld->unlocked_d == 0)
+		return 0; //not unlocked since last check 
+	else if(ld->locked == 1 && ld->unlocked_d == 1)
+	{
+		ld->unlocked_d == 0;
+		return 1; // unlocked since last check but now OK, reset unlocked_d
+	}
+	else
+		return 1; // unlocked
 }
 
 void lowpass_init(spll_lowpass_t *lp, int alpha)

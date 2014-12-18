@@ -251,7 +251,7 @@ void rts_update(void)
     for(i=0;i<RTS_PLL_CHANNELS;i++)
     {
 #define CH pstate.channels[i]
-        CH.flags &= CHAN_UPDATE_PHASE; // remember this utnil cleared by rts_adjust_phase()
+        CH.flags &= (CHAN_UPDATE_PHASE | CHAN_BACKUP_UNLOCKED); // remember this utnil cleared by rts_adjust_phase()
         CH.phase_loopback = 0;
         CH.phase_current = 0;
 //        CH.phase_setpoint = 0;
@@ -273,7 +273,7 @@ void rts_update(void)
             {
                 if(spll_get_backup_phase_shift(i, &CH.phase_current, NULL, &CH.phase_good_val))
 			CH.flags |= CHAN_UPDATE_PHASE;
-		if(spll_check_backup_lock(i) == 0)
+		if(spll_check_backup_lock(i))
 			CH.flags |= CHAN_BACKUP_UNLOCKED;
 		}
 
@@ -324,6 +324,7 @@ int rts_get_backup_state(struct rts_bpll_state *s, int channel)
 	{
 		TRACE("CHAN_BACKUP_UNLOCKED\n");
 		active_flags |= BPLL_UNLOCKED;
+		pstate.channels[channel].flags &= ~CHAN_BACKUP_UNLOCKED;
 	}
 	s->flags         = htonl(active_flags);
 	s->phase_good_val= htonl(pstate.channels[channel].phase_good_val);

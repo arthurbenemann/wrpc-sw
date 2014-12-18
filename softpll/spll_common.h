@@ -59,6 +59,7 @@ typedef struct {
 	int threshold;		/* Error threshold */
 	int locked;		/* Non-zero: we are locked */
 	int lock_changed;
+	int unlocked_d;        /*unlocked since last status check*/
 } spll_lock_det_t;
 
 /* simple, 1st-order lowpass filter */
@@ -121,5 +122,5 @@ void avg_init(spll_avg_t *a, int log2_n_avg);
 int avg_update(spll_avg_t *a, int val);
 int avg_get(spll_avg_t *a, int hist);
 void avg_dump(spll_avg_t *a, char *name);
-
+int ld_unlock_d(spll_lock_det_t *ld);
 #endif // __SPLL_COMMON_H

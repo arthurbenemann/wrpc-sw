@@ -1477,8 +1477,8 @@ int spll_check_switchover(int current_ref, int backup_ref)
 int spll_check_backup_lock(int channel)
 {
 #ifdef MULTI_BACKUP
-	return softpll.xpll.bpll[channel].ld.locked;
+	return ld_unlock_d((spll_lock_det_t *)&softpll.xpll.bpll[channel].ld);
 #else
-	return softpll.bpll.ld.locked;
+	return ld_unlock_d((spll_lock_det_t *)&softpll.bpll.ld.locked);
 #endif
 }
