@@ -177,7 +177,8 @@
  * 1) the active port that is detected to go down is exptected to really go down, i.e.
  *    pre-hardware detection of down is expected to be correct and the real hardware down 
  *    happens. The case when pre-detection si false, is not handled.
- * 2)
+ * 2) when fibers connected when starting up, the active/backu are wrongly recognized
+ *    (i.e. the same becomes active and backup)
  */
 
 #include "spll_backup.h"
@@ -395,16 +396,10 @@ int bpll_update(struct spll_backup_state *s, int tag, int source)
 			s->adder_out -= MPLL_TAG_WRAPAROUND;
 		}
 		
-// 		if (s->ld.locked) { // we ignore it, it initially shows unlocked due to the error
-			if (s->phase_shift_current < s->phase_shift_target) {
-				s->phase_shift_current++;
-				s->adder_ref++;
-			} else if (s->phase_shift_current >
-				   s->phase_shift_target) {
-				s->phase_shift_current--;
-				s->adder_ref--;
-			}
-// 		}
+		// just set the proper setpoint, this is completly faked so nothing will happen
+		s->adder_ref          += (s->phase_shift_target - s->phase_shift_current);
+		s->phase_shift_current = s->phase_shift_target;
+		
 		if (ld_update((spll_lock_det_t *)&s->ld, err))
 		{
 			if(s->ld.lock_cnt == s->ld.lock_samples)
