@@ -54,6 +54,7 @@ struct spll_main_state {
 	int mtie_d;
 	int down_qulifier;
 	int priority;
+	int phase_adjust_wait;
 // 	int err_history[ERR_HIST_LEN];
 // 	int pointer;	
 };

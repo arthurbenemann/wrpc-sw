@@ -95,6 +95,7 @@ void mpll_start(struct spll_main_state *s)
 	s->mtie_d = 0;
 	s->down_qulifier = 0;
 	s->err_slow_drift_corr = 0;
+	s->phase_adjust_wait = 10;
 // 	avg_dump((spll_avg_t *)&s->avg_err_short, "init ERR short");
 // 	avg_dump((spll_avg_t *)&s->avg_err_long,  "init ERR long ");
 // 	avg_dump((spll_avg_t *)&s->avg_y_long,    "init Y   long ");
@@ -117,7 +118,8 @@ int mpll_update(struct spll_main_state *s, int tag, int source)
 
 	int err, y;
 	int en;
-	int32_t phase=0;	
+	int32_t phase=0;
+	static int phase_adjust_wait;
 
 	if (source == s->id_ref)
 		s->tag_ref = tag;
@@ -204,17 +206,28 @@ int mpll_update(struct spll_main_state *s, int tag, int source)
 		}
 
 		if (s->ld.locked) {
-			if (s->phase_shift_current < s->phase_shift_target) 
+			if(phase_adjust_wait > 0)
 			{
-				s->phase_shift_current++;
-				s->adder_ref++;
+				phase_adjust_wait--;
 			}
-			else if (s->phase_shift_current > s->phase_shift_target) 
+			else
 			{
-				s->phase_shift_current--;
-				s->adder_ref--;
+				phase_adjust_wait = s->phase_adjust_wait;
+				if (s->phase_shift_current < s->phase_shift_target) 
+				{
+					s->phase_shift_current++;
+					s->adder_ref++;
+				}
+				else if (s->phase_shift_current > s->phase_shift_target) 
+				{
+					s->phase_shift_current--;
+					s->adder_ref--;
+				}
 			}
 		}
+		else 
+			phase_adjust_wait = s->phase_adjust_wait;
+		
 		if (ld_update((spll_lock_det_t *)&s->ld, err))
 		{
 			if(s->ld.lock_cnt == s->ld.lock_samples)
