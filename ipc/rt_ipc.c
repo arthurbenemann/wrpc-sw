@@ -325,6 +325,8 @@ int rts_get_backup_state(struct rts_bpll_state *s, int channel)
 		clear_switchover_occured();
 		TRACE("BPLL_SWITCHOVER\n");
 		active_flags = BPLL_SWITCHOVER;
+		pstate.channels[channel].flags &= ~CHAN_UPDATE_PHASE;
+		pstate.channels[channel].flags &= ~CHAN_BACKUP_UNLOCKED;
 	}
 	if(pstate.channels[channel].flags & CHAN_UPDATE_PHASE)
 	{
