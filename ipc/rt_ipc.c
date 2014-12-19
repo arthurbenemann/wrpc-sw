@@ -68,13 +68,22 @@ static void set_old_channel(int channel)
 /* Sets the phase setpoint on a given channel */
 int rts_adjust_phase(int channel, int32_t phase_setpoint)
 {
-    TRACE("Adjusting phase: ref channel %d, setpoint=%d ps [switchover occured=%d,"
+    static int at_swover_updated =0;
+    TRACE("Adjusting phase: channel %d, setpoint=%d ps [switchover occured=%d,"
     " loopback_phase=%d, flags=0x%x, backup update req %d, phase good_value=%d]\n", 
     channel, phase_setpoint, 
     pstate.switchover_ocured,(int)pstate.channels[channel].phase_loopback, 
     pstate.channels[channel].flags, (pstate.channels[channel].flags & CHAN_UPDATE_PHASE) != 0,
     pstate.channels[channel].phase_good_val);
 
+    if(pstate.switchover_ocured == 1 && at_swover_updated == 0)
+    {
+	  rts_update(); // to make sure all is in sync, i.e. the curr_ref
+	  at_swover_updated = 1;
+    }
+    else if(pstate.switchover_ocured == 0 && at_swover_updated == 1)
+		at_swover_updated = 0;
+    
     if(pstate.current_ref == channel)
          spll_set_phase_shift(0, phase_setpoint);
     else
@@ -89,7 +98,10 @@ int rts_adjust_phase(int channel, int32_t phase_setpoint)
         (pstate.switchover_ocured == 0 && (pstate.channels[channel].flags & 
          CHAN_ALL_BACKUP_FLAGS)!=0))
     {
-	TRACE("check backup state \n");
+	TRACE("check backup state: curr_ref=%d, chan=%d, swovr_occured=%d, update_phase=%d, backup_unlock=%d\n",
+	pstate.current_ref, channel, pstate.switchover_ocured, 
+	(pstate.channels[channel].flags & CHAN_UPDATE_PHASE) !=0, 
+	(pstate.channels[channel].flags & CHAN_BACKUP_UNLOCKED) !=0 );
 	return 1;
     }
     return 0;
@@ -199,7 +211,7 @@ void rts_update(void)
     int n_ref;
     int enabled;
     uint32_t ret;
-		
+
     spll_get_num_channels(&n_ref, NULL);
     ret = spll_get_refs(&pstate.current_ref, &pstate.backup_ref, &pstate.backup_mask);
     if(ret != REF_NONE) // switchover occured
