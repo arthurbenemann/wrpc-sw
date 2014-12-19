@@ -168,8 +168,16 @@ int mpll_update(struct spll_main_state *s, int tag, int source)
 		avg_update((spll_avg_t *)&s->avg_err_short, err);
 		avg_update((spll_avg_t *)&s->avg_err_long,  err);
 		err = err + s->err_slow_drift_corr;
+		/// used for testing
+/// 		if(phase_adjust_wait==0)
+/// 		{
+/// 			if(s->err_slow_drift_corr > 0) s->err_slow_drift_corr--;
+/// 			if(s->err_slow_drift_corr < 0) s->err_slow_drift_corr++;
+/// 		}
+		/// //////////
 		if(s->err_slow_drift_corr > 0) s->err_slow_drift_corr--;
 		if(s->err_slow_drift_corr < 0) s->err_slow_drift_corr++;
+
 // 		if ((s->ld.locked && abs(err) < 50) || ! s->ld.locked || s->after_switchover)
 		{
 			if(s->holdover==0)
