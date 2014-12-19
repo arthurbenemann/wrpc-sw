@@ -1061,7 +1061,7 @@ void spll_show_stats()
 	
 	if (softpll.mode > 0)
 	{
-		if(spll_dump_mpll()) return;
+// 		if(spll_dump_mpll()) return;
 		TRACE_DEV("softpll[%8d]; seq %s; mode %s; "
 		     "algn_state %s; hL-%s; mL-%s; "
 		     "hPiY=%d; mPiY=%d; DelCnt=%d; mErr:%6d; ",
