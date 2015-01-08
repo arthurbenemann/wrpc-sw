@@ -168,7 +168,7 @@ int mpll_update(struct spll_main_state *s, int tag, int source)
 		avg_update((spll_avg_t *)&s->avg_err_short, err);
 		avg_update((spll_avg_t *)&s->avg_err_long,  err);
 		err = err + s->err_slow_drift_corr;
-		/// used for testing
+		/// used for testing to slow more the error faking -> not good
 /// 		if(phase_adjust_wait==0)
 /// 		{
 /// 			if(s->err_slow_drift_corr > 0) s->err_slow_drift_corr--;
@@ -337,8 +337,15 @@ int mpll_switchover(struct spll_main_state *mpll, struct spll_backup_state *bpll
 // 	mpll->delock_count        = bpll->delock_count;
 // 	mpll->dac_index           = bpll->dac_index;
 	mpll->enabled             = 1;//bpll->enabled;
+	
+	//////////////////////////////////////////////////////////////////////////////////////
+	//this idea turned out to be bad (we get oscillations): -bpll->err_d + mpll->err_d 
+	//mpll->err_slow_drift_corr = -bpll->err_d+mpll->err_d;
+	//////////////////////////////////////////////////////////////////////////////////////
+	
 	mpll->err_d               = bpll->err_d;
-	mpll->err_slow_drift_corr = -bpll->err_d;
+	mpll->err_slow_drift_corr = -bpll->err_d; // this might cause in some cases oscillations as well, need to simuulate
+	
 	mpll->ld.lock_cnt         = mpll->ld.lock_samples;
 	mpll->hw_status_d         = 1; //up
 	mpll->holdover = 0;
