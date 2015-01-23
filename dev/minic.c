@@ -268,7 +268,8 @@ int minic_rx_frame(struct wr_ethhdr *hdr, uint8_t * payload, uint32_t buf_size,
 		minic_rx_memcpy(payload, (void *)minic.rx_head + 4
 				+ ETH_HEADER_SIZE, n_recvd);
 	} else {
-		n_recvd = -1;
+	        minic_rxbuf_free(num_words);
+                return -1;
 	}
 	minic_rxbuf_free(num_words);
 	minic.rx_head = (uint32_t *)((uint32_t)minic.rx_base +
@@ -381,11 +382,11 @@ int minic_tx_frame(struct wr_ethhdr_vlan *hdr, uint8_t *payload, uint32_t size,
 		hwts->sec = sec;
 		hwts->ahead = 0;
 		hwts->nsec = counter_r * (REF_CLOCK_PERIOD_PS / 1000);
-		
+
 //        wrc_verbose("minic_tx_frame [%d bytes] TS: %d.%d valid %d\n", size, hwts->utc, hwts->nsec, hwts->valid);
 		minic.tx_count++;
         }
-        
+
 	return size;
 }
 
