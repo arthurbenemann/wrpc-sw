@@ -18,6 +18,7 @@ extern unsigned char *BASE_ONEWIRE;
 extern unsigned char *BASE_ETHERBONE_CFG;
 
 #define FMC_EEPROM_ADR 0x50
+#define FMC_PCA9548_ADR 0x74
 
 void sdb_find_devices(void);
 void sdb_print_devices(void);
