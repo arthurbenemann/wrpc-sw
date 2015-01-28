@@ -20,6 +20,20 @@ int sfp_present()
 	return !gpio_in(GPIO_SFP_DET);
 }
 
+/*
+ * Select channel 1 on the PCA9548
+ */
+void pca9548_select() {
+
+    mi2c_init(WRPC_FMC_I2C);
+
+    mi2c_start(WRPC_FMC_I2C);
+    mi2c_put_byte(WRPC_FMC_I2C, (FMC_PCA9548_ADR << 1));
+    mi2c_put_byte(WRPC_FMC_I2C, (1 << 1));
+    mi2c_stop(WRPC_FMC_I2C);
+
+}
+
 int sfp_read_part_id(char *part_id)
 {
 	int i;

@@ -7,6 +7,7 @@ obj-$(CONFIG_WR_NODE) += \
 	dev/syscon.o \
 	dev/sfp.o \
 	dev/devicelist.o \
+	dev/wrx_wrpc.o \
 	dev/rxts_calibrator.o \
 	dev/flash.o
 

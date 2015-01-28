@@ -78,6 +78,22 @@
   - Code may contain up to 64 operations, but it must classify shorter packets faster than in
     32 instructions (there's no flow throttling)
 */
+/*
+Changed by Riccarto Travaglini (10/10/2014) according to the new selection rules for the CLBv2 of the KM3NeT experiment
+packet classes:
+7: unicast AND not PTP
+6: ARP AND broadcast
+5: IPv4 AND UDP AND broadcast AND (IP header length equal 20) AND (Udp destination port = 0xDACE)
+  
+0 : PTP frames
+
+classes 7,6,5 => user logic
+class 0 => WR lm32
+other packets are DROPPED
+
+*/
+
+#define KM3NET_CLBV2_RULES
 
 #include <stdio.h>
 
@@ -231,6 +247,31 @@ void pfilter_init_default()
 	pfilter_cmp(6, 0x0800, 0xffff, MOV, 4);	/* r4 = 1 when ethertype = IPv4 */
 	pfilter_cmp(6, 0x88f7, 0xffff, MOV, 5);	/* r5 = 1 when ethertype = PTPv2 */
 	pfilter_cmp(6, 0x0806, 0xffff, MOV, 6);	/* r6 = 1 when ethertype = ARP */
+#ifdef KM3NET_CLBV2_RULES
+
+	pfilter_cmp(11, 0x0011, 0x00ff, MOV, 7);	/* r7 = 1 when IP type = UDP */
+	pfilter_cmp(7, 0x0500, 0x0f00, MOV, 14);	/* r14 = 1 when HLEN = 20 (standard IP header)*/
+	pfilter_logic2(8, 1, AND, 6);
+	pfilter_logic3(9, 1, AND, 4, AND, 7);	/* r9 = IPv4 and UDP and broadcast */
+	pfilter_logic3(10, 3, OR, 2, AND, 5);	/* r10 = PTP (multicast or unicast) */
+	pfilter_logic3(11, 5, NOT, 0, AND, 3);	/* r11 = unicast non PTP  */
+	pfilter_cmp(18, 0xdace, 0xffff, MOV, 15); /* r15 = 1 when UDP DST port = 0xdace */	
+	pfilter_logic3(16, 9, AND, 14, AND, 15);	/* r16 = IPv4+UDP+broadcast+hlen=20+udp-dst-port=0xdace */
+ 	pfilter_logic3(12, 11, OR, 8, OR, 16);	/* r12 = unicast non-PTP or broad-ARP or broad-IPv4-UDP-hlen20-udpdstport0xdace  */
+		
+	pfilter_logic3(13, 10, OR, 12, NOT, 0);	/* r13 = all non PTP and non unicast non-PTP and non broad-ARP and non  broad-IPv4-UDP */
+	  
+	pfilter_logic2(R_CLASS(7), 11, MOV, 0);	/* class 7: unicast non PTP
+			 --traffic => external fabric */
+	pfilter_logic2(R_CLASS(6), 8, MOV, 0); /* class 6: ARP broad =>
+						   --external fabric */
+	pfilter_logic2(R_CLASS(5), 16, MOV, 0); /* class 6: IPv4 and UDP and broadcast+hlen=20+udp-dst-port=0xdace =>
+						   --external fabric */				   
+	pfilter_logic2(R_CLASS(0), 10, MOV, 0); /* class 0: PTP frames => LM32 */
+	pfilter_logic2(R_DROP, 13, MOV, 0); /* all non PTP and non unicast non-PTP and non broad-ARP and non  broad-IPv4-UDP => DROP */
+	
+
+#else
 	pfilter_cmp(6, 0xdbff, 0xffff, MOV, 9);	/* r9 = 1 when ethertype = streamer */
 
 	/* Ethernet = 14 bytes, Offset to type in IP: 8 bytes = 22/2 = 11 */
@@ -284,6 +325,7 @@ void pfilter_init_default()
 						   external fabric */
 	pfilter_logic2(R_CLASS(0), 10, MOV, 0); /* class 0: PTP frames => LM32 */
 
+#endif
 #endif
 
 	pfilter_load();
