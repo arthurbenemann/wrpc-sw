@@ -14,8 +14,13 @@
 #define CPU_CLOCK 62500000ULL
 
 /* WR Reference clock period (picoseconds) and frequency (Hz) */
-#define REF_CLOCK_PERIOD_PS 8000
-#define REF_CLOCK_FREQ_HZ 125000000
+#ifdef SPEC_CLOCK
+    #define REF_CLOCK_PERIOD_PS 8000
+    #define REF_CLOCK_FREQ_HZ 125000000
+#else
+    #define REF_CLOCK_PERIOD_PS 16000
+    #define REF_CLOCK_FREQ_HZ 62500000
+#endif
 
 /* Baud rate of the builtin UART (does not apply to the VUART) */
 #define UART_BAUDRATE 115200ULL
