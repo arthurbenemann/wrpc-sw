@@ -44,3 +44,8 @@ void timer_delay(uint32_t how_long)
 
 	while (t_start + how_long > timer_get_tics()) ;
 }
+
+void set_temperature(uint32_t temperature){
+
+	syscon->TEMP = temperature;
+}

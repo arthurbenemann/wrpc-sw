@@ -15,6 +15,7 @@ struct SYSCON_WB {
 	uint32_t HWFR;		/*Hardware Feature Register */
 	uint32_t TCR;		/*Timer Control Register */
 	uint32_t TVR;		/*Timer Counter Value Register */
+	uint32_t TEMP;		/*Temperature value register */
 };
 
 /*GPIO pins*/
@@ -38,10 +39,12 @@ extern struct s_i2c_if i2c_if[2];
 void timer_init(uint32_t enable);
 uint32_t timer_get_tics();
 void timer_delay(uint32_t how_long);
+void set_temperature(uint32_t temperature);
 
 /* usleep.c */
 extern void usleep_init(void);
 extern int usleep(useconds_t usec);
+
 
 
 

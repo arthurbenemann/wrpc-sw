@@ -31,7 +31,7 @@
 
 #include "wrc_ptp.h"
 
-int wrc_ui_mode = UI_SHELL_MODE;
+int wrc_ui_mode = UI_SCAN_TEMP;
 int wrc_ui_refperiod = TICS_PER_SECOND; /* 1 sec */
 int wrc_phase_tracking = 1;
 
@@ -154,6 +154,12 @@ static void ui_update()
 			shell_init();
 			wrc_ui_mode = UI_SHELL_MODE;
 		}
+	} else if (wrc_ui_mode == UI_SCAN_TEMP) {
+		wrc_scan_temp();
+		if (uart_read_byte() == 27 || wrc_ui_refperiod == 0) {
+			shell_init();
+			wrc_ui_mode = UI_SHELL_MODE;
+		}
 	} else
 		shell_interactive();
 
@@ -229,7 +235,7 @@ static void check_reset(void) {}
 int main(void)
 {
 	check_reset();
-	wrc_ui_mode = UI_SHELL_MODE;
+	wrc_ui_mode = UI_SCAN_TEMP;
 	_endram = ENDRAM_MAGIC;
 
 	wrc_initialize();

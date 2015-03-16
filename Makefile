@@ -75,6 +75,7 @@ obj-ppsi = \
 
 obj-$(CONFIG_PPSI) += \
 	monitor/monitor_ppsi.o \
+	monitor/monitor_temp.o \
 	lib/ppsi-wrappers.o \
 	$(obj-ppsi)
 
