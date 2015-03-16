@@ -51,6 +51,7 @@ static void wrc_initialize()
 	uart_init_hw();
 
 	mprintf("WR Core: starting up...\n");
+	mprintf("CPIC software. \n");
 
 	timer_init(1);
 	wrpc_w1_init();
