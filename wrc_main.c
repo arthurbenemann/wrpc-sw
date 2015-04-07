@@ -235,7 +235,7 @@ static void check_reset(void) {}
 int main(void)
 {
 	check_reset();
-	wrc_ui_mode = UI_SCAN_TEMP;
+	wrc_ui_mode = UI_SHELL_MODE;
 	_endram = ENDRAM_MAGIC;
 
 	wrc_initialize();
@@ -274,6 +274,7 @@ int main(void)
 			break;
 		}
 
+		wrc_scan_temp();
 		ui_update();
 		wrc_ptp_update();
 		spll_update_aux_clocks();

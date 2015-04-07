@@ -17,3 +17,4 @@ wrc.vhd
 .config.old
 include/config
 include/generated
+/.project

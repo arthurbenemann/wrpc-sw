@@ -14,7 +14,6 @@ obj-y += \
 	shell/cmd_init.o \
 	shell/cmd_ptrack.o \
 	shell/cmd_help.o \
-	shell/cmd_temp.o \
 	shell/cmd_wb.o \
 	shell/cmd_refresh.o
 
