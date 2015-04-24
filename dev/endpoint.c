@@ -106,9 +106,6 @@ int ep_enable(int enabled, int autoneg)
 /* Load default packet classifier rules - see ep_pfilter.c for details */
 	pfilter_init_default();
 
-/* Enable TX/RX paths, reset RMON counters */
-	EP->ECR = EP_ECR_TX_EN | EP_ECR_RX_EN | EP_ECR_RST_CNT;
-
 	autoneg_enabled = autoneg;
 
 /* Reset the GTP Transceiver - it's important to do the GTP phase alignment every time
@@ -117,6 +114,12 @@ int ep_enable(int enabled, int autoneg)
 	timer_delay_ms(200);
 	pcs_write(MDIO_REG_MCR, MDIO_MCR_RESET);	/* reset the PHY */
 	pcs_write(MDIO_REG_MCR, 0);	/* reset the PHY */
+
+/* wait for PHY to get synced and link_ok */  
+  while ((pcs_read(MDIO_REG_MSR) & MDIO_MSR_LSTATUS) == 0);
+
+/* Enable TX/RX paths, reset RMON counters */
+	EP->ECR = EP_ECR_TX_EN | EP_ECR_RX_EN | EP_ECR_RST_CNT;
 
 /* Don't advertise anything - we don't want flow control */
 	pcs_write(MDIO_REG_ADVERTISE, 0);
