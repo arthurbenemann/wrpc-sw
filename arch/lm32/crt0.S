@@ -96,6 +96,9 @@ _start:
         .global _reset_handler
         .type 	_reset_handler, @function
 _reset_handler:
+_reset_handler:
+    bi _true_reset /* hook for the bootloader (first insn after reset must be an inconditional branch) */
+_true_reset:
     xor r0, r0, r0
     wcsr    IE, r0
     wcsr    IM, r0
