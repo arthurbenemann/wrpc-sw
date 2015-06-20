@@ -320,7 +320,7 @@ void spll_init(int mode, int slave_ref_channel, int align_pps)
 	SPLL->RCER = 0;
 	SPLL->ECCR = 0;
 	SPLL->OCCR = 0;
-	SPLL->DEGLITCH_THR = 1000;
+	SPLL->DEGLITCH_THR = 2000;
 
 	PPSG->ESCR = 0;
 	PPSG->CR = PPSG_CR_CNT_EN | PPSG_CR_CNT_RST | PPSG_CR_PWIDTH_W(PPS_WIDTH);

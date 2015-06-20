@@ -29,12 +29,12 @@ void mpll_init(struct spll_main_state *s, int id_ref,
 	s->pi.anti_windup = 1;
 	s->pi.bias = 65000;
 	s->pi.kp = 1100;	// / 2;
-	s->pi.ki = 30;		// / 2;
+	s->pi.ki = 60;		// / 2;
 	s->delock_count = 0;
 
 	/* Freqency branch lock detection */
 	s->ld.threshold = 1200;
-	s->ld.lock_samples = 1000;
+	s->ld.lock_samples = 500;
 	s->ld.delock_samples = 100;
 	s->id_ref = id_ref;
 	s->id_out = id_out;
@@ -174,13 +174,17 @@ int mpll_update(struct spll_main_state *s, int tag, int source)
 		}
 
 		if (s->ld.locked) {
+			int delta = abs(s->phase_shift_current - s->phase_shift_target);
+			if(delta > 2)
+			    delta = 2;
+
 			if (s->phase_shift_current < s->phase_shift_target) {
-				s->phase_shift_current++;
-				s->adder_ref++;
+				s->phase_shift_current += delta;
+				s->adder_ref += delta;
 			} else if (s->phase_shift_current >
 				   s->phase_shift_target) {
-				s->phase_shift_current--;
-				s->adder_ref--;
+				s->phase_shift_current -= delta;
+				s->adder_ref -= delta;
 			}
 		}
 		if (ld_update((spll_lock_det_t *)&s->ld, err))
