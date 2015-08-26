@@ -3,12 +3,15 @@
 #include <string.h>
 #include <wrc.h>
 
+//one loop stat fixed. CPIC.
 static int cmd_stat(const char *args[])
 {
-	if (!strcasecmp(args[0], "bts"))
+	if (!strcasecmp(args[0], "cont")) {
+		wrc_ui_mode = UI_STAT_MODE;
+	} else if (!strcasecmp(args[0], "bts"))
 		mprintf("%d ps\n", ep_get_bitslide());
 	else
-		wrc_ui_mode = UI_STAT_MODE;
+		wrc_log_stats(1);
 
 	return 0;
 }
