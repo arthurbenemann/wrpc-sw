@@ -12,7 +12,10 @@ extern unsigned char *BASE_UART;
 extern unsigned char *BASE_ONEWIRE;
 extern unsigned char *BASE_ETHERBONE_CFG;
 
-#define FMC_EEPROM_ADR 0x55
+#define FMC1_EEPROM_ADR 0x50
+#define FMC2_EEPROM_ADR 0x52
+#define CARRIER_EEPROM_ADR 0x55
+#define FMC_EEPROM_ADR CARRIER_EEPROM_ADR //TODO: FMC is the old name as used by SPEC.
 
 void sdb_find_devices(void);
 void sdb_print_devices(void);

@@ -58,14 +58,19 @@
 
 uint8_t has_eeprom = 0;
 
-uint8_t eeprom_present(uint8_t i2cif, uint8_t i2c_addr)
+uint8_t eeprom_isvalid(uint8_t i2cif, uint8_t i2c_addr)
 {
-	has_eeprom = 1;
 	if (!mi2c_devprobe(i2cif, i2c_addr))
 		if (!mi2c_devprobe(i2cif, i2c_addr))
-			has_eeprom = 0;
+			return 0;
 
-	return 0;
+	return 1;
+}
+
+uint8_t eeprom_present(uint8_t i2cif, uint8_t i2c_addr)
+{
+	has_eeprom = eeprom_isvalid(i2cif,i2c_addr);
+	return has_eeprom;
 }
 
 static int eeprom_read(uint8_t i2cif, uint8_t i2c_addr, uint32_t offset,
@@ -358,6 +363,64 @@ int8_t eeprom_init_readcmd(uint8_t i2cif, uint8_t i2c_addr, uint8_t *buf,
 
 	return i;
 }
+
+
+
+int8_t eeprom_read_board_fru(uint8_t i2cif, uint8_t i2c_addr){
+
+	char buf[64];
+	uint8_t type_len_byte;
+	uint32_t fru_check_word;
+	uint32_t ee_read_addr = EE_BASE_FRU_ID;
+	uint8_t fru_finished = 0;
+	uint8_t fru_size;
+	int i;
+	char *fru_fldname[6] = {"VENDOR  ","DEVICE  ","SERIAL  ","PARTNUM ","FID     ","CUSTOM  " };
+	uint8_t fldname_pos = 0;
+
+	//If there is no EEPROM available return.
+	if (!eeprom_isvalid(i2cif,i2c_addr)) {
+		//mprintf(" ERROR: There is no EEPROM available 0x%x. \n",i2c_addr);
+		return -1;
+	}
+
+	//Read the first 32 bits from the EEPROM. If they match with 0x10 00 00 01, there is FRU info
+	eeprom_read(i2cif, i2c_addr, ee_read_addr , &fru_check_word, sizeof(uint32_t));
+
+	if (fru_check_word != 0x01000001 ) {
+		mprintf("There is not any EEPROM FRU info. \n");
+		return -1;
+	}
+
+	mprintf("EEPROM FRU info is valid: \n");
+
+	ee_read_addr += EE_BASE_FRU;
+
+	while (!fru_finished) {
+		eeprom_read(i2cif, i2c_addr, ee_read_addr , &type_len_byte, sizeof(uint8_t));
+
+		if ( (type_len_byte & FRU_SEP_MASK) == FRU_SEP_MASK) {
+			fru_size = type_len_byte & ~FRU_SEP_MASK;
+			ee_read_addr++;
+
+				for ( i = 0 ; i < fru_size ; i++ ) {
+					eeprom_read(i2cif, i2c_addr, ee_read_addr + i , &buf[i], sizeof(uint8_t));
+					if(buf[i] == 0) buf[i]='?';
+				}
+			if (fru_size == 1 && buf[0] ==  '?') continue;
+
+			buf[fru_size] = '\0';
+			ee_read_addr += fru_size;
+			mprintf(" FRU %s: %s \n", fru_fldname[fldname_pos++], buf);
+
+		} else {
+			fru_finished = 1;
+		}
+	}
+	return 0;
+}
+
+
 
 #ifdef CONFIG_W1
 #include <w1.h>

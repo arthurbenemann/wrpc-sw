@@ -13,6 +13,10 @@
 #define EE_RET_CORRPT -3
 #define EE_RET_POSERR -4
 
+#define EE_BASE_FRU_ID 0
+#define EE_BASE_FRU 14
+#define FRU_SEP_MASK 0xC0
+
 extern int32_t sfp_alpha;
 extern int32_t sfp_deltaTx;
 extern int32_t sfp_deltaRx;
@@ -42,6 +46,8 @@ int8_t eeprom_init_add(uint8_t i2cif, uint8_t i2c_addr, const char *args[]);
 int32_t eeprom_init_show(uint8_t i2cif, uint8_t i2c_addr);
 int8_t eeprom_init_readcmd(uint8_t i2cif, uint8_t i2c_addr, uint8_t *buf,
 			   uint8_t bufsize, uint8_t next);
+
+int8_t eeprom_read_board_fru(uint8_t i2cif, uint8_t i2c_addr);
 
 int32_t eeprom_get_sfp(uint8_t i2cif, uint8_t i2c_addr, struct s_sfpinfo * sfp,
                        uint8_t add, uint8_t pos);
