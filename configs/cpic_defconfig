@@ -14,5 +14,6 @@ CONFIG_W1=y
 #
 # wrpc-sw is tainted if you change the following options
 #
-# CONFIG_DEVELOPER is not set
+# CONFIG_DEVELOPER=y must be set to modify RAM
+CONFIG_DEVELOPER=y 
 CONFIG_LEGACY_EEPROM=y
