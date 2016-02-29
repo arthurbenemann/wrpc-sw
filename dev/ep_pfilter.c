@@ -16,13 +16,28 @@
  */
 
 #include <wrc.h>
+#include <shell.h>
 #include <endpoint.h>
 #include <hw/endpoint_regs.h>
 
-extern uint32_t _binary_rules_pfilter_bin_start[];
-extern uint32_t _binary_rules_pfilter_bin_end[];
+extern uint32_t _binary_rules_novlan_bin_start[];
+extern uint32_t _binary_rules_novlan_bin_end[];
+extern uint32_t _binary_rules_vlan_bin_start[];
+extern uint32_t _binary_rules_vlan_bin_end[];
 
-#define pfilter_dbg(fmt, ...) /* nothing */
+struct rule_set {
+	uint32_t *ini;
+	uint32_t *end;
+} rule_sets[2] = {
+	{
+		_binary_rules_novlan_bin_start,
+		_binary_rules_novlan_bin_end,
+	}, {
+		_binary_rules_vlan_bin_start,
+		_binary_rules_vlan_bin_end,
+	}
+};
+
 
 extern volatile struct EP_WB *EP;
 
@@ -39,13 +54,22 @@ static uint32_t swap32(uint32_t v)
 
 void pfilter_init_default(void)
 {
-	/* Use shorter names to avoid getting mad */
-	uint32_t *vini = _binary_rules_pfilter_bin_start;
-	uint32_t *vend = _binary_rules_pfilter_bin_end;
-	uint32_t m, *v;
+	struct rule_set *s;
+	uint8_t mac[6];
+	char buf[20];
+	uint32_t m, *vini, *vend, *v, *v_vlan = NULL;
 	uint64_t cmd_word;
 	int i;
 	static int inited;
+
+	/* If vlan, use rule-set 1, else rule-set 0 */
+	s = rule_sets + (wrc_vlan_number != 0);
+	if (!s->ini) {
+		pp_printf("no pfilter rule-set!\n");
+		return;
+	}
+	vini = s->ini;
+	vend = s->end;
 
 	/*
 	 * The array of words starts with 0x11223344 so we
@@ -78,21 +102,39 @@ void pfilter_init_default(void)
 	}
 	/*
 	 * Patch the local MAC address in place,
-	 * in the first three instructions after NOP */
+	 * in the first three instructions after NOP
+	 */
+	get_mac_addr(mac);
 	v[2] &= ~(0xffff << 13);
 	v[4] &= ~(0xffff << 13);
 	v[6] &= ~(0xffff << 13);
-	v[2] |= ((EP->MACH >>  0) & 0xffff) << 13;
-	v[4] |= ((EP->MACL >> 16) & 0xffff) << 13;
-	v[6] |= ((EP->MACL >>  0) & 0xffff) << 13;
+	v[2] |= ((mac[0] << 8) | mac[1]) << 13;
+	v[4] |= ((mac[2] << 8) | mac[3]) << 13;
+	v[6] |= ((mac[4] << 8) | mac[5]) << 13;
+	pfilter_verbose("fixing MAC adress in rule: use %s\n",
+			format_mac(buf, mac));
+
+	/* If this is the VLAN rule-set, patch the vlan number too */
+	for (v = vini + 1; v < vend; v += 2) {
+		if (((*v >> 13) & 0xffff) == 0x0aaa
+		    && ((*v >> 7) & 0x1f) == 7) {
+			pfilter_verbose("fixing VLAN number in rule: use %i\n",
+					wrc_vlan_number);
+			v_vlan = v;
+			*v &= ~(0xffff << 13);
+			*v |= wrc_vlan_number << 13;
+		}
+	}
 
 	EP->PFCR0 = 0;		// disable pfilter
 
-	for (i = 0;v < vend; v += 2, i++) {
+	for (i = 0, v = vini + 1; v < vend; v += 2, i++) {
 		uint32_t cr0, cr1;
 
 		cmd_word = v[0] | ((uint64_t)v[1] << 32);
-		pfilter_dbg("pos %02i: %x.%08x\n", i, (uint32_t)(cmd_word >> 32), (uint32_t)(cmd_word));
+		pfilter_verbose("pfilter rule %02i: %x.%08x\n", i,
+				(uint32_t)(cmd_word >> 32),
+				(uint32_t)(cmd_word));
 
 		cr1 = EP_PFCR1_MM_DATA_LSB_W(cmd_word & 0xfff);
 		cr0 = EP_PFCR0_MM_ADDR_W(i) | EP_PFCR0_MM_DATA_MSB_W(cmd_word >> 12) |
@@ -100,6 +142,12 @@ void pfilter_init_default(void)
 
 		EP->PFCR1 = cr1;
 		EP->PFCR0 = cr0;
+	}
+
+	/* Restore the 0xaaa vlan number, so we can re-patch next time */
+	if (v_vlan) {
+		*v_vlan &= ~(0xffff << 13);
+		*v_vlan |= 0x0aaa << 13;
 	}
 
 	EP->PFCR0 = EP_PFCR0_ENABLE;

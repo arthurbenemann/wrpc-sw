@@ -30,9 +30,35 @@ config PLL_VERBOSE
 	boolean
 	default y if WR_SWITCH
 
+config PFILTER_VERBOSE
+	boolean
+
 config WRC_VERBOSE
 	boolean
 	default y if WR_SWITCH
+
+config VLAN
+	boolean
+
+config VLAN_NR
+	int
+	default 10 if VLAN
+	default 0
+
+config VLAN_1_FOR_CLASS7
+	int
+	default 20 if VLAN
+	default 0
+
+config VLAN_2_FOR_CLASS7
+	int
+	default 30 if VLAN
+	default 0
+
+config VLAN_FOR_CLASS6
+	int
+	default 100 if VLAN
+	default 0
 
 
 # CONFIG_WR_SWITCH has no further options at all at this point
@@ -279,6 +305,12 @@ config PLL_VERBOSE
 	  The softpll is usually silent in WR node and verbose in WR
 	  switch. You can enable pll messages in WR node for debugging.
 
+config PFILTER_VERBOSE
+	depends on DEVELOPER
+	boolean "Verbose messages in packet filter setup"
+	help
+	  A debug tool for people changing the packet filter rules
+
 config WRC_VERBOSE
 	depends on DEVELOPER
 	boolean "More verbose messages in wr core"
@@ -286,7 +318,25 @@ config WRC_VERBOSE
 	help
 	  This enables some more diagnostic messages. Normally off.
 
+config VLAN
+	depends on DEVELOPER
+	boolean "Filter and rx/tx frames in a VLAN (as opposed to untagged)"
 
+config VLAN_NR
+	depends on VLAN
+	int "Use this VLAN number for filter/tx/rx"
+
+config VLAN_1_FOR_CLASS7
+	depends on VLAN
+	int "Route this VLAN to fabric class 7 (Etherbone)"
+
+config VLAN_2_FOR_CLASS7
+	depends on VLAN
+	int "Route this VLAN too to fabric class 7 (Etherbone)"
+
+config VLAN_FOR_CLASS6
+	depends on VLAN
+	int "Route this VLAN too to fabric class 6 (Streamer/NIC)"
 
 config SDB_STORAGE
 	depends on WR_NODE
