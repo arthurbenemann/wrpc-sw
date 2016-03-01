@@ -111,7 +111,7 @@ void get_mac_addr(uint8_t dev_addr[])
 {
 	char *name = getenv("WRPC_MINIC");
 	struct ifreq ifr;
-
+	int sock;
 
 	if (ethaddr_ok) {
 		memcpy(dev_addr, ethaddr, ETH_ALEN);
@@ -125,6 +125,7 @@ void get_mac_addr(uint8_t dev_addr[])
 	strcpy(ifr.ifr_name, name);
 	ioctl(sock, SIOCGIFHWADDR, &ifr);
 	memcpy(dev_addr, &ifr.ifr_ifru.ifru_hwaddr.sa_data, ETH_ALEN);
+	close(sock);
 }
 
 void set_mac_addr(uint8_t dev_addr[])
