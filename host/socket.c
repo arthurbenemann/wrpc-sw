@@ -133,6 +133,7 @@ void set_mac_addr(uint8_t dev_addr[])
 	printf("%s: no implemented yet\n", __func__);
 }
 
+extern void uart_exit(int i);
 
 int minic_rx_frame(struct wr_ethhdr *hdr, uint8_t * payload, uint32_t buf_size,
                    struct hw_timestamp *hwts)
@@ -143,6 +144,10 @@ int minic_rx_frame(struct wr_ethhdr *hdr, uint8_t * payload, uint32_t buf_size,
 	ret = recv(sock, frame, sizeof(frame), MSG_DONTWAIT);
 	if (ret < 0 && errno == EAGAIN)
 		return 0;
+	if (ret < 0) {
+		printf("recv(): %s\n", strerror(errno));
+		uart_exit(1);
+	}
 	memcpy(hdr, frame, 14);
 	dumpstruct(stdout, "rx header", hdr, 14);
 	ret -= 14;
