@@ -12,6 +12,8 @@
 #include "pps_gen.h"
 #include "rxts_calibrator.h"
 
+#include "host.h"
+
 uint32_t _endram;
 
 int wrc_stat_running;

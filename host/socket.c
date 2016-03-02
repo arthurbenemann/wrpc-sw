@@ -15,6 +15,8 @@
 #include "minic.h"
 #include "hw/pps_gen_regs.h"
 
+#include "host.h"
+
 static int dumpstruct(FILE *dest, char *name, void *ptr, int size)
 {
 	int ret, i;
@@ -133,8 +135,6 @@ void set_mac_addr(uint8_t dev_addr[])
 {
 	printf("%s: no implemented yet\n", __func__);
 }
-
-extern void uart_exit(int i);
 
 int minic_rx_frame(struct wr_ethhdr *hdr, uint8_t * payload, uint32_t buf_size,
                    struct hw_timestamp *hwts)
