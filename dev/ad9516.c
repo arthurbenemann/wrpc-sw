@@ -250,7 +250,8 @@ int ad9516_init(int scb_version)
 		ad9516_set_output_divider(3, 4, 0);  	// OUT3. 187.5 MHz. - not anymore
 
 		ad9516_set_output_divider(4, 1, 0);  	// OUT4. 500 MHz.
-
+	
+		ad9516_set_output_divider(9,20,0);
 		/*The following PLL outputs have been configured through the ad9516_base_config_34 register,
 		 * so it doesn't need to replicate the configuration:
 		 *
