@@ -9,3 +9,6 @@ obj-$(CONFIG_WR_NODE) += lib/net.o lib/udp.o
 obj-$(CONFIG_WR_NODE) += lib/arp.o lib/icmp.o lib/ipv4.o lib/bootp.o
 
 obj-$(CONFIG_SYSLOG) += lib/syslog.o
+
+#obj-$(CONFIG_LLDP) += lib/lldp.o
+obj-y += lib/lldp.o
