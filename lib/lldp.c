@@ -99,7 +99,7 @@ static void lldp_add_tlv(int tlv_type) {
 
 			/* TLV Info srting */
 			/* fixme, define how to get formfactor name */
-			//strcpy(lldpdu+lldpdu_len, form_factor);
+			strcpy(lldpdu+lldpdu_len, form_factor);
 			lldpdu_len += tlv_type_len[tlv_type];
 			break;
 		case SYS_DESCR:

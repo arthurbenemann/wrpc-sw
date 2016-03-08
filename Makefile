@@ -108,6 +108,7 @@ OUTPUT-$(CONFIG_WR_SWITCH) = rt_cpu
 OUTPUT := $(OUTPUT-y)
 
 GIT_VER = $(shell git describe --always --dirty | sed  's;^wr-switch-sw-;;')
+FORM_FACTOR = "vetar2a"
 
 all: tools $(OUTPUT).ram $(OUTPUT).vhd $(OUTPUT).mif
 
@@ -138,7 +139,7 @@ sdb-lib/libsdbfs.a:
 	$(MAKE) -C sdb-lib
 
 $(OUTPUT).elf: $(LDS-y) $(AUTOCONF) gitmodules $(OUTPUT).o config.o
-	$(CC) $(CFLAGS) -D__GIT_VER__="\"$(GIT_VER)\"" -c revision.c
+	$(CC) $(CFLAGS) -D__GIT_VER__="\"$(GIT_VER)\"" -c revision.c -D__FORM_FACTOR__="\"$(FORM_FACTOR)\""
 	${CC} -o $@ revision.o config.o $(OUTPUT).o $(LDFLAGS)
 	${OBJDUMP} -d $(OUTPUT).elf > $(OUTPUT)_disasm.S
 	$(SIZE) $@

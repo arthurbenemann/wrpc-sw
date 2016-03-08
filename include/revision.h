@@ -4,5 +4,6 @@
 extern const char *build_revision;
 extern const char *build_date;
 extern const char *build_time;
+extern const char *form_factor;
 
 #endif /* __REVISION_H__ */
