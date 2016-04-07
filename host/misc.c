@@ -100,6 +100,15 @@ int uart_read_byte(void)
 	return ret;
 }
 
+int puts(const char *s)
+{
+	/* avoid puts, which adds a newline */
+	const char *t = s;
+	while (*s)
+		write(STDOUT_FILENO, s++, 1);
+	return s - t;
+}
+
 /* unused stuff */
 
 void disable_irq(void)
