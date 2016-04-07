@@ -8,6 +8,8 @@ ifdef CONFIG_HOST_PROCESS
 endif
 
 export CROSS_COMPILE
+export CONFIG_HOST_PROCESS
+export CONFIG_LM32
 
 CC =		$(CROSS_COMPILE)gcc
 LD =		$(CROSS_COMPILE)ld
