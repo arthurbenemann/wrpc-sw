@@ -5,7 +5,6 @@ obj-$(CONFIG_HOST_PROCESS) += \
 	host/fake-w1.o \
 	host/fake-flash.o \
 	host/fake-hw.o \
-	host/ptp.o \
 	host/spll.o \
 	host/socket.o
 
