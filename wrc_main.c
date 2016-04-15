@@ -188,7 +188,7 @@ int main(void)
 		switch (l_status) {
 #ifdef CONFIG_ETHERBONE
 		case LINK_WENT_UP:
-			needIP = 1;
+			//needIP = 1;
 			break;
 #endif
 
