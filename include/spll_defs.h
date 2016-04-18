@@ -31,7 +31,7 @@ WARNING: These parameters must be in sync with the generics of the HDL instantia
 #define HPLL_N 14
 
 /* Fractional bits in PI controller coefficients */
-#define PI_FRACBITS 12
+#define PI_FRACBITS 16
 
 /* Max. allowed number of reference channels. Can be used to tweak memory usage. */
 #define MAX_CHAN_REF	BOARD_MAX_CHAN_REF /* Depends on wrc/wrs */

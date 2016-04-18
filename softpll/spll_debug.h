@@ -27,7 +27,7 @@ integral/proportional gains on the response of the system.
 #define DBG_EVENT 4
 #define DBG_SAMPLE_ID 6
 
-#define DBG_HELPER 0x20		/* Sample source: Helper PLL */
+#define DBG_HELPER 0x10		/* Sample source: Helper PLL */
 #define DBG_EXT 0x40		/* Sample source: External Reference PLL */
 #define DBG_MAIN 0x0		/* ...          : Main PLL */
 

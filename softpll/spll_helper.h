@@ -31,6 +31,7 @@ struct spll_helper_state {
 	int ref_src;
 	int sample_n;
 	int delock_count;
+	int err;
 	spll_pi_t pi;
 	spll_lock_det_t ld;
 	spll_biquad_t precomp;

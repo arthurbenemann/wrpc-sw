@@ -15,6 +15,18 @@
 
 #include "spll_common.h"
 
+// Strictily power of 2
+#define TAG_HISTORY 64
+
+#define WRAP(value,buffer_size) (value)&(buffer_size-1)
+
+#define BUFFER_MASK TAG_HISTORY-1
+
+struct spll_tag {
+	int tag;
+	int adder;
+};
+
 /* State of the Main PLL */
 struct spll_main_state {
 	int state;
@@ -36,6 +48,14 @@ struct spll_main_state {
 	int delock_count;
 	int dac_index;
 	int enabled;
+	
+	struct spll_tag ref_tags[TAG_HISTORY];
+	struct spll_tag out_tags[TAG_HISTORY];
+	uint8_t ref_write_i; uint8_t out_write_i;
+	uint8_t ref_data, out_data;
+	int read_i;
+	int skip_initial;
+	
 };
 
 void mpll_init(struct spll_main_state *s, int id_ref,

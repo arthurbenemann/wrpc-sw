@@ -12,7 +12,7 @@
 
 #include "irq.h"
 
-volatile int irq_count = 0;
+volatile unsigned int irq_count = 0;
 
 volatile struct SPLL_WB *SPLL;
 volatile struct PPSG_WB *PPSG;
@@ -471,13 +471,16 @@ void spll_get_num_channels(int *n_ref, int *n_out)
 
 void spll_show_stats()
 {
-	if (softpll.mode > 0)
+	if (softpll.mode > 0) {
 		    TRACE_DEV("softpll: irqs %d seq %s mode %d "
-		     "alignment_state %d HL%d ML%d HY=%d MY=%d DelCnt=%d\n",
+		     "alignment_state %d HL%d ML%d HY=%d e_h:%d MY=%d DelCnt=%d ",
 		     irq_count, stringlist_lookup(seq_states, softpll.seq_state), softpll.mode,
 		     softpll.ext.align_state, softpll.helper.ld.locked, softpll.mpll.ld.locked,
-		     softpll.helper.pi.y, softpll.mpll.pi.y,
+		     softpll.helper.pi.y, softpll.helper.err,softpll.mpll.pi.y,
 		     softpll.delock_count);
+		     TRACE_DEV("h_avg:%d m_avg:%d ref_size:%d out_size:%d\n", softpll.helper.ld.avg_value, softpll.mpll.ld.avg_value, softpll.mpll.ref_data, softpll.mpll.out_data);
+		     
+	}
 }
 
 int spll_shifter_busy(int channel)

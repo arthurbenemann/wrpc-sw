@@ -25,16 +25,21 @@ void helper_init(struct spll_helper_state *s, int ref_channel)
 	/* Phase branch PI controller */
 	s->pi.y_min = 5;
 	s->pi.y_max = (1 << DAC_BITS) - 5;
-	s->pi.kp = 150;//(int)(0.3 * 32.0 * 16.0);	// / 2;
-	s->pi.ki = 2;//(int)(0.03 * 32.0 * 3.0);	// / 2;
+	s->pi.kp = 150*(1 << 4);//(int)(0.3 * 32.0 * 16.0);	// / 2;
+	s->pi.ki = 2*(1 << 4);;//(int)(0.03 * 32.0 * 3.0);	// / 2;
 	s->pi.anti_windup = 1;
 
 	/* Phase branch lock detection */
-	s->ld.threshold = 200;
+	s->ld.threshold = 2000;
 	s->ld.lock_samples = 10000;
 	s->ld.delock_samples = 100;
 	s->ref_src = ref_channel;
 	s->delock_count = 0;
+	s->ld.avg_acc = 0;
+	s->ld.call_count = 0;
+	s->ld.avg_ready = 0;
+	s->ld.avg_value = 0;
+  
 }
 
 int helper_update(struct spll_helper_state *s, int tag,
@@ -57,6 +62,7 @@ int helper_update(struct spll_helper_state *s, int tag,
 			s->p_adder += (1 << TAG_BITS);
 
 		err = (tag + s->p_adder) - s->p_setpoint;
+		s->err = err;
 
 		if (HELPER_ERROR_CLAMP) {
 			if (err < -HELPER_ERROR_CLAMP)
@@ -74,11 +80,12 @@ int helper_update(struct spll_helper_state *s, int tag,
 
 		s->p_setpoint += (1 << HPLL_N);
 		s->tag_d0 = tag;
+		
 
 		y = pi_update((spll_pi_t *)&s->pi, err);
 		SPLL->DAC_HPLL = y;
 
-		spll_debug(DBG_SAMPLE_ID | DBG_HELPER, s->sample_n++, 0);
+		spll_debug(DBG_SAMPLE_ID | DBG_HELPER, s->ld.lock_cnt, 0);//s->sample_n++, 0);
 		spll_debug(DBG_Y | DBG_HELPER, y, 0);
 		spll_debug(DBG_ERR | DBG_HELPER, err, 1);
 

@@ -21,7 +21,7 @@ int pi_update(spll_pi_t *pi, int x)
 	pi->x = x;
 	i_new = pi->integrator + x;
 
-	y = ((i_new * pi->ki + x * pi->kp) >> PI_FRACBITS) + pi->bias;
+	y = (((int64_t)i_new * (int64_t)pi->ki + (int64_t)x * (int64_t)pi->kp) >> PI_FRACBITS) + pi->bias;
 
 	/* clamping (output has to be in <y_min, y_max>) and
 	   anti-windup: stop the integrator if the output is already
@@ -50,6 +50,9 @@ void pi_init(spll_pi_t *pi)
 	pi->y = pi->bias;
 }
 
+
+
+
 /* Lock detector state machine. Takes an error sample (y) and checks
    if it's withing an acceptable range (i.e. <-ld.threshold,
    ld.threshold>. If it has been inside the range for
@@ -62,13 +65,22 @@ void pi_init(spll_pi_t *pi)
  */
 int ld_update(spll_lock_det_t *ld, int y)
 {
+	ld->call_count++;
+	ld->avg_acc += y;
+	if (ld->call_count == (1 << LOG2_AVG_PERIOD)-1) {
+	  ld->call_count = 0;
+	  ld->avg_ready = 1;
+	  ld->avg_value = ld->avg_acc >> LOG2_AVG_PERIOD;
+	  ld->avg_acc = 0;
+	}
+	
 	ld->lock_changed = 0;
 
 	if (abs(y) <= ld->threshold) {
 		if (ld->lock_cnt < ld->lock_samples)
 			ld->lock_cnt++;
 
-		if (ld->lock_cnt == ld->lock_samples) {
+		if (ld->lock_cnt == ld->lock_samples || (ld->avg_ready == 1 && abs(ld->avg_value) < ld->threshold)) {
 			ld->lock_changed = 1;
 			ld->locked = 1;
 			return 1;
@@ -77,7 +89,7 @@ int ld_update(spll_lock_det_t *ld, int y)
 		if (ld->lock_cnt > ld->delock_samples)
 			ld->lock_cnt--;
 
-		if (ld->lock_cnt == ld->delock_samples) {
+		if (ld->lock_cnt == ld->delock_samples && (ld->avg_ready == 1 && abs(ld->avg_value) >= ld->threshold)){
 			ld->lock_cnt = 0;
 			ld->lock_changed = 1;
 			ld->locked = 0;
@@ -92,6 +104,10 @@ void ld_init(spll_lock_det_t *ld)
 	ld->locked = 0;
 	ld->lock_cnt = 0;
 	ld->lock_changed = 0;
+	ld->avg_acc = 0;
+	ld->call_count = 0;
+	ld->avg_ready = 0;
+	
 }
 
 void lowpass_init(spll_lowpass_t *lp, int alpha)

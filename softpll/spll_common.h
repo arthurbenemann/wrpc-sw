@@ -24,6 +24,9 @@
 #define SPLL_LOCKED 	1
 #define SPLL_LOCKING 	0
 
+#define LOG2_AVG_PERIOD	13
+
+
 /* Number of reference/output channels. We don't plan to have more than one
    SoftPLL instantiation per project, so these can remain global. */
 extern int spll_n_chan_ref, spll_n_chan_out;
@@ -43,6 +46,8 @@ typedef struct {
 	int x, y;		/* Current input (x) and output value (y) */
 } spll_pi_t;
 
+
+
 /* lock detector state */
 typedef struct {
 	int lock_cnt;		/* Lock sample counter */
@@ -52,7 +57,15 @@ typedef struct {
 	int threshold;		/* Error threshold */
 	int locked;		/* Non-zero: we are locked */
 	int lock_changed;
+	
+	int call_count;
+	int avg_ready;
+	int avg_value;
+	int64_t avg_acc;
+	
 } spll_lock_det_t;
+
+
 
 /* simple, 1st-order lowpass filter */
 typedef struct {
