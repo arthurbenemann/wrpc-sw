@@ -13,6 +13,7 @@
 #include "ptpd_netif.h"
 #include "hw/memlayout.h"
 #include "hw/etherbone-config.h"
+#include "hw/ext-config.h"
 
 #ifndef htons
 #define htons(x) x
@@ -91,6 +92,9 @@ void setIP(unsigned char *IP)
 {
 	volatile unsigned int *eb_ip =
 	    (unsigned int *)(BASE_ETHERBONE_CFG + EB_IPV4);
+	volatile unsigned int *ext_ip =
+	    (unsigned int *)(BASE_EXT_CFG + EXT_IPV4);
+
 	unsigned int ip;
 
 	memcpy(myIP, IP, 4);
@@ -98,6 +102,8 @@ void setIP(unsigned char *IP)
 	ip = (myIP[0] << 24) | (myIP[1] << 16) | (myIP[2] << 8) | (myIP[3]);
 	while (*eb_ip != ip)
 		*eb_ip = ip;
+	while (*ext_ip != ip)
+		*ext_ip = ip;
 
 	needIP = (ip == 0);
 	if (!needIP) {

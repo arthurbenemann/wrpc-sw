@@ -19,6 +19,7 @@ unsigned char *BASE_SYSCON;
 unsigned char *BASE_UART;
 unsigned char *BASE_ONEWIRE;
 unsigned char *BASE_ETHERBONE_CFG;
+unsigned char *BASE_EXT_CFG;
 
 /* The sdb filesystem itself */
 static struct sdbfs wrc_fpga_sdb = {
@@ -55,6 +56,7 @@ void sdb_print_devices(void)
 /* To save a little size, we enumerate our vendors */
 #define VID_CERN	0x0000ce42LL
 #define VID_GSI		0x00000651LL
+#define VID_THU		0x00001103LL
 
 struct wrc_device {
 	unsigned char **base;
@@ -71,6 +73,7 @@ struct wrc_device devs[] = {
 	{&BASE_UART,          VID_CERN,	0xe2d13d04},
 	{&BASE_ONEWIRE,       VID_CERN,	0x779c5443},
 	{&BASE_ETHERBONE_CFG, VID_GSI,	0x68202b22},
+	{&BASE_EXT_CFG,       VID_THU,	0xc0413599},
 };
 
 void sdb_find_devices(void)
