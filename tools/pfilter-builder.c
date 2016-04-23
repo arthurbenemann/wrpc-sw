@@ -351,7 +351,7 @@ void pfilter_init(int mode, char *fname)
 
 		if (mode & MODE_NIC_PFILTER) {
 
-			pfilter_cmp(18,0xebc0,0xffff,MOV, FRAME_PORT_ETHERBONE);
+			pfilter_cmp(18,0xebd0,0xffff,MOV, FRAME_PORT_ETHERBONE);
 
 			/* Here we had a commented-out check for magic (offset 21, value 0x4e6f) */
 
