@@ -13,13 +13,13 @@
 #include "ptpd_netif.h"
 #include "hw/memlayout.h"
 #include "hw/etherbone-config.h"
-#include "hw/ext-config.h"
+#include "ext_config.h"
 
 #ifndef htons
 #define htons(x) x
 #endif
 
-int needIP = 1;
+int needIP = 0;
 static uint8_t myIP[4];
 static wr_socket_t *ipv4_socket;
 
@@ -43,7 +43,7 @@ void ipv4_init(void)
 	wr_sockaddr_t saddr;
 
 	/* Reset => need a fresh IP */
-	needIP = 1;
+	needIP = 0;
 
 	/* Configure socket filter */
 	memset(&saddr, 0, sizeof(saddr));
@@ -92,22 +92,17 @@ void setIP(unsigned char *IP)
 {
 	volatile unsigned int *eb_ip =
 	    (unsigned int *)(BASE_ETHERBONE_CFG + EB_IPV4);
-	volatile unsigned int *ext_ip =
-	    (unsigned int *)(BASE_EXT_CFG + EXT_IPV4);
 
 	unsigned int ip;
+  unsigned char mac[6];
 
 	memcpy(myIP, IP, 4);
 
 	ip = (myIP[0] << 24) | (myIP[1] << 16) | (myIP[2] << 8) | (myIP[3]);
-	while (*eb_ip != ip)
-		*eb_ip = ip;
-	while (*ext_ip != ip)
-		*ext_ip = ip;
+	get_mac_addr(mac);
+	*eb_ip = ip;
+  ext_config(IP,mac);
 
-	needIP = (ip == 0);
-	if (!needIP) {
-		bootp_retry = 0;
-		bootp_timer = 0;
-	}
+	needIP = 0;
+
 }

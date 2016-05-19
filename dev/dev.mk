@@ -9,7 +9,8 @@ obj-$(CONFIG_WR_NODE) += \
 	dev/sfp.o \
 	dev/devicelist.o \
 	dev/rxts_calibrator.o \
-	dev/flash.o
+	dev/flash.o\
+	dev/ext_config.o
 
 obj-$(CONFIG_WR_SWITCH) += dev/timer-wrs.o dev/ad9516.o
 
@@ -32,4 +33,3 @@ $(pfilter-y): tools/pfilter-builder
 
 tools/pfilter-builder:
 	$(MAKE) -C tools pfilter-builder
-
