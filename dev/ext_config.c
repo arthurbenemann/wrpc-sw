@@ -38,11 +38,13 @@ void ext_config(unsigned char *IP,unsigned char *MAC)
   *ext_tmp = tmp;
 
   ext_tmp = (unsigned int *)(BASE_EXT_CFG + EXT_UDP_TX_DST_MAC_HIGH16);
-	tmp = 0x9890;
+	//tmp = 0x9890;
+    tmp = 0x8cae;
   *ext_tmp = tmp;
 
   ext_tmp = (unsigned int *)(BASE_EXT_CFG + EXT_UDP_TX_DST_MAC_LOW32);
-  tmp = 0x96aa9e04;
+    //tmp = 0x96aa9e04;
+    tmp = 0x4b002f40;
   *ext_tmp = tmp;
 
   ext_tmp = (unsigned int *)(BASE_EXT_CFG + EXT_TCP_LOCAL_PORT);
