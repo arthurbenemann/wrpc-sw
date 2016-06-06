@@ -7,7 +7,10 @@
 #define __I2C_H
 
 uint8_t mi2c_devprobe(uint8_t i2cif, uint8_t i2c_addr);
+uint8_t mi2c_poll(uint32_t time_out_ms); //ONLY for fmc i2c
 void mi2c_init(uint8_t i2cif);
+void mi2c_lock(void);   //ONLY for fmc i2c
+void mi2c_unlock(void); //ONLY for fmc i2c
 void mi2c_start(uint8_t i2cif);
 void mi2c_repeat_start(uint8_t i2cif);
 void mi2c_stop(uint8_t i2cif);

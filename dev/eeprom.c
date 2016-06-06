@@ -57,6 +57,10 @@
  * ------------------------------------------------
  */
 
+//default time out in us to wait for i2c bus unlock
+//~3s
+#define BUS_TIME_OUT 3000000
+
 uint8_t has_eeprom = 0;
 
 static int i2cif, i2c_addr; /* globals, using the names we always used */
@@ -67,10 +71,16 @@ void storage_init(int chosen_i2cif, int chosen_i2c_addr)
 	i2cif = chosen_i2cif;
 	i2c_addr = chosen_i2c_addr;
 
-	has_eeprom = 1;
-	if (!mi2c_devprobe(i2cif, i2c_addr))
-		if (!mi2c_devprobe(i2cif, i2c_addr))
-			has_eeprom = 0;
+	if(mi2c_poll(BUS_TIME_OUT))
+	{
+	  has_eeprom = 1;
+	  mi2c_lock();
+	  if (!mi2c_devprobe(i2cif, i2c_addr))
+	  	if (!mi2c_devprobe(i2cif, i2c_addr))
+	  		has_eeprom = 0;
+	  mi2c_unlock();
+	  return;
+	}
 
 	return;
 }
@@ -84,6 +94,10 @@ static int eeprom_read(uint8_t i2cif, uint8_t i2c_addr, uint32_t offset,
 	if (!has_eeprom)
 		return -1;
 
+	if(!mi2c_poll(BUS_TIME_OUT))
+	  return -2;
+
+	mi2c_lock();
 	mi2c_start(i2cif);
 	if (mi2c_put_byte(i2cif, i2c_addr << 1) < 0) {
 		mi2c_stop(i2cif);
@@ -100,6 +114,7 @@ static int eeprom_read(uint8_t i2cif, uint8_t i2c_addr, uint32_t offset,
 	mi2c_get_byte(i2cif, &c, 1);
 	*buf++ = c;
 	mi2c_stop(i2cif);
+	mi2c_unlock();
 
 	return size;
 }
@@ -112,6 +127,10 @@ static int eeprom_write(uint8_t i2cif, uint8_t i2c_addr, uint32_t offset,
 	if (!has_eeprom)
 		return -1;
 
+	if(!mi2c_poll(BUS_TIME_OUT))
+	  return -2;
+
+	mi2c_lock();
 	for (i = 0; i < size; i++) {
 		mi2c_start(i2cif);
 
@@ -132,6 +151,7 @@ static int eeprom_write(uint8_t i2cif, uint8_t i2c_addr, uint32_t offset,
 		} while (busy);
 
 	}
+	mi2c_unlock();
 	return size;
 }
 

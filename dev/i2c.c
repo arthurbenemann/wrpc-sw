@@ -25,6 +25,37 @@ void mi2c_delay(void)
 #define M_SCL_OUT(i, x) { gpio_out(i2c_if[i].scl, x); mi2c_delay(); }
 #define M_SDA_IN(i) gpio_in(i2c_if[i].sda)
 
+uint8_t mi2c_poll(uint32_t time_out_us)
+{
+  //mi2c_delay ~= 5us if CPU frequency is 62.5MHz
+  uint32_t us = (uint32_t)(time_out_us / 5);
+  uint32_t i;
+  for(i = 0; i < us; i++)
+  {
+    //if FMC I2C bus is locked
+    if(gpio_in(WRC_FMC_I2C_LCK))
+    {
+      mi2c_delay();
+    }
+    else
+    {
+      return 1;
+    }
+  }
+  return 0;
+}
+
+void mi2c_lock(void)
+{
+  gpio_out(WRC_FMC_I2C_SEL,1);
+}
+
+void mi2c_unlock(void)
+{
+  gpio_out(WRC_FMC_I2C_SEL,0);
+}
+
+
 void mi2c_start(uint8_t i2cif)
 {
 	M_SDA_OUT(i2cif, 0);
