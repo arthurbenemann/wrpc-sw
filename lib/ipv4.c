@@ -90,19 +90,6 @@ void getIP(unsigned char *IP)
 
 void setIP(unsigned char *IP)
 {
-	volatile unsigned int *eb_ip =
-	    (unsigned int *)(BASE_ETHERBONE_CFG + EB_IPV4);
-
-	unsigned int ip;
-  unsigned char mac[6];
-
-	memcpy(myIP, IP, 4);
-
-	ip = (myIP[0] << 24) | (myIP[1] << 16) | (myIP[2] << 8) | (myIP[3]);
-	get_mac_addr(mac);
-	*eb_ip = ip;
-  ext_config(IP,mac);
-
-	needIP = 0;
-
+  memcpy(myIP, IP, 4);
+  needIP = 0;
 }
