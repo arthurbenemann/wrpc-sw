@@ -9,7 +9,7 @@ ALL   += pfilter-builder
 ALL   += wrpc-dump
 
 ifneq ($(EB),no)
-ALL += eb-w1-write
+ALL += eb-w1-write eb-w1-read
 endif
 ifneq ($(SDBFS),no)
 ALL += sdb-wrpc.bin
@@ -37,6 +37,9 @@ wrpc-w1-write: wrpc-w1-write.c ../dev/w1.c ../dev/w1-eeprom.c ../dev/w1-hw.c
 	$(CC) $(CFLAGS) $^ $(LDFLAGS) -o $@
 
 eb-w1-write: eb-w1-write.c ../dev/w1.c ../dev/w1-eeprom.c eb-w1.c
+	$(CC) $(CFLAGS) -I $(EB) $^ $(LDFLAGS) -o $@ -L $(EB)/.libs -letherbone
+
+eb-w1-read: eb-w1-read.c ../dev/w1.c  ../dev/w1-temp.c ../dev/w1-eeprom.c eb-w1.c
 	$(CC) $(CFLAGS) -I $(EB) $^ $(LDFLAGS) -o $@ -L $(EB)/.libs -letherbone
 
 sdb-wrpc.bin: sdbfs
