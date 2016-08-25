@@ -344,10 +344,10 @@ void pfilter_init(int mode, char *fname)
 		pfilter_logic3(FRAME_FOR_CPU, FRAME_IP_UNI, AND, FRAME_ICMP, OR, R_TMP);
 
 		/* Ethernet = 14 bytes, IPv4 = 20 bytes, offset to dport: 2 = 36/2 = 18 */
-		pfilter_cmp(18, 0x0044, 0xffff, MOV, R_TMP);	/* R_TMP now means dport = BOOTPC */
+		//pfilter_cmp(18, 0x0044, 0xffff, MOV, R_TMP);	/* R_TMP now means dport = BOOTPC */
 
-		pfilter_logic3(R_TMP, R_TMP, AND, FRAME_UDP, AND, FRAME_IP_OK);	/* BOOTPC and UDP and IP(unicast|broadcast) */
-		pfilter_logic2(FRAME_FOR_CPU, R_TMP, OR, FRAME_FOR_CPU);
+		//pfilter_logic3(R_TMP, R_TMP, AND, FRAME_UDP, AND, FRAME_IP_OK);	/* BOOTPC and UDP and IP(unicast|broadcast) */
+		//pfilter_logic2(FRAME_FOR_CPU, R_TMP, OR, FRAME_FOR_CPU);
 
 		if (mode & MODE_NIC_PFILTER) {
 

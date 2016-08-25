@@ -29,6 +29,7 @@
 #include "lib/ipv4.h"
 #include "rxts_calibrator.h"
 #include "flash.h"
+#include "ext_config.h"
 
 #include "wrc_ptp.h"
 #include "system_checks.h"
@@ -81,6 +82,8 @@ static void wrc_initialize(void)
 		mac_addr[4], mac_addr[5]);
 
 	ep_init(mac_addr);
+	ext_init(mac_addr);
+
 	ep_enable(1, 1);
 
 	minic_init();

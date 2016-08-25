@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 
-void ext_config(unsigned char *IP,unsigned char *MAC);
+void ext_init(uint8_t mac_addr[]);
+void ext_config(unsigned char *IP);
 
 #endif
