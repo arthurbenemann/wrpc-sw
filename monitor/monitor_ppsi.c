@@ -85,6 +85,8 @@ int wrc_mon_gui(void)
 	static uint32_t last_jiffies;
 	static uint32_t last_servo_count;
 	struct hal_port_state state;
+	struct ha_dsport *hap = HA_DSPOR(ppi);
+	struct wr_dsport *wrp = WR_DSPOR(ppi);
 	int tx, rx;
 	int aux_stat;
 	uint64_t sec;
@@ -94,6 +96,9 @@ int wrc_mon_gui(void)
 	int64_t crtt;
 	int64_t total_asymmetry;
 	char buf[20];
+
+	if (is_high_accuracy)
+		wrp = &hap->wrp;
 
 	if (!last_jiffies)
 		last_jiffies = timer_get_tics() - 1 -  wrc_ui_refperiod;
@@ -127,7 +132,7 @@ int wrc_mon_gui(void)
 		minic_get_stats(&tx, &rx);
 		cprintf(C_GREY, "(RX: %d, TX: %d), mode: ", rx, tx);
 
-		if (!WR_DSPOR(ppi)->wrModeOn) {
+		if (!wrp->wrModeOn) {
 			wrc_mon_std_servo();
 			return 1;
 		}

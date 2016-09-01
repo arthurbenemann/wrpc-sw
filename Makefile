@@ -55,7 +55,7 @@ cflags-y += \
 obj-ppsi = $(PPSI)/ppsi.o
 obj-$(CONFIG_PPSI) += $(obj-ppsi)
 
-# Below, CONFIG_PPSI is wrong, as we can't build these for the host
+# Below, CONFIG_PPSI would be wrong, as we can't build these for the host
 obj-$(CONFIG_EMBEDDED_NODE) += \
 	monitor/monitor_ppsi.o \
 	lib/ppsi-wrappers.o
@@ -132,8 +132,9 @@ endif
 
 PPSI_USER_CFLAGS += -DDIAG_PUTS=uart_sw_write_string
 
-PPSI-CFG-y = wrpc_defconfig
-PPSI-CFG-$(CONFIG_HOST_PROCESS) = unix_defconfig
+PPSI-CFG-y := wrpc_defconfig
+PPSI-CFG-$(CONFIG_USE_HA) := wrpc_ha_defconfig
+PPSI-CFG-$(CONFIG_HOST_PROCESS) := unix_defconfig
 PPSI-FLAGS-$(CONFIG_LM32) = CONFIG_NO_PRINTF=y
 
 $(obj-ppsi):

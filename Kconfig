@@ -11,6 +11,17 @@ config WR_NODE
 	bool
 	default !WR_SWITCH
 
+config USE_HA
+	depends on WR_NODE
+	select CMD_CONFIG
+	bool "Use new beta HA implementation, instead of WR"
+	default n
+
+config USE_WR
+	bool
+	default !USE_HA
+
+
 # most options with no prompt here are prompted-for in the "advanced" section
 
 config PRINT_BUFSIZE

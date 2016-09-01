@@ -42,6 +42,13 @@
 #  define is_wr_node 1
 #endif
 
+#ifdef CONFIG_USE_HA
+#  define is_high_accuracy 1
+#  define is_white_rabbit  0
+#else
+#  define is_high_accuracy 0
+#  define is_white_rabbit  1
+#endif
 extern int wrc_vlan_number;
 
 int wrc_mon_gui(void);
