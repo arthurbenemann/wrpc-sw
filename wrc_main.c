@@ -14,6 +14,7 @@
 
 #include <wrc.h>
 #include <w1.h>
+#include <temperature.h>
 #include "syscon.h"
 #include "uart.h"
 #include "endpoint.h"
@@ -38,12 +39,11 @@ int wrc_ui_mode = UI_SHELL_MODE;
 int wrc_ui_refperiod = TICS_PER_SECOND; /* 1 sec */
 int wrc_phase_tracking = 1;
 
-///////////////////////////////////
-//Calibration data (from EEPROM if available)
-int32_t sfp_alpha = 73622176;	//default values if could not read EEPROM
-int32_t sfp_deltaTx = 0;
-int32_t sfp_deltaRx = 0;
 uint32_t cal_phase_transition = 2389;
+
+int wrc_vlan_number = CONFIG_VLAN_NR;
+
+static uint32_t prev_nanos_for_profile;
 
 static void wrc_initialize(void)
 {
@@ -92,71 +92,72 @@ static void wrc_initialize(void)
 	//try reading t24 phase transition from EEPROM
 	calib_t24p(WRC_MODE_MASTER, &cal_phase_transition);
 	spll_very_init();
+	usleep_init();
+	shell_init();
 
-#ifdef CONFIG_ETHERBONE
-	ipv4_init();
-	arp_init();
-#endif
+	wrc_ui_mode = UI_SHELL_MODE;
+	_endram = ENDRAM_MAGIC;
+
+	wrc_ptp_set_mode(WRC_MODE_SLAVE);
+	wrc_ptp_start();
+	shw_pps_gen_get_time(NULL, &prev_nanos_for_profile);
 }
 
-#define LINK_WENT_UP 1
-#define LINK_WENT_DOWN 2
-#define LINK_UP 3
-#define LINK_DOWN 4
+DEFINE_WRC_TASK0(idle) = {
+	.name = "idle",
+	.init = wrc_initialize,
+};
+
+int link_status;
 
 static int wrc_check_link(void)
 {
-	static int prev_link_state = -1;
-	int link_state = ep_link_up(NULL);
+	static int prev_state = -1;
+	int state = ep_link_up(NULL);
 	int rv = 0;
 
-	if (!prev_link_state && link_state) {
-		TRACE_DEV("Link up.\n");
+	if (!prev_state && state) {
+		wrc_verbose("Link up.\n");
 		gpio_out(GPIO_LED_LINK, 1);
-		rv = LINK_WENT_UP;
-	} else if (prev_link_state && !link_state) {
-		TRACE_DEV("Link down.\n");
+		sfp_match();
+		wrc_ptp_start();
+		link_status = LINK_WENT_UP;
+		rv = 1;
+	} else if (prev_state && !state) {
+		wrc_verbose("Link down.\n");
 		gpio_out(GPIO_LED_LINK, 0);
-		rv = LINK_WENT_DOWN;
+		link_status = LINK_WENT_DOWN;
+		wrc_ptp_stop();
+		rv = 1;
+		/* special case */
+		spll_init(SPLL_MODE_FREE_RUNNING_MASTER, 0, 1);
+		shw_pps_gen_enable_output(0);
+
 	} else
-		rv = (link_state ? LINK_UP : LINK_DOWN);
-	prev_link_state = link_state;
+		link_status = (state ? LINK_UP : LINK_DOWN);
+	prev_state = state;
 
 	return rv;
 }
+DEFINE_WRC_TASK(link) = {
+	.name = "check-link",
+	.job = wrc_check_link,
+};
 
-void wrc_debug_printf(int subsys, const char *fmt, ...)
+static int ui_update(void)
 {
-	va_list ap;
-
-	if (wrc_ui_mode)
-		return;
-
-	va_start(ap, fmt);
-
-	if (subsys & (1 << 5) /* was: TRACE_SERVO -- see commit message */)
-		vprintf(fmt, ap);
-
-	va_end(ap);
-}
-
-int wrc_man_phase = 0;
-
-static void ui_update(void)
-{
+	int ret;
 
 	if (wrc_ui_mode == UI_GUI_MODE) {
-		wrc_mon_gui();
+		ret = wrc_mon_gui();
 		if (uart_read_byte() == 27 || wrc_ui_refperiod == 0) {
 			shell_init();
 			wrc_ui_mode = UI_SHELL_MODE;
 		}
 	} else {
-		shell_interactive();
+		ret = shell_interactive();
 	}
-	/* Stats is asynchronous now. It's not a different mode, but a flag */
-	if (wrc_stat_running)
-		wrc_log_stats();
+	return ret;
 }
 
 /* initialize functions to be called after reset in check_reset function */
@@ -169,51 +170,100 @@ void init_hw_after_reset(void)
 	timer_init(1);
 }
 
+/* count uptime, in seconds, for remote polling */
+static uint32_t uptime_lastj;
+static void init_uptime(void)
+{
+	uptime_lastj = timer_get_tics();
+}
+static int update_uptime(void)
+{
+	extern uint32_t uptime_sec;
+	uint32_t j;
+	static uint32_t fraction = 0;
+
+	j = timer_get_tics();
+	fraction += j - uptime_lastj;
+	uptime_lastj = j;
+	if (fraction > TICS_PER_SECOND) {
+		fraction -= TICS_PER_SECOND;
+		uptime_sec++;
+		return 1;
+	}
+	return 0;
+}
+DEFINE_WRC_TASK(uptime) = {
+	.name = "uptime",
+	.init = init_uptime,
+	.job = update_uptime,
+};
+
+DEFINE_WRC_TASK(ptp) = {
+	.name = "ptp",
+	.job = wrc_ptp_update,
+};
+DEFINE_WRC_TASK(shell) = {
+	.name = "shell+gui",
+	.init = shell_boot_script,
+	.job = ui_update,
+};
+DEFINE_WRC_TASK(spll) = {
+	.name = "spll-bh",
+	.job = spll_update,
+};
+
+/* Account the time to either this task or task 0 */
+static void account_task(struct wrc_task *t, int done_sth)
+{
+	uint32_t nanos;
+	signed int delta;
+
+	if (!done_sth)
+		t = __task_begin; /* task 0 is special */
+	shw_pps_gen_get_time(NULL, &nanos);
+	delta = nanos - prev_nanos_for_profile;
+	if (delta < 0)
+		delta += 1000 * 1000 * 1000;
+
+	t->nanos += delta;
+	if (t-> nanos > 1000 * 1000 * 1000) {
+		t->nanos -= 1000 * 1000 * 1000;
+		t->seconds++;
+	}
+	prev_nanos_for_profile = nanos;
+}
+
+/* Run a task with profiling */
+static void wrc_run_task(struct wrc_task *t)
+{
+	int done_sth = 0;
+
+	if (!t->job) /* idle task, just count iterations */
+		t->nrun++;
+	else if (!t->enable || *t->enable) {
+		/* either enabled or without a check variable */
+		done_sth = t->job();
+		t->nrun += done_sth;
+	}
+	account_task(t, done_sth);
+}
+
 int main(void)
 {
+	struct wrc_task *t;
+
 	check_reset();
-	wrc_ui_mode = UI_SHELL_MODE;
-	_endram = ENDRAM_MAGIC;
 
-	wrc_initialize();
-	usleep_init();
-	shell_init();
-
-	wrc_ptp_set_mode(WRC_MODE_SLAVE);
-	wrc_ptp_start();
-
-	//try to read and execute init script from EEPROM
-	shell_boot_script();
+	/* initialization of individual tasks */
+	for_each_task(t)
+		if (t->init)
+			t->init();
 
 	for (;;) {
-		int l_status = wrc_check_link();
+		for_each_task(t)
+			wrc_run_task(t);
 
-		switch (l_status) {
-#ifdef CONFIG_ETHERBONE
-		case LINK_WENT_UP:
-			needIP = 0;
-			break;
-#endif
-
-		case LINK_UP:
-			update_rx_queues();
-#ifdef CONFIG_ETHERBONE
-			ipv4_poll();
-			arp_poll();
-#endif
-			break;
-
-		case LINK_WENT_DOWN:
-			if (wrc_ptp_get_mode() == WRC_MODE_SLAVE) {
-				spll_init(SPLL_MODE_FREE_RUNNING_MASTER, 0, 1);
-				shw_pps_gen_enable_output(0);
-			}
-			break;
-		}
-
-		ui_update();
-		wrc_ptp_update();
-		spll_update();
+		/* better safe than sorry */
 		check_stack();
 	}
 }

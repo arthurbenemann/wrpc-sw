@@ -18,12 +18,11 @@
 #include <syscon.h>
 #include <pps_gen.h>
 #include <onewire.h>
-#include <util.h>
+#include <temperature.h>
 #include "wrc_ptp.h"
 #include "hal_exports.h"
 #include "lib/ipv4.h"
-
-extern int wrc_man_phase;
+#include "shell.h"
 
 extern struct pp_servo servo;
 extern struct pp_instance ppi_static;
@@ -81,7 +80,7 @@ static int wrc_mon_status(void)
 	return 1;
 }
 
-void wrc_mon_gui(void)
+int wrc_mon_gui(void)
 {
 	static uint32_t last_jiffies;
 	static uint32_t last_servo_count;
@@ -90,19 +89,17 @@ void wrc_mon_gui(void)
 	int aux_stat;
 	uint64_t sec;
 	uint32_t nsec;
-#ifdef CONFIG_ETHERBONE
-	uint8_t ip[4];
-#endif
 	struct wr_servo_state *s =
 			&((struct wr_data *)ppi->ext_data)->servo_state;
 	int64_t crtt;
 	int64_t total_asymmetry;
+	char buf[20];
 
 	if (!last_jiffies)
 		last_jiffies = timer_get_tics() - 1 -  wrc_ui_refperiod;
 	if (time_before(timer_get_tics(), last_jiffies + wrc_ui_refperiod)
 		&& last_servo_count == s->update_count)
-		return;
+		return 0;
 	last_jiffies = timer_get_tics();
 	last_servo_count = s->update_count;
 
@@ -114,7 +111,7 @@ void wrc_mon_gui(void)
 	shw_pps_gen_get_time(&sec, &nsec);
 
 	cprintf(C_BLUE, "\n\nTAI Time:                  ");
-	cprintf(C_WHITE, "%s", format_time(sec));
+	cprintf(C_WHITE, "%s", format_time(sec, TIME_FORMAT_LEGACY));
 
 	/*show_ports */
 	wrpc_get_port_state(&state, NULL);
@@ -132,7 +129,7 @@ void wrc_mon_gui(void)
 
 		if (!WR_DSPOR(ppi)->wrModeOn) {
 			wrc_mon_std_servo();
-			return;
+			return 1;
 		}
 
 		switch (ptp_mode) {
@@ -155,17 +152,28 @@ void wrc_mon_gui(void)
 			cprintf(C_GREEN, "Calibrated  ");
 		else
 			cprintf(C_RED, "Uncalibrated  ");
-#ifdef CONFIG_ETHERBONE
-		cprintf(C_WHITE, "\nIPv4: ");
-		getIP(ip);
-		if (needIP)
-			cprintf(C_RED, "BOOTP running");
-		else
-			cprintf(C_GREEN, "%d.%d.%d.%d", ip[0], ip[1], ip[2], ip[3]);
-#endif
+
+		if (HAS_IP) {
+			uint8_t ip[4];
+
+			cprintf(C_WHITE, "\nIPv4: ");
+			getIP(ip);
+			format_ip(buf, ip);
+			switch (ip_status) {
+			case IP_TRAINING:
+				cprintf(C_RED, "BOOTP running");
+				break;
+			case IP_OK_BOOTP:
+				cprintf(C_GREEN, "%s (from bootp)", buf);
+				break;
+			case IP_OK_STATIC:
+				cprintf(C_GREEN, "%s (static assignment)", buf);
+				break;
+			}
+		}
 
 		if (wrc_mon_status() == 0)
-			return;
+			return 1;
 
 		cprintf(C_GREY, "Servo state:               ");
 		cprintf(C_WHITE, "%s\n", s->servo_state_name);
@@ -226,9 +234,6 @@ void wrc_mon_gui(void)
 		cprintf(C_WHITE, "%9d ps\n",
 			(int32_t) (s->skew));
 
-		cprintf(C_GREY, "Manual phase adjustment: ");
-		cprintf(C_WHITE, "%9d ps\n", (int32_t) (wrc_man_phase));
-
 		cprintf(C_GREY, "Update counter:          ");
 		cprintf(C_WHITE, "%9d\n",
 			(int32_t) (s->update_count));
@@ -238,7 +243,7 @@ void wrc_mon_gui(void)
 
 	pp_printf("--");
 
-	return;
+	return 1;
 }
 
 static inline void cprintf_ti(int color, struct TimeInternal *ti)
@@ -281,7 +286,7 @@ static void wrc_mon_std_servo(void)
 /* internal "last", exported to shell command */
 uint32_t wrc_stats_last;
 
-int wrc_log_stats(void)
+static int wrc_log_stats(void)
 {
 	struct hal_port_state state;
 	int tx, rx;
@@ -291,6 +296,9 @@ int wrc_log_stats(void)
 	struct wr_servo_state *s =
 			&((struct wr_data *)ppi->ext_data)->servo_state;
 	static uint32_t last_jiffies;
+
+	if (!wrc_stat_running)
+		return 0;
 
 	if (!last_jiffies)
 		last_jiffies = timer_get_tics() - 1 -  wrc_ui_refperiod;
@@ -343,16 +351,16 @@ int wrc_log_stats(void)
 	if (1) {
 		int32_t temp;
 
-		//first read the value from previous measurement,
-		//first one will be random, I know
-		temp = w1_read_temp_bus(&wrpc_w1_bus, W1_FLAG_COLLECT);
-		//then initiate new conversion for next loop cycle
-		w1_read_temp_bus(&wrpc_w1_bus, W1_FLAG_NOWAIT);
+		temp = wrc_temp_get("pcb");
 		pp_printf("temp: %d.%04d C", temp >> 16,
 			  (int)((temp & 0xffff) * 10 * 1000 >> 16));
 	}
 
 	pp_printf("\n");
 
-	return 0;
+	return 1;
 }
+DEFINE_WRC_TASK(stats) = {
+	.name = "stats",
+	.job = wrc_log_stats,
+};

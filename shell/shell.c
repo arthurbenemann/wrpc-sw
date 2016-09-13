@@ -14,7 +14,6 @@
 #include <errno.h>
 
 #include <wrc.h>
-#include "util.h"
 #include "uart.h"
 #include "syscon.h"
 #include "shell.h"
@@ -129,7 +128,7 @@ void shell_init()
 	state = SH_PROMPT;
 }
 
-void shell_interactive()
+int shell_interactive()
 {
 	int c;
 	switch (state) {
@@ -138,13 +137,13 @@ void shell_interactive()
 		cmd_pos = 0;
 		cmd_len = 0;
 		state = SH_INPUT;
-		break;
+		return 1;
 
 	case SH_INPUT:
 		c = uart_read_byte();
 
 		if (c < 0)
-			return;
+			return 0;
 
 		if (c == 27 || ((current_key & ESCAPE_FLAG) && c == 91))
 			current_key = ESCAPE_FLAG;
@@ -202,14 +201,15 @@ void shell_interactive()
 			}
 			current_key = 0;
 		}
-		break;
+		return 1;
 
 	case SH_EXEC:
 		cmd_buf[cmd_len] = 0;
 		_shell_exec();
 		state = SH_PROMPT;
-		break;
+		return 1;
 	}
+	return 0;
 }
 
 const char *fromhex(const char *hex, int *v)
@@ -248,14 +248,40 @@ const char *fromdec(const char *dec, int *v)
 	return dec;
 }
 
-int shell_boot_script(void)
+static char shell_init_cmd[] = CONFIG_INIT_COMMAND;
+
+static int build_init_readcmd(uint8_t *cmd, int maxlen)
+{
+	static char *p = shell_init_cmd;
+	int i;
+
+	/* use semicolon as separator */
+	for (i = 0; i < maxlen && p[i] && p[i] != ';'; i++)
+		cmd[i] = p[i];
+	cmd[i] = '\0';
+	p += i;
+	if (*p == ';')
+		p++;
+	return i;
+}
+
+void shell_boot_script(void)
 {
 	uint8_t next = 0;
 
 	if (!has_eeprom)
-		return -1;
+		return;
 
-	while (1) {
+	while (CONFIG_HAS_BUILD_INIT) {
+		cmd_len = build_init_readcmd((uint8_t *)cmd_buf,
+					SH_MAX_LINE_LEN);
+		if (!cmd_len)
+			break;
+		pp_printf("executing: %s\n", cmd_buf);
+		_shell_exec();
+	}
+
+	while (CONFIG_HAS_FLASH_INIT) {
 		cmd_len = storage_init_readcmd((uint8_t *)cmd_buf,
 					      SH_MAX_LINE_LEN, next);
 		if (cmd_len <= 0) {
@@ -270,5 +296,5 @@ int shell_boot_script(void)
 		next = 1;
 	}
 
-	return 0;
+	return;
 }

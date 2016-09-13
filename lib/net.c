@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
+#include <stdarg.h>
 
 #include "hal_exports.h"
 #include <wrpc.h>
@@ -21,47 +22,12 @@
 #include "minic.h"
 #include "endpoint.h"
 #include "softpll_ng.h"
+#include "ipv4.h"
 
-#define min(x,y) ((x) < (y) ? (x) : (y))
+static struct wrpc_socket *socks[NET_MAX_SOCKETS];
 
-__attribute__ ((packed))
-struct ethhdr {
-	uint8_t dstmac[6];
-	uint8_t srcmac[6];
-	uint16_t ethtype;
-};
-
-struct timeout {
-	uint64_t start_tics;
-	uint64_t timeout;
-};
-
-struct sockq {
-	uint8_t buf[NET_SKBUF_SIZE];
-	uint16_t head, tail, avail;
-	uint16_t n;
-};
-
-struct my_socket {
-	int in_use;
-	wr_sockaddr_t bind_addr;
-	mac_addr_t local_mac;
-
-	uint32_t phase_transition;
-	uint32_t dmtd_phase;
-	struct sockq queue;
-};
-
-static struct my_socket socks[NET_MAX_SOCKETS];
-
-int ptpd_netif_init()
-{
-	memset(socks, 0, sizeof(socks));
-	return PTPD_NETIF_OK;
-}
-
-//#define TRACE_WRAP pp_printf
-int ptpd_netif_get_hw_addr(wr_socket_t * sock, mac_addr_t * mac)
+//#define net_verbose pp_printf
+int ptpd_netif_get_hw_addr(struct wrpc_socket *sock, mac_addr_t *mac)
 {
 	get_mac_addr((uint8_t *) mac);
 
@@ -72,35 +38,45 @@ void ptpd_netif_set_phase_transition(uint32_t phase)
 {
 	int i;
 
-	for (i=0; i< NET_MAX_SOCKETS; ++i) {
-		socks[i].phase_transition = phase;
+	for (i=0; i< ARRAY_SIZE(socks); ++i) {
+		socks[i]->phase_transition = phase;
 	}
 }
 
 
-wr_socket_t *ptpd_netif_create_socket(int unused, int unusd2,
-				      wr_sockaddr_t * bind_addr)
+struct wrpc_socket *ptpd_netif_create_socket(struct wrpc_socket *sock,
+					     struct wr_sockaddr * bind_addr,
+					     int udp_or_raw, int udpport)
 {
 	int i;
 	struct hal_port_state pstate;
-	struct my_socket *sock;
 
 	/* Look for the first available socket. */
-	for (sock = NULL, i = 0; i < NET_MAX_SOCKETS; i++)
-		if (!socks[i].in_use) {
-			sock = &socks[i];
+	for (i = 0; i < ARRAY_SIZE(socks); i++)
+		if (!socks[i]) {
+			socks[i] = sock;
 			break;
 		}
-
-	if (!sock) {
-		TRACE_WRAP("No sockets left.\n");
+	if (i == ARRAY_SIZE(socks)) {
+		pp_printf("%s: no socket slots left\n", __func__);
 		return NULL;
 	}
+	net_verbose("%s: socket %p for %04x:%04x, slot %i\n", __func__,
+		    sock, ntohs(bind_addr->ethertype),
+		    udpport, i);
 
 	if (wrpc_get_port_state(&pstate, "wr0" /* unused */) < 0)
 		return NULL;
 
-	memcpy(&sock->bind_addr, bind_addr, sizeof(wr_sockaddr_t));
+	/* copy and complete the bind information. If MAC is 0 use unicast */
+	memset(&sock->bind_addr, 0, sizeof(struct wr_sockaddr));
+	if (bind_addr)
+		memcpy(&sock->bind_addr, bind_addr, sizeof(struct wr_sockaddr));
+	sock->bind_addr.udpport = 0;
+	if (udp_or_raw == PTPD_SOCK_UDP) {
+		sock->bind_addr.ethertype = htons(0x0800); /* IPv4 */
+		sock->bind_addr.udpport = udpport;
+	}
 
 	/*get mac from endpoint */
 	get_mac_addr(sock->local_mac);
@@ -110,32 +86,32 @@ wr_socket_t *ptpd_netif_create_socket(int unused, int unusd2,
 
 	/*packet queue */
 	sock->queue.head = sock->queue.tail = 0;
-	sock->queue.avail = NET_SKBUF_SIZE;
+	sock->queue.avail = sock->queue.size;
 	sock->queue.n = 0;
-	sock->in_use = 1;
 
-	return (wr_socket_t *) (sock);
+	return sock;
 }
 
-int ptpd_netif_close_socket(wr_socket_t * sock)
+int ptpd_netif_close_socket(struct wrpc_socket *s)
 {
-	struct my_socket *s = (struct my_socket *)sock;
-
-	if (s)
-		s->in_use = 0;
+	int i;
+	for (i = 0; i < ARRAY_SIZE(socks); i++)
+		if (socks[i] == s)
+			socks[i] = NULL;
 	return 0;
 }
 
 /*
  * The new, fully verified linearization algorithm.
- * Merges the phase, measured by the DDMTD with the number of clock ticks,
- * and makes sure there are no jumps resulting from different moments of transitions in the
- * coarse counter and the phase values.
+ * Merges the phase, measured by the DDMTD with the number of clock
+ * ticks, and makes sure there are no jumps resulting from different
+ * moments of transitions in the coarse counter and the phase values.
  * As a result, we get the full, sub-ns RX timestamp.
  *
  * Have a look at the note at http://ohwr.org/documents/xxx for details.
  */
-void ptpd_netif_linearize_rx_timestamp(wr_timestamp_t * ts, int32_t dmtd_phase,
+void ptpd_netif_linearize_rx_timestamp(struct wr_timestamp *ts,
+				       int32_t dmtd_phase,
 				       int cntr_ahead, int transition_point,
 				       int clock_period)
 {
@@ -143,50 +119,55 @@ void ptpd_netif_linearize_rx_timestamp(wr_timestamp_t * ts, int32_t dmtd_phase,
 
 	ts->raw_phase =  dmtd_phase;
 
-/* The idea is simple: the asynchronous RX timestamp trigger is tagged by two counters:
-   one counting at the rising clock edge, and the other on the falling. That means, the rising
-   timestamp is 180 degree in advance wrs to the falling one. */
+/* The idea is simple: the asynchronous RX timestamp trigger is tagged
+ * by two counters: one counting at the rising clock edge, and the
+ * other on the falling. That means, the rising timestamp is 180
+ * degree in advance wrs to the falling one.
+ */
 
 /* Calculate the nanoseconds value for both timestamps. The rising edge one
    is just the HW register */
-  nsec_r = ts->nsec;
-/* The falling edge TS is the rising - 1 thick if the "rising counter ahead" bit is set. */
- 	nsec_f = cntr_ahead ? ts->nsec - (clock_period / 1000) : ts->nsec;
-        
+	nsec_r = ts->nsec;
+/* The falling edge TS is the rising - 1 thick
+    if the "rising counter ahead" bit is set. */
+	nsec_f = cntr_ahead ? ts->nsec - (clock_period / 1000) : ts->nsec;
 
-/* Adjust the rising edge timestamp phase so that it "jumps" roughly around the point
-   where the counter value changes */
+/* Adjust the rising edge timestamp phase so that it "jumps" roughly
+   around the point where the counter value changes */
 	int phase_r = ts->raw_phase - transition_point;
 	if(phase_r < 0) /* unwrap negative value */
 		phase_r += clock_period;
 
-/* Do the same with the phase for the falling edge, but additionally shift it by extra 180 degrees
-  (so that it matches the falling edge counter) */ 
+/* Do the same with the phase for the falling edge, but additionally shift
+   it by extra 180 degrees (so that it matches the falling edge counter) */
 	int phase_f = ts->raw_phase - transition_point + (clock_period / 2);
 	if(phase_f < 0)
 		phase_f += clock_period;
 	if(phase_f >= clock_period)
 		phase_f -= clock_period;
 
-/* If we are within +- 25% from the transition in the rising edge counter, pick the falling one */	
-  if( phase_r > 3 * clock_period / 4 || phase_r < clock_period / 4 )
-  {
+/* If we are within +- 25% from the transition in the rising edge counter,
+   pick the falling one */
+	if( phase_r > 3 * clock_period / 4 || phase_r < clock_period / 4 ) {
 		ts->nsec = nsec_f;
 
-		/* The falling edge timestamp is half a cycle later with respect to the rising one. Add
-			 the extra delay, as rising edge is our reference */
+		/* The falling edge timestamp is half a cycle later
+		   with respect to the rising one. Add
+		   the extra delay, as rising edge is our reference */
 		ts->phase = phase_f + clock_period / 2;
 		if(ts->phase >= clock_period) /* Handle overflow */
 		{
 			ts->phase -= clock_period;
 			ts->nsec += (clock_period / 1000);
 		}
-	} else { /* We are closer to the falling edge counter transition? Pick the opposite timestamp */
+	} else { /* We are closer to the falling edge counter transition?
+		    Pick the opposite timestamp */
 		ts->nsec = nsec_r;
 		ts->phase = phase_r;
 	}
 
-	/* In an unlikely case, after all the calculations, the ns counter may be overflown. */
+	/* In an unlikely case, after all the calculations,
+	   the ns counter may be overflown. */
 	if(ts->nsec >= 1000000000)
 	{
 		ts->nsec -= 1000000000;
@@ -196,19 +177,26 @@ void ptpd_netif_linearize_rx_timestamp(wr_timestamp_t * ts, int32_t dmtd_phase,
 }
 
 /* Slow, but we don't care much... */
-static int wrap_copy_in(void *dst, struct sockq *q, size_t len)
+static int wrap_copy_in(void *dst, struct sockq *q, size_t len, size_t buflen)
 {
 	char *dptr = dst;
-	int i = len;
+	int i;
 
-	TRACE_WRAP("copy_in: tail %d avail %d len %d\n", q->tail, q->avail,
-		   len);
-
+	if (!buflen)
+		buflen = len;
+	net_verbose("copy_in: tail %d avail %d len %d (buf %d)\n",
+		    q->tail, q->avail, len, buflen);
+	i = min(len, buflen);
 	while (i--) {
-		*dptr++ = q->buf[q->tail];
+		*dptr++ = q->buff[q->tail];
 		q->tail++;
-		if (q->tail == NET_SKBUF_SIZE)
+		if (q->tail == q->size)
 			q->tail = 0;
+	}
+	if (len > buflen) {
+		q->tail += len - buflen;
+		while (q->tail > q->size)
+			q->tail -= q->size;
 	}
 	return len;
 }
@@ -218,25 +206,24 @@ static int wrap_copy_out(struct sockq *q, void *src, size_t len)
 	char *sptr = src;
 	int i = len;
 
-	TRACE_WRAP("copy_out: head %d avail %d len %d\n", q->head, q->avail,
+	net_verbose("copy_out: head %d avail %d len %d\n", q->head, q->avail,
 		   len);
 
 	while (i--) {
-		q->buf[q->head++] = *sptr++;
-		if (q->head == NET_SKBUF_SIZE)
+		q->buff[q->head++] = *sptr++;
+		if (q->head == q->size)
 			q->head = 0;
 	}
 	return len;
 }
 
-int ptpd_netif_recvfrom(wr_socket_t * sock, wr_sockaddr_t * from, void *data,
-			size_t data_length, wr_timestamp_t * rx_timestamp)
+int ptpd_netif_recvfrom(struct wrpc_socket *s, struct wr_sockaddr *from, void *data,
+			size_t data_length, struct wr_timestamp *rx_timestamp)
 {
-	struct my_socket *s = (struct my_socket *)sock;
 	struct sockq *q = &s->queue;
 
 	uint16_t size;
-	struct ethhdr hdr;
+	struct wr_ethhdr hdr;
 	struct hw_timestamp hwts;
 	uint8_t spll_busy;
 
@@ -246,12 +233,13 @@ int ptpd_netif_recvfrom(wr_socket_t * sock, wr_sockaddr_t * from, void *data,
 
 	q->n--;
 
-	q->avail += wrap_copy_in(&size, q, 2);
-	q->avail += wrap_copy_in(&hdr, q, sizeof(struct ethhdr));
-	q->avail += wrap_copy_in(&hwts, q, sizeof(struct hw_timestamp));
-	q->avail += wrap_copy_in(data, q, min(size, data_length));
+	q->avail += wrap_copy_in(&size, q, 2, 0);
+	q->avail += wrap_copy_in(&hwts, q, sizeof(struct hw_timestamp), 0);
+	q->avail += wrap_copy_in(&hdr, q, sizeof(struct wr_ethhdr), 0);
+	q->avail += wrap_copy_in(data, q, size, data_length);
 
 	from->ethertype = ntohs(hdr.ethtype);
+	from->vlan = wrc_vlan_number; /* has been checked in rcvd frame */
 	memcpy(from->mac, hdr.srcmac, 6);
 	memcpy(from->mac_dest, hdr.dstmac, 6);
 
@@ -273,32 +261,40 @@ int ptpd_netif_recvfrom(wr_socket_t * sock, wr_sockaddr_t * from, void *data,
 						  REF_CLOCK_PERIOD_PS);
 	}
 
-	TRACE_WRAP("RX: Size %d tail %d Smac %x:%x:%x:%x:%x:%x\n", size,
+	net_verbose("%s: called from %p\n",
+		    __func__, __builtin_return_address(0));
+	net_verbose("RX: Size %d tail %d Smac %x:%x:%x:%x:%x:%x\n", size,
 		   q->tail, hdr.srcmac[0], hdr.srcmac[1], hdr.srcmac[2],
 		   hdr.srcmac[3], hdr.srcmac[4], hdr.srcmac[5]);
 
-/*  TRACE_WRAP("%s: received data from %02x:%02x:%02x:%02x:%02x:%02x to %02x:%02x:%02x:%02x:%02x:%02x\n", __FUNCTION__, from->mac[0],from->mac[1],from->mac[2],from->mac[3],
-                                                                                                                   from->mac[4],from->mac[5],from->mac[6],from->mac[7],
-                                                                                                                   from->mac_dest[0],from->mac_dest[1],from->mac_dest[2],from->mac_dest[3],
-                                                                                                                   from->mac_dest[4],from->mac_dest[5],from->mac_dest[6],from->mac_dest[7]);*/
-	return min(size - sizeof(struct ethhdr), data_length);
+	return min(size, data_length);
 }
 
-int ptpd_netif_sendto(wr_socket_t * sock, wr_sockaddr_t * to, void *data,
-		      size_t data_length, wr_timestamp_t * tx_timestamp)
+int ptpd_netif_sendto(struct wrpc_socket * sock, struct wr_sockaddr *to, void *data,
+		      size_t data_length, struct wr_timestamp *tx_timestamp)
 {
-	struct my_socket *s = (struct my_socket *)sock;
+	struct wrpc_socket *s = (struct wrpc_socket *)sock;
 	struct hw_timestamp hwts;
-	struct ethhdr hdr;
+	struct wr_ethhdr_vlan hdr;
 	int rval;
 
 	memcpy(hdr.dstmac, to->mac, 6);
 	memcpy(hdr.srcmac, s->local_mac, 6);
-	hdr.ethtype = to->ethertype;
+	if (wrc_vlan_number) {
+		hdr.ethtype = htons(0x8100);
+		hdr.tag = htons(wrc_vlan_number | (sock->prio << 13));
+		hdr.ethtype_2 = sock->bind_addr.ethertype; /* net order */
+	} else {
+		hdr.ethtype = sock->bind_addr.ethertype;
+	}
+	net_verbose("TX: socket %04x:%04x, len %i\n",
+		    ntohs(s->bind_addr.ethertype),
+		    s->bind_addr.udpport,
+		    data_length);
 
 	rval =
-	    minic_tx_frame((uint8_t *) & hdr, (uint8_t *) data,
-			   data_length + ETH_HEADER_SIZE, &hwts);
+	    minic_tx_frame(&hdr, (uint8_t *) data,
+			   data_length, &hwts);
 
 
 	if (tx_timestamp) {
@@ -310,61 +306,99 @@ int ptpd_netif_sendto(wr_socket_t * sock, wr_sockaddr_t * to, void *data,
 	return rval;
 }
 
-
-void update_rx_queues()
+static int update_rx_queues(void)
 {
-	struct my_socket *s = NULL;
+	struct wrpc_socket *s = NULL, *raws = NULL, *udps = NULL;
 	struct sockq *q;
 	struct hw_timestamp hwts;
-	static struct ethhdr hdr;
+	static struct wr_ethhdr hdr;
 	int recvd, i, q_required;
-	static uint8_t payload[NET_SKBUF_SIZE - 32];
-	uint16_t size;
+	static uint8_t buffer[NET_MAX_SKBUF_SIZE - 32];
+	uint8_t *payload = buffer;
+	uint16_t size, port;
+	uint16_t ethtype, tag;
 
 	recvd =
-	    minic_rx_frame((uint8_t *) & hdr, payload, NET_SKBUF_SIZE - 32,
+	    minic_rx_frame(&hdr, buffer, sizeof(buffer),
 			   &hwts);
 
 	if (recvd <= 0)		/* No data received? */
-		return;
+		return 0;
 
-	for (i = 0; i < NET_MAX_SOCKETS; i++) {
-		s = &socks[i];
-		if (s->in_use && !memcmp(hdr.dstmac, s->bind_addr.mac, 6)
-		    && hdr.ethtype == s->bind_addr.ethertype)
-			break;	/*they match */
-		s = NULL;
+	/* Remove the vlan tag, but  make sure it's the right one */
+	ethtype = hdr.ethtype;
+	tag = 0;
+	if (ntohs(ethtype) == 0x8100) {
+		memcpy(&tag, buffer, 2);
+		memcpy(&hdr.ethtype, buffer + 2, 2);
+		payload += 4;
+		recvd -= 4;
+	}
+	if ((ntohs(tag) & 0xfff) != wrc_vlan_number) {
+		net_verbose("%s: want vlan %i, got %i: discard\n",
+				    __func__, wrc_vlan_number,
+				    ntohs(tag) & 0xfff);
+			return 0;
 	}
 
+	/* Prepare for IP/UDP checks */
+	if (payload[IP_VERSION] == 0x45 && payload[IP_PROTOCOL] == 17)
+		port = payload[UDP_DPORT] << 8 | payload[UDP_DPORT + 1];
+	else
+		port = 0;
+
+	for (i = 0; i < ARRAY_SIZE(socks); i++) {
+		s = socks[i];
+		if (!s)
+			continue;
+		if (hdr.ethtype != s->bind_addr.ethertype)
+			continue;
+		if (!port && !s->bind_addr.udpport)
+			raws = s; /* match with raw socket */
+		if (port && s->bind_addr.udpport == port)
+			udps = s; /*  match with udp socket */
+	}
+	s = udps;
+	if (!s)
+		s = raws;
 	if (!s) {
-		TRACE_WRAP("%s: could not find socket for packet\n",
+		net_verbose("%s: could not find socket for packet\n",
 			   __FUNCTION__);
-		return;
+		return 1;
 	}
 
 	q = &s->queue;
 	q_required =
-	    sizeof(struct ethhdr) + recvd + sizeof(struct hw_timestamp) + 2;
+	    sizeof(struct wr_ethhdr) + recvd + sizeof(struct hw_timestamp) + 2;
 
 	if (q->avail < q_required) {
-		TRACE_WRAP
+		net_verbose
 		    ("%s: queue for socket full; [avail %d required %d]\n",
 		     __FUNCTION__, q->avail, q_required);
-		return;
+		return 1;
 	}
 
 	size = recvd;
 
 	q->avail -= wrap_copy_out(q, &size, 2);
-	q->avail -= wrap_copy_out(q, &hdr, sizeof(struct ethhdr));
 	q->avail -= wrap_copy_out(q, &hwts, sizeof(struct hw_timestamp));
+	q->avail -= wrap_copy_out(q, &hdr, sizeof(struct wr_ethhdr));
 	q->avail -= wrap_copy_out(q, payload, size);
 	q->n++;
 
-	TRACE_WRAP("Q: Size %d head %d Smac %x:%x:%x:%x:%x:%x\n", recvd,
+	net_verbose("Q: Size %d head %d Smac %x:%x:%x:%x:%x:%x\n", recvd,
 		   q->head, hdr.srcmac[0], hdr.srcmac[1], hdr.srcmac[2],
 		   hdr.srcmac[3], hdr.srcmac[4], hdr.srcmac[5]);
 
-	TRACE_WRAP("%s: saved packet to queue [avail %d n %d size %d]\n",
-		   __FUNCTION__, q->avail, q->n, q_required);
+	net_verbose("%s: saved packet to socket %04x:%04x "
+		    "[avail %d n %d size %d]\n", __FUNCTION__,
+		    ntohs(s->bind_addr.ethertype),
+		    s->bind_addr.udpport,
+		    q->avail, q->n, q_required);
+	return 1;
 }
+DEFINE_WRC_TASK(net_bh) = {
+	.name = "net-bh",
+	.enable = &link_status,
+	.job = update_rx_queues,
+};

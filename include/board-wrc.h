@@ -31,10 +31,10 @@
 #define UART_BAUDRATE 115200ULL
 
 /* Maximum number of simultaneously created sockets */
-#define NET_MAX_SOCKETS 4
+#define NET_MAX_SOCKETS 12
 
 /* Socket buffer size, determines the max. RX packet size */
-#define NET_SKBUF_SIZE 512
+#define NET_MAX_SKBUF_SIZE 512
 
 /* Number of auxillary clock channels - usually equal to the number of FMCs */
 #define NUM_AUX_CLOCKS 1
@@ -52,5 +52,10 @@ int board_update(void);
 #define BOARD_MAX_CHAN_AUX		2
 #define BOARD_MAX_PTRACKERS		1
 
+#ifdef CONFIG_IP
+#define HAS_IP 1
+#else
+#define HAS_IP 0
+#endif
 
 #endif /* __BOARD_WRC_H */

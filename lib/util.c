@@ -12,8 +12,6 @@
 #include <time.h>
 #include <wrc.h>
 
-#include "util.h"
-
 /* cut from libc sources */
 
 #define 	YEAR0   1900
@@ -43,7 +41,7 @@ static const int _ytab[2][12] = {
 	{31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31}
 };
 
-char *format_time(uint64_t sec)
+char *format_time(uint64_t sec, int format)
 {
 	struct tm t;
 	static char buf[64];
@@ -71,9 +69,23 @@ char *format_time(uint64_t sec)
 	t.tm_mday = dayno + 1;
 	t.tm_isdst = 0;
 
-	sprintf(buf, "%s, %s %d, %d, %02d:%02d:%02d", _days[t.tm_wday],
-		_months[t.tm_mon], t.tm_mday, t.tm_year + YEAR0, t.tm_hour,
-		t.tm_min, t.tm_sec);
+	switch(format) {
+	case TIME_FORMAT_LEGACY:
+	default:
+		sprintf(buf, "%s, %s %d, %d, %02d:%02d:%02d", _days[t.tm_wday],
+			_months[t.tm_mon], t.tm_mday, t.tm_year + YEAR0,
+			t.tm_hour, t.tm_min, t.tm_sec);
+		break;
+	case TIME_FORMAT_SYSLOG:
+		sprintf(buf, "%s %2d %02d:%02d:%02d", _months[t.tm_mon],
+			t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec);
+		break;
+	case TIME_FORMAT_SORTED:
+		sprintf(buf, "%4d-%02d-%02d-%02d:%02d:%02d",
+			t.tm_year + YEAR0, t.tm_mon + 1, t.tm_mday,
+			t.tm_hour, t.tm_min, t.tm_sec);
+		break;
+	}
 
 	return buf;
 }
@@ -98,6 +110,15 @@ void pcprintf(int row, int col, int color, const char *fmt, ...)
 	va_end(ap);
 	pp_printf("\e[m");
 }
+
+void __debug_printf(const char *fmt, ...)
+{
+	va_list ap;
+	va_start(ap, fmt);
+	vprintf(fmt, ap);
+	va_end(ap);
+}
+
 
 void term_clear(void)
 {

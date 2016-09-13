@@ -13,9 +13,7 @@
 #ifndef __SPLL_EXTERNAL_H
 #define __SPLL_EXTERNAL_H
 
-#include "spll_common.h"
-#include "spll_helper.h"
-#include "spll_main.h"
+#include "softpll_ng.h"
 
 struct spll_external_state {
 	struct spll_helper_state *helper;
@@ -37,6 +35,6 @@ void external_start(struct spll_external_state *s);
 
 int external_locked(volatile struct spll_external_state *s);
 
-void external_align_fsm(volatile struct spll_external_state *s);
+int external_align_fsm(volatile struct spll_external_state *s);
 
 #endif // __SPLL_EXTERNAL_H

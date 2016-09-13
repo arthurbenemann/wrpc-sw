@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <wrc.h>
+#include <wrpc.h>
 
 #include "types.h"
 #include "board.h"
@@ -51,16 +52,7 @@
 static volatile uint32_t dma_tx_buf[MINIC_DMA_TX_BUF_SIZE / 4];
 static volatile uint32_t dma_rx_buf[MINIC_DMA_RX_BUF_SIZE / 4];
 
-struct wr_minic {
-	volatile uint32_t *rx_head, *rx_base;
-	uint32_t rx_avail, rx_size;
-	volatile uint32_t *tx_head, *tx_base;
-	uint32_t tx_avail, tx_size;
-
-	int tx_count, rx_count;
-};
-
-static struct wr_minic minic;
+struct wr_minic minic;
 
 static inline void minic_writel(uint32_t reg, uint32_t data)
 {
@@ -191,10 +183,10 @@ int minic_poll_rx()
 	return (isr & MINIC_EIC_ISR_RX) ? 1 : 0;
 }
 
-int minic_rx_frame(uint8_t * hdr, uint8_t * payload, uint32_t buf_size,
+int minic_rx_frame(struct wr_ethhdr *hdr, uint8_t * payload, uint32_t buf_size,
 		   struct hw_timestamp *hwts)
 {
-	uint32_t payload_size, num_words;
+	uint32_t frame_size, payload_size, num_words;
 	uint32_t desc_hdr;
 	uint32_t raw_ts;
 	uint32_t cur_avail;
@@ -217,8 +209,8 @@ int minic_rx_frame(uint8_t * hdr, uint8_t * payload, uint32_t buf_size,
 		}
 		return 0;
 	}
-	payload_size = RX_DESC_SIZE(desc_hdr);
-	num_words = ((payload_size + 3) >> 2) + 1;
+	frame_size = RX_DESC_SIZE(desc_hdr);
+	num_words = ((frame_size + 3) >> 2) + 1;
 
 	/* valid packet */
 	if (!RX_DESC_ERROR(desc_hdr)) {
@@ -229,15 +221,15 @@ int minic_rx_frame(uint8_t * hdr, uint8_t * payload, uint32_t buf_size,
 			int cntr_diff;
 			uint16_t dhdr;
 
-			payload_size -= RX_OOB_SIZE;
+			frame_size -= RX_OOB_SIZE;
 
 			/* fixme: ugly way of doing unaligned read */
 			minic_rx_memcpy((uint8_t *) & raw_ts,
 					(uint8_t *) minic.rx_head
-					+ payload_size + 6, 4);
+					+ frame_size + 6, 4);
 			minic_rx_memcpy((uint8_t *) & dhdr,
 					(uint8_t *) minic.rx_head +
-					payload_size + 4, 2);
+					frame_size + 4, 2);
 			EXPLODE_WR_TIMESTAMP(raw_ts, counter_r, counter_f);
 
 			shw_pps_gen_get_time(&sec, &counter_ppsg);
@@ -258,14 +250,14 @@ int minic_rx_frame(uint8_t * hdr, uint8_t * payload, uint32_t buf_size,
 			hwts->nsec = counter_r * (REF_CLOCK_PERIOD_PS / 1000);
 			hwts->valid = (dhdr & RXOOB_TS_INCORRECT) ? 0 : 1;
 		}
-
+		payload_size = frame_size - ETH_HEADER_SIZE;
 		n_recvd = (buf_size < payload_size ? buf_size : payload_size);
 		minic.rx_count++;
 
-		minic_rx_memcpy(hdr, (void *)minic.rx_head + 4,
+		minic_rx_memcpy((void *)hdr, (void *)minic.rx_head + 4,
 				ETH_HEADER_SIZE);
 		minic_rx_memcpy(payload, (void *)minic.rx_head + 4
-				+ ETH_HEADER_SIZE, n_recvd - ETH_HEADER_SIZE);
+				+ ETH_HEADER_SIZE, n_recvd);
 	} else {
 		n_recvd = -1;
 	}
@@ -288,19 +280,24 @@ int minic_rx_frame(uint8_t * hdr, uint8_t * payload, uint32_t buf_size,
 	return n_recvd;
 }
 
-int minic_tx_frame(uint8_t * hdr, uint8_t * payload, uint32_t size,
+int minic_tx_frame(struct wr_ethhdr_vlan *hdr, uint8_t *payload, uint32_t size,
 		   struct hw_timestamp *hwts)
 {
 	uint32_t d_hdr, mcr, nwords;
 	uint8_t ts_valid;
-	int i;
+	int i, hsize;
+
 	minic_new_tx_buffer();
 
-	memset((void *)minic.tx_head, 0x0, size + 16);
-	memset((void *)minic.tx_head + 4, 0, size < 60 ? 60 : size);
-	memcpy((void *)minic.tx_head + 4, hdr, ETH_HEADER_SIZE);
-	memcpy((void *)minic.tx_head + 4 + ETH_HEADER_SIZE, payload,
-	       size - ETH_HEADER_SIZE);
+	if (hdr->ethtype == htons(0x8100))
+		hsize = sizeof(struct wr_ethhdr_vlan);
+	else
+		hsize = sizeof(struct wr_ethhdr);
+
+	memset((void *)minic.tx_head, 0x0, size + hsize + 4);
+	memcpy((void *)minic.tx_head + 4, hdr, hsize);
+	memcpy((void *)minic.tx_head + 4 + hsize, payload, size);
+	size += hsize;
 
 	if (size < 60)
 		size = 60;
@@ -361,7 +358,7 @@ int minic_tx_frame(uint8_t * hdr, uint8_t * payload, uint32_t size,
 		fid = MINIC_TSR0_FID_R(minic_readl(MINIC_REG_TSR0));
 
 		if (fid != WRPC_FID) {
-			TRACE_DEV("minic_tx_frame: unmatched fid %d vs %d\n",
+			wrc_verbose("minic_tx_frame: unmatched fid %d vs %d\n",
 				  fid, WRPC_FID);
 		}
 
@@ -376,7 +373,7 @@ int minic_tx_frame(uint8_t * hdr, uint8_t * payload, uint32_t size,
 		hwts->ahead = 0;
 		hwts->nsec = counter_r * (REF_CLOCK_PERIOD_PS / 1000);
 		
-//        TRACE_DEV("minic_tx_frame [%d bytes] TS: %d.%d valid %d\n", size, hwts->utc, hwts->nsec, hwts->valid);
+//        wrc_verbose("minic_tx_frame [%d bytes] TS: %d.%d valid %d\n", size, hwts->utc, hwts->nsec, hwts->valid);
 		minic.tx_count++;
         }
         
