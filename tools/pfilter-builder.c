@@ -409,18 +409,18 @@ void pfilter_init_novlan(char *fname)
 	/* Ethernet = 14 bytes, Offset to type in IP: 8 bytes = 22/2 = 11 */
 	pfilter_cmp(11, 0x0001, 0x00ff, MOV, FRAME_ICMP);
 	pfilter_cmp(11, 0x0011, 0x00ff, MOV, FRAME_UDP);
-	pfilter_logic2(FRAME_UDP, FRAME_UDP, AND, FRAME_IP_OK);
 
 	/* For CPU: arp or icmp unicast or ptp (or latency) */
 	pfilter_logic2(FRAME_FOR_CPU, FRAME_TYPE_ARP, OR, FRAME_TYPE_PTP2);
-	pfilter_logic3(FRAME_FOR_CPU, FRAME_IP_OK, AND, FRAME_ICMP, OR, FRAME_FOR_CPU);
+	pfilter_logic3(R_CLASS(0), FRAME_IP_OK, AND, FRAME_ICMP, OR, FRAME_FOR_CPU);
 
 	/* Now look in UDP ports: at offset 18 (14 + 20 + 8 = 36) */
+	pfilter_logic2(FRAME_UDP, FRAME_UDP, AND, FRAME_IP_OK);
 	pfilter_cmp(18, 0x0000, 0xff00, MOV, PORT_UDP_HOST);	/* ports 0-255 */
 	pfilter_cmp(18, 0x0100, 0xff00, OR, PORT_UDP_HOST);	/* ports 256-511 */
 
 	/* The CPU gets those ports in a proper UDP frame, plus the previous selections */
-	pfilter_logic3(R_CLASS(0), FRAME_UDP, AND, PORT_UDP_HOST, OR, FRAME_FOR_CPU);
+	pfilter_logic2(R_CLASS(1), FRAME_UDP, AND, PORT_UDP_HOST);
 
 	/* Etherbone is UDP at port 0xebd0, let's "or" in the last move */
 	pfilter_cmp(18, 0xebd0, 0xffff, MOV, PORT_UDP_ETHERBONE);
