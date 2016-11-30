@@ -397,15 +397,10 @@ void pfilter_init_novlan(char *fname)
 
 	pfilter_logic3(FRAME_MAC_OK, FRAME_MAC_PTP, AND, R_TMP, OR, FRAME_MAC_OK);
 
-	/* Tagged is dropped. We'll invert the check in the vlan rule-set */
-	pfilter_cmp(6, 0x8100, 0xffff, MOV, R_TMP);
-	pfilter_logic2(R_DROP, R_TMP, MOV, R_ZERO);
-
 	/* Identify some Ethertypes used later -- type latency is 0xcafe */
 	pfilter_cmp(6, 0x88f7, 0xffff, MOV, FRAME_TYPE_PTP2);
 	pfilter_cmp(6, 0xcafe, 0xffff, OR, FRAME_TYPE_PTP2);
 	pfilter_cmp(6, 0x0800, 0xffff, MOV, FRAME_TYPE_IPV4);
-	pfilter_cmp(6, 0x88f7, 0xffff, MOV, FRAME_TYPE_PTP2);
 	pfilter_cmp(6, 0x0806, 0xffff, MOV, FRAME_TYPE_ARP);
 
 	/* Mark one bits for ip-valid (unicast or broadcast) */
@@ -431,9 +426,8 @@ void pfilter_init_novlan(char *fname)
 	pfilter_cmp(18, 0xebd0, 0xffff, MOV, PORT_UDP_ETHERBONE);
 
 	/* and now copy out fabric selections: 7 etherbone, 6 for anything else */
-	pfilter_logic2(R_CLASS(7), FRAME_UDP, AND, PORT_UDP_ETHERBONE);
-	pfilter_logic2(R_CLASS(6), FRAME_UDP, NAND, PORT_UDP_ETHERBONE);
-
+	pfilter_logic2(R_CLASS(5), FRAME_UDP, AND, PORT_UDP_ETHERBONE);
+	pfilter_logic2(R_CLASS(7), FRAME_UDP, NAND, PORT_UDP_ETHERBONE);
 	/*
 	 * Note that earlier we used to be more strict in ptp ethtype (only proper multicast),
 	 * but since we want to accept peer-delay sooner than later, we'd better avoid the checks
