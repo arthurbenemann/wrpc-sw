@@ -29,8 +29,8 @@ void mpll_init(struct spll_main_state *s, int id_ref,
 	s->pi.anti_windup = 1;
 	s->pi.bias = 30000;
 #if defined(CONFIG_WR_SWITCH)
-	s->pi.kp = 1100;		// / 2;
-	s->pi.ki = 30;			// / 2;
+	s->pi.kp = 2000;		// / 2;
+	s->pi.ki = 15;			// / 2;
 #elif defined(CONFIG_WR_NODE)
 	s->pi.kp = -1100;		// / 2;
 	s->pi.ki = -30;			// / 2;
@@ -157,11 +157,19 @@ int mpll_update(struct spll_main_state *s, int tag, int source)
 		if (s->ld.locked) {
 			if (s->phase_shift_current < s->phase_shift_target) {
 				s->phase_shift_current++;
+#if defined(CONFIG_WR_SWITCH)
+				s->adder_ref++;
+#else
 				s->adder_ref--;
+#endif
 			} else if (s->phase_shift_current >
 				   s->phase_shift_target) {
 				s->phase_shift_current--;
-				s->adder_ref++;
+#if defined(CONFIG_WR_SWITCH)
+                                s->adder_ref--;
+#else
+                                s->adder_ref++;
+#endif
 			}
 		}
 		if (ld_update((spll_lock_det_t *)&s->ld, err))
