@@ -56,8 +56,11 @@ int ptrackers_update(struct spll_ptracker_state *ptrackers, int tag,
 
 	if(!s->enabled)
 		return 0;
-
+#if defined(CONFIG_WR_NODE)
 	register int delta = (tag - tag_ref) & ((1 << HPLL_N) - 1);
+#else
+	register int delta = (tag_ref - tag) & ((1 << HPLL_N) - 1);
+#endif
 	register int index = delta >> (HPLL_N - 2);
 
 
