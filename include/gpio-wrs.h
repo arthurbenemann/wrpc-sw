@@ -10,6 +10,8 @@
 
 #include "board.h"
 
+
+
 struct GPIO_WB
 {
   uint32_t CODR;  /*Clear output register*/
@@ -36,7 +38,7 @@ static inline void gpio_dir(int pin, int val)
     __gpio->DDR &= ~(1<<pin);
 }
 
-static inline int gpio_in(int bank, int pin)
+static inline int gpio_in(int pin)
 {
   return __gpio->PSR & (1<<pin) ? 1: 0;
 }
