@@ -45,6 +45,124 @@ void pca9548_select() {
 
 }
 
+int sfp_read_user(int *user_space)
+{
+	int i;
+	int value;
+	uint8_t data;
+	mi2c_init(WRPC_SFP_I2C);
+
+/*	mi2c_start(WRPC_SFP_I2C);
+	mi2c_put_byte(WRPC_SFP_I2C, 0xA2); // Page A2 + Write
+	mi2c_put_byte(WRPC_SFP_I2C, 0x7f); // 0x7f => Table select
+	mi2c_put_byte(WRPC_SFP_I2C, 0x00); // page 0x00
+	mi2c_stop(WRPC_SFP_I2C);
+
+*/	mi2c_start(WRPC_SFP_I2C);
+	mi2c_put_byte(WRPC_SFP_I2C, 0xA2); // Page A2 + Write
+	mi2c_put_byte(WRPC_SFP_I2C, 0x80); // Address 0x80
+	mi2c_repeat_start(WRPC_SFP_I2C);
+	mi2c_put_byte(WRPC_SFP_I2C, 0xA3); // Page A2 + Read
+	mi2c_get_byte(WRPC_SFP_I2C, &data, 1);
+	value = data;
+//	mi2c_get_byte(WRPC_SFP_I2C, &data, 1);
+//	value = (value<<8) + data;
+	mi2c_stop(WRPC_SFP_I2C);
+
+	*user_space = value;
+
+	return -1;
+}
+
+int sfp_dump_a2(char *a2)
+{
+	int i;
+	uint8_t data;
+	mi2c_init(WRPC_SFP_I2C);
+
+	mi2c_start(WRPC_SFP_I2C);
+	mi2c_put_byte(WRPC_SFP_I2C, 0xA2); // Page A2 + Write
+	mi2c_put_byte(WRPC_SFP_I2C, 0x00); // Address 0x00
+	mi2c_repeat_start(WRPC_SFP_I2C);
+	mi2c_put_byte(WRPC_SFP_I2C, 0xA3); // Page A2 + Read
+	mi2c_get_byte(WRPC_SFP_I2C, &data, 1);
+	mi2c_stop(WRPC_SFP_I2C);
+
+	a2[0] = data;
+
+	mi2c_start(WRPC_SFP_I2C);
+	mi2c_put_byte(WRPC_SFP_I2C, 0xA3);
+	for (i = 1; i < 255; ++i) {
+		mi2c_get_byte(WRPC_SFP_I2C, &data, 0);
+		a2[i] = data;
+	}
+	mi2c_get_byte(WRPC_SFP_I2C, &data, 1);	//final word, checksum
+	mi2c_stop(WRPC_SFP_I2C);
+	a2[255] = data;
+
+	return -1;
+}
+
+int sfp_write_user(int *user_space)
+{
+	uint8_t msb,lsb;
+	mi2c_init(WRPC_SFP_I2C);
+
+	msb = (*user_space & 0xff00)>>8;
+	lsb = *user_space & 0xff;
+
+	mi2c_start(WRPC_SFP_I2C);
+	mi2c_put_byte(WRPC_SFP_I2C, 0xA2); // Page A2 + Write
+	mi2c_put_byte(WRPC_SFP_I2C, 0x7f); // 0x7f => Table select
+	mi2c_put_byte(WRPC_SFP_I2C, 0x00); // page 0x00
+	mi2c_stop(WRPC_SFP_I2C);
+
+	mi2c_start(WRPC_SFP_I2C);
+	mi2c_put_byte(WRPC_SFP_I2C, 0xA2); // Page A2 + Write
+	mi2c_put_byte(WRPC_SFP_I2C, 0x80); // 0x80 => USER_SPACE
+	mi2c_put_byte(WRPC_SFP_I2C, lsb);
+	mi2c_stop(WRPC_SFP_I2C);
+
+	return -1;
+}
+
+int sfp_read_laser_wavelength(int *laser_wavelength)
+{
+	int i;
+	int value;
+	uint8_t data, sum;
+	mi2c_init(WRPC_SFP_I2C);
+
+	mi2c_start(WRPC_SFP_I2C);
+	mi2c_put_byte(WRPC_SFP_I2C, 0xA0);
+	mi2c_put_byte(WRPC_SFP_I2C, 0x00);
+	mi2c_repeat_start(WRPC_SFP_I2C);
+	mi2c_put_byte(WRPC_SFP_I2C, 0xA1);
+	mi2c_get_byte(WRPC_SFP_I2C, &data, 1);
+	mi2c_stop(WRPC_SFP_I2C);
+
+	sum = data;
+	value = 0;
+
+	mi2c_start(WRPC_SFP_I2C);
+	mi2c_put_byte(WRPC_SFP_I2C, 0xA1);
+	for (i = 1; i < 63; ++i) {
+		mi2c_get_byte(WRPC_SFP_I2C, &data, 0);
+		sum = (uint8_t) ((uint16_t) sum + data) & 0xff;
+		if (i >= 60 && i <= 61)	//Laser Wavelength
+			value = (value<<8) + data;
+	}
+	mi2c_get_byte(WRPC_SFP_I2C, &data, 1);	//final word, checksum
+	mi2c_stop(WRPC_SFP_I2C);
+
+	*laser_wavelength = value;
+
+	if (sum == data)
+		return 0;
+
+	return -1;
+}
+
 int sfp_read_part_id(char *part_id)
 {
 	int i;

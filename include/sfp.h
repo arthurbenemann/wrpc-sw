@@ -26,6 +26,17 @@ extern int32_t sfp_deltaRx;
 /* Returns 1 if there's a SFP transceiver inserted in the socket. */
 int sfp_present(void);
 
+/* Reads SFP first two bytes user space (page 0xA0, 2 bytes, address 0x80) */
+int sfp_read_user(int *user_space);
+
+int sfp_dump_a2(char *a2);
+
+/* Write SFP first two bytes user space (page 0xA0, 2 bytes, address 0x80) */
+int sfp_write_user(int *user_space);
+
+/* Reads SFP the laser waventlength (page 0xA0, 2 bytes, address 0x3D) */
+int sfp_read_laser_wavelength(int *laser_wavelength);
+
 /* Reads the part ID of the SFP from its configuration EEPROM */
 int sfp_read_part_id(char *part_id);
 
