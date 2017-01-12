@@ -37,8 +37,9 @@ static int cmd_sfp(const char *args[])
 	int i, j;
 	int8_t sfpcount = 1, temp;
 	int laser_wavelength, aap;
-	int user_space;
+	int data;
 	static char a2[256] = "\0";
+//	static char line_8[8] = "\0";
 	struct s_sfpinfo sfp;
 	static char pn[SFP_PN_LEN + 1] = "\0";
 
@@ -116,20 +117,18 @@ static int cmd_sfp(const char *args[])
 	} else if (args[0] && !strcasecmp(args[0], "ch11")) {
 		pp_printf("Set SFP TX-Laser wavelength to Channel 11\n");
 		sfp_read_laser_wavelength(&laser_wavelength);
-		pp_printf("laser wavelength: %d\n", laser_wavelength);
-		sfp_read_user(&user_space);
+		pp_printf("Laser wavelength: %d\n", laser_wavelength);
 
-                //pp_printf("user_space: %d\n", user_space);
 		//pp_printf("write user_space...\n");
 		//aap = 101;		
 		//sfp_write_user(aap);
-		sfp_read_laser_wavelength(&laser_wavelength);
-		pp_printf("laser wavelength: %d\n", laser_wavelength);
-		//sfp_read_user(&user_space);
-		//pp_printf("user_space: %d\n", user_space);
+		return 0;
+	} else if (args[0] && !strcasecmp(args[0], "rd_a2")) {
+		sfp_rd_a2(atoi(args[1]), atoi(args[2]), &data);
+                pp_printf("page: %02x, addr: %02x, data: %02x\n", atoi(args[1]), atoi(args[2]), data);
 		return 0;
 	} else if (args[0] && !strcasecmp(args[0], "dump_a2")) {
-		sfp_dump_a2(a2);
+		sfp_dump_a2(a2, atoi(args[1]));
 		j = 0;
 		for (i = 0; i < 256; ++i) {
 			if (j== 0) {
