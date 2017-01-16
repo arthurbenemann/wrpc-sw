@@ -46,7 +46,7 @@ void pca9548_select() {
 }
 
 //int sfp_rd_user(int *user_space, char *line_8)
-int sfp_rd_a2(int8_t page, int8_t addr, int8_t *value)
+int sfp_rd_a2(int8_t page, int8_t addr, uint8_t *value)
 {
 	uint8_t data;
 	mi2c_init(WRPC_SFP_I2C);
@@ -55,8 +55,7 @@ int sfp_rd_a2(int8_t page, int8_t addr, int8_t *value)
 	mi2c_start(WRPC_SFP_I2C);
 	mi2c_put_byte(WRPC_SFP_I2C, 0xA2); // 0xA2 + Write
 	mi2c_put_byte(WRPC_SFP_I2C, 0x7f); // 0x7f => Table select
-//	mi2c_put_byte(WRPC_SFP_I2C, page); // page
-	mi2c_put_byte(WRPC_SFP_I2C, 0x02); // page
+	mi2c_put_byte(WRPC_SFP_I2C, page); // page
 	mi2c_stop(WRPC_SFP_I2C);
 
 	// Start reading A2 Lower Memory	
@@ -66,13 +65,11 @@ int sfp_rd_a2(int8_t page, int8_t addr, int8_t *value)
 	// Repeated Start reading A2 page Memory
 	mi2c_repeat_start(WRPC_SFP_I2C);
 	mi2c_put_byte(WRPC_SFP_I2C, 0xA2); // 0xA2 + Write
-//	mi2c_put_byte(WRPC_SFP_I2C, addr); // page => addr
-	mi2c_put_byte(WRPC_SFP_I2C, 0x80); // page => addr
+	mi2c_put_byte(WRPC_SFP_I2C, addr); // page => addr
 	mi2c_repeat_start(WRPC_SFP_I2C);
 	mi2c_put_byte(WRPC_SFP_I2C, 0xA3); // 0xA2 + Read
 	mi2c_get_byte(WRPC_SFP_I2C, &data, 1);
 	mi2c_stop(WRPC_SFP_I2C);
-
 
 	*value = data;
 

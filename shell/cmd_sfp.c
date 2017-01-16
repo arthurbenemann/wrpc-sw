@@ -38,6 +38,7 @@ static int cmd_sfp(const char *args[])
 	int8_t sfpcount = 1, temp;
 	int laser_wavelength, aap;
 	int data;
+	uint8_t value;
 	static char a2[256] = "\0";
 //	static char line_8[8] = "\0";
 	struct s_sfpinfo sfp;
@@ -124,8 +125,8 @@ static int cmd_sfp(const char *args[])
 		//sfp_write_user(aap);
 		return 0;
 	} else if (args[0] && !strcasecmp(args[0], "rd_a2")) {
-		sfp_rd_a2(atoi(args[1]), atoi(args[2]), &data);
-                pp_printf("page: %02x, addr: %02x, data: %02x\n", atoi(args[1]), atoi(args[2]), data);
+		sfp_rd_a2(atoi(args[1]), atoi(args[2]), &value);
+                pp_printf("page: %02x, addr: %02x, data: %02x\n", atoi(args[1]), atoi(args[2]), value);
 		return 0;
 	} else if (args[0] && !strcasecmp(args[0], "dump_a2")) {
 		sfp_dump_a2(a2, atoi(args[1]));

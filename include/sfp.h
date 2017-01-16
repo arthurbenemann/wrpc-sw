@@ -27,9 +27,7 @@ extern int32_t sfp_deltaRx;
 int sfp_present(void);
 
 /* Reads SFP 0xA2 select a page and address */
-//int sfp_rd_user(int *user_space, char *line_8);
-//int sfp_rd_user(int *user_space);
-int sfp_rd_a2(int8_t page, int8_t addr, int8_t *value);
+int sfp_rd_a2(int8_t page, int8_t addr, uint8_t *value);
 
 /* Dump SFP 0xA2 memory 0x00 to 0xFF (first selecting a page for readout) */
 int sfp_dump_a2(char *a2, int8_t page);
