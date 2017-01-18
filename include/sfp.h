@@ -26,14 +26,14 @@ extern int32_t sfp_deltaRx;
 /* Returns 1 if there's a SFP transceiver inserted in the socket. */
 int sfp_present(void);
 
-/* Reads SFP 0xA2 select a page and address */
-int sfp_rd_a2(int8_t page, int8_t addr, uint8_t *value);
+/* Reads SFP 0xA0 or 0xA2, select an address on a page */
+int sfp_rd(uint8_t i2c_addr, uint8_t addr, uint8_t page, uint8_t *value);
+
+/* Write SFP 0xA2 select a page and address and write byte */
+int sfp_wr_a2(uint8_t page, uint8_t addr, uint8_t value);
 
 /* Dump SFP 0xA2 memory 0x00 to 0xFF (first selecting a page for readout) */
-int sfp_dump_a2(char *a2, int8_t page);
-
-/* Write SFP user space (0xA2 page 0x00, 1 bytes, address 0x80) */
-int sfp_write_user(int *user_space);
+int sfp_dump(char *memdump, uint8_t i2c_addr, uint8_t page);
 
 /* Reads SFP the laser waventlength (page 0xA0, 2 bytes, address 0x3D) */
 int sfp_read_laser_wavelength(int *laser_wavelength);

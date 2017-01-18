@@ -45,29 +45,32 @@ void pca9548_select() {
 
 }
 
-//int sfp_rd_user(int *user_space, char *line_8)
-int sfp_rd_a2(int8_t page, int8_t addr, uint8_t *value)
+int sfp_rd(uint8_t i2c_addr, uint8_t addr, uint8_t page, uint8_t *value)
 {
-	uint8_t data;
+	uint8_t data, i2c_rd_addr;
 	mi2c_init(WRPC_SFP_I2C);
 
 	// Select A2 Page
+        // (note: for unknown reason page must be selected even when
+        //  memory locations 0-127 are addressed or 0xA0 is addressed)
 	mi2c_start(WRPC_SFP_I2C);
-	mi2c_put_byte(WRPC_SFP_I2C, 0xA2); // 0xA2 + Write
-	mi2c_put_byte(WRPC_SFP_I2C, 0x7f); // 0x7f => Table select
-	mi2c_put_byte(WRPC_SFP_I2C, page); // page
+	mi2c_put_byte(WRPC_SFP_I2C, 0xA2);		// 0xA2 + Write
+	mi2c_put_byte(WRPC_SFP_I2C, 0x7f);		// 0x7f => Table select
+	mi2c_put_byte(WRPC_SFP_I2C, page);		// page
 	mi2c_stop(WRPC_SFP_I2C);
 
-	// Start reading A2 Lower Memory	
+	i2c_rd_addr = i2c_addr + 1;
+
+	// Start reading Lower Memory	
 	mi2c_start(WRPC_SFP_I2C);
-	mi2c_put_byte(WRPC_SFP_I2C, 0xA2); // 0xA2 + Write
+	mi2c_put_byte(WRPC_SFP_I2C, i2c_addr);		// 0xA0 or 0xA2 + Write
 	mi2c_put_byte(WRPC_SFP_I2C, 0x00);
-	// Repeated Start reading A2 page Memory
+	// Repeated Start reading page Memory
 	mi2c_repeat_start(WRPC_SFP_I2C);
-	mi2c_put_byte(WRPC_SFP_I2C, 0xA2); // 0xA2 + Write
-	mi2c_put_byte(WRPC_SFP_I2C, addr); // page => addr
+	mi2c_put_byte(WRPC_SFP_I2C, i2c_addr);		// 0xA0 or 0xA2 + Write
+	mi2c_put_byte(WRPC_SFP_I2C, addr);		// page => addr
 	mi2c_repeat_start(WRPC_SFP_I2C);
-	mi2c_put_byte(WRPC_SFP_I2C, 0xA3); // 0xA2 + Read
+	mi2c_put_byte(WRPC_SFP_I2C, i2c_rd_addr);	// 0xA0 or 0xA2 + Read
 	mi2c_get_byte(WRPC_SFP_I2C, &data, 1);
 	mi2c_stop(WRPC_SFP_I2C);
 
@@ -76,85 +79,89 @@ int sfp_rd_a2(int8_t page, int8_t addr, uint8_t *value)
 	return -1;
 }
 
-int sfp_dump_a2(char *a2, int8_t page)
+int sfp_wr_a2(uint8_t page, uint8_t addr, uint8_t value)
 {
-	int i;
-	uint8_t data;
+	uint8_t msb,lsb;
 	mi2c_init(WRPC_SFP_I2C);
 
-	// Select A2 Page
+	if (addr > 0x7f) {
+		mi2c_start(WRPC_SFP_I2C);
+		mi2c_put_byte(WRPC_SFP_I2C, 0xA2);	// 0xA2 + Write
+		mi2c_put_byte(WRPC_SFP_I2C, 0x7f);	// 0x7f => Table select
+		mi2c_put_byte(WRPC_SFP_I2C, page);	// page 0x00
+		mi2c_stop(WRPC_SFP_I2C);
+	}
 	mi2c_start(WRPC_SFP_I2C);
-	mi2c_put_byte(WRPC_SFP_I2C, 0xA2); // 0xA2 + Write
-	mi2c_put_byte(WRPC_SFP_I2C, 0x7f); // 0x7f => Table select
-	mi2c_put_byte(WRPC_SFP_I2C, page); // page
+	mi2c_put_byte(WRPC_SFP_I2C, 0xA2);		// 0xA2 + Write
+	mi2c_put_byte(WRPC_SFP_I2C, addr);		// page => addr
+	mi2c_put_byte(WRPC_SFP_I2C, value);		// page => addr
 	mi2c_stop(WRPC_SFP_I2C);
 
-	// Start reading a sequence of 128 bytes in A2 Lower/Expanded Memory	
+	return -1;
+}
+
+int sfp_dump(char *memdump, uint8_t i2c_addr, uint8_t page)
+{
+	int i;
+	uint8_t data, i2c_rd_addr;
+	mi2c_init(WRPC_SFP_I2C);
+
+	if (i2c_addr == 0xA2) {
+		// Select A2 Page
+		pp_printf("SFP memory dump of i2c addr: 0x%02x page: 0x%02x\n",i2c_addr, page);
+		mi2c_start(WRPC_SFP_I2C);
+		mi2c_put_byte(WRPC_SFP_I2C, 0xA2);	// 0xA2 + Write
+		mi2c_put_byte(WRPC_SFP_I2C, 0x7f);	// 0x7f => Table select
+		mi2c_put_byte(WRPC_SFP_I2C, page);	// page
+		mi2c_stop(WRPC_SFP_I2C);
+	} else {
+		pp_printf("SFP memory dump of i2c addr: 0x%02x\n",i2c_addr);
+	}
+	i2c_rd_addr = i2c_addr + 1;
+
+	// Start reading a sequence of 128 bytes in Lower/Expanded Memory	
 	mi2c_start(WRPC_SFP_I2C);
-	mi2c_put_byte(WRPC_SFP_I2C, 0xA2); // 0xA2 + Write
-	mi2c_put_byte(WRPC_SFP_I2C, 0x00); // Address 0x00
+	mi2c_put_byte(WRPC_SFP_I2C, i2c_addr);		// 0xA0 or 0xA2 + Write
+	mi2c_put_byte(WRPC_SFP_I2C, 0x00);		// Address 0x00
 	mi2c_repeat_start(WRPC_SFP_I2C);
-	mi2c_put_byte(WRPC_SFP_I2C, 0xA3); // 0xA2 + Read
+	mi2c_put_byte(WRPC_SFP_I2C, i2c_rd_addr);	// 0xA0 or 0xA2 + Read
 	mi2c_get_byte(WRPC_SFP_I2C, &data, 1);
 	mi2c_stop(WRPC_SFP_I2C);
 
-	a2[0] = data;
+	memdump[0] = data;
 
 	mi2c_start(WRPC_SFP_I2C);
-	mi2c_put_byte(WRPC_SFP_I2C, 0xA3);
+	mi2c_put_byte(WRPC_SFP_I2C, i2c_rd_addr);	// 0xA0 or 0xA2 + Read
 	for (i = 1; i < 127; ++i) {
 		mi2c_get_byte(WRPC_SFP_I2C, &data, 0);
-		a2[i] = data;
+		memdump[i] = data;
 	}
-	mi2c_get_byte(WRPC_SFP_I2C, &data, 1);	//final word, checksum
+	mi2c_get_byte(WRPC_SFP_I2C, &data, 1);		//final word, checksum
 	mi2c_stop(WRPC_SFP_I2C);
-	a2[127] = data;
+	memdump[127] = data;
 
 	// For some reason, if you read from 0x00 to 0xff in one go then
 	// 0x00-0x7f are read twice instead of reading 0x00-0xff.
 	// Restart reading a sequence of 128 bytes in A2 Upper Memory	
 	mi2c_start(WRPC_SFP_I2C);
-	mi2c_put_byte(WRPC_SFP_I2C, 0xA2); // 0xA2 + Write
-	mi2c_put_byte(WRPC_SFP_I2C, 0x80); // Address 0x80
+	mi2c_put_byte(WRPC_SFP_I2C, i2c_addr);		// 0xA0 or 0xA2 + Write
+	mi2c_put_byte(WRPC_SFP_I2C, 0x80);		// Address 0x80
 	mi2c_repeat_start(WRPC_SFP_I2C);
-	mi2c_put_byte(WRPC_SFP_I2C, 0xA3); // 0xA2 + Read
+	mi2c_put_byte(WRPC_SFP_I2C, i2c_rd_addr);	// 0xA0 or 0xA2 + Read
 	mi2c_get_byte(WRPC_SFP_I2C, &data, 1);
 	mi2c_stop(WRPC_SFP_I2C);
 
-	a2[128] = data;
+	memdump[128] = data;
 
 	mi2c_start(WRPC_SFP_I2C);
 	mi2c_put_byte(WRPC_SFP_I2C, 0xA3);
 	for (i = 129; i < 255; ++i) {
 		mi2c_get_byte(WRPC_SFP_I2C, &data, 0);
-		a2[i] = data;
+		memdump[i] = data;
 	}
 	mi2c_get_byte(WRPC_SFP_I2C, &data, 1);	//final word, checksum
 	mi2c_stop(WRPC_SFP_I2C);
-	a2[255] = data;
-	return -1;
-}
-
-int sfp_write_user(int *user_space)
-{
-	uint8_t msb,lsb;
-	mi2c_init(WRPC_SFP_I2C);
-
-	msb = (*user_space & 0xff00)>>8;
-	lsb = *user_space & 0xff;
-
-	mi2c_start(WRPC_SFP_I2C);
-	mi2c_put_byte(WRPC_SFP_I2C, 0xA2); // 0xA2 + Write
-	mi2c_put_byte(WRPC_SFP_I2C, 0x7f); // 0x7f => Table select
-	mi2c_put_byte(WRPC_SFP_I2C, 0x00); // page 0x00
-	mi2c_stop(WRPC_SFP_I2C);
-
-	mi2c_start(WRPC_SFP_I2C);
-	mi2c_put_byte(WRPC_SFP_I2C, 0xA2); // 0xA2 + Write
-	mi2c_put_byte(WRPC_SFP_I2C, 0x80); // 0x80 => USER_SPACE
-	mi2c_put_byte(WRPC_SFP_I2C, lsb);
-	mi2c_stop(WRPC_SFP_I2C);
-
+	memdump[255] = data;
 	return -1;
 }
 

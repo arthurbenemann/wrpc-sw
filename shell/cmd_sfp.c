@@ -37,9 +37,10 @@ static int cmd_sfp(const char *args[])
 	int i, j;
 	int8_t sfpcount = 1, temp;
 	int laser_wavelength, aap;
+	uint8_t i2c_addr;
 	int data;
 	uint8_t value;
-	static char a2[256] = "\0";
+	static char memdump[256] = "\0";
 //	static char line_8[8] = "\0";
 	struct s_sfpinfo sfp;
 	static char pn[SFP_PN_LEN + 1] = "\0";
@@ -124,18 +125,35 @@ static int cmd_sfp(const char *args[])
 		//aap = 101;		
 		//sfp_write_user(aap);
 		return 0;
-	} else if (args[0] && !strcasecmp(args[0], "rd_a2")) {
-		sfp_rd_a2(atoi(args[1]), atoi(args[2]), &value);
-                pp_printf("page: %02x, addr: %02x, data: %02x\n", atoi(args[1]), atoi(args[2]), value);
+	} else if (args[0] && !strcasecmp(args[0], "rd")) {
+		if (!strcasecmp(args[1], "a2")) {
+			i2c_addr = 0xa2;
+		} else {
+			i2c_addr = 0xa0;
+		}
+		sfp_rd(i2c_addr, atoi(args[2]), atoi(args[3]), &value);
+                pp_printf("i2c_addr: 0x%02x, addr: 0x%02x, page: 0x%02x, data: 0x%02x\n", i2c_addr, atoi(args[2]), atoi(args[3]), value);
 		return 0;
-	} else if (args[0] && !strcasecmp(args[0], "dump_a2")) {
-		sfp_dump_a2(a2, atoi(args[1]));
+	} else if (args[0] && !strcasecmp(args[0], "wr_a2")) {
+		value = atoi(args[3]) & 0xff;
+		sfp_wr_a2(atoi(args[1]), atoi(args[2]), value);
+                pp_printf("writing:   page: 0x%02x, addr: 0x%02x, data: 0x%02x\n", atoi(args[1]), atoi(args[2]), value);
+		sfp_rd(0xa2, atoi(args[1]), atoi(args[2]), &value);
+                pp_printf("read back: page: 0x%02x, addr: 0x%02x, data: 0x%02x\n", atoi(args[1]), atoi(args[2]), value);
+		return 0;
+	} else if (args[0] && !strcasecmp(args[0], "dump")) {
+		if (!strcasecmp(args[1], "a2")) {
+			i2c_addr = 0xa2;
+		} else {
+			i2c_addr = 0xa0;
+		}
+		sfp_dump(memdump, i2c_addr, atoi(args[2]));
 		j = 0;
 		for (i = 0; i < 256; ++i) {
 			if (j== 0) {
 				pp_printf("%02x: ", i);
 			}			
-			pp_printf("%02x ", a2[i]);
+			pp_printf("%02x ", memdump[i]);
  			j++;
 			if (j == 8) {
 				pp_printf("\n");
