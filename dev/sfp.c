@@ -45,6 +45,20 @@ void pca9548_select() {
 
 }
 
+int sfp_sel_page2(void)
+{
+	mi2c_init(WRPC_SFP_I2C);
+
+	// Select A2 Page
+	mi2c_start(WRPC_SFP_I2C);
+	mi2c_put_byte(WRPC_SFP_I2C, 0xA2);		// 0xA2 + Write
+	mi2c_put_byte(WRPC_SFP_I2C, 0x7f);		// 0x7f => Table select
+	mi2c_put_byte(WRPC_SFP_I2C, 0x02);		// page 0x02
+	mi2c_stop(WRPC_SFP_I2C);
+
+	return -1;
+}
+
 int sfp_rd(uint8_t i2c_addr, uint8_t addr, uint8_t page, uint8_t *value)
 {
 	uint8_t data, i2c_rd_addr;
@@ -79,22 +93,26 @@ int sfp_rd(uint8_t i2c_addr, uint8_t addr, uint8_t page, uint8_t *value)
 	return -1;
 }
 
-int sfp_wr_a2(uint8_t page, uint8_t addr, uint8_t value)
+int sfp_wr(uint8_t i2c_addr, uint8_t addr, uint8_t page, uint8_t value)
 {
-	uint8_t msb,lsb;
 	mi2c_init(WRPC_SFP_I2C);
 
-	if (addr > 0x7f) {
-		mi2c_start(WRPC_SFP_I2C);
-		mi2c_put_byte(WRPC_SFP_I2C, 0xA2);	// 0xA2 + Write
-		mi2c_put_byte(WRPC_SFP_I2C, 0x7f);	// 0x7f => Table select
-		mi2c_put_byte(WRPC_SFP_I2C, page);	// page 0x00
-		mi2c_stop(WRPC_SFP_I2C);
-	}
+	pp_printf("sfpwr i2c_addr: 0x%02x, addr: 0x%02x, page: 0x%02x, data: 0x%02x\n", i2c_addr, addr, page, value);
+
+
+	// Select A2 Page
+        // (note: for unknown reason page must be selected even when
+        //  memory locations 0-127 are addressed or 0xA0 is addressed)
 	mi2c_start(WRPC_SFP_I2C);
 	mi2c_put_byte(WRPC_SFP_I2C, 0xA2);		// 0xA2 + Write
-	mi2c_put_byte(WRPC_SFP_I2C, addr);		// page => addr
-	mi2c_put_byte(WRPC_SFP_I2C, value);		// page => addr
+	mi2c_put_byte(WRPC_SFP_I2C, 0x7f);		// 0x7f => Table select
+	mi2c_put_byte(WRPC_SFP_I2C, page);		// page
+	mi2c_stop(WRPC_SFP_I2C);
+
+	mi2c_start(WRPC_SFP_I2C);
+	mi2c_put_byte(WRPC_SFP_I2C, i2c_addr);		// 0xA0 or 0xA2 + Write
+	mi2c_put_byte(WRPC_SFP_I2C, addr);		// addr
+	mi2c_put_byte(WRPC_SFP_I2C, value);		// write value
 	mi2c_stop(WRPC_SFP_I2C);
 
 	return -1;
@@ -162,6 +180,108 @@ int sfp_dump(char *memdump, uint8_t i2c_addr, uint8_t page)
 	mi2c_get_byte(WRPC_SFP_I2C, &data, 1);	//final word, checksum
 	mi2c_stop(WRPC_SFP_I2C);
 	memdump[255] = data;
+	return -1;
+}
+
+int sfp_wr_ch(uint8_t ch)
+{
+	if ((ch == 0) || (ch >= 103)) {
+		pp_printf("channel %d out of range [1..102]\n", ch);
+ 		return 0;
+	} else {
+		mi2c_init(WRPC_SFP_I2C);
+
+		pp_printf("write channel: %d\n", ch);
+
+/*
+		// Select A2 Page 0x02
+		mi2c_start(WRPC_SFP_I2C);
+		mi2c_put_byte(WRPC_SFP_I2C, 0xA2);	// 0xA2 + Write
+		mi2c_put_byte(WRPC_SFP_I2C, 0x7f);	// 0x7f => Table select
+		mi2c_put_byte(WRPC_SFP_I2C, 0x02);	// page 0x02
+		mi2c_stop(WRPC_SFP_I2C);
+*/
+		mi2c_start(WRPC_SFP_I2C);
+		mi2c_put_byte(WRPC_SFP_I2C, 0xA2);	// 0xA2 + Write
+		mi2c_put_byte(WRPC_SFP_I2C, 0x90);	// addr 144: Channel Number Set
+		mi2c_put_byte(WRPC_SFP_I2C, 0x00);	// 0x00
+		mi2c_put_byte(WRPC_SFP_I2C, ch);	// channel
+		mi2c_stop(WRPC_SFP_I2C);
+
+		return -1;
+	}
+}
+
+int sfp_rd_ch(uint8_t *ch_number, int *ch_wl)
+{
+	uint8_t data, i2c_rd_addr;
+	int value; 
+	mi2c_init(WRPC_SFP_I2C);
+
+/*
+	// Select A2 Page
+        // (note: for unknown reason page must be selected even when
+        //  memory locations 0-127 are addressed or 0xA0 is addressed)
+	mi2c_start(WRPC_SFP_I2C);
+	mi2c_put_byte(WRPC_SFP_I2C, 0xA2);		// 0xA2 + Write
+	mi2c_put_byte(WRPC_SFP_I2C, 0x7f);		// 0x7f => Table select
+	mi2c_put_byte(WRPC_SFP_I2C, 0x02);		// page 0x02
+	mi2c_stop(WRPC_SFP_I2C);
+*/
+
+	// Repeated Start reading page Memory
+	mi2c_repeat_start(WRPC_SFP_I2C);
+	mi2c_put_byte(WRPC_SFP_I2C, 0xA2);	// 0xA2 + Write
+	mi2c_put_byte(WRPC_SFP_I2C, 0x90);	// addr 144: Channel Number Set
+	mi2c_repeat_start(WRPC_SFP_I2C);
+	mi2c_put_byte(WRPC_SFP_I2C, 0xA3);	// 0xA2 + Read
+	mi2c_get_byte(WRPC_SFP_I2C, &data, 0);
+	mi2c_get_byte(WRPC_SFP_I2C, &data, 0);
+        *ch_number = data;
+	mi2c_get_byte(WRPC_SFP_I2C, &data, 0);
+        value = (data << 8);
+	mi2c_get_byte(WRPC_SFP_I2C, &data, 1);
+        value = value + data;
+	mi2c_stop(WRPC_SFP_I2C);
+	*ch_wl = value;
+
+	return -1;
+}
+
+int sfp_rd_ch_stat(uint8_t *stat)
+{
+	uint8_t data, i2c_rd_addr;
+	int value; 
+	mi2c_init(WRPC_SFP_I2C);
+
+/*
+	// Select A2 Page
+        // (note: for unknown reason page must be selected even when
+        //  memory locations 0-127 are addressed or 0xA0 is addressed)
+	mi2c_start(WRPC_SFP_I2C);
+	mi2c_put_byte(WRPC_SFP_I2C, 0xA2);		// 0xA2 + Write
+	mi2c_put_byte(WRPC_SFP_I2C, 0x7f);		// 0x7f => Table select
+	mi2c_put_byte(WRPC_SFP_I2C, 0x02);		// page 0x02
+	mi2c_stop(WRPC_SFP_I2C);
+*/
+	// Repeated Start reading page Memory
+	mi2c_repeat_start(WRPC_SFP_I2C);
+	mi2c_put_byte(WRPC_SFP_I2C, 0xA2);	// 0xA2 + Write
+	mi2c_put_byte(WRPC_SFP_I2C, 0xA8);	// addr 144: Channel Number Set
+	mi2c_repeat_start(WRPC_SFP_I2C);
+	mi2c_put_byte(WRPC_SFP_I2C, 0xA3);	// 0xA2 + Read
+	mi2c_get_byte(WRPC_SFP_I2C, &data, 0);
+	mi2c_get_byte(WRPC_SFP_I2C, &data, 0);
+	mi2c_get_byte(WRPC_SFP_I2C, &data, 0);
+	mi2c_get_byte(WRPC_SFP_I2C, &data, 0);
+	mi2c_get_byte(WRPC_SFP_I2C, &data, 1);
+	mi2c_stop(WRPC_SFP_I2C);
+	*stat = data;
+	pp_printf("Status: 0x%02x\n", data);
+	if (data && 0x40) pp_printf("TEC Fault\n");
+	if (data && 0x20) pp_printf("Wavelength Unlocked Condition\n");
+	if (data && 0x10) pp_printf("Tx not ready due to tuning\n");
+
 	return -1;
 }
 
