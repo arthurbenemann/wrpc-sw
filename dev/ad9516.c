@@ -239,7 +239,7 @@ int ad9516_init(int scb_version)
 	else 				//Old one
 		ad9516_load_regset(ad9516_base_config_33, ARRAY_SIZE(ad9516_base_config_33), 0);
 
-	ad9516_load_regset(ad9516_ref_tcxo, ARRAY_SIZE(ad9516_ref_tcxo), 1);
+	ad9516_load_regset(ad9516_ref_ext, ARRAY_SIZE(ad9516_ref_ext), 1);
 	ad9516_wait_lock();
 
 	ad9516_sync_outputs();
@@ -250,6 +250,8 @@ int ad9516_init(int scb_version)
 		ad9516_set_output_divider(3, 4, 0);  	// OUT3. 187.5 MHz. - not anymore
 
 		ad9516_set_output_divider(4, 1, 0);  	// OUT4. 500 MHz.
+
+		ad9516_set_output_divider(9, 20,0);
 
 		/*The following PLL outputs have been configured through the ad9516_base_config_34 register,
 		 * so it doesn't need to replicate the configuration:
