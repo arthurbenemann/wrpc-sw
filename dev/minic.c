@@ -1,7 +1,7 @@
 /*
  * This work is part of the White Rabbit project
  *
- * Copyright (C) 2011,2012,2016 CERN (www.cern.ch)
+ * Copyright (C) 2011,2012 CERN (www.cern.ch)
  * Author: Tomasz Wlostowski <tomasz.wlostowski@cern.ch>
  * Author: Grzegorz Daniluk <grzegorz.daniluk@cern.ch>
  *
@@ -35,6 +35,10 @@
 
 #define RXOOB_TS_INCORRECT (1<<11)
 
+#define TX_DESC_VALID (1<<31)
+#define TX_DESC_WITH_OOB (1<<30)
+#define TX_DESC_HAS_OWN_MAC (1<<28)
+
 #define RX_OOB_SIZE 6
 
 #define ETH_HEADER_SIZE 14
@@ -59,23 +63,15 @@ static inline uint32_t minic_readl(uint32_t reg)
 	return *(volatile uint32_t *)(BASE_MINIC + reg);
 }
 
-static inline void minic_txword(uint8_t type, uint16_t word)
-{
-	minic_writel(MINIC_REG_TX_FIFO,
-			MINIC_TX_FIFO_TYPE_W(type) | MINIC_TX_FIFO_DAT_W(word));
-}
-
 void minic_init()
 {
-	uint32_t mcr;
+	uint32_t lo, hi;
 
-	/* disable interrupts, driver does polling */
-	minic_writel(MINIC_REG_EIC_IDR, MINIC_EIC_IDR_TX |
-			MINIC_EIC_IDR_RX | MINIC_EIC_IDR_TXTS);
+	minic_writel(MINIC_REG_EIC_IDR, MINIC_EIC_IDR_RX);
+	minic_writel(MINIC_REG_EIC_ISR, MINIC_EIC_ISR_RX);
 
-	/* enable RX path */
-	mcr = minic_readl(MINIC_REG_MCR);
-	minic_writel(MINIC_REG_MCR, mcr | MINIC_MCR_RX_EN);
+
+	minic_writel(MINIC_REG_EIC_IER, MINIC_EIC_IER_RX);
 }
 
 void minic_disable()
@@ -174,49 +170,30 @@ int minic_rx_frame(struct wr_ethhdr *hdr, uint8_t * payload, uint32_t buf_size,
 int minic_tx_frame(struct wr_ethhdr_vlan *hdr, uint8_t *payload, uint32_t size,
 		   struct hw_timestamp *hwts)
 {
-	uint32_t d_hdr, mcr, pwords, hwords;
+	uint32_t d_hdr, mcr, nwords;
 	uint8_t ts_valid;
 	int i, hsize;
-	uint16_t *ptr;
 
 	if (hdr->ethtype == htons(0x8100))
 		hsize = sizeof(struct wr_ethhdr_vlan);
 	else
 		hsize = sizeof(struct wr_ethhdr);
-	hwords = hsize >> 1;
 
-	if (size + hsize < 60)
-		size = 60 - hsize;
-	pwords = ((size + 1) >> 1);
+	if (size < 60)
+		size = 60;
+
+	nwords = ((size + 1) >> 1);
 
 	d_hdr = 0;
 
-	/* First we write status word (empty status for Tx) */
-	minic_txword(WRF_STATUS, 0);
+	//if (hwts)
+	//	d_hdr = TX_DESC_WITH_OOB | (WRPC_FID << 12);
 
-	/* Write the header of the frame */
-	ptr = (uint16_t *)hdr;
-	for (i = 0; i < hwords; ++i)
-		minic_txword(WRF_DATA, ptr[i]);
+	//d_hdr |= TX_DESC_VALID | nwords;
 
-	/* Write the payload without the last word (which can be one byte) */
-	ptr = (uint16_t *)payload;
-	for (i = 0; i < pwords-1; ++i)
-		minic_txword(WRF_DATA, ptr[i]);
+	//*(volatile uint32_t *)(minic.tx_head) = d_hdr;
+	//*(volatile uint32_t *)(minic.tx_head + nwords) = 0;
 
-	/* Write last word of the payload (which can be one byte) */
-	if (size % 2 == 0)
-		minic_txword(WRF_DATA, ptr[i]);
-	else
-		minic_txword(WRF_BYTESEL, ptr[i]);
-
-	/* Write also OOB if needed */
-	if (hwts) {
-		minic_txword(WRF_OOB, TX_OOB);
-		minic_txword(WRF_OOB, WRPC_FID);
-	}
-
-	/* Start sending the frame */
 	mcr = minic_readl(MINIC_REG_MCR);
 	minic_writel(MINIC_REG_MCR, mcr | MINIC_MCR_TX_START);
 
@@ -276,6 +253,7 @@ int minic_tx_frame(struct wr_ethhdr_vlan *hdr, uint8_t *payload, uint32_t size,
 		hwts->ahead = 0;
 		hwts->nsec = counter_r * (REF_CLOCK_PERIOD_PS / 1000);
 		
+//        wrc_verbose("minic_tx_frame [%d bytes] TS: %d.%d valid %d\n", size, hwts->utc, hwts->nsec, hwts->valid);
 		minic.tx_count++;
         }
         
