@@ -37,7 +37,7 @@ cern OBJECT IDENTIFIER ::= { enterprises 96 }
 -- Define typical mib nodes
 -- we'll prefix everything in this mib with wrpc
 wrpcCore      OBJECT IDENTIFIER ::= { wrWrpcMIB 1 }
---x wrpcCustom    OBJECT IDENTIFIER ::= { wrWrpcMIB 2 }
+--wrpcAuxDiag   OBJECT IDENTIFIER ::= { wrWrpcMIB 2 }
 
 -- ****************************************************************************
 wrpcVersionGroup               OBJECT IDENTIFIER ::= { wrpcCore 1 }
@@ -661,7 +661,7 @@ wrpcPortInternalTx             OBJECT-TYPE
     MAX-ACCESS                 read-only
     STATUS                     current
     DESCRIPTION
-            "RX ptp packets"
+            "Total TX packets on a port"
     ::= { wrpcPortGroup 4 }
 
 wrpcPortInternalRx             OBJECT-TYPE
@@ -669,7 +669,7 @@ wrpcPortInternalRx             OBJECT-TYPE
     MAX-ACCESS                 read-only
     STATUS                     current
     DESCRIPTION
-            "TX ptp packets"
+            "Total RX packets on a port"
     ::= { wrpcPortGroup 5 }
 
 -- ****************************************************************************

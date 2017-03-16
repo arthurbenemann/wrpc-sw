@@ -46,8 +46,8 @@ struct dump_info  dump_info[] = {
 
 	DUMP_HEADER("DSCurrent"),
 	DUMP_FIELD(UInteger16, stepsRemoved),
-	DUMP_FIELD(TimeInternal, offsetFromMaster),
-	DUMP_FIELD(TimeInternal, meanPathDelay), /* oneWayDelay */
+	DUMP_FIELD(pp_time, offsetFromMaster),
+	DUMP_FIELD(pp_time, meanPathDelay), /* oneWayDelay */
 	DUMP_FIELD(UInteger16, primarySlavePortNumber),
 
 #undef DUMP_STRUCT
@@ -88,16 +88,10 @@ struct dump_info  dump_info[] = {
 	DUMP_FIELD(Integer32, delta_rx_s),
 	DUMP_FIELD(Integer32, fiber_fix_alpha),
 	DUMP_FIELD(Integer32, clock_period_ps),
-	DUMP_FIELD(TimeInternal, t1),
-	DUMP_FIELD(TimeInternal, t2),
-	DUMP_FIELD(TimeInternal, t3),
-	DUMP_FIELD(TimeInternal, t4),
-	DUMP_FIELD(Integer32, delta_ms_prev),
-	DUMP_FIELD(int, missed_iters),
-	DUMP_FIELD(TimeInternal, mu),		/* half of the RTT */
+	DUMP_FIELD(pp_time, mu),		/* half of the RTT */
 	DUMP_FIELD(Integer64, picos_mu),
 	DUMP_FIELD(Integer32, cur_setpoint),
-	DUMP_FIELD(Integer32, delta_ms),
+	DUMP_FIELD(Integer64, delta_ms),
 	DUMP_FIELD(UInteger32, update_count),
 	DUMP_FIELD(int, tracking_enabled),
 	DUMP_FIELD_SIZE(char, servo_state_name, 32),
@@ -106,6 +100,15 @@ struct dump_info  dump_info[] = {
 	DUMP_FIELD(UInteger32, n_err_state),
 	DUMP_FIELD(UInteger32, n_err_offset),
 	DUMP_FIELD(UInteger32, n_err_delta_rtt),
+	DUMP_FIELD(pp_time, update_time),
+	DUMP_FIELD(pp_time, t1),
+	DUMP_FIELD(pp_time, t2),
+	DUMP_FIELD(pp_time, t3),
+	DUMP_FIELD(pp_time, t4),
+	DUMP_FIELD(pp_time, t5),
+	DUMP_FIELD(pp_time, t6),
+	DUMP_FIELD(Integer64, delta_ms_prev),
+	DUMP_FIELD(int, missed_iters),
 
 #undef DUMP_STRUCT
 #define DUMP_STRUCT struct pp_instance
@@ -115,12 +118,14 @@ struct dump_info  dump_info[] = {
 	DUMP_FIELD(int, next_state),
 	DUMP_FIELD(int, next_delay),
 	DUMP_FIELD(int, is_new_state),
+	DUMP_FIELD(pointer, current_state_item),
 	DUMP_FIELD(pointer, arch_data),
 	DUMP_FIELD(pointer, ext_data),
 	DUMP_FIELD(unsigned_long, d_flags),
 	DUMP_FIELD(unsigned_char, flags),
-	DUMP_FIELD(unsigned_char, role),
-	DUMP_FIELD(unsigned_char, proto),
+	DUMP_FIELD(int, role),
+	DUMP_FIELD(int, proto),
+	DUMP_FIELD(int, mech),
 	DUMP_FIELD(pointer, glbs),
 	DUMP_FIELD(pointer, n_ops),
 	DUMP_FIELD(pointer, t_ops),
@@ -143,26 +148,28 @@ struct dump_info  dump_info[] = {
 	DUMP_FIELD_SIZE(bina, ch[1].addr, 6),
 	DUMP_FIELD(int, ch[1].pkt_present),
 
-	DUMP_FIELD(ip_address, mcast_addr),
+	DUMP_FIELD(ip_address, mcast_addr[0]),
+	DUMP_FIELD(ip_address, mcast_addr[1]),
 	DUMP_FIELD(int, tx_offset),
 	DUMP_FIELD(int, rx_offset),
 	DUMP_FIELD_SIZE(bina, peer, 6),
 	DUMP_FIELD(uint16_t, peer_vid),
 
-	DUMP_FIELD(TimeInternal, t1),
-	DUMP_FIELD(TimeInternal, t2),
-	DUMP_FIELD(TimeInternal, t3),
-	DUMP_FIELD(TimeInternal, t4),
-	DUMP_FIELD(TimeInternal, cField),
-	DUMP_FIELD(TimeInternal, last_rcv_time),
-	DUMP_FIELD(TimeInternal, last_snt_time),
+	DUMP_FIELD(pp_time, t1),
+	DUMP_FIELD(pp_time, t2),
+	DUMP_FIELD(pp_time, t3),
+	DUMP_FIELD(pp_time, t4),
+	DUMP_FIELD(pp_time, t5),
+	DUMP_FIELD(pp_time, t6),
+	DUMP_FIELD(UInteger64, syncCF),
+	DUMP_FIELD(pp_time, last_rcv_time),
+	DUMP_FIELD(pp_time, last_snt_time),
 	DUMP_FIELD(UInteger16, frgn_rec_num),
 	DUMP_FIELD(Integer16,  frgn_rec_best),
 	//DUMP_FIELD(struct pp_frgn_master frgn_master[PP_NR_FOREIGN_RECORDS]),
 	DUMP_FIELD(pointer, portDS),
 	//DUMP_FIELD(unsigned long timeouts[__PP_TO_ARRAY_SIZE]),
 	DUMP_FIELD(UInteger16, recv_sync_sequence_id),
-	DUMP_FIELD(Integer8, log_min_delay_req_interval),
 	//DUMP_FIELD(UInteger16 sent_seq[__PP_NR_MESSAGES_TYPES]),
 	DUMP_FIELD_SIZE(bina, received_ptp_header, sizeof(MsgHeader)),
 	//DUMP_FIELD(pointer, iface_name),
@@ -177,6 +184,7 @@ struct dump_info  dump_info[] = {
 	DUMP_FIELD_SIZE(char, cfg.iface_name, 16),
 	DUMP_FIELD(int, cfg.ext),
 	DUMP_FIELD(int, cfg.ext),
+	DUMP_FIELD(int, cfg.mech),
 
 	DUMP_FIELD(unsigned_long, ptp_tx_count),
 	DUMP_FIELD(unsigned_long, ptp_rx_count),
@@ -236,6 +244,28 @@ struct dump_info  dump_info[] = {
 	DUMP_FIELD(uint16_t, irq_count),
 	DUMP_FIELD(uint16_t, tag_count),
 	/* FIXME: aux_state and ptracker_state -- variable-len arrays */
+
+#undef DUMP_STRUCT
+#define DUMP_STRUCT struct spll_stats
+
+	DUMP_HEADER("stats"),
+	DUMP_FIELD(uint32_t, magic),
+	DUMP_FIELD(int, ver),
+	DUMP_FIELD(int, sequence),
+	DUMP_FIELD(int, mode),
+	DUMP_FIELD(int, irq_cnt),
+	DUMP_FIELD(int, seq_state),
+	DUMP_FIELD(int, align_state),
+	DUMP_FIELD(int, H_lock),
+	DUMP_FIELD(int, M_lock),
+	DUMP_FIELD(int, H_y),
+	DUMP_FIELD(int, M_y),
+	DUMP_FIELD(int, del_cnt),
+	DUMP_FIELD(int, start_cnt),
+	DUMP_FIELD_SIZE(char, commit_id, 32),
+	DUMP_FIELD_SIZE(char, build_date, 16),
+	DUMP_FIELD_SIZE(char, build_time, 16),
+	DUMP_FIELD_SIZE(char, build_by, 32),
 
 	DUMP_HEADER("end"),
 

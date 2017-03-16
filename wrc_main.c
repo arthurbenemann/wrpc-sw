@@ -81,9 +81,12 @@ static void wrc_initialize(void)
 		mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3],
 		mac_addr[4], mac_addr[5]);
 
+	net_rst();
 	ep_init(mac_addr);
 	ext_init(mac_addr);
-
+	/* Sleep for 1s to make sure WRS v4.2 always realizes that
+	 * the link is down */
+	timer_delay_ms(200);
 	ep_enable(1, 1);
 
 	minic_init();
@@ -112,7 +115,7 @@ int link_status;
 
 static int wrc_check_link(void)
 {
-	static int prev_state = -1;
+	static int prev_state = 0;
 	int state = ep_link_up(NULL);
 	int rv = 0;
 
@@ -248,6 +251,7 @@ static void wrc_run_task(struct wrc_task *t)
 	account_task(t, done_sth);
 }
 
+int main(void) __attribute__ ((weak));
 int main(void)
 {
 	struct wrc_task *t;

@@ -65,5 +65,6 @@ int check_dest_ip(unsigned char *buf);
 
 void syslog_init(void);
 int syslog_poll(void);
+void syslog_report(char *buf);
 
 #endif

@@ -15,6 +15,7 @@ enum dump_type {
 	dump_type_char, /* for zero-terminated strings */
 	dump_type_bina, /* for binary stull in MAC format */
 	/* normal types follow */
+	dump_type_uint8_t,
 	dump_type_uint32_t,
 	dump_type_uint16_t,
 	dump_type_int,
@@ -39,12 +40,13 @@ enum dump_type {
 	dump_type_PortIdentity,
 	dump_type_ClockQuality,
 	/* and this is ours */
-	dump_type_TimeInternal,
+	dump_type_pp_time,
 	dump_type_ip_address,
 };
 
 /* because of the sizeof later on, we need these typedefs */
 typedef void *         pointer;
+typedef struct pp_time pp_time;
 typedef unsigned long  unsigned_long;
 typedef unsigned char  unsigned_char;
 typedef unsigned short unsigned_short;

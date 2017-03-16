@@ -1,14 +1,13 @@
 *.o
 *.a
 *.elf
-*.ram
+*.bram
 *.bin
 *.mif
 *.*~
 *~
 *_disasm.S
 *.vhd
-
 *.cmd
 *.o
 .tmp_*
@@ -16,3 +15,5 @@
 .config.old
 include/config
 include/generated
+size_db.txt
+size_info.txt

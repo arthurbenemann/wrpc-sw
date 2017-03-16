@@ -13,13 +13,13 @@ config WR_NODE
 
 # most options with no prompt here are prompted-for in the "advanced" section
 
+config PPSI_FORCE_CONFIG
+	bool
+	default y
+
 config PRINT_BUFSIZE
 	int
 	default 128
-
-config PRINTF_XINT
-	boolean
-	default y
 
 config RAMSIZE
 	int
@@ -83,8 +83,8 @@ config WR_NODE_PCS16
 	boolean "Compile for 16-bit PCS"
 	default n
 	help
-		This allows to compile the WR PTP Core software for 16-bit PCS platforms
-		(e.g. Kintex-7).
+	  This allows to compile the WR PTP Core software for 16-bit PCS platforms
+	  (e.g. Kintex-7).
 
 config STACKSIZE
 	depends on WR_NODE
@@ -108,9 +108,23 @@ config W1
 
 config LATENCY_ETHTYPE
 	int
-	default 0
+	default 291
+
+config LATENCY_SYSLOG
+	bool
 
 # The other ones can be set by non-developers
+
+config P2P
+	depends on WR_NODE
+	default n
+	boolean "Build peer-delay mechanism (and prefer it)"
+	help
+	  This choice selects peer-to-peer ("P2P"), or "peer delay"
+	  PTP protocol. If activated, but P2P and E2E (end to end)
+	  are built, and they can be chosen at run time, with P2P preset.
+	  If you deny this option, P2P code is not built, to save some
+	  binary size.
 
 config IP
 	depends on WR_NODE
@@ -137,16 +151,24 @@ config SYSLOG
 	  to enable it.  The special "off" ipaddr disables syslog.
 
 config SNMP
-       depends on IP
-       default y
-       boolean "Mini SNMP responder"
+	depends on IP
+	default y
+	boolean "Mini SNMP responder"
 
 config SNMP_SET
-       depends on SNMP
-       default y
-       boolean "Add SET support to the Mini SNMP responder"
-       help
+	depends on SNMP
+	default y
+	boolean "Add SET support to the Mini SNMP responder"
+	help
 	  This option enables support for SET requests for Mini SNMP responder
+
+config SNMP_AUX_DIAG
+	depends on SNMP && AUX_DIAG
+	default y if AUX_DIAG
+	default n
+	boolean "Adds support of auxiliary diagnostics registers to SNMP"
+	help
+	  This option adds branch wrpcAuxDiag to the SNMP
 
 config SNMP_HW_TYPE
 	depends on SNMP
@@ -179,9 +201,60 @@ config HAS_FLASH_INIT
 	default 0
 
 config FLASH_INIT
-  boolean
-  default y if EMBEDDED_NODE
-  default n
+	boolean
+	default y if EMBEDDED_NODE
+	default n
+
+config AUX_DIAG
+	default n
+	boolean "Add support for auxiliary diagnostics registers"
+	help
+	  This option adds support for read/write of aux diag registers and
+	  the diag command.
+
+config SDB_STORAGE
+	depends on WR_NODE
+	default y
+	boolean "Use SDB to manage storage (instead of legacy eeprom code)"
+	help
+	  Use SDB to manage flash and eeproms (both W1 and I2C). If not, legacy code
+	  (eeprom only) will be selected.
+
+config LEGACY_EEPROM
+	depends on WR_NODE
+	boolean
+	default !SDB_STORAGE
+
+config VLAN
+	boolean "Filter and rx/tx frames in a VLAN (as opposed to untagged)"
+
+config VLAN_NR
+	depends on VLAN
+	int "Use this VLAN number for filter/tx/rx"
+
+config VLAN_1_FOR_CLASS7
+	depends on VLAN
+	int "Route this VLAN to fabric class 7 (Etherbone)"
+
+config VLAN_2_FOR_CLASS7
+	depends on VLAN
+	int "Route this VLAN too to fabric class 7 (Etherbone)"
+
+config VLAN_FOR_CLASS6
+	depends on VLAN
+	int "Route this VLAN too to fabric class 6 (Streamer/NIC)"
+
+config WR_NODE_SIM
+	depends on WR_NODE
+	boolean "Build simple software for test of WR PTP Core in simulation"
+	default n
+	help
+	  This option builds binary that is meant to be used in testbench
+	  simulations. It initializes only simulation-needed essentials.
+	  All the initialization that is time-consuming and unnecessary
+	  is avoided. The main function sends min-size frames to PTP
+	  MAC address destination and expects the simulation to return
+	  these frames.
 
 #
 # This is a set of configuration options that should not be changed by
@@ -195,6 +268,16 @@ config DEVELOPER
 	  special customizations not normally useful for people not
 	  directly working on this package.  Please don't use unless
 	  you are a developer of wrpc-sw.
+
+config PPSI_FORCE_CONFIG
+	depends on DEVELOPER && WR_NODE       
+	bool "Reconfigure ppsi from wrpc-sw at every build"
+	default y
+	help
+	  If you are playing with custom ppsi configurations, please
+	  disable this. Otherwise the option allows wrpc-sw to always
+	  reconfigura ppsi, so if you change from end-to-end to
+	  peer-to-peer here, the change is propagated to the ppsi build.
 
 config HOST_PROCESS
 	depends on DEVELOPER && WR_NODE
@@ -280,7 +363,7 @@ choice
 	prompt "Implementation of pp_printf"
 	depends on DEVELOPER && WR_NODE
 
-config PRINTF_XINT
+config PRINTF_IS_XINT
 	bool "hex-and-int"
 	help
 	  This selects a printf that can only print decimal and hex
@@ -288,7 +371,7 @@ config PRINTF_XINT
 	  supported too, and %p is equivalent to %x.
 	  See pp_printf/README for details.
 
-config PRINTF_FULL
+config PRINTF_IS_FULL
 	bool "full"
 	help
 	  This selects an implementation that supports all standard
@@ -296,7 +379,7 @@ config PRINTF_FULL
 	  around 2k of compiled code more than XINT.
 	  See pp_printf/README for details.
 
-config PRINTF_MINI
+config PRINTF_IS_MINI
 	bool "minimal"
 	help
 	  This selects a printf that prints all integers as hex,
@@ -304,7 +387,7 @@ config PRINTF_MINI
 	  supported too. See pp_printf/README for details.
 	  This is not probably what you want for wrpc-sw.
 
-config PRINTF_NONE
+config PRINTF_IS_NONE
 	bool "empty"
 	help
 	  This selects a printf that prints the format string
@@ -312,11 +395,15 @@ config PRINTF_NONE
 	  but not suited for wrpc-sw. See pp_printf/README for details.
 endchoice
 
-config PPSI
-	depends on WR_NODE
-	boolean
+config ASSERT
+	bool "Build assertion checks in the code"
+	depends on DEVELOPER
+	default y
 	help
-	  Select this option for the ppsi engine (now only option)
+	  Build assertions in the code, to catch unexpected situations.
+	  When an assertion fails the code loops over repeating the
+	  error message every second. OTOH, panic() is always built,
+	  with no Kconfig -- and it does the same, unconditionally.
 
 config DETERMINISTIC_BINARY
 	depends on DEVELOPER && EMBEDDED_NODE
@@ -333,7 +420,7 @@ config DETERMINISTIC_BINARY
 
 config UART
 	boolean "Use hardware uart (and/or vuart if available)"
-	depends on DEVELOPER && EMBEDDED_NODE
+	depends on (DEVELOPER && EMBEDDED_NODE) || WR_SWITCH
 	help
 	  This option selects the serial driver, connected to either
 	  the USB socket, or "vuart" (software fifo) or both, according
@@ -390,39 +477,6 @@ config FAKE_TEMPERATURES
 	  The option adds also a "faketemp" command, used to set
 	  the fake temperatures: e.g. "faketemp 120 -10 50"
 
-config VLAN
-	depends on DEVELOPER
-	boolean "Filter and rx/tx frames in a VLAN (as opposed to untagged)"
-
-config VLAN_NR
-	depends on VLAN
-	int "Use this VLAN number for filter/tx/rx"
-
-config VLAN_1_FOR_CLASS7
-	depends on VLAN
-	int "Route this VLAN to fabric class 7 (Etherbone)"
-
-config VLAN_2_FOR_CLASS7
-	depends on VLAN
-	int "Route this VLAN too to fabric class 7 (Etherbone)"
-
-config VLAN_FOR_CLASS6
-	depends on VLAN
-	int "Route this VLAN too to fabric class 6 (Streamer/NIC)"
-
-config SDB_STORAGE
-	depends on WR_NODE
-	default y
-	boolean "Use SDB to manage storage (instead of legacy eeprom code)"
-	help
-	  Use SDB to manage flash and eeproms (both W1 and I2C). If not, legacy code
-	  (eeprom only) will be selected.
-
-config LEGACY_EEPROM
-	depends on WR_NODE
-	boolean
-	default !SDB_STORAGE
-
 config LATENCY_PROBE
 	depends on DEVELOPER
 	bool "Build the latency probe mechanism (send/recv)"
@@ -437,6 +491,16 @@ config LATENCY_PROBE
 config LATENCY_ETHTYPE
 	depends on LATENCY_PROBE
 	int "Ethtype to use for latency probing"
+	default 291
+	help
+	  Ethertypes 0x0101-0x01ff are marked as "experimental", apparently.
+	  So 0x0123 (291)is a good default, but please pick yours.
+
+config LATENCY_SYSLOG
+	depends on LATENCY_PROBE && SYSLOG
+	bool "Report latency problems to syslog"
+	default y
+
 
 # This is needed to size the pp_instance data strucuture. Instead of
 # including the ppsi autoconf.h, with duplicate definitions, define it
@@ -446,3 +510,27 @@ config VLAN_ARRAY_SIZE
 	default 1
 
 # CONFIG_WR_NODE
+
+################# helper configuration items #############
+config PRINTF_XINT
+	boolean
+	default PRINTF_IS_XINT if (DEVELOPER && WR_NODE)
+	default y
+
+config PRINTF_FULL
+	boolean
+	default PRINTF_IS_FULL
+
+config PRINTF_MINI
+	boolean
+	default PRINTF_IS_MINI
+
+config PRINTF_NONE
+	boolean
+	default PRINTF_IS_NONE
+
+config PPSI
+	depends on WR_NODE
+	boolean
+	help
+	  Select this option for the ppsi engine (now only option)

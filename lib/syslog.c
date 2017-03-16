@@ -70,9 +70,20 @@ static int syslog_header(char *buf, int level, unsigned char ip[4])
 	return len + UDP_END;
 }
 
-int syslog_poll(void)
+static void syslog_send(void *buf, unsigned char *ip, int len)
 {
 	struct wr_sockaddr addr;
+
+	memcpy(&syslog_addr.saddr, ip, 4);
+	fill_udp((void *)buf, len, &syslog_addr);
+	memcpy(&addr.mac, syslog_mac, 6);
+	ptpd_netif_sendto(syslog_socket, &addr, buf, len, 0);
+	return;
+}
+
+
+int syslog_poll(void)
+{
 	char buf[256];
 	char b[32];
 	unsigned char mac[6];
@@ -191,10 +202,24 @@ int syslog_poll(void)
 	return 0;
 
 send:
-	memcpy(&syslog_addr.saddr, ip, 4);
-	fill_udp((void *)buf, len, &syslog_addr);
-	memcpy(&addr.mac, syslog_mac, 6);
-	ptpd_netif_sendto(syslog_socket, &addr, buf, len, 0);
+	syslog_send(buf, ip, len);
 	return 1;
 }
 
+/* A report tool for others to call (used by ltest at least) */
+void syslog_report(char *msg)
+{
+	char buf[256];
+	unsigned char ip[4];
+	int len;
+
+	if (ip_status == IP_TRAINING)
+		return;
+	if (!syslog_addr.daddr)
+		return;
+
+	len = syslog_header(buf, SYSLOG_DEFAULT_LEVEL, ip);
+	strcpy(buf + len, msg);
+	len += strlen(msg);
+	syslog_send(buf, ip, len);
+}
