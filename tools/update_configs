@@ -1,11 +1,17 @@
 #!/bin/bash
 
-# Use ./tools/update_configs
+# Use: ./tools/update_configs
+
+# preserve current
+T=$(mktemp /tmp/config.XXXXXX)
+mv .config $T
 
 for n in configs/*; do
     b=$(basename $n)
-    echo; echo; echo "            #### Updating $b ######"; echo
-    cp $n .config
-    make oldconfig
-    cp .config $n
+    echo "Updating $b"
+    ./scripts/kconfig/conf --defconfig=$n $(pwd)/Kconfig | grep -v '^#'
+    make -s savedefconfig
+    mv defconfig $n
 done
+
+mv $T .config
