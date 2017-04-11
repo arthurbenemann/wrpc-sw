@@ -34,12 +34,11 @@
  * the proper define should be used.
  * SDB is not affected by this bug.
  */
-#endif
+#else /* non-legacy: sdb */
 
-#if defined CONFIG_SDB_STORAGE
 #define SFPS_MAX 4
-#endif
 
+#endif
 
 #define EE_RET_I2CERR -1
 #define EE_RET_DBFULL -2
