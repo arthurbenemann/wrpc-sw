@@ -9,7 +9,7 @@
 #include <string.h>
 #include <wrc.h>
 #include "endpoint.h"
-
+#include "revision.h"
 #include "ipv4.h"
 
 #define BOOTP_OP	(UDP_END)
@@ -32,6 +32,7 @@
 int prepare_bootp(struct wr_sockaddr *addr, uint8_t * buf, int retry)
 {
 	struct wr_udp_addr uaddr;
+	const char *test = build_revision;
 
 	// ----------- BOOTP ------------
 	buf[BOOTP_OP] = 1;	/* bootrequest */
@@ -60,7 +61,19 @@ int prepare_bootp(struct wr_sockaddr *addr, uint8_t * buf, int retry)
 
 	memset(buf + BOOTP_SNAME, 0, 64);	/* desired BOOTP server */
 	memset(buf + BOOTP_FILE, 0, 128);	/* desired BOOTP file */
+
 	memset(buf + BOOTP_VEND, 0, 64);	/* vendor extensions */
+        buf[BOOTP_VEND + 0] = 0x63;             /* RFC 2132 */
+        buf[BOOTP_VEND + 1] = 0x82;
+        buf[BOOTP_VEND + 2] = 0x53;
+        buf[BOOTP_VEND + 3] = 0x63;
+	buf[BOOTP_VEND + 4] = 0x3c;
+	buf[BOOTP_VEND + 5] = 0x20; //size of the vendor string
+
+        memcpy(buf + BOOTP_VEND + 6, build_revision, 32);
+
+        buf[BOOTP_VEND + 38] = 0xff;
+	buf[BOOTP_VEND + 39] = 0x00;
 
 	/* complete with udp helper */
 	memset(&uaddr.saddr, 0, 4);
