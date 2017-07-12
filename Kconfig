@@ -562,3 +562,9 @@ config LLDP
     This enable LLDP support. LLDP is a vendor-neutral link layer protocol 
     used by network devices for advertising their identity, capabilities, 
     and neighbors on local area network.
+
+menu "PPSI config"
+depends on PPSI
+source ppsi/Kconfig_ppsi
+
+endmenu
