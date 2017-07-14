@@ -34,7 +34,18 @@
 
 static int cmd_sfp(const char *args[])
 {
-	int8_t sfpcount = 1, i, temp, ret;
+	int8_t sfpcount = 1, i, temp;
+	int8_t ret;
+	int j;
+	int laser_wavelength;
+	uint8_t ch_number, stat;
+	int ch_wavelength;
+	uint8_t i2c_addr;
+	int data;
+	uint8_t value;
+	static char memdump[256] = "\0";
+//	static char line_8[8] = "\0";
+
 	struct s_sfpinfo sfp;
 
 	if (!args[0]) {
@@ -113,6 +124,71 @@ static int cmd_sfp(const char *args[])
 		return ret;
 	} else if (args[1] && !strcasecmp(args[0], "ena")) {
 		ep_sfp_enable(atoi(args[1]));
+		return 0;
+	} else if (args[0] && !strcasecmp(args[0], "rd_wl")) {
+		pp_printf("Set SFP TX-Laser wavelength to Channel 11\n");
+		sfp_read_laser_wavelength(&laser_wavelength);
+		pp_printf("Laser wavelength: %d\n", laser_wavelength);
+		return 0;
+	} else if (args[0] && !strcasecmp(args[0], "rd")) {
+		if (!strcasecmp(args[1], "a2")) {
+			i2c_addr = 0xa2;
+		} else {
+			i2c_addr = 0xa0;
+		}
+		sfp_rd(i2c_addr, atoi(args[2]), atoi(args[3]), &value);
+                pp_printf("i2c_addr: 0x%02x, addr: 0x%02x, page: 0x%02x, data: 0x%02x\n", i2c_addr, atoi(args[2]), atoi(args[3]), value);
+		return 0;
+	} else if (args[0] && !strcasecmp(args[0], "wr")) {
+		if (!strcasecmp(args[1], "a2")) {
+			i2c_addr = 0xa2;
+		} else {
+			i2c_addr = 0xa0;
+		}
+		value = atoi(args[4]) & 0xff;
+                pp_printf("writing:  i2c_addr: 0x%02x, addr: 0x%02x, page: 0x%02x, data: 0x%02x\n", i2c_addr, atoi(args[2]), atoi(args[3]), value);
+		sfp_wr(i2c_addr, atoi(args[2]), atoi(args[3]), value);
+		sfp_rd(i2c_addr, atoi(args[2]), atoi(args[3]), &value);
+                pp_printf("readback: i2c_addr: 0x%02x, addr: 0x%02x, page: 0x%02x, data: 0x%02x\n", i2c_addr, atoi(args[2]), atoi(args[3]), value);
+		return 0;
+	} else if (args[0] && !strcasecmp(args[0], "sel_page2")) {
+		sfp_sel_page2();
+		return 0;
+	} else if (args[0] && !strcasecmp(args[0], "wr_ch")) {
+		sfp_sel_page2();
+		sfp_wr_ch(atoi(args[1]));
+		sfp_rd_ch_stat(&stat);
+		return 0;
+	} else if (args[0] && !strcasecmp(args[0], "rd_ch")) {
+		sfp_rd_ch(&ch_number, &ch_wavelength);
+                pp_printf("Read Channel Number %d, wavelength 0x%02x\n",ch_number, ch_wavelength);
+		return 0;
+	} else if (args[0] && !strcasecmp(args[0], "rd_ch_stat")) {
+		sfp_rd_ch_stat(&stat);
+		return 0;
+	} else if (args[0] && !strcasecmp(args[0], "dump")) {
+		if (!strcasecmp(args[1], "a2")) {
+			i2c_addr = 0xa2;
+		} else {
+			i2c_addr = 0xa0;
+		}
+		sfp_dump(memdump, i2c_addr, atoi(args[2]));
+		j = 0;
+		for (i = 0; i < 256; ++i) {
+			if (j== 0) {
+				pp_printf("%02x: ", i);
+			}			
+			pp_printf("%02x ", memdump[i]);
+ 			j++;
+			if (j == 8) {
+				pp_printf("\n");
+				j = 0;
+			}
+		}
+		pp_printf("\n");
+		return 0;
+	} else if (args[0] && !strcasecmp(args[0], "ch32")) {
+		pp_printf("Set SFP TX-Laser wavelength to Channel 32\n");
 		return 0;
 	} else {
 		pp_printf("Wrong parameter\n");
