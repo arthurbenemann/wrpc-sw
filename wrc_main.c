@@ -59,6 +59,7 @@ static void wrc_initialize(void)
 	wrpc_w1_init();
 	wrpc_w1_bus.detail = ONEWIRE_PORT;
 	w1_scan_bus(&wrpc_w1_bus);
+  pca9548_select();
 
 	/*initialize flash*/
 	flash_init();
@@ -81,6 +82,7 @@ static void wrc_initialize(void)
 		mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3],
 		mac_addr[4], mac_addr[5]);
 
+//	wrxInit(mac_addr);
 	net_rst();
 	ep_init(mac_addr);
 	/* Sleep for 1s to make sure WRS v4.2 always realizes that
@@ -267,5 +269,6 @@ int main(void)
 
 		/* better safe than sorry */
 		check_stack();
+//	wrxExecute();
 	}
 }

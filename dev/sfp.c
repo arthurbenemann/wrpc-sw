@@ -34,7 +34,7 @@ static int sfp_present(void)
 /*
  * Select channel 1 on the PCA9548
  */
-/*
+
  void pca9548_select() {
 
     mi2c_init(WRPC_FMC_I2C);
@@ -45,7 +45,7 @@ static int sfp_present(void)
     mi2c_stop(WRPC_FMC_I2C);
 
 }
-*/
+
 int sfp_sel_page2(void)
 {
 	mi2c_init(WRPC_SFP_I2C);
