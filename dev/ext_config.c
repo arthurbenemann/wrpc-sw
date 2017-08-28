@@ -39,32 +39,6 @@ void ext_config(unsigned char *IP)
 	tmp = 0xFFFFFF00;
   *ext_tmp = tmp;
 
-  ext_tmp = (unsigned int *)(BASE_EXT_CFG + EXT_UDP_RX_PORT);
-	tmp = 60000;
-  *ext_tmp = tmp;
-
-  ext_tmp = (unsigned int *)(BASE_EXT_CFG + EXT_UDP_TX_SRC_PORT);
-	tmp = 60001;
-  *ext_tmp = tmp;
-
-  ext_tmp = (unsigned int *)(BASE_EXT_CFG + EXT_UDP_TX_DST_PORT);
-	tmp = 60002;
-  *ext_tmp = tmp;
-
-  ext_tmp = (unsigned int *)(BASE_EXT_CFG + EXT_UDP_TX_DST_IP);
-	tmp = 0xC0A80001;
-  *ext_tmp = tmp;
-
-  ext_tmp = (unsigned int *)(BASE_EXT_CFG + EXT_UDP_TX_DST_MAC_HIGH16);
-	//tmp = 0x9890;
-    tmp = 0x8cae;
-  *ext_tmp = tmp;
-
-  ext_tmp = (unsigned int *)(BASE_EXT_CFG + EXT_UDP_TX_DST_MAC_LOW32);
-    //tmp = 0x96aa9e04;
-    tmp = 0x4b002f40;
-  *ext_tmp = tmp;
-
   ext_tmp = (unsigned int *)(BASE_EXT_CFG + EXT_TCP_LOCAL_PORT);
   tmp = 8000;
   *ext_tmp = tmp;
