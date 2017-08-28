@@ -222,8 +222,8 @@ enum pf_symbolic_regs {
     FRAME_TYPE_ARP,
     FRAME_ICMP,
     FRAME_UDP,
+    FRAME_TCP,
     PORT_UDP_HOST,
-    PORT_UDP_ETHERBONE,
     R_TMP,
 
     /* These are results of logic over the previous bits  */
