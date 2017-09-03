@@ -27,6 +27,7 @@ static int cmd_init(const char *args[])
 	} else if (args[0] && !strcasecmp(args[0], "show")) {
 		storage_init_show();
 	} else if (args[0] && !strcasecmp(args[0], "boot")) {
+		spll_very_init();
 		shell_boot_script();
 	}
 
