@@ -18,6 +18,7 @@ unsigned char *BASE_PPS_GEN;
 unsigned char *BASE_SYSCON;
 unsigned char *BASE_UART;
 unsigned char *BASE_ONEWIRE;
+unsigned char *BASE_ETHERBONE_CFG;
 unsigned char *BASE_EXT_CFG;
 
 /* The sdb filesystem itself */
@@ -72,6 +73,7 @@ struct wrc_device devs[] = {
 	{&BASE_UART,          VID_CERN,	0xe2d13d04},
 	{&BASE_ONEWIRE,       VID_CERN,	0x779c5443},
 	{&BASE_EXT_CFG,       VID_THU,	0xc0413599},
+	{&BASE_ETHERBONE_CFG, VID_GSI,	0x68202b22},
 };
 
 void sdb_find_devices(void)

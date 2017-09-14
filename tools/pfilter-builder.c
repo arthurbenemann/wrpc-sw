@@ -224,6 +224,7 @@ enum pf_symbolic_regs {
     FRAME_UDP,
     FRAME_TCP,
     PORT_UDP_HOST,
+    PORT_UDP_ETHERBONE,
     R_TMP,
 
     /* These are results of logic over the previous bits  */
@@ -419,13 +420,16 @@ void pfilter_init_novlan(char *fname)
     pfilter_logic2(FRAME_UDP, FRAME_UDP, AND, FRAME_IP_OK);
     pfilter_cmp(18, 0x0000, 0xff00, MOV, PORT_UDP_HOST);    /* ports 0-255 */
     pfilter_cmp(18, 0x0100, 0xff00, OR, PORT_UDP_HOST);    /* ports 256-511 */
+    pfilter_cmp(18, 0xebd0, 0xffff, MOV, PORT_UDP_ETHERBONE); /* ports 60368 */
 
     /* The CPU gets those ports in a proper UDP frame, plus the previous selections */
     pfilter_logic2(R_CLASS(1), FRAME_UDP, AND, PORT_UDP_HOST);
 
-    /* and now copy out fabric selections: 7 etherbone, 6 for anything else */
-    pfilter_logic3(R_CLASS(5), PORT_UDP_HOST, NOT, R_ZERO, AND, FRAME_UDP);
-    pfilter_logic2(R_CLASS(6), FRAME_TCP, AND, FRAME_IP_OK);
+    /* and now copy out fabric selections: 4 etherbone, 6 for anything else */
+    pfilter_logic2(R_CLASS(4), FRAME_UDP, AND, PORT_UDP_ETHERBONE);
+
+    pfilter_logic3(R_CLASS(6), PORT_UDP_HOST, OR, PORT_UDP_ETHERBONE, NAND, FRAME_UDP);
+    pfilter_logic2(R_CLASS(7), FRAME_TCP, AND, FRAME_IP_OK);
     /*
      * Note that earlier we used to be more strict in ptp ethtype (only proper multicast),
      * but since we want to accept peer-delay sooner than later, we'd better avoid the checks
