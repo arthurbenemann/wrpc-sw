@@ -125,6 +125,9 @@ int shw_pps_gen_busy()
 int shw_pps_gen_enable_output(int enable)
 {
 	uint32_t escr = ppsg_read(ESCR);
+
+	pp_printf("%s(%i) from %p\n", __func__, enable,
+	       __builtin_return_address(0));
 	if (enable)
 		ppsg_write(ESCR,
 			   escr | PPSG_ESCR_PPS_VALID | PPSG_ESCR_TM_VALID
