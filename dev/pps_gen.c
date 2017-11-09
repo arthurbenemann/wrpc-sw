@@ -127,10 +127,12 @@ int shw_pps_gen_enable_output(int enable)
 	uint32_t escr = ppsg_read(ESCR);
 	if (enable)
 		ppsg_write(ESCR,
-			   escr | PPSG_ESCR_PPS_VALID | PPSG_ESCR_TM_VALID);
+			   escr | PPSG_ESCR_PPS_VALID | PPSG_ESCR_TM_VALID
+			   | PPSG_ESCR_PPS_UNMASK);
 	else
 		ppsg_write(ESCR,
-			   escr & ~(PPSG_ESCR_PPS_VALID | PPSG_ESCR_TM_VALID));
+			   escr & ~(PPSG_ESCR_PPS_VALID | PPSG_ESCR_TM_VALID
+				    | PPSG_ESCR_PPS_UNMASK));
 
 	return 0;
 }
