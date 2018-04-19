@@ -35,6 +35,8 @@
 #include "wrc_ptp.h"
 #include "system_checks.h"
 
+#include "wrx_wrpc.h"
+
 #ifndef CONFIG_DEFAULT_PRINT_TASK_TIME_THRESHOLD
 #define CONFIG_DEFAULT_PRINT_TASK_TIME_THRESHOLD 0
 #endif
@@ -93,6 +95,7 @@ static void wrc_initialize(void)
 		mac_addr[4], mac_addr[5]);
 
 	net_rst();
+	wrxInit(mac_addr);
 	ep_init(mac_addr);
 	/* Sleep for 1s to make sure WRS v4.2 always realizes that
 	 * the link is down */
@@ -224,6 +227,10 @@ DEFINE_WRC_TASK(shell) = {
 DEFINE_WRC_TASK(spll) = {
 	.name = "spll-bh",
 	.job = spll_update,
+};
+DEFINE_WRC_TASK(wrxExecute) = {
+	.name = "wrx-exec",
+	.job = wrxExecute,
 };
 
 static void task_time_normalize(struct wrc_task *t)
