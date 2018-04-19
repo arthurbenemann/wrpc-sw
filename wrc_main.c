@@ -228,6 +228,10 @@ DEFINE_WRC_TASK(spll) = {
 	.name = "spll-bh",
 	.job = spll_update,
 };
+DEFINE_WRC_TASK(wrxExecute) = {
+	.name = "wrx-exec",
+	.job = wrxExecute,
+};
 
 void wrx_Execute()
 {
