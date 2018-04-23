@@ -1,7 +1,7 @@
 #include <w1.h>
 
-#define WRX_BASE        0x000001FF80	//!< Base address of WRX structure
-#define WRX_OFFSET		0x0000100000	//!< Memory address offset of 2nd LM32
+#define WRX_BASE      0x00000700	//!< Base address of WRX 256 bytes mailbox DPRAM (wr-cores: Aux-Master)
+#define WRX_OFFSET		0x00020000	//!< wr-cores: WB_SECONDARY_CON
 
 #define WRX_MAGIC		0xDACE			//!< Magic word
 #define WRX_VERSION		0x1				//!< Current version
@@ -40,6 +40,7 @@ void wrxInit(uint8_t mac_addr[])
 	_wrx->magic = WRX_MAGIC;
 	_wrx->ver = WRX_VERSION;
 	_wrx->info.valid = 0;
+  pp_printf("DACE=%04X?\n", _wrx->magic);
 
     // mocht je zeker weten dat het mac - adreess
     if ( ( _wrx->info.valid & WRX_VAL_MAC_ADDRESS ) == 0)
