@@ -226,9 +226,16 @@ DEFINE_WRC_TASK(spll) = {
 	.name = "spll-bh",
 	.job = spll_update,
 };
-DEFINE_WRC_TASK(wrxExecute) = {
+
+void wrx_Execute()
+{
+  wrxUpdate(link_status);
+  wrxExecute();
+}
+
+DEFINE_WRC_TASK(wrx_Execute) = {
 	.name = "wrx-exec",
-	.job = wrxExecute,
+	.job = wrx_Execute,
 };
 
 static void task_time_normalize(struct wrc_task *t)
