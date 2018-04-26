@@ -55,8 +55,9 @@ cflags-$(CONFIG_PPSI) += \
 # in order to build tools/wrpc-dump, we need these flags, even for wrs builds
 cflags-y += \
 	-I$(PPSI)/arch-wrpc/include \
-	-I$(PPSI)/include
-
+	-I$(PPSI)/include \
+  -I../shared
+   
 obj-ppsi = $(PPSI)/ppsi.o
 obj-$(CONFIG_PPSI) += $(obj-ppsi)
 
