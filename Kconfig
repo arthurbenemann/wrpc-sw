@@ -5,7 +5,6 @@ mainmenu "WR PTP Core software configuration"
 config WR_SWITCH
 	bool "Build rt_cpu.bin, for the WR-Switch FPGA"
 	default n
-	select UART
 
 config WR_NODE
 	bool
@@ -30,6 +29,13 @@ config TEMP_POLL_INTERVAL
 	int
 	default 15
 
+config TEMP_HIGH_THRESHOLD
+	int
+	default 70
+
+config TEMP_HIGH_RAPPEL
+	int
+	default 60
 config PLL_VERBOSE
 	boolean
 	default y if WR_SWITCH
@@ -96,11 +102,6 @@ config PPSI
 	boolean
 	default y
 
-config UART
-	boolean
-	default y if EMBEDDED_NODE
-	default n
-
 config W1
 	depends on EMBEDDED_NODE
 	boolean
@@ -150,8 +151,20 @@ config SYSLOG
 	  The user (or init script) must use "syslog <ipaddr> <macaddr>"
 	  to enable it.  The special "off" ipaddr disables syslog.
 
+config PUTS_SYSLOG
+	depends on SYSLOG
+	boolean "Sent puts (i.e. printf) to syslog too"
+	help
+	  This allows logging the various warning and error messages
+	  that normally go to the console alone, where nobody is looking
+	  in a deployed system.  Output from interactive commands is
+	  not sent to syslog, but self-timed diagnostic (stat, gui, verbose)
+	  will reach syslog anyways, if an interactive user enables them.
+	  Unfortunately, "stat" will reach syslog as several short strings,
+	  and "gui" is full of escape sequences.
+
 config SNMP
-	depends on IP
+	depends on IP && !HOST_PROCESS
 	default y
 	boolean "Mini SNMP responder"
 
@@ -169,11 +182,6 @@ config SNMP_AUX_DIAG
 	boolean "Adds support of auxiliary diagnostics registers to SNMP"
 	help
 	  This option adds branch wrpcAuxDiag to the SNMP
-
-config SNMP_HW_TYPE
-	depends on SNMP
-	default "spec"
-	string "Hardware type reported by SNMP"
 
 config BUILD_INIT
 	depends on WR_NODE
@@ -206,6 +214,7 @@ config FLASH_INIT
 	default n
 
 config AUX_DIAG
+	depends on WR_NODE
 	default n
 	boolean "Add support for auxiliary diagnostics registers"
 	help
@@ -220,12 +229,21 @@ config SDB_STORAGE
 	  Use SDB to manage flash and eeproms (both W1 and I2C). If not, legacy code
 	  (eeprom only) will be selected.
 
+config GENSDBFS
+  depends on SDB_STORAGE
+  default y
+  boolean "Shell command for SDBFS generation"
+  help
+    This option adds _sdb fs_ command to write empty SDBFS filesystem
+    image in Flash/EEPROM.
+
 config LEGACY_EEPROM
 	depends on WR_NODE
 	boolean
 	default !SDB_STORAGE
 
 config VLAN
+  depends on WR_NODE
 	boolean "Filter and rx/tx frames in a VLAN (as opposed to untagged)"
 
 config VLAN_NR
@@ -244,8 +262,22 @@ config VLAN_FOR_CLASS6
 	depends on VLAN
 	int "Route this VLAN too to fabric class 6 (Streamer/NIC)"
 
-config WR_NODE_SIM
+config WR_DIAG
 	depends on WR_NODE
+	boolean "Write of WRPC diagnostics to dedicated WB registers"
+	default n
+	help
+	  This is a software part of new (additional) diagnostics for WR PTP
+	  Core. It allows to access diagnostics values through WB registers
+	  (e.g. PCI bus). It allows the host machine (of SPEC/SVEC/etc.) to
+	  easily access information about the health of WR PTP Core.
+
+	  Please note that other option to access the status of WRPC, which
+	  is direct access to the WRPC's memory does not provide any mechanism
+	  to ensure the data consistency.
+
+config WR_NODE_SIM
+	depends on WR_NODE && !HOST_PROCESS
 	boolean "Build simple software for test of WR PTP Core in simulation"
 	default n
 	help
@@ -256,12 +288,32 @@ config WR_NODE_SIM
 	  MAC address destination and expects the simulation to return
 	  these frames.
 
+config ABSCAL
+  depends on WR_NODE
+	default y
+	boolean "Support absolute calibration"
+	help
+	  If you select this, you'll be able to do absolute calibration
+	  using a loop-back SFP adapter, according to the procedure
+	  described and documented by Peter Jansweijer.
+
+config LLDP
+	depends on WR_NODE
+	boolean "Include LLDP protocol transmit-only"
+	default n
+	help
+	  This enable LLDP support. LLDP is a vendor-neutral link layer protocol 
+	  used by network devices for advertising their identity, capabilities, 
+	  and neighbors on local area network.
+
 #
 # This is a set of configuration options that should not be changed by
 # normal users. If the "developer" menu is used, the binary is tainted.
 
+
 comment "wrpc-sw is tainted if you change the following options"
 config DEVELOPER
+	depends on WR_NODE
 	bool "Advanced configurations, only for developers"
 	help
 	  The following options are new features under testing, or
@@ -270,7 +322,7 @@ config DEVELOPER
 	  you are a developer of wrpc-sw.
 
 config PPSI_FORCE_CONFIG
-	depends on DEVELOPER && WR_NODE       
+	depends on DEVELOPER
 	bool "Reconfigure ppsi from wrpc-sw at every build"
 	default y
 	help
@@ -280,11 +332,11 @@ config PPSI_FORCE_CONFIG
 	  peer-to-peer here, the change is propagated to the ppsi build.
 
 config HOST_PROCESS
-	depends on DEVELOPER && WR_NODE
+	depends on DEVELOPER
 	boolean "Build as a host process, to develop/debug network"
 
 config RAMSIZE
-	depends on DEVELOPER && EMBEDDED_NODE
+	depends on DEVELOPER && LM32
 	int "Size of the RAM in the FPGA for this program"
 	default 90112
 	help
@@ -294,7 +346,7 @@ config RAMSIZE
 	  choose your preferred value here.
 
 config STACKSIZE
-	depends on DEVELOPER && EMBEDDED_NODE
+	depends on DEVELOPER && LM32
 	int "Size of the stack area needed by this program"
 	default 2048
 	help
@@ -303,7 +355,7 @@ config STACKSIZE
 	  at run time. (However, we have a detector for overflows).
 
 config PRINT_BUFSIZE
-	depends on DEVELOPER && WR_NODE
+	depends on DEVELOPER
 	int "Size for the temporary output string of pp_printf"
 	default 128
 	help
@@ -312,21 +364,19 @@ config PRINT_BUFSIZE
 	  in a single call to printf.
 
 config TEMP_POLL_INTERVAL
-	depends on DEVELOPER && WR_NODE
+	depends on DEVELOPER
 	int "Poll interval, in seconds, for temperature sensors"
 
 config TEMP_HIGH_THRESHOLD
-	depends on DEVELOPER && WR_NODE && SYSLOG
-	default 70
+	depends on DEVELOPER && SYSLOG
 	int "Threshold for temperature: tell syslog if higher"
 
 config TEMP_HIGH_RAPPEL
-	depends on DEVELOPER && WR_NODE && SYSLOG
-	default 60
+	depends on DEVELOPER && SYSLOG
 	int "Remember over-temperature every that many seconds"
 
 config CMD_LL
-	depends on DEVELOPER && EMBEDDED_NODE
+	depends on DEVELOPER && LM32
 	bool "Build low-level commands for development/testing"
 	help
 	  This enables low-level commands: "devmem" to read/write memory
@@ -335,14 +385,22 @@ config CMD_LL
 	  on the master, because they are just sent to the slave
 	  during the initial handshake
 
-config FLASH_INIT
+config DAC_LOG
 	depends on DEVELOPER && EMBEDDED_NODE
+	bool "Be able send DAC values through UDP"
+	help
+	  If you want to see the dac output, input to the VCXO main
+	  oscillator, enable this. You'll have a "daclog" shell command
+	  to set ipaddress and mac of the target host. UDP port is 1050.
+
+config FLASH_INIT
+	depends on DEVELOPER && LM32
 	default y
 	boolean "Read init commands from flash storage"
 
 # CHECK_RESET for switch and node
 config CHECK_RESET
-	depends on DEVELOPER && !HOST_PROCESS
+	depends on DEVELOPER && LM32 || WR_SWITCH
 	bool "Print a stack trace if reset happens"
 	help
 	  If the CPU is following a NULL pointer, the program will
@@ -351,7 +409,7 @@ config CHECK_RESET
 	  then clears the stack (for next time) and restarts again.
 
 config SPLL_FIFO_LOG
-	depends on DEVELOPER && !HOST_PROCESS
+	depends on DEVELOPER && LM32
 	bool "Add a circular buffer for spll logging, used by tools/wrpc-dump"
 	help
 	  This option addrs 256 bytes to the wrpc bynary, to log
@@ -361,7 +419,7 @@ config SPLL_FIFO_LOG
 
 choice
 	prompt "Implementation of pp_printf"
-	depends on DEVELOPER && WR_NODE
+	depends on DEVELOPER
 
 config PRINTF_IS_XINT
 	bool "hex-and-int"
@@ -406,7 +464,7 @@ config ASSERT
 	  with no Kconfig -- and it does the same, unconditionally.
 
 config DETERMINISTIC_BINARY
-	depends on DEVELOPER && EMBEDDED_NODE
+	depends on DEVELOPER || WR_SWITCH
 	boolean "Build a binary that is the same every time"
 	help
 	  This option is used to #ifdef __DATE__ and __TIME__ strings
@@ -418,27 +476,8 @@ config DETERMINISTIC_BINARY
 
 	  If in doubt, say No.
 
-config UART
-	boolean "Use hardware uart (and/or vuart if available)"
-	depends on (DEVELOPER && EMBEDDED_NODE) || WR_SWITCH
-	help
-	  This option selects the serial driver, connected to either
-	  the USB socket, or "vuart" (software fifo) or both, according
-	  to how the gateware is built. 
-
-config UART_SW
-	depends on DEVELOPER && EMBEDDED_NODE
-	default !UART
-	boolean "Use software uart"
-	help
-	  The software uart is made up of two circular buffers. It can
-	  be used either as an alternative to the harwdare UART or as
-	  an addition. If the option is turned on, ppsi log messages
-	  are routed to the software uart. The interactive wrpc shell
-	  and diagnostics run on the hardware UART if available.
-
 config NET_VERBOSE
-	depends on DEVELOPER && WR_NODE
+	depends on DEVELOPER
 	boolean "Extra verbose messages for networking"
 	help
 	  This is mainly a debug tool, to be left off unless you hack
@@ -458,7 +497,7 @@ config PFILTER_VERBOSE
 	  A debug tool for people changing the packet filter rules
 
 config WRC_VERBOSE
-	depends on DEVELOPER
+	depends on DEVELOPER || WR_SWITCH
 	boolean "More verbose messages in wr core"
 	default y if WR_SWITCH
 	help
@@ -500,6 +539,18 @@ config LATENCY_SYSLOG
 	depends on LATENCY_PROBE && SYSLOG
 	bool "Report latency problems to syslog"
 	default y
+
+config DEFAULT_PRINT_TASK_TIME_THRESHOLD
+        depends on DEVELOPER
+        default 0
+        int "Default threshold of printing task execution time"
+        help
+          If a task executes longer than a given number, its name and
+          an execution time will be printed to the console. Additionally,
+          setting this value triggers printing messages if particular task
+          runs longer than ever before. Setting to 0 disabled this
+          functionality. This value can be changed in run-time by the command
+          "ps max <msecs>".
 
 
 # This is needed to size the pp_instance data strucuture. Instead of

@@ -8,6 +8,7 @@ ifdef CONFIG_HOST_PROCESS
 endif
 
 export CROSS_COMPILE
+export CONFIG_ABSCAL
 
 CC =		$(CROSS_COMPILE)gcc
 LD =		$(CROSS_COMPILE)ld
@@ -75,6 +76,10 @@ pfilter-y                     := rules-novlan.bin
 pfilter-$(CONFIG_VLAN)        += rules-vlan.bin
 export pfilter-y
 
+# sdbfs image
+sdbfsimg-y	:=	sdbfs-default.bin
+export sdbfsimg-y
+
 all:
 
 include shell/shell.mk
@@ -129,7 +134,7 @@ endif
 all: tools $(OUTPUT).elf $(arch-files-y)
 
 .PRECIOUS: %.elf %.bin
-.PHONY: all tools clean gitmodules $(PPSI)/ppsi.o
+.PHONY: all tools clean gitmodules $(PPSI)/ppsi.o extest liblinux
 
 # we need to remove "ptpdump" support for ppsi if RAM size is small and
 # we include etherbone
@@ -138,8 +143,6 @@ ifneq ($(CONFIG_RAMSIZE),131072)
     PPSI_USER_CFLAGS = -DCONFIG_NO_PTPDUMP
   endif
 endif
-
-PPSI_USER_CFLAGS += -DDIAG_PUTS=uart_sw_write_string
 
 PPSI-CFG-y = wrpc_defconfig
 PPSI-CFG-$(CONFIG_P2P) = wrpc_pdelay_defconfig
@@ -209,6 +212,8 @@ clean:
 	$(MAKE) -C $(PPSI) clean
 	$(MAKE) -C sdb-lib clean
 	$(MAKE) -C tools clean
+	$(MAKE) -C liblinux clean
+	$(MAKE) -C liblinux/extest clean
 
 distclean: clean
 	rm -rf include/config
@@ -219,8 +224,17 @@ distclean: clean
 %.o:		%.c
 	${CC} $(CFLAGS) $(PTPD_CFLAGS) $(INCLUDE_DIR) $(LIB_DIR) -c $*.c -o $@
 
-tools: .config gitmodules
+liblinux:
+	$(MAKE) -C liblinux
+
+extest:
+	$(MAKE) -C liblinux/extest
+
+tools: .config gitmodules liblinux extest
 	$(MAKE) -C tools
+
+tools-diag: liblinux extest
+	$(MAKE) -C tools wrpc-diags wrpc-vuart wr-streamers
 
 # if needed, check out the submodules (first time only), so users
 # who didn't read carefully the manual won't get confused

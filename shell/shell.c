@@ -21,7 +21,6 @@
 
 #define SH_MAX_LINE_LEN 80
 #define SH_MAX_ARGS 8
-#define SH_ENVIRON_SIZE 256
 
 /* interactive shell state definitions */
 
@@ -42,6 +41,8 @@ static char cmd_buf[SH_MAX_LINE_LEN + 1];
 static int cmd_pos = 0, cmd_len = 0;
 static int state = SH_PROMPT;
 static int current_key = 0;
+
+int shell_is_interacting;
 
 static int insert(char c)
 {
@@ -117,9 +118,15 @@ static int _shell_exec(void)
 
 int shell_exec(const char *cmd)
 {
-	strncpy(cmd_buf, cmd, SH_MAX_LINE_LEN);
+	int i;
+
+	if (cmd != cmd_buf)
+		strncpy(cmd_buf, cmd, SH_MAX_LINE_LEN);
 	cmd_len = strlen(cmd_buf);
-	return _shell_exec();
+	shell_is_interacting = 1;
+	i = _shell_exec();
+	shell_is_interacting = 0;
+	return i;
 }
 
 void shell_init()
@@ -131,6 +138,7 @@ void shell_init()
 int shell_interactive()
 {
 	int c;
+
 	switch (state) {
 	case SH_PROMPT:
 		pp_printf("wrc# ");
@@ -212,10 +220,16 @@ int shell_interactive()
 	return 0;
 }
 
-const char *fromhex(const char *hex, int *v)
-{
-	int o = 0;
 
+const char *fromhex64(const char *hex, int64_t *v)
+{
+	int64_t o = 0;
+	int sign = 1;
+
+	if (hex && *hex == '-') {
+		sign = -1;
+		hex++;
+	}
 	for (; hex && *hex; ++hex) {
 		if (*hex >= '0' && *hex <= '9') {
 			o = (o << 4) + (*hex - '0');
@@ -228,14 +242,28 @@ const char *fromhex(const char *hex, int *v)
 		}
 	}
 
-	*v = o;
+	*v = o * sign;
 	return hex;
+}
+
+const char *fromhex(const char *hex, int *v)
+{
+	const char *ret;
+	int64_t v64;
+
+	ret = fromhex64(hex, &v64);
+	*v = (int)v64;
+	return ret;
 }
 
 const char *fromdec(const char *dec, int *v)
 {
-	int o = 0;
+	int o = 0, sign = 1;
 
+	if (dec && *dec == '-') {
+		sign = -1;
+		dec++;
+	}
 	for (; dec && *dec; ++dec) {
 		if (*dec >= '0' && *dec <= '9') {
 			o = (o * 10) + (*dec - '0');
@@ -244,7 +272,7 @@ const char *fromdec(const char *dec, int *v)
 		}
 	}
 
-	*v = o;
+	*v = o * sign;
 	return dec;
 }
 
@@ -262,6 +290,11 @@ static int build_init_readcmd(uint8_t *cmd, int maxlen)
 	p += i;
 	if (*p == ';')
 		p++;
+	if (i == 0) {
+		/* it's the last call, roll-back *p to be ready for the next
+		 * call */
+		p = shell_init_cmd;
+	}
 	return i;
 }
 
@@ -278,7 +311,7 @@ void shell_boot_script(void)
 		if (!cmd_len)
 			break;
 		pp_printf("executing: %s\n", cmd_buf);
-		_shell_exec();
+		shell_exec(cmd_buf);
 	}
 
 	while (CONFIG_HAS_FLASH_INIT) {
@@ -292,9 +325,26 @@ void shell_boot_script(void)
 		cmd_buf[cmd_len - 1] = 0;
 
 		pp_printf("executing: %s\n", cmd_buf);
-		_shell_exec();
+		shell_exec(cmd_buf);
 		next = 1;
 	}
 
 	return;
+}
+
+void shell_show_build_init(void)
+{
+	uint8_t i = 0;
+
+	pp_printf("-- built-in script --\n");
+	while (CONFIG_HAS_BUILD_INIT) {
+		cmd_len = build_init_readcmd((uint8_t *)cmd_buf,
+					SH_MAX_LINE_LEN);
+		if (!cmd_len)
+			break;
+		pp_printf("%s\n", cmd_buf);
+		++i;
+	}
+	if (!i)
+		pp_printf("(empty)\n");
 }

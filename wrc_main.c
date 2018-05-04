@@ -35,27 +35,35 @@
 #include "wrc_ptp.h"
 #include "system_checks.h"
 
+#ifndef CONFIG_DEFAULT_PRINT_TASK_TIME_THRESHOLD
+#define CONFIG_DEFAULT_PRINT_TASK_TIME_THRESHOLD 0
+#endif
+
 int wrc_ui_mode = UI_SHELL_MODE;
 int wrc_ui_refperiod = TICS_PER_SECOND; /* 1 sec */
 int wrc_phase_tracking = 1;
+char wrc_hw_name[HW_NAME_LENGTH];
 
 uint32_t cal_phase_transition = 2389;
 
 int wrc_vlan_number = CONFIG_VLAN_NR;
 
 static uint32_t prev_nanos_for_profile;
+static uint32_t prev_ticks_for_profile;
+uint32_t print_task_time_threshold = CONFIG_DEFAULT_PRINT_TASK_TIME_THRESHOLD;
 
 static void wrc_initialize(void)
 {
 	uint8_t mac_addr[6];
 
 	sdb_find_devices();
-	uart_init_sw();
 	uart_init_hw();
 
 	pp_printf("WR Core: starting up...\n");
 
 	timer_init(1);
+	get_hw_name(wrc_hw_name);
+	storage_read_hdl_cfg();
 	wrpc_w1_init();
 	wrpc_w1_bus.detail = ONEWIRE_PORT;
 	w1_scan_bus(&wrpc_w1_bus);
@@ -69,12 +77,12 @@ static void wrc_initialize(void)
 
 	if (get_persistent_mac(ONEWIRE_PORT, mac_addr) == -1) {
 		pp_printf("Unable to determine MAC address\n");
-		mac_addr[0] = 0x22;	//
-		mac_addr[1] = 0x33;	//
-		mac_addr[2] = 0x44;	// fallback MAC if get_persistent_mac fails
-		mac_addr[3] = 0x55;	//
-		mac_addr[4] = 0x66;	//
-		mac_addr[5] = 0x77;	//
+		mac_addr[0] = 0x22;	/*
+		mac_addr[1] = 0x33;	*
+		mac_addr[2] = 0x44;	* fallback MAC if get_persistent_mac fails
+		mac_addr[3] = 0x55;	*
+		mac_addr[4] = 0x66;	*
+		mac_addr[5] = 0x77;	*/
 	}
 
 	pp_printf("Local MAC address: %02x:%02x:%02x:%02x:%02x:%02x\n",
@@ -92,7 +100,7 @@ static void wrc_initialize(void)
 	minic_init();
 	shw_pps_gen_init();
 	wrc_ptp_init();
-	//try reading t24 phase transition from EEPROM
+	/* try reading t24 phase transition from EEPROM */
 	calib_t24p(WRC_MODE_MASTER, &cal_phase_transition);
 	spll_very_init();
 	usleep_init();
@@ -104,6 +112,8 @@ static void wrc_initialize(void)
 	wrc_ptp_set_mode(WRC_MODE_SLAVE);
 	wrc_ptp_start();
 	shw_pps_gen_get_time(NULL, &prev_nanos_for_profile);
+	/* get tics */
+	prev_ticks_for_profile = timer_get_tics();
 }
 
 DEFINE_WRC_TASK0(idle) = {
@@ -168,7 +178,6 @@ void init_hw_after_reset(void)
 {
 	/* Ok, now init the devices so we can printf and delay */
 	sdb_find_devices();
-	uart_init_sw();
 	uart_init_hw();
 	timer_init(1);
 }
@@ -215,25 +224,54 @@ DEFINE_WRC_TASK(spll) = {
 	.job = spll_update,
 };
 
+static void task_time_normalize(struct wrc_task *t)
+{
+	if (t->nanos > 1000 * 1000 * 1000) {
+		t->nanos -= 1000 * 1000 * 1000;
+		t->seconds++;
+	}
+}
+
 /* Account the time to either this task or task 0 */
 static void account_task(struct wrc_task *t, int done_sth)
 {
 	uint32_t nanos;
 	signed int delta;
+	uint32_t ticks;
+	signed int delta_ticks;
 
 	if (!done_sth)
 		t = __task_begin; /* task 0 is special */
 	shw_pps_gen_get_time(NULL, &nanos);
+	/* get monotonic number of ticks */
+	ticks = timer_get_tics();
+
 	delta = nanos - prev_nanos_for_profile;
 	if (delta < 0)
 		delta += 1000 * 1000 * 1000;
 
 	t->nanos += delta;
-	if (t-> nanos > 1000 * 1000 * 1000) {
-		t->nanos -= 1000 * 1000 * 1000;
-		t->seconds++;
-	}
+	task_time_normalize(t);
 	prev_nanos_for_profile = nanos;
+
+	delta_ticks = ticks - prev_ticks_for_profile;
+	if (delta_ticks < 0)
+		delta_ticks += TICS_PER_SECOND;
+
+	if (t->max_run_ticks < delta_ticks) {/* update max_run_ticks */
+		if (print_task_time_threshold) {
+			/* Print only if threshold is set */
+			pp_printf("New max run time for a task %s, old %ld, "
+				  "new %d\n",
+				  t->name, t->max_run_ticks, delta_ticks);
+		}
+		t->max_run_ticks = delta_ticks;
+	}
+	if (print_task_time_threshold
+            && delta_ticks > print_task_time_threshold)
+		pp_printf("task %s, run for %d ms\n", t->name, delta_ticks);
+
+	prev_ticks_for_profile = ticks;
 }
 
 /* Run a task with profiling */

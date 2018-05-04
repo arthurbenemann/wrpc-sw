@@ -6,8 +6,9 @@
  *
  * Released according to the GNU GPL, version 2 or any later version.
  */
-#include <string.h>
+#include <wrc.h>
 #include <wrpc.h>
+#include <string.h>
 
 #include "endpoint.h"
 #include "ipv4.h"
@@ -16,10 +17,6 @@
 #include "hw/memlayout.h"
 #include "hw/etherbone-config.h"
 #include "ext_config.h"
-
-#ifndef htons
-#define htons(x) x
-#endif
 
 enum ip_status ip_status = IP_TRAINING;
 static uint8_t myIP[4];
@@ -111,7 +108,7 @@ static int bootp_poll(void)
 		ret = process_bootp(buf, len);
 
 	if (task_not_yet(&bootp_tics, TICS_PER_SECOND))
-		return 0;
+		return ret;
 
 	len = prepare_bootp(&addr, buf, ++bootp_retry);
 	ptpd_netif_sendto(bootp_socket, &addr, buf, len, 0);

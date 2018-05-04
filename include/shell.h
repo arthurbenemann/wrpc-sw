@@ -13,6 +13,7 @@ extern int wrc_ui_mode;
 extern int wrc_stat_running;
 
 const char *fromhex(const char *hex, int *v);
+const char *fromhex64(const char *hex, int64_t *v);
 const char *fromdec(const char *dec, int *v);
 void decode_mac(const char *str, unsigned char *mac);
 char *format_mac(char *s, const unsigned char *mac);
@@ -36,7 +37,9 @@ void env_init(void);
 
 int shell_exec(const char *buf);
 int shell_interactive(void);
+extern int shell_is_interacting;
 
 void shell_boot_script(void);
+void shell_show_build_init(void);
 
 #endif

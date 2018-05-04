@@ -77,7 +77,22 @@ static void wrc_sim_initialize(void)
 {
 	uint8_t mac_addr[6];
 
-	sdb_find_devices();
+	// Search SDB for devices takes too long, hard-coded offsets
+	// should work for most WR-PTP core implementations
+	// (unless you add/remove/move peripherals), in which case
+	// you should comment out all the hard-coded offsets and
+	// uncomment the following line to perform a dynamic search
+	// at runtime.
+	//sdb_find_devices();
+	BASE_MINIC         = (void *)0x20000;
+	BASE_EP            = (void *)0x20100;
+	BASE_SOFTPLL       = (void *)0x20200;
+	BASE_PPS_GEN       = (void *)0x20300;
+	BASE_SYSCON        = (void *)0x20400;
+	BASE_UART          = (void *)0x20500;
+	BASE_ONEWIRE       = (void *)0x20600;
+	BASE_ETHERBONE_CFG = (void *)0x20700;
+
 	timer_init(1);
 
 	/* Source MAC used by WRPC's Endpoint */

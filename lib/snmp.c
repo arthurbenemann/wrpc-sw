@@ -12,8 +12,9 @@
  * Each OID is divided into the limb and twig part.
  * The twig part can be handled as a group or a table
  */
-#include <string.h>
+#include <wrc.h>
 #include <wrpc.h>
+#include <string.h>
 #include <minic.h>
 #include <limits.h>
 
@@ -27,12 +28,9 @@
 #include "softpll_ng.h"
 #include "temperature.h"
 #include "sfp.h"
+#include "syscon.h"
 
 #include "storage.h"
-
-#ifndef htons
-#define htons(x) x
-#endif
 
 #define ASN_BOOLEAN	((u_char)0x01)
 #define ASN_INTEGER	((u_char)0x02)
@@ -223,8 +221,7 @@ static uint32_t aux_diag_reg_rw_num;
 extern struct pp_instance ppi_static;
 static struct wr_servo_state *wr_s_state;
 
-#define SNMP_HW_TYPE_LEN 32
-char snmp_hw_type[SNMP_HW_TYPE_LEN] = CONFIG_SNMP_HW_TYPE;
+extern char wrc_hw_name[HW_NAME_LENGTH];
 /* __DATE__ and __TIME__ is already stored in struct spll_stats stats, but
  * redefining it here makes code smaller than concatenate existing one */
 static char *snmp_build_date = __DATE__ " " __TIME__;
@@ -354,7 +351,7 @@ static uint8_t oid_wrpcSfpAlpha[] =              {5};
 	 OIDs */
 /* wrpcVersionGroup */
 static struct snmp_oid oid_array_wrpcVersionGroup[] = {
-	OID_FIELD_VAR(   oid_wrpcVersionHwType,      get_p,        NO_SET,   ASN_OCTET_STR, &snmp_hw_type),
+	OID_FIELD_VAR(   oid_wrpcVersionHwType,      get_p,        NO_SET,   ASN_OCTET_STR, &wrc_hw_name),
 	OID_FIELD_VAR(   oid_wrpcVersionSwVersion,   get_pp,       NO_SET,   ASN_OCTET_STR, &build_revision),
 	OID_FIELD_VAR(   oid_wrpcVersionSwBuildBy,   get_pp,       NO_SET,   ASN_OCTET_STR, &build_by),
 	OID_FIELD_VAR(   oid_wrpcVersionSwBuildDate, get_pp,       NO_SET,   ASN_OCTET_STR, &snmp_build_date),
