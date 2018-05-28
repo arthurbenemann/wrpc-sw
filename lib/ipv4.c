@@ -17,9 +17,12 @@
 #include "hw/memlayout.h"
 #include "hw/etherbone-config.h"
 #include "ext_config.h"
+#include "flash.h"
 
 enum ip_status ip_status = IP_TRAINING;
 static uint8_t myIP[4];
+/* magic UDP is deadbeef */
+const uint8_t magicUDP[4] ={0x62,0x65,0x65,0x66};
 
 /* bootp: bigger buffer, UDP based */
 static uint8_t __bootp_queue[512];
@@ -44,6 +47,14 @@ static struct wrpc_socket __static_rdate_socket = {
 	.queue.size = sizeof(__rdate_queue),
 };
 static struct wrpc_socket *rdate_socket;
+
+/* remoteupdate: bigger buffer, UDP based */
+static uint8_t __rmupdate_queue[340];
+static struct wrpc_socket __static_rmupdate_socket = {
+	.queue.buff = __rmupdate_queue,
+	.queue.size = sizeof(__rmupdate_queue),
+};
+static struct wrpc_socket *rmupdate_socket;
 
 /* syslog is selected by Kconfig, so we have weak aliases here */
 void __attribute__((weak)) syslog_init(void)
@@ -78,6 +89,10 @@ static void ipv4_init(void)
 	/* time (rdate): UDP */
 	rdate_socket = ptpd_netif_create_socket(&__static_rdate_socket, NULL,
 					       PTPD_SOCK_UDP, 37 /* time */);
+
+	/* remote update (rmupdate): UDP */
+	rmupdate_socket = ptpd_netif_create_socket(&__static_rmupdate_socket, NULL,
+					       PTPD_SOCK_UDP, 71 /* remote update */);
 
 	/* ICMP: specify raw (not UDP), with IPV4 ethtype */
 	memset(&saddr, 0, sizeof(saddr));
@@ -166,6 +181,88 @@ static int rdate_poll(void)
 	return 1;
 }
 
+static int rmupdate_poll(void)
+{
+	struct wr_sockaddr addr;
+	uint8_t buf[512];
+	int len;
+	uint32_t type;
+	uint32_t data_addr;
+	uint8_t* reg_addr;
+	int data_size;
+
+	len = ptpd_netif_recvfrom(rmupdate_socket, &addr,
+				  buf, sizeof(buf), NULL);
+	if (len <= 0)
+		return 0;	
+
+
+	/* check the destination IP */
+	if (check_dest_ip(buf))
+		return 0;
+	
+	if (check_magic_udp(buf)<0)
+	{
+		// magic data error
+		memset(buf+UDP_END, 0x00000001, 4);
+		len = UDP_END + 4 + 64;
+	}
+	else if (check_magic_udp(buf)>0)
+	{
+		// udp checksum err
+		memset(buf+UDP_END, 0xffff0000, 4);
+		len = UDP_END + 4 + 64;
+		return 0;
+	}
+	else 
+	{
+		type = (buf[UDP_END+6]<<8)+buf[UDP_END+7];
+		switch(type)
+		{
+			case FLASH_ERASE:
+				data_addr = (buf[UDP_END+8]<<24)+(buf[UDP_END+9]<<16)+(buf[UDP_END+10]<<8)+buf[UDP_END+11];
+				data_size = (buf[UDP_END+12]<<24)+(buf[UDP_END+13]<<16)+(buf[UDP_END+14]<<8)+buf[UDP_END+15];
+				flash_erase(data_addr,data_size);
+				memset(buf+UDP_END+12, 0x00000000, 4);
+				len = UDP_END + 16 + 64;
+			case FLASH_WRITE:
+				data_addr = (buf[UDP_END+8]<<24)+(buf[UDP_END+9]<<16)+(buf[UDP_END+10]<<8)+buf[UDP_END+11];
+				data_size = (buf[UDP_END+12]<<24)+(buf[UDP_END+13]<<16)+(buf[UDP_END+14]<<8)+buf[UDP_END+15];
+			    flash_write(data_addr,buf+UDP_END+16,data_size);
+			    memset(buf+UDP_END+12, 0x00000000, 4);
+			    len = UDP_END + 16 + 64 ;
+				break;
+			case FLASH_READ:
+				data_addr = (buf[UDP_END+8]<<24)+(buf[UDP_END+9]<<16)+(buf[UDP_END+10]<<8)+buf[UDP_END+11];
+				data_size = (buf[UDP_END+12]<<24)+(buf[UDP_END+13]<<16)+(buf[UDP_END+14]<<8)+buf[UDP_END+15];
+				flash_read(data_addr,buf+UDP_END+16,data_size);
+				len = UDP_END + 16 + data_size;
+				break;
+			case REG_WRITE:
+				reg_addr = (buf[UDP_END+8]<<24)+(buf[UDP_END+9]<<16)+(buf[UDP_END+10]<<8)+buf[UDP_END+11];
+				data_size = (buf[UDP_END+12]<<24)+(buf[UDP_END+13]<<16)+(buf[UDP_END+14]<<8)+buf[UDP_END+15];
+				*(uint32_t *)reg_addr = (buf[UDP_END+16]<<24)+(buf[UDP_END+17]<<16)+(buf[UDP_END+18]<<8)+buf[UDP_END+19];
+				memset(buf+UDP_END+16, 0x00000000, 4);
+				len = UDP_END + 16 + 64;
+				break;
+			case REG_READ:
+				reg_addr = (buf[UDP_END+8]<<24)+(buf[UDP_END+9]<<16)+(buf[UDP_END+10]<<8)+buf[UDP_END+11];
+				data_size = (buf[UDP_END+12]<<24)+(buf[UDP_END+13]<<16)+(buf[UDP_END+14]<<8)+buf[UDP_END+15];
+				memcpy(buf+UDP_END+16,reg_addr,data_size);
+				len = UDP_END + 16 + data_size + 64;
+				break;
+			default:
+			    // type error
+				memset(buf+UDP_END, 0x00000002, 4);
+				len = UDP_END + 4 + 64;
+		}
+	}
+
+	fill_udp(buf, len, NULL);
+	ptpd_netif_sendto(rdate_socket, &addr, buf, len, 0);
+	return 1;
+}
+
 static int ipv4_poll(void)
 {
 	int ret = 0;
@@ -177,6 +274,8 @@ static int ipv4_poll(void)
 	ret += icmp_poll();
 
 	ret += rdate_poll();
+    
+	ret += rmupdate_poll();
 
 	ret += syslog_poll();
 
@@ -218,4 +317,34 @@ int check_dest_ip(unsigned char *buf)
 	if (!buf)
 		return -1;
 	return memcmp(buf + IP_DEST, myIP, 4);
+}
+
+/* Check the magic number of the incoming remote update packet */
+// 0 is ok, -1 has no packet, 1 checksum err
+int check_magic_udp(unsigned char *buf)
+{
+	int i;
+	unsigned int sum;
+	unsigned int packet_size;
+	sum = 0;
+	if (memcmp(buf+UDP_END, magicUDP, 4)==0)
+	{
+		// pseudo header
+		sum += (ntohs(buf[IP_SOURCE])<<8)+ntohs(buf[IP_SOURCE+1]);
+		sum += (ntohs(buf[IP_SOURCE+2])<<8)+ntohs(buf[IP_SOURCE+3]);
+		sum += (ntohs(buf[IP_DEST])<<8)+ntohs(buf[IP_DEST+1]);
+		sum += (ntohs(buf[IP_DEST+2])<<8)+ntohs(buf[IP_DEST+3]);
+		sum += ntohs(buf[IP_PROTOCOL]);
+		packet_size = (ntohs(buf[UDP_LENGTH])<<8) + ntohs(buf[UDP_LENGTH+1]);
+		sum += packet_size;
+		// udp header       
+		for (i=IP_END; (i <= UDP_END+packet_size-8); i=i+2)
+		{
+			sum += (ntohs(buf[i])<<8);
+			sum += ntohs(buf[i+1]);
+		}
+		sum = (sum >> 16) + (sum & 0xffff);
+		return (sum!=0xffff);
+	}
+	return -1;
 }
