@@ -30,7 +30,7 @@
 #include "lib/ipv4.h"
 #include "rxts_calibrator.h"
 #include "flash.h"
-#include "ext_config.h"
+#include "tcpip_config.h"
 
 #include "wrc_ptp.h"
 #include "system_checks.h"
@@ -91,7 +91,7 @@ static void wrc_initialize(void)
 
 	net_rst();
 	ep_init(mac_addr);
-	ext_init(mac_addr);
+	tcpip_init(mac_addr);
 	/* Sleep for 1s to make sure WRS v4.2 always realizes that
 	 * the link is down */
 	timer_delay_ms(200);

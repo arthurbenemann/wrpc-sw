@@ -16,7 +16,7 @@
 #include "pps_gen.h"
 #include "hw/memlayout.h"
 #include "hw/etherbone-config.h"
-#include "ext_config.h"
+#include "tcpip_config.h"
 
 enum ip_status ip_status = IP_TRAINING;
 static uint8_t myIP[4];
@@ -207,7 +207,7 @@ void setIP(unsigned char *IP)
 	// while (*eb_ip != ip)
 	// 	*eb_ip = ip;
 
- //    ext_config(IP);
+    tcpip_config(IP);
 
 	bootp_retry = 0;
 }
