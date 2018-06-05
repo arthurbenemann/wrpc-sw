@@ -306,6 +306,13 @@ config LLDP
 	  used by network devices for advertising their identity, capabilities, 
 	  and neighbors on local area network.
 
+config N3XX_WORKAROUND
+	boolean "Compile with workaround for NI USRP N3xx series"
+	default n
+	help
+	  This allows the firmware to not bootloop on the NI USRP N3xx series,
+	  by not driving the helper DAC all the way out to the max.
+
 #
 # This is a set of configuration options that should not be changed by
 # normal users. If the "developer" menu is used, the binary is tainted.

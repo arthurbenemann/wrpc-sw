@@ -28,6 +28,12 @@
   extern struct spll_fifo_log *fifo_log;
 #endif
 
+#ifdef CONFIG_N3XX_WORKAROUND
+	#define HAS_N3XX_WORKAROUND 1
+#else
+	#define HAS_N3XX_WORKAROUND 0
+#endif
+
 volatile struct SPLL_WB *SPLL;
 volatile struct PPSG_WB *PPSG;
 
@@ -99,7 +105,11 @@ static inline void sequencing_fsm(struct softpll_state *s, int tag_value, int ta
 		case SEQ_CLEAR_DACS:
 		{
 			/* Helper always starts at the maximum value (to make sure it locks on positive offset */
-			SPLL->DAC_HPLL = s->helper.pi.y_max;
+			if (!HAS_N3XX_WORKAROUND) {
+				SPLL->DAC_HPLL = s->helper.pi.y_max;
+			} else {
+				SPLL->DAC_HPLL = (s->helper.pi.y_max / 3) * 2;
+			}
 
 			/* Main starts at midscale */
 			SPLL->DAC_MAIN = (s->mpll.pi.y_max + s->mpll.pi.y_min) / 2;
