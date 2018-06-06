@@ -222,7 +222,7 @@ void storage_init(int chosen_i2cif, int chosen_i2c_addr)
 			break;
 	}
 	if (magic == SDB_MAGIC) {
-		pp_printf("sdbfs: found at %i in Flash\n",
+		pp_printf("sdbfs: found at %x in Flash\n",
 				entry_points_flash[i]);
 		wrc_sdb.drvdata = NULL;
 		wrc_sdb.blocksize = storage_cfg.blocksize;
@@ -246,7 +246,7 @@ void storage_init(int chosen_i2cif, int chosen_i2c_addr)
 			break;
 	}
 	if (magic == SDB_MAGIC) {
-		pp_printf("sdbfs: found at %i in W1\n", entry_points_eeprom[i]);
+		pp_printf("sdbfs: found at %x in W1\n", entry_points_eeprom[i]);
 		/* override default i2c settings with w1 ones */
 		wrc_sdb.drvdata = &wrpc_w1_bus;
 		wrc_sdb.blocksize = 1;
