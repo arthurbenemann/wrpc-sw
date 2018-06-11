@@ -43,13 +43,50 @@ int main(void)
 	rtipc_init();
 	spll_very_init();
 
+	int cmd_char;
+	char cmd_array[100] = {}, cmd[100] = {};
+	int i = 0, y;
+
 	for(;;)
 	{
 		uint32_t tics = timer_get_tics();
 
 		if (time_after(tics, start_tics + TICS_PER_SECOND/5)) {
-			spll_show_stats();
+			//spll_show_stats();
 			start_tics = tics;
+		}
+
+		//wrs pts code
+		while(1) {
+			cmd_char = uart_read_byte();
+
+			//stop if no input received
+			if (cmd_char == -1)
+				break;
+			//if delimiter, process
+			if (cmd_char == '\r') {
+				TRACE("\n");
+				for(y = 0; y < i; y++)
+					cmd[y] = cmd_array[y];
+				
+				i = 0;
+
+				TRACE("received: %s\n", cmd);
+
+				if (strcmp(cmd, "CAFEBABE") == 0)
+					TRACE("DEADBEEF\n");
+
+				for(y = 0; y < 100; y++)
+					cmd[y] = 0;
+			} else {
+				uart_write_byte(cmd_char);
+				cmd_array[i] = cmd_char;
+
+				if (i >= 99)
+					i = 0;
+				else
+					i++;
+			}
 		}
 
 		rts_update();
