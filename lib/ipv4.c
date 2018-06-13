@@ -88,17 +88,17 @@ static void ipv4_init(void)
 
 	/* time (rdate): UDP */
 	rdate_socket = ptpd_netif_create_socket(&__static_rdate_socket, NULL,
-					       PTPD_SOCK_UDP, 37 /* time */);
+						PTPD_SOCK_UDP, 37 /* time */);
 
 	/* remote update (rmupdate): UDP */
 	rmupdate_socket = ptpd_netif_create_socket(&__static_rmupdate_socket, NULL,
-					       PTPD_SOCK_UDP, 71 /* remote update */);
+						PTPD_SOCK_UDP, 71 /* remote update */);
 
 	/* ICMP: specify raw (not UDP), with IPV4 ethtype */
 	memset(&saddr, 0, sizeof(saddr));
 	saddr.ethertype = htons(0x0800);
 	icmp_socket = ptpd_netif_create_socket(&__static_icmp_socket, &saddr,
-					       PTPD_SOCK_RAW_ETHERNET, 0);
+						PTPD_SOCK_RAW_ETHERNET, 0);
 
 	syslog_init();
 }
@@ -228,9 +228,9 @@ static int rmupdate_poll(void)
 			case FLASH_WRITE:
 				data_addr = (buf[UDP_END+8]<<24)+(buf[UDP_END+9]<<16)+(buf[UDP_END+10]<<8)+buf[UDP_END+11];
 				data_size = (buf[UDP_END+12]<<24)+(buf[UDP_END+13]<<16)+(buf[UDP_END+14]<<8)+buf[UDP_END+15];
-			    flash_write(data_addr,buf+UDP_END+16,data_size);
-			    memset(buf+UDP_END+12, 0x00000000, 4);
-			    len = UDP_END + 16 + 64 ;
+				flash_write(data_addr,buf+UDP_END+16,data_size);
+				memset(buf+UDP_END+12, 0x00000000, 4);
+				len = UDP_END + 16 + 64 ;
 				break;
 			case FLASH_READ:
 				data_addr = (buf[UDP_END+8]<<24)+(buf[UDP_END+9]<<16)+(buf[UDP_END+10]<<8)+buf[UDP_END+11];
@@ -252,7 +252,7 @@ static int rmupdate_poll(void)
 				len = UDP_END + 16 + data_size + 64;
 				break;
 			default:
-			    // type error
+				// type error
 				memset(buf+UDP_END, 0x00000002, 4);
 				len = UDP_END + 4 + 64;
 		}
@@ -274,7 +274,7 @@ static int ipv4_poll(void)
 	ret += icmp_poll();
 
 	ret += rdate_poll();
-    
+
 	ret += rmupdate_poll();
 
 	ret += syslog_poll();
@@ -296,17 +296,26 @@ DEFINE_WRC_TASK(ipv4) = {
 
 void setIP(unsigned char *IP)
 {
+	uint8_t tmp[4];
 	// volatile unsigned int *eb_ip =
-	//     (unsigned int *)(BASE_ETHERBONE_CFG + EB_IPV4);
-	unsigned int ip;
-
-	memcpy(myIP, IP, 4);
-
-	ip = (myIP[0] << 24) | (myIP[1] << 16) | (myIP[2] << 8) | (myIP[3]);
+	//	 (unsigned int *)(BASE_ETHERBONE_CFG + EB_IPV4);
+	// unsigned int ip;
 	// while (*eb_ip != ip)
 	// 	*eb_ip = ip;
 
-	tcpip_config(IP);
+	memcpy(myIP, IP, 4);
+
+	// tcpip module, default IP
+	tcpip_ip_addr(IP);
+	// tcpip module, default gateway
+	memcpy(tmp, IP, 3);
+	tmp[3]=0x01;
+	tcpip_gateway_addr(tmp);
+	tcpip_set_hisIP(tmp);
+
+	// tcpip module, default subnet mask
+	tmp[0]=0xff;tmp[1]=0xff;tmp[2]=0xff;tmp[3]=0x00;
+	tcpip_subnet_addr(tmp);
 
 	bootp_retry = 0;
 }
@@ -337,7 +346,7 @@ int check_magic_udp(unsigned char *buf)
 		sum += ntohs(buf[IP_PROTOCOL]);
 		packet_size = (ntohs(buf[UDP_LENGTH])<<8) + ntohs(buf[UDP_LENGTH+1]);
 		sum += packet_size;
-		// udp header       
+		// udp header 
 		for (i=IP_END; (i <= UDP_END+packet_size-8); i=i+2)
 		{
 			sum += (ntohs(buf[i])<<8);
