@@ -14,7 +14,6 @@
 #include "ipv4.h"
 #include "ptpd_netif.h"
 #include "arp.h"
-#include "tcpip_config.h"
 
 static uint8_t __arp_queue[128];
 static struct wrpc_socket __static_arp_socket = {
@@ -77,15 +76,6 @@ static int process_arp(uint8_t * buf, int len)
 
 		return ARP_END;
 	}
-	
-	tcpip_get_hisIP(hisIP);
-	if ( ((buf[ARP_OPER + 1] != 2)||memcmp(buf + ARP_SPA, hisIP, 4)) == 0 )
-	{
-		memcpy(hisMAC, buf + ARP_SHA, 6);
-		tcpip_set_hisMAC(hisMAC);
-		tcpip_get_hisMAC(hisMAC);
-		tcpip_status = TCPIP_OK;
-	}
 
 	return 0;
 }
@@ -98,12 +88,7 @@ static int arp_poll(void)
 
 	if (ip_status == IP_TRAINING)
 		return 0;		/* can't do ARP w/o an address... */
-    
-    if ((tcpip_status == TCPIP_ARP) && arp_count < 200)
-    {
-    	tcpip_arp();
-    	arp_count++;
-    }
+
 	if ((len = ptpd_netif_recvfrom(arp_socket,
 					&addr, buf, sizeof(buf), 0)) > 0) {
 		if ((len = process_arp(buf, len)) > 0)

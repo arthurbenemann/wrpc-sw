@@ -19,7 +19,7 @@ obj-$(CONFIG_EMBEDDED_NODE) += \
 	shell/cmd_ptrack.o \
 
 
-obj-$(CONFIG_IP) +=				shell/cmd_ip.o shell/cmd_tcpip.o
+obj-$(CONFIG_IP) +=				shell/cmd_ip.o
 obj-$(CONFIG_PPSI) +=				shell/cmd_verbose.o
 obj-$(CONFIG_CMD_CONFIG) +=			shell/cmd_config.o
 obj-$(CONFIG_CMD_SLEEP) +=			shell/cmd_sleep.o

@@ -16,7 +16,6 @@
 #include "pps_gen.h"
 #include "hw/memlayout.h"
 #include "hw/etherbone-config.h"
-#include "tcpip_config.h"
 #include "flash.h"
 
 enum ip_status ip_status = IP_TRAINING;
@@ -304,18 +303,6 @@ void setIP(unsigned char *IP)
 	// 	*eb_ip = ip;
 
 	memcpy(myIP, IP, 4);
-
-	// tcpip module, default IP
-	tcpip_ip_addr(IP);
-	// tcpip module, default gateway
-	memcpy(tmp, IP, 3);
-	tmp[3]=0x01;
-	tcpip_gateway_addr(tmp);
-	tcpip_set_hisIP(tmp);
-
-	// tcpip module, default subnet mask
-	tmp[0]=0xff;tmp[1]=0xff;tmp[2]=0xff;tmp[3]=0x00;
-	tcpip_subnet_addr(tmp);
 
 	bootp_retry = 0;
 }
