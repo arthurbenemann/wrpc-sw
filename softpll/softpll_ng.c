@@ -470,6 +470,31 @@ int spll_read_ptracker(int channel, int32_t *phase_ps, int *enabled)
 	return st->ready;
 }
 
+int spll_read_ptracker_noavg(int channel, int32_t *phase_ps, int *enabled, int *update_count)
+{
+	volatile struct spll_ptracker_state *st = &softpll.ptrackers[channel];
+	int phase = st->phase_val_noavg;
+	if (phase < 0)
+		phase += (1 << HPLL_N);
+	else if (phase >= (1 << HPLL_N))
+		phase -= (1 << HPLL_N);
+
+	if (DIVIDE_DMTD_CLOCKS_BY_2) {
+		phase <<= 1;
+		phase &= (1 << HPLL_N) - 1;
+	}
+
+	*phase_ps = to_picos(phase);
+	if (enabled)
+		*enabled = ptracker_mask & (1 << st->id) ? 1 : 0;
+
+    if (update_count)
+      *update_count = softpll.ptrackers[channel].update_count;
+
+	return st->avg_count > 1;
+}
+
+
 void spll_get_num_channels(int *n_ref, int *n_out)
 {
 	if (n_ref)

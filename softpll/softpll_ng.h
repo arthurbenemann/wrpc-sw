@@ -85,6 +85,9 @@ void spll_enable_ptracker(int ref_channel, int enable);
 /* Reads tracked phase shift value for given reference channel */
 int spll_read_ptracker(int ref_channel, int32_t *phase_ps, int *enabled);
 
+/* Reads tracked phase shift value for given reference channel. No averaging, faster. */
+int spll_read_ptracker_noavg(int ref_channel, int32_t *phase_ps, int *enabled, int *update_count);
+
 /* Calls non-realtime update state machine. Must be called regularly (although
  * it is not time-critical) in the main loop of the program if aux clocks or
  * external reference are used in the design. */

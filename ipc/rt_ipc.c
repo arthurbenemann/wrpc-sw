@@ -29,6 +29,7 @@ static void clear_state(void)
 	    pstate.channels[i].priority = 0;
 	    pstate.channels[i].phase_setpoint = 0;
 	    pstate.channels[i].phase_loopback = 0;
+	    pstate.channels[i].phase_loopback_noavg = 0;
 	    pstate.channels[i].flags = CHAN_REF_VALID;
     }
     pstate.flags = 0;
@@ -115,6 +116,7 @@ void rts_update(void)
 #define CH pstate.channels[i]
         CH.flags = 0;
         CH.phase_loopback = 0;
+        CH.phase_loopback_noavg = 0;
         CH.phase_current = 0;
 //        CH.phase_setpoint = 0;
         CH.phase_loopback = 0;
@@ -122,16 +124,26 @@ void rts_update(void)
         if(i >= n_ref)
             CH.flags = CHAN_DISABLED;
         else {
+                int update_count;
+
             if(i==pstate.current_ref)
             {
                 spll_get_phase_shift(0, &CH.phase_current, NULL);
 		            if(spll_shifter_busy(0))
 		            	CH.flags |= CHAN_SHIFTING;
 						}
+
             if(spll_read_ptracker(i, &CH.phase_loopback, &enabled))
 	            CH.flags |= CHAN_PMEAS_READY;
+
+
+            if(spll_read_ptracker_noavg(i, &CH.phase_loopback_noavg, &enabled, &update_count))
+	            CH.flags |= CHAN_PMEAS_NOAVG_READY;
 	          
 	          CH.flags |= (enabled ? CHAN_PTRACKER_ENABLED : 0);
+
+
+              CH.flags |= (update_count << 16) & 0xffff0000;
 
         }
 
@@ -168,6 +180,7 @@ static int rts_get_state_func(const struct minipc_pd *pd, uint32_t *args, void *
         tmp->channels[i].phase_setpoint = htonl(pstate.channels[i].phase_setpoint);
         tmp->channels[i].phase_current = htonl(pstate.channels[i].phase_current);
         tmp->channels[i].phase_loopback = htonl(pstate.channels[i].phase_loopback);
+        tmp->channels[i].phase_loopback_noavg = htonl(pstate.channels[i].phase_loopback_noavg);
         tmp->channels[i].flags = htonl(pstate.channels[i].flags);
     }
 
@@ -243,5 +256,5 @@ int rtipc_init(void)
 
 void rtipc_action(void)
 {
-		minipc_server_action(server, 1000);
+		minipc_server_action(server, 1);
 }

@@ -21,7 +21,7 @@ void ptracker_init(struct spll_ptracker_state *s, int id, int num_avgs)
 	s->acc = 0;
 	s->avg_count = 0;
 	s->enabled = 0;
-
+    s->update_count = 0;
 }
 
 void ptracker_start(struct spll_ptracker_state *s)
@@ -31,6 +31,7 @@ void ptracker_start(struct spll_ptracker_state *s)
 	s->ready = 0;
 	s->acc = 0;
 	s->avg_count = 0;
+    s->update_count = 0;
 
 	spll_enable_tagger(s->id, 1);
 	spll_enable_tagger(spll_n_chan_ref, 1);
@@ -68,10 +69,16 @@ int ptrackers_update(struct spll_ptracker_state *ptrackers, int tag,
 		s->acc = delta;
 		s->avg_count ++;
 	} else {
+        s->update_count++;
 
 		/* same hack again, using another lookup table to adjust for wraparound */
 		s->acc += delta + adj_tab[ index + s->preserve_sign ];
 		s->avg_count ++;
+
+	        if (s->avg_count > 2)
+       		{
+	  		s->phase_val_noavg = s->acc / s->avg_count;
+	        }
 
 		if (s->avg_count == s->n_avg) {
 			s->phase_val = s->acc / s->n_avg;

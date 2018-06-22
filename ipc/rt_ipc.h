@@ -28,6 +28,10 @@
 #define CHAN_SHIFTING (1<<5)
 /* Channel is busy adjusting phase */
 #define CHAN_PTRACKER_ENABLED (1<<6)
+/* Channel unaveraged (fast) phase measurement is ready */
+#define CHAN_PMEAS_NOAVG_READY (1<<7)
+/* Channel phase update counter */
+#define CHAN_PMEAS_UPDATE_COUNTER_R(x) (((x)>>16)&0xffff)
 
 /* DMTD clock is present */
 #define RTS_DMTD_LOCKED (1<<0)
@@ -82,6 +86,8 @@ struct rts_pll_state {
 		int32_t phase_current;
 		/* TX-RX Loopback phase measurement in picoseconds. */
 		int32_t phase_loopback;
+		/* TX-RX Loopback phase measurement in picoseconds (no averaging, faster, used for transceiver calibration). */
+        int32_t phase_loopback_noavg;
 		/* flags (per channel - see CHAN_xxx defines) */
 		uint32_t flags;
 	} channels[RTS_PLL_CHANNELS];
