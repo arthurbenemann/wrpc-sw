@@ -32,7 +32,7 @@ static void arp_init(void)
 	saddr.ethertype = htons(0x0806);	/* ARP */
 
 	arp_socket = ptpd_netif_create_socket(&__static_arp_socket, &saddr,
-						PTPD_SOCK_RAW_ETHERNET, 0);
+					      PTPD_SOCK_RAW_ETHERNET, 0);
 }
 
 static int process_arp(uint8_t * buf, int len)
@@ -51,30 +51,29 @@ static int process_arp(uint8_t * buf, int len)
 	getIP(myIP);
 	if ( ((buf[ARP_OPER + 1] != 1)||memcmp(buf + ARP_TPA, myIP, 4)) == 0 )
 	{		
-		memcpy(hisMAC, buf + ARP_SHA, 6);
-		memcpy(hisIP, buf + ARP_SPA, 4);
+	memcpy(hisMAC, buf + ARP_SHA, 6);
+	memcpy(hisIP, buf + ARP_SPA, 4);
+	// ------------- ARP ------------
+	// HW ethernet
+	buf[ARP_HTYPE + 0] = 0;
+	buf[ARP_HTYPE + 1] = 1;
+	// proto IP
+	buf[ARP_PTYPE + 0] = 8;
+	buf[ARP_PTYPE + 1] = 0;
+	// lengths
+	buf[ARP_HLEN] = 6;
+	buf[ARP_PLEN] = 4;
+	// Response
+	buf[ARP_OPER + 0] = 0;
+	buf[ARP_OPER + 1] = 2;
+	// my MAC+IP
+	get_mac_addr(buf + ARP_SHA);
+	memcpy(buf + ARP_SPA, myIP, 4);
+	// his MAC+IP
+	memcpy(buf + ARP_THA, hisMAC, 6);
+	memcpy(buf + ARP_TPA, hisIP, 4);
 
-		// ------------- ARP ------------
-		// HW ethernet
-		buf[ARP_HTYPE + 0] = 0;
-		buf[ARP_HTYPE + 1] = 1;
-		// proto IP
-		buf[ARP_PTYPE + 0] = 8;
-		buf[ARP_PTYPE + 1] = 0;
-		// lengths
-		buf[ARP_HLEN] = 6;
-		buf[ARP_PLEN] = 4;
-		// Response
-		buf[ARP_OPER + 0] = 0;
-		buf[ARP_OPER + 1] = 2;
-		// my MAC+IP
-		get_mac_addr(buf + ARP_SHA);
-		memcpy(buf + ARP_SPA, myIP, 4);
-		// his MAC+IP
-		memcpy(buf + ARP_THA, hisMAC, 6);
-		memcpy(buf + ARP_TPA, hisIP, 4);
-
-		return ARP_END;
+	return ARP_END;
 	}
 
 	return 0;
@@ -90,7 +89,7 @@ static int arp_poll(void)
 		return 0;		/* can't do ARP w/o an address... */
 
 	if ((len = ptpd_netif_recvfrom(arp_socket,
-					&addr, buf, sizeof(buf), 0)) > 0) {
+				       &addr, buf, sizeof(buf), 0)) > 0) {
 		if ((len = process_arp(buf, len)) > 0)
 			ptpd_netif_sendto(arp_socket, &addr, buf, len, 0);
 		return 1;

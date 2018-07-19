@@ -87,7 +87,7 @@ static void ipv4_init(void)
 
 	/* time (rdate): UDP */
 	rdate_socket = ptpd_netif_create_socket(&__static_rdate_socket, NULL,
-						PTPD_SOCK_UDP, 37 /* time */);
+					       PTPD_SOCK_UDP, 37 /* time */);
 
 	/* remote update (rmupdate): UDP */
 	rmupdate_socket = ptpd_netif_create_socket(&__static_rmupdate_socket, NULL,
@@ -97,7 +97,7 @@ static void ipv4_init(void)
 	memset(&saddr, 0, sizeof(saddr));
 	saddr.ethertype = htons(0x0800);
 	icmp_socket = ptpd_netif_create_socket(&__static_icmp_socket, &saddr,
-						PTPD_SOCK_RAW_ETHERNET, 0);
+					       PTPD_SOCK_RAW_ETHERNET, 0);
 
 	syslog_init();
 }
@@ -297,7 +297,7 @@ void setIP(unsigned char *IP)
 {
 	uint8_t tmp[4];
 	// volatile unsigned int *eb_ip =
-	//	 (unsigned int *)(BASE_ETHERBONE_CFG + EB_IPV4);
+	//    (unsigned int *)(BASE_ETHERBONE_CFG + EB_IPV4);
 	// unsigned int ip;
 	// while (*eb_ip != ip)
 	// 	*eb_ip = ip;

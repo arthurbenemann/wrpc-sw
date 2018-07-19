@@ -108,8 +108,6 @@
 
   1.3. LOGIC2 Rd, Ra, <oper>, Rb
   -----------------------------------------
-  * LOGIC2 Rd, Ra, OPER Rb - 2 argument logic (Rd = Ra OPER Rb). If the operation is MOV or NOT, Ra is
-  taken as the source register.
 
   * Rd = Ra <oper> Rb
 
@@ -199,40 +197,39 @@ static int code_pos;
 static uint64_t code_buf[PFILTER_MAX_CODE_SIZE];
 
 enum pf_regs {
-    R_ZERO = 1024,
-    R_1, R_2, R_3, R_4, R_5, R_6, R_7, R_8, R_9, R_10,
-    R_11, R_12, R_13, R_14, R_15, R_16, R_17, R_18, R_19, R_20,
-    R_21, R_22,
-    R_DROP,
-    R_C0, R_C1, R_C2, R_C3, R_C4, R_C5, R_C6, R_C7
+	R_ZERO = 1024,
+	R_1, R_2, R_3, R_4, R_5, R_6, R_7, R_8, R_9, R_10,
+	R_11, R_12, R_13, R_14, R_15, R_16, R_17, R_18, R_19, R_20,
+	R_21, R_22,
+	R_DROP,
+	R_C0, R_C1, R_C2, R_C3, R_C4, R_C5, R_C6, R_C7
 };
 #define R_CLASS(x) (R_C0 + x)
 
 /* Give also "symbolic" names, to the roles of each register. */
 enum pf_symbolic_regs {
 
-    /* The first set is used for straight comparisons */
-    FRAME_BROADCAST = R_1,
-    FRAME_MAC_OK,
-    FRAME_MAC_PTP,
-    FRAME_OUR_VLAN,
-    FRAME_TYPE_IPV4,
-    FRAME_TYPE_PTP2,
-    FRAME_TYPE_LATENCY,
-    FRAME_TYPE_ARP,
-    FRAME_ICMP,
-    FRAME_UDP,
-    FRAME_TCP,
-    PORT_UDP_HOST,
-    PORT_UDP_ETHERBONE,
-    R_TMP,
+	/* The first set is used for straight comparisons */
+	FRAME_BROADCAST = R_1,
+	FRAME_MAC_OK,
+	FRAME_MAC_PTP,
+	FRAME_OUR_VLAN,
+	FRAME_TYPE_IPV4,
+	FRAME_TYPE_PTP2,
+	FRAME_TYPE_LATENCY,
+	FRAME_TYPE_ARP,
+	FRAME_ICMP,
+	FRAME_UDP,
+	PORT_UDP_HOST,
+	PORT_UDP_ETHERBONE,
+	R_TMP,
 
-    /* These are results of logic over the previous bits  */
-    FRAME_IP_UNI,
-    FRAME_IP_OK, /* unicast or broadcast */
+	/* These are results of logic over the previous bits  */
+	FRAME_IP_UNI,
+	FRAME_IP_OK, /* unicast or broadcast */
 
-    /* A temporary register, and the CPU target */
-    FRAME_FOR_CPU, /* must be last */
+	/* A temporary register, and the CPU target */
+	FRAME_FOR_CPU, /* must be last */
 };
 
 int v1[R_C7 - (R_ZERO + 31)]; /* fails if we lost  a register */
@@ -245,281 +242,284 @@ int v3[0 - ((int)FRAME_FOR_CPU > R_22)];
 /* begins assembling a new packet filter program */
 static void pfilter_new(void)
 {
-    code_pos = 0;
+	code_pos = 0;
 }
 
 static void check_size(void)
 {
-    if (code_pos == PFILTER_MAX_CODE_SIZE - 1) {
-        fprintf(stderr, "%s: microcode too big (max size: %d)\n",
-            prgname, PFILTER_MAX_CODE_SIZE);
-        exit(1);
-    }
+	if (code_pos == PFILTER_MAX_CODE_SIZE - 1) {
+		fprintf(stderr, "%s: microcode too big (max size: %d)\n",
+			prgname, PFILTER_MAX_CODE_SIZE);
+		exit(1);
+	}
 }
 
 static void check_reg_range(int val, int minval, int maxval, char *name)
 {
-    if (val < minval || val > maxval) {
-        fprintf(stderr, "%s: register \"%s\" out of range (%d to %d)",
-            prgname, name, minval, maxval);
-        exit(1);
-    }
+	if (val < minval || val > maxval) {
+		fprintf(stderr, "%s: register \"%s\" out of range (%d to %d)",
+			prgname, name, minval, maxval);
+		exit(1);
+	}
 }
 
 static void pfilter_cmp(int offset, int value, int mask, pfilter_op_t op,
-            int rd)
+			int rd)
 {
-    uint64_t ir;
+	uint64_t ir;
 
-    check_size();
+	check_size();
 
-    if (offset > code_pos) {
-        fprintf(stderr, "%s: comparison offset is bigger than current PC. Insert some nops before comparing",
-            prgname);
-        exit(1);
-    }
+	if (offset > code_pos) {
+		fprintf(stderr, "%s: comparison offset is bigger than current PC. Insert some nops before comparing",
+			prgname);
+		exit(1);
+	}
 
-    check_reg_range(rd, R_1, R_15, "ra/rd");
-    rd -= R_ZERO;
+	check_reg_range(rd, R_1, R_15, "ra/rd");
+	rd -= R_ZERO;
 
-    ir = (PF_MODE_CMP | ((uint64_t) offset << 7)
-          | ((mask & 0x1) ? (1ULL << 29) : 0)
-          | ((mask & 0x10) ? (1ULL << 30) : 0)
-          | ((mask & 0x100) ? (1ULL << 31) : 0)
-          | ((mask & 0x1000) ? (1ULL << 32) : 0))
-        | op | (rd << 3);
+	ir = (PF_MODE_CMP | ((uint64_t) offset << 7)
+	      | ((mask & 0x1) ? (1ULL << 29) : 0)
+	      | ((mask & 0x10) ? (1ULL << 30) : 0)
+	      | ((mask & 0x100) ? (1ULL << 31) : 0)
+	      | ((mask & 0x1000) ? (1ULL << 32) : 0))
+	    | op | (rd << 3);
 
-    ir = ir | ((uint64_t) value & 0xffffULL) << 13;
+	ir = ir | ((uint64_t) value & 0xffffULL) << 13;
 
-    code_buf[code_pos++] = ir;
+	code_buf[code_pos++] = ir;
 }
 
 static void pfilter_nop(void)
 {
-    uint64_t ir;
-    check_size();
-    ir = PF_MODE_LOGIC;
-    code_buf[code_pos++] = ir;
+	uint64_t ir;
+	check_size();
+	ir = PF_MODE_LOGIC;
+	code_buf[code_pos++] = ir;
 }
 
   // rd  = ra op rb
 static void pfilter_logic2(int rd, int ra, pfilter_op_t op, int rb)
 {
-    uint64_t ir;
-    check_size();
-    check_reg_range(ra, R_ZERO, R_C7, "ra"); ra -= R_ZERO;
-    check_reg_range(rb, R_ZERO, R_C7, "rb"); rb -= R_ZERO;
-    check_reg_range(rd, R_1,    R_C7, "rd"); rd -= R_ZERO;
+	uint64_t ir;
+	check_size();
+	check_reg_range(ra, R_ZERO, R_C7, "ra"); ra -= R_ZERO;
+	check_reg_range(rb, R_ZERO, R_C7, "rb"); rb -= R_ZERO;
+	check_reg_range(rd, R_1,    R_C7, "rd"); rd -= R_ZERO;
 
-    ir = ((uint64_t) ra << 8) | ((uint64_t) rb << 13) |
-        (((uint64_t) rd & 0xf) << 3) | (((uint64_t) rd & 0x10) ? (1ULL << 7)
-                        : 0) | (uint64_t) op;
-    ir = ir | PF_MODE_LOGIC | (3ULL << 23);
-    code_buf[code_pos++] = ir;
+	ir = ((uint64_t) ra << 8) | ((uint64_t) rb << 13) |
+	    (((uint64_t) rd & 0xf) << 3) | (((uint64_t) rd & 0x10) ? (1ULL << 7)
+					    : 0) | (uint64_t) op;
+	ir = ir | PF_MODE_LOGIC | (3ULL << 23);
+	code_buf[code_pos++] = ir;
 }
 
 static void pfilter_logic3(int rd, int ra, pfilter_op_t op, int rb,
-               pfilter_op_t op2, int rc)
+			   pfilter_op_t op2, int rc)
 {
-    uint64_t ir;
-    check_size();
-    check_reg_range(ra, R_ZERO, R_C7, "ra"); ra -= R_ZERO;
-    check_reg_range(rb, R_ZERO, R_C7, "rb"); rb -= R_ZERO;
-    check_reg_range(rc, R_ZERO, R_C7, "rc"); rc -= R_ZERO;
-    check_reg_range(rd, R_1,    R_C7, "rd"); rd -= R_ZERO;
+	uint64_t ir;
+	check_size();
+	check_reg_range(ra, R_ZERO, R_C7, "ra"); ra -= R_ZERO;
+	check_reg_range(rb, R_ZERO, R_C7, "rb"); rb -= R_ZERO;
+	check_reg_range(rc, R_ZERO, R_C7, "rc"); rc -= R_ZERO;
+	check_reg_range(rd, R_1,    R_C7, "rd"); rd -= R_ZERO;
 
-    ir = (ra << 8) | (rb << 13) | (rc << 18) | ((rd & 0xf) << 3) |
-        ((rd & 0x10) ? (1 << 7) : 0) | op;
-    ir = ir | PF_MODE_LOGIC | (op2 << 23);
-    code_buf[code_pos++] = ir;
+	ir = (ra << 8) | (rb << 13) | (rc << 18) | ((rd & 0xf) << 3) |
+	    ((rd & 0x10) ? (1 << 7) : 0) | op;
+	ir = ir | PF_MODE_LOGIC | (op2 << 23);
+	code_buf[code_pos++] = ir;
 }
 
 /* Terminates the microcode, creating the output file */
 static void pfilter_output(char *fname)
 {
-    uint32_t v1, v2;
-    int i;
-    FILE *f;
+	uint32_t v1, v2;
+	int i;
+	FILE *f;
 
-    code_buf[code_pos++] = (1ULL << 35);    // insert FIN instruction
+	code_buf[code_pos++] = (1ULL << 35);	// insert FIN instruction
 
-    f = fopen(fname, "w");
-    if (!f) {
-        fprintf(stderr, "%s: %s: %s\n", prgname, fname, strerror(errno));
-        exit(1);
-    }
+	f = fopen(fname, "w");
+	if (!f) {
+		fprintf(stderr, "%s: %s: %s\n", prgname, fname, strerror(errno));
+		exit(1);
+	}
 
-    /* First write a magic word, so the target can check endianness */
-    v1 = 0x11223344;
-    fwrite(&v1, sizeof(v1), 1, f);
+	/* First write a magic word, so the target can check endianness */
+	v1 = 0x11223344;
+	fwrite(&v1, sizeof(v1), 1, f);
 
-    pfilter_dbg("Writing \"%s\"\n", fname);
-    for (i = 0; i < code_pos; i++) {
-        pfilter_dbg("   pos %02i: %x.%08x\n", i,
-                (uint32_t)(code_buf[i] >> 32),
-                (uint32_t)(code_buf[i]));
-        /* Explicitly write the LSB first */
-        v1 = code_buf[i];
-        v2 = code_buf[i] >> 32;
-        fwrite(&v1, sizeof(v1), 1, f);
-        fwrite(&v2, sizeof(v2), 1, f);
-    }
-    fclose(f);
+	pfilter_dbg("Writing \"%s\"\n", fname);
+	for (i = 0; i < code_pos; i++) {
+		pfilter_dbg("   pos %02i: %x.%08x\n", i,
+			    (uint32_t)(code_buf[i] >> 32),
+			    (uint32_t)(code_buf[i]));
+		/* Explicitly write the LSB first */
+		v1 = code_buf[i];
+		v2 = code_buf[i] >> 32;
+		fwrite(&v1, sizeof(v1), 1, f);
+		fwrite(&v2, sizeof(v2), 1, f);
+	}
+	fclose(f);
 }
 
 
 void pfilter_init_novlan(char *fname)
 {
-    pfilter_new();
-    pfilter_nop();
+	pfilter_new();
+	pfilter_nop();
 
-    /*
-     * Make three sets of comparisons over the destination address.
-     * After these instructions, the whole Eth header is there
-     */
+	/*
+	 * Make three sets of comparisons over the destination address.
+	 * After these instructions, the whole Eth header is there
+	 */
 
-    /* Local frame, using fake MAC: 12:34:56:78:9a:bc */
-    pfilter_cmp(0, 0x1234, 0xffff, MOV, FRAME_MAC_OK);
-    pfilter_cmp(1, 0x5678, 0xffff, AND, FRAME_MAC_OK);
-    pfilter_cmp(2, 0x9abc, 0xffff, AND, FRAME_MAC_OK);
+	/* Local frame, using fake MAC: 12:34:56:78:9a:bc */
+	pfilter_cmp(0, 0x1234, 0xffff, MOV, FRAME_MAC_OK);
+	pfilter_cmp(1, 0x5678, 0xffff, AND, FRAME_MAC_OK);
+	pfilter_cmp(2, 0x9abc, 0xffff, AND, FRAME_MAC_OK);
 
-    /* Broadcast frame */
-    pfilter_cmp(0, 0xffff, 0xffff, MOV, FRAME_BROADCAST);
-    pfilter_cmp(1, 0xffff, 0xffff, AND, FRAME_BROADCAST);
-    pfilter_cmp(2, 0xffff, 0xffff, AND, FRAME_BROADCAST);
+	/* Broadcast frame */
+	pfilter_cmp(0, 0xffff, 0xffff, MOV, FRAME_BROADCAST);
+	pfilter_cmp(1, 0xffff, 0xffff, AND, FRAME_BROADCAST);
+	pfilter_cmp(2, 0xffff, 0xffff, AND, FRAME_BROADCAST);
 
-    /* PTP UDP (end to end: 01:00:5e:00:01:81    224.0.1.129) */
-    pfilter_cmp(0, 0x0100, 0xffff, MOV, FRAME_MAC_PTP);
-    pfilter_cmp(1, 0x5e00, 0xffff, AND, FRAME_MAC_PTP);
-    pfilter_cmp(2, 0x0181, 0xffff, MOV, R_TMP);
+	/* PTP UDP (end to end: 01:00:5e:00:01:81    224.0.1.129) */
+	pfilter_cmp(0, 0x0100, 0xffff, MOV, FRAME_MAC_PTP);
+	pfilter_cmp(1, 0x5e00, 0xffff, AND, FRAME_MAC_PTP);
+	pfilter_cmp(2, 0x0181, 0xffff, MOV, R_TMP);
 
-    /* PTP UDP (peer-to-p:  01:00:5e:00:00:6b    224.0.0.197) */
-    pfilter_cmp(2, 0x006b, 0xffff, OR, R_TMP);
+	/* PTP UDP (peer-to-p:  01:00:5e:00:00:6b    224.0.0.197) */
+	pfilter_cmp(2, 0x006b, 0xffff, OR, R_TMP);
 
-    pfilter_logic3(FRAME_MAC_OK, FRAME_MAC_PTP, AND, R_TMP, OR, FRAME_MAC_OK);
+	pfilter_logic3(FRAME_MAC_OK, FRAME_MAC_PTP, AND, R_TMP, OR, FRAME_MAC_OK);
 
-    /* Identify some Ethertypes used later -- type latency is 0xcafe */
-    pfilter_cmp(6, 0x88f7, 0xffff, MOV, FRAME_TYPE_PTP2);
-    pfilter_cmp(6, 0xcafe, 0xffff, OR, FRAME_TYPE_PTP2);
-    pfilter_cmp(6, 0x0800, 0xffff, MOV, FRAME_TYPE_IPV4);
-    pfilter_cmp(6, 0x0806, 0xffff, MOV, FRAME_TYPE_ARP);
+	/* Tagged is dropped. We'll invert the check in the vlan rule-set */
+	pfilter_cmp(6, 0x8100, 0xffff, MOV, R_TMP);
+	pfilter_logic2(R_DROP, R_TMP, MOV, R_ZERO);
 
-    /* Mark one bits for ip-valid (unicast or broadcast) */
-    pfilter_logic3(FRAME_IP_OK, FRAME_BROADCAST, OR, FRAME_MAC_OK, AND, FRAME_TYPE_IPV4);
+	/* Identify some Ethertypes used later -- type latency is 0xcafe */
+	pfilter_cmp(6, 0x88f7, 0xffff, MOV, FRAME_TYPE_PTP2);
+	pfilter_cmp(6, 0xcafe, 0xffff, OR, FRAME_TYPE_PTP2);
+	pfilter_cmp(6, 0x0800, 0xffff, MOV, FRAME_TYPE_IPV4);
+	pfilter_cmp(6, 0x0806, 0xffff, MOV, FRAME_TYPE_ARP);
 
-    /* Ethernet = 14 bytes, Offset to type in IP: 8 bytes = 22/2 = 11 */
-    pfilter_cmp(11, 0x0001, 0x00ff, MOV, FRAME_ICMP);
-    pfilter_cmp(11, 0x0011, 0x00ff, MOV, FRAME_UDP);
-    pfilter_cmp(11, 0x0006, 0x00ff, MOV, FRAME_TCP);
+	/* Mark one bits for ip-valid (unicast or broadcast) */
+	pfilter_logic3(FRAME_IP_OK, FRAME_BROADCAST, OR, FRAME_MAC_OK, AND, FRAME_TYPE_IPV4);
 
-    /* For CPU: arp or icmp unicast or ptp (or latency) */
-    pfilter_logic2(FRAME_FOR_CPU, FRAME_TYPE_ARP, OR, FRAME_TYPE_PTP2);
-    pfilter_logic3(R_CLASS(0), FRAME_IP_OK, AND, FRAME_ICMP, OR, FRAME_FOR_CPU);
+	/* Ethernet = 14 bytes, Offset to type in IP: 8 bytes = 22/2 = 11 */
+	pfilter_cmp(11, 0x0001, 0x00ff, MOV, FRAME_ICMP);
+	pfilter_cmp(11, 0x0011, 0x00ff, MOV, FRAME_UDP);
+	pfilter_logic2(FRAME_UDP, FRAME_UDP, AND, FRAME_IP_OK);
 
-    /* Now look in UDP ports: at offset 18 (14 + 20 + 8 = 36) */
-    pfilter_logic2(FRAME_UDP, FRAME_UDP, AND, FRAME_IP_OK);
-    pfilter_cmp(18, 0x0000, 0xff00, MOV, PORT_UDP_HOST);    /* ports 0-255 */
-    pfilter_cmp(18, 0x0100, 0xff00, OR, PORT_UDP_HOST);    /* ports 256-511 */
-    pfilter_cmp(18, 0xebd0, 0xffff, MOV, PORT_UDP_ETHERBONE); /* ports 60368 */
+	/* For CPU: arp or icmp unicast or ptp (or latency) */
+	pfilter_logic2(FRAME_FOR_CPU, FRAME_TYPE_ARP, OR, FRAME_TYPE_PTP2);
+	pfilter_logic3(FRAME_FOR_CPU, FRAME_IP_OK, AND, FRAME_ICMP, OR, FRAME_FOR_CPU);
 
-    /* The CPU gets those ports in a proper UDP frame, plus the previous selections */
-    pfilter_logic2(R_CLASS(1), FRAME_UDP, AND, PORT_UDP_HOST);
+	/* Now look in UDP ports: at offset 18 (14 + 20 + 8 = 36) */
+	pfilter_cmp(18, 0x0000, 0xff00, MOV, PORT_UDP_HOST);	/* ports 0-255 */
+	pfilter_cmp(18, 0x0100, 0xff00, OR, PORT_UDP_HOST);	/* ports 256-511 */
 
-    /* and now copy out fabric selections: 4 etherbone, 6 for anything else */
-    pfilter_logic2(R_CLASS(4), FRAME_UDP, AND, PORT_UDP_ETHERBONE);
+	/* The CPU gets those ports in a proper UDP frame, plus the previous selections */
+	pfilter_logic3(R_CLASS(0), FRAME_UDP, AND, PORT_UDP_HOST, OR, FRAME_FOR_CPU);
 
-    pfilter_logic3(R_CLASS(6), PORT_UDP_HOST, OR, PORT_UDP_ETHERBONE, NAND, FRAME_UDP);
-    pfilter_logic2(R_CLASS(7), FRAME_TCP, AND, FRAME_IP_OK);
-    /*
-     * Note that earlier we used to be more strict in ptp ethtype (only proper multicast),
-     * but since we want to accept peer-delay sooner than later, we'd better avoid the checks
-     */
+	/* Etherbone is UDP at port 0xebd0, let's "or" in the last move */
+	pfilter_cmp(18, 0xebd0, 0xffff, MOV, PORT_UDP_ETHERBONE);
 
-    /*
-     * Also, please note that "streamer" ethtype 0xdbff and "etherbone" udp port 
-     * 0xebd0 go to the fabric by being part of the "anything else" choice".
-     */
+	/* and now copy out fabric selections: 7 etherbone, 6 for anything else */
+	pfilter_logic2(R_CLASS(7), FRAME_UDP, AND, PORT_UDP_ETHERBONE);
+	pfilter_logic2(R_CLASS(6), FRAME_UDP, NAND, PORT_UDP_ETHERBONE);
 
-    pfilter_output(fname);
+	/*
+	 * Note that earlier we used to be more strict in ptp ethtype (only proper multicast),
+	 * but since we want to accept peer-delay sooner than later, we'd better avoid the checks
+	 */
+
+	/*
+	 * Also, please note that "streamer" ethtype 0xdbff and "etherbone" udp port 
+	 * 0xebd0 go to the fabric by being part of the "anything else" choice".
+	 */
+
+	pfilter_output(fname);
 
 }
 
 void pfilter_init_vlan(char *fname)
 {
-    pfilter_new();
-    pfilter_nop();
+	pfilter_new();
+	pfilter_nop();
 
-    /*
-     * This is a simplified set, for development,
-     * to allow me write vlan support in software.
-     * Mostly a subset of above set
-     */
+	/*
+	 * This is a simplified set, for development,
+	 * to allow me write vlan support in software.
+	 * Mostly a subset of above set
+	 */
 
-    /* Local frame, using fake MAC: 12:34:56:78:9a:bc */
-    pfilter_cmp(0, 0x1234, 0xffff, MOV, FRAME_MAC_OK);
-    pfilter_cmp(1, 0x5678, 0xffff, AND, FRAME_MAC_OK);
-    pfilter_cmp(2, 0x9abc, 0xffff, AND, FRAME_MAC_OK);
+	/* Local frame, using fake MAC: 12:34:56:78:9a:bc */
+	pfilter_cmp(0, 0x1234, 0xffff, MOV, FRAME_MAC_OK);
+	pfilter_cmp(1, 0x5678, 0xffff, AND, FRAME_MAC_OK);
+	pfilter_cmp(2, 0x9abc, 0xffff, AND, FRAME_MAC_OK);
 
-    /* Broadcast frame */
-    pfilter_cmp(0, 0xffff, 0xffff, MOV, FRAME_BROADCAST);
-    pfilter_cmp(1, 0xffff, 0xffff, AND, FRAME_BROADCAST);
-    pfilter_cmp(2, 0xffff, 0xffff, AND, FRAME_BROADCAST);
+	/* Broadcast frame */
+	pfilter_cmp(0, 0xffff, 0xffff, MOV, FRAME_BROADCAST);
+	pfilter_cmp(1, 0xffff, 0xffff, AND, FRAME_BROADCAST);
+	pfilter_cmp(2, 0xffff, 0xffff, AND, FRAME_BROADCAST);
 
-    /* PTP UDP (end to end: 01:00:5e:00:01:81    224.0.1.129) */
-    pfilter_cmp(0, 0x0100, 0xffff, MOV, FRAME_MAC_PTP);
-    pfilter_cmp(1, 0x5e00, 0xffff, AND, FRAME_MAC_PTP);
-    pfilter_cmp(2, 0x0181, 0xffff, MOV, R_TMP);
+	/* PTP UDP (end to end: 01:00:5e:00:01:81    224.0.1.129) */
+	pfilter_cmp(0, 0x0100, 0xffff, MOV, FRAME_MAC_PTP);
+	pfilter_cmp(1, 0x5e00, 0xffff, AND, FRAME_MAC_PTP);
+	pfilter_cmp(2, 0x0181, 0xffff, MOV, R_TMP);
 
-    /* PTP UDP (peer-to-p:  01:00:5e:00:00:6b    224.0.0.197) */
-    pfilter_cmp(2, 0x006b, 0xffff, OR, R_TMP);
+	/* PTP UDP (peer-to-p:  01:00:5e:00:00:6b    224.0.0.197) */
+	pfilter_cmp(2, 0x006b, 0xffff, OR, R_TMP);
 
-    pfilter_logic3(FRAME_MAC_OK, FRAME_MAC_PTP, AND, R_TMP, OR, FRAME_MAC_OK);
+	pfilter_logic3(FRAME_MAC_OK, FRAME_MAC_PTP, AND, R_TMP, OR, FRAME_MAC_OK);
 
-    /* Untagged is dropped. */
-    pfilter_cmp(6, 0x8100, 0xffff, MOV, R_TMP);
-    pfilter_logic2(R_DROP, R_TMP, NOT, R_ZERO);
+	/* Untagged is dropped. */
+	pfilter_cmp(6, 0x8100, 0xffff, MOV, R_TMP);
+	pfilter_logic2(R_DROP, R_TMP, NOT, R_ZERO);
 
-    /* Compare with our vlan (fake number 0xaaa) */
-    pfilter_cmp(7, 0x0aaa, 0x0fff, MOV, FRAME_OUR_VLAN);
+	/* Compare with our vlan (fake number 0xaaa) */
+	pfilter_cmp(7, 0x0aaa, 0x0fff, MOV, FRAME_OUR_VLAN);
 
-    /* Identify some Ethertypes used later -- type latency is 0xcafe */
-    pfilter_cmp(8, 0x88f7, 0xffff, MOV, FRAME_TYPE_PTP2);
-    pfilter_cmp(8, 0xcafe, 0xffff, OR, FRAME_TYPE_PTP2);
-    pfilter_cmp(8, 0x0800, 0xffff, MOV, FRAME_TYPE_IPV4);
-    pfilter_cmp(8, 0x0806, 0xffff, MOV, FRAME_TYPE_ARP);
+	/* Identify some Ethertypes used later -- type latency is 0xcafe */
+	pfilter_cmp(8, 0x88f7, 0xffff, MOV, FRAME_TYPE_PTP2);
+	pfilter_cmp(8, 0xcafe, 0xffff, OR, FRAME_TYPE_PTP2);
+	pfilter_cmp(8, 0x0800, 0xffff, MOV, FRAME_TYPE_IPV4);
+	pfilter_cmp(8, 0x0806, 0xffff, MOV, FRAME_TYPE_ARP);
 
-    /* Loose match: keep all bcast, all our mac and all ptp ... */
-    pfilter_logic3(FRAME_FOR_CPU,
-        FRAME_MAC_OK, OR, FRAME_BROADCAST, OR, FRAME_TYPE_PTP2);
+	/* Loose match: keep all bcast, all our mac and all ptp ... */
+	pfilter_logic3(FRAME_FOR_CPU,
+		FRAME_MAC_OK, OR, FRAME_BROADCAST, OR, FRAME_TYPE_PTP2);
 
-    /* .... but only for our current VLAN */
-    pfilter_logic2(R_CLASS(0), FRAME_FOR_CPU, AND, FRAME_OUR_VLAN);
+	/* .... but only for our current VLAN */
+	pfilter_logic2(R_CLASS(0), FRAME_FOR_CPU, AND, FRAME_OUR_VLAN);
 
-    /*
-     * And route these build-time selected vlans to fabric 7 and 6.
-     * Class 7 is etherbone and class 6 is streamer or nic (or whatever).
-     * We get all broadcast and all frames for our mac.
-     *
-     * We reuse FRAME_OUR_VLAN, even if it's not OUR as in "this CPU"
-     */
-    pfilter_logic2(R_TMP, FRAME_MAC_OK, OR, FRAME_BROADCAST);
+	/*
+	 * And route these build-time selected vlans to fabric 7 and 6.
+	 * Class 7 is etherbone and class 6 is streamer or nic (or whatever).
+	 * We get all broadcast and all frames for our mac.
+	 *
+	 * We reuse FRAME_OUR_VLAN, even if it's not OUR as in "this CPU"
+	 */
+	pfilter_logic2(R_TMP, FRAME_MAC_OK, OR, FRAME_BROADCAST);
 
-    pfilter_cmp(7, CONFIG_VLAN_1_FOR_CLASS7, 0x0fff, MOV, FRAME_OUR_VLAN);
-    pfilter_cmp(7, CONFIG_VLAN_2_FOR_CLASS7, 0x0fff, OR, FRAME_OUR_VLAN);
-    pfilter_logic2(R_CLASS(7), R_TMP, AND, FRAME_OUR_VLAN);
+	pfilter_cmp(7, CONFIG_VLAN_1_FOR_CLASS7, 0x0fff, MOV, FRAME_OUR_VLAN);
+	pfilter_cmp(7, CONFIG_VLAN_2_FOR_CLASS7, 0x0fff, OR, FRAME_OUR_VLAN);
+	pfilter_logic2(R_CLASS(7), R_TMP, AND, FRAME_OUR_VLAN);
 
-    pfilter_cmp(7, CONFIG_VLAN_FOR_CLASS6, 0x0fff, MOV, FRAME_OUR_VLAN);
-    pfilter_logic2(R_CLASS(6), R_TMP, AND, FRAME_OUR_VLAN);
+	pfilter_cmp(7, CONFIG_VLAN_FOR_CLASS6, 0x0fff, MOV, FRAME_OUR_VLAN);
+	pfilter_logic2(R_CLASS(6), R_TMP, AND, FRAME_OUR_VLAN);
 
-    pfilter_output(fname);
-
+	pfilter_output(fname);
 }
 
 int main(int argc, char **argv) /* no arguments used currently */
 {
-    prgname = argv[0];
+	prgname = argv[0];
 
-    pfilter_init_novlan("rules-novlan.bin");
-    pfilter_init_vlan("rules-vlan.bin");
-    exit(0);
+	pfilter_init_novlan("rules-novlan.bin");
+	pfilter_init_vlan("rules-vlan.bin");
+	exit(0);
 }

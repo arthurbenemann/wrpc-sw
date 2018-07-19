@@ -63,7 +63,9 @@ static void wrc_initialize(void)
 
 	timer_init(1);
 	get_hw_name(wrc_hw_name);
+#ifdef CONFIG_SDB_STORAGE
 	storage_read_hdl_cfg();
+#endif
 	wrpc_w1_init();
 	wrpc_w1_bus.detail = ONEWIRE_PORT;
 	w1_scan_bus(&wrpc_w1_bus);
@@ -91,7 +93,6 @@ static void wrc_initialize(void)
 
 	net_rst();
 	ep_init(mac_addr);
-
 	/* Sleep for 1s to make sure WRS v4.2 always realizes that
 	 * the link is down */
 	timer_delay_ms(200);
