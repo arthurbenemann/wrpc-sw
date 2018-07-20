@@ -7,29 +7,35 @@
 #include "hw/tcpip-config.h"
 #include "tcpip_config.h"
 
-enum tcpip_status tcpip_status;
-uint8_t arp_count=0;
+enum tcpip_status tcpip_status = TCPIP_OK;
 
-void tcpip_init(uint8_t mac_addr[])
+void tcpip_init(void)
 {
-  volatile unsigned int *tcpip_tmp;
-  uint32_t tmp=0;
-
-  tcpip_tmp = (unsigned int *)(BASE_TCPIP_CFG + TCPIP_MAC_HIGH16);
-  tmp = ((uint32_t) mac_addr[0] << 8)
-      | ((uint32_t) mac_addr[1]);
-  *tcpip_tmp = tmp;
-
-  tcpip_tmp = (unsigned int *)(BASE_TCPIP_CFG + TCPIP_MAC_LOW32);
-  tmp = ((uint32_t) mac_addr[2] << 24)
-      | ((uint32_t) mac_addr[3] << 16)
-      | ((uint32_t) mac_addr[4] << 8)
-      | ((uint32_t) mac_addr[5]);
-  *tcpip_tmp = tmp;
+  uint8_t tcpip_mac_addr[6];
+  uint8_t tmp_ip_addr[4];
+  uint32_t tmp_mac_addr=0;
   
+  get_mac_addr(tcpip_mac_addr);
+  pp_printf("mac is %x:%x\n",tcpip_mac_addr[0],tcpip_mac_addr[1]);
+  memcpy((uint8_t *)(BASE_TCPIP_CFG + TCPIP_MAC_HIGH16 + 2), (uint8_t *)tcpip_mac_addr, 2);
+  memcpy((uint8_t *)(BASE_TCPIP_CFG + TCPIP_MAC_LOW32), (uint8_t *)tcpip_mac_addr+2, 4);
+
   // default udp tx dst/src port
-  tcpip_tx_dst_port(2000);
-  tcpip_tx_src_port(2000);
+  tcpip_tx_dst_port(60000);
+  tcpip_tx_src_port(60000);
+
+  getIP(tmp_ip_addr);
+  // tcpip module, default IP
+  tcpip_ip_addr(tmp_ip_addr);
+  // tcpip module, default gateway & tx ip addr
+  tmp_ip_addr[3]=0x01;
+  tcpip_gateway_addr(tmp_ip_addr);
+  tcpip_set_hisIP(tmp_ip_addr);
+
+  // tcpip module, default subnet mask
+  tmp_ip_addr[0]=0xff;tmp_ip_addr[1]=0xff;tmp_ip_addr[2]=0xff;tmp_ip_addr[3]=0x00;
+  tcpip_subnet_addr(tmp_ip_addr);
+  
 }
 
 void tcpip_ip_addr(uint8_t *ip)
@@ -72,7 +78,6 @@ void tcpip_set_hisIP(uint8_t *ip)
 {
   memcpy((uint8_t *)(BASE_TCPIP_CFG + TCPIP_UDP_TX_DST_IP), ip, 4);
   tcpip_status = TCPIP_ARP;
-  arp_count = 0;
 }
 
 void tcpip_get_hisIP(uint8_t *ip)
@@ -82,25 +87,14 @@ void tcpip_get_hisIP(uint8_t *ip)
 
 void tcpip_set_hisMAC(uint8_t mac_addr[])
 {
-  volatile unsigned int *tcpip_tmp;
-  uint32_t tmp=0;
-  tcpip_tmp = (unsigned int *)(BASE_TCPIP_CFG + TCPIP_MAC_HIGH16);
-  tmp = ((uint32_t) mac_addr[0] << 8)
-  | ((uint32_t) mac_addr[1]);
-  *tcpip_tmp = tmp;
-
-  tcpip_tmp = (unsigned int *)(BASE_TCPIP_CFG + TCPIP_MAC_LOW32);
-  tmp = ((uint32_t) mac_addr[2] << 24)
-  | ((uint32_t) mac_addr[3] << 16)
-  | ((uint32_t) mac_addr[4] << 8)
-  | ((uint32_t) mac_addr[5]);
-  *tcpip_tmp = tmp;
+  memcpy((uint8_t *)(BASE_TCPIP_CFG + TCPIP_UDP_TX_DST_MAC_HIGH16 + 2), (uint8_t *)mac_addr, 2);
+  memcpy((uint8_t *)(BASE_TCPIP_CFG + TCPIP_UDP_TX_DST_MAC_LOW32), (uint8_t *)mac_addr+2, 4);
 }
 
 void tcpip_get_hisMAC(uint8_t mac_addr[])
 {
-  memcpy(mac_addr, (uint8_t *)(BASE_TCPIP_CFG + TCPIP_MAC_HIGH16+2), 2);
-  memcpy(mac_addr+2, (uint8_t *)(BASE_TCPIP_CFG + TCPIP_MAC_LOW32), 4);
+  memcpy(mac_addr, (uint8_t *)(BASE_TCPIP_CFG + TCPIP_UDP_TX_DST_MAC_HIGH16+2), 2);
+  memcpy(mac_addr+2, (uint8_t *)(BASE_TCPIP_CFG + TCPIP_UDP_TX_DST_MAC_LOW32), 4);
 }
 
 void tcpip_rx_tcp_port(uint16_t port)
@@ -110,9 +104,30 @@ void tcpip_rx_tcp_port(uint16_t port)
   *rtp = (uint32_t)port;
 }
 
-void tcpip_arp()
+void tcpip_poll()
 {
   uint8_t * ip;
+  static uint16_t arp_count = 0;
+
+  if (tcpip_status == TCPIP_OK)
+    return 0;
+
+  if (tcpip_status == TCPIP_ARP)
+    arp_count++;
+
+  if (arp_count<65530)
+    return 0;
+  
   tcpip_get_hisIP(ip);
   send_arp(ip);
+  arp_count=0;
+
 }
+
+DEFINE_WRC_TASK(tcpip) = {
+  .name = "tcpip",
+  .enable = &link_status,
+  .init = tcpip_init,
+  .job = tcpip_poll,
+};
+

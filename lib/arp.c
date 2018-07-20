@@ -14,6 +14,7 @@
 #include "ipv4.h"
 #include "ptpd_netif.h"
 #include "arp.h"
+#include "tcpip_config.h"
 
 static uint8_t __arp_queue[128];
 static struct wrpc_socket __static_arp_socket = {
@@ -51,29 +52,37 @@ static int process_arp(uint8_t * buf, int len)
 	getIP(myIP);
 	if ( ((buf[ARP_OPER + 1] != 1)||memcmp(buf + ARP_TPA, myIP, 4)) == 0 )
 	{		
-	memcpy(hisMAC, buf + ARP_SHA, 6);
-	memcpy(hisIP, buf + ARP_SPA, 4);
-	// ------------- ARP ------------
-	// HW ethernet
-	buf[ARP_HTYPE + 0] = 0;
-	buf[ARP_HTYPE + 1] = 1;
-	// proto IP
-	buf[ARP_PTYPE + 0] = 8;
-	buf[ARP_PTYPE + 1] = 0;
-	// lengths
-	buf[ARP_HLEN] = 6;
-	buf[ARP_PLEN] = 4;
-	// Response
-	buf[ARP_OPER + 0] = 0;
-	buf[ARP_OPER + 1] = 2;
-	// my MAC+IP
-	get_mac_addr(buf + ARP_SHA);
-	memcpy(buf + ARP_SPA, myIP, 4);
-	// his MAC+IP
-	memcpy(buf + ARP_THA, hisMAC, 6);
-	memcpy(buf + ARP_TPA, hisIP, 4);
+		memcpy(hisMAC, buf + ARP_SHA, 6);
+		memcpy(hisIP, buf + ARP_SPA, 4);
+		// ------------- ARP ------------
+		// HW ethernet
+		buf[ARP_HTYPE + 0] = 0;
+		buf[ARP_HTYPE + 1] = 1;
+		// proto IP
+		buf[ARP_PTYPE + 0] = 8;
+		buf[ARP_PTYPE + 1] = 0;
+		// lengths
+		buf[ARP_HLEN] = 6;
+		buf[ARP_PLEN] = 4;
+		// Response
+		buf[ARP_OPER + 0] = 0;
+		buf[ARP_OPER + 1] = 2;
+		// my MAC+IP
+		get_mac_addr(buf + ARP_SHA);
+		memcpy(buf + ARP_SPA, myIP, 4);
+		// his MAC+IP
+		memcpy(buf + ARP_THA, hisMAC, 6);
+		memcpy(buf + ARP_TPA, hisIP, 4);
 
-	return ARP_END;
+		return ARP_END;
+	}
+
+	tcpip_get_hisIP(hisIP);
+	if ( ((buf[ARP_OPER + 1] != 2)||memcmp(buf + ARP_SPA, hisIP, 4)) == 0 )
+	{
+		memcpy(hisMAC, buf + ARP_SHA, 6);
+		tcpip_set_hisMAC(hisMAC);
+		tcpip_status = TCPIP_OK;
 	}
 
 	return 0;
