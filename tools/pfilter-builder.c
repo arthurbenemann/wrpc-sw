@@ -410,7 +410,7 @@ void pfilter_init_novlan(char *fname)
 	pfilter_cmp(11, 0x0011, 0x00ff, MOV, FRAME_UDP);
 	pfilter_logic2(FRAME_UDP, FRAME_UDP, AND, FRAME_IP_OK);
 	pfilter_cmp(11, 0x0006, 0x00ff, MOV, FRAME_TCP);
-	pfilter_logic2(FRAME_UDP, FRAME_TCP, AND, FRAME_IP_OK);
+	pfilter_logic2(FRAME_TCP, FRAME_TCP, AND, FRAME_IP_OK);
 
 	/* For CPU: arp or icmp unicast or ptp (or latency) */
 	pfilter_logic2(FRAME_FOR_CPU, FRAME_TYPE_ARP, OR, FRAME_TYPE_PTP2);
