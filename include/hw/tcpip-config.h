@@ -6,8 +6,8 @@
 #ifndef TCPIP_CONFIG
 #define TCPIP_CONFIG
 
-#define ERROR_STATUS_HIGH  0
-#define ERROR_STATUS_LOW   4
+#define TCPIP_STATUS_HIGH  0
+#define TCPIP_STATUS_LOW   4
 #define SDB_ADDRESS_HIGH   8
 #define SDB_ADDRSES_LOW   12
 

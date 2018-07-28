@@ -7,16 +7,30 @@
 #include "hw/tcpip-config.h"
 #include "tcpip_config.h"
 
-enum tcpip_status tcpip_status = TCPIP_OK;
+extern uint8_t tcpip_status = TCPIP_NULL;
+
+uint8_t tcpip_present()
+{
+  if ((*(uint16_t *)(BASE_TCPIP_CFG+TCPIP_STATUS_HIGH))> 0) 
+  { 
+    tcpip_status = TCPIP_PRS;
+    return 1;
+  } else
+    return 0;
+}
 
 void tcpip_init(void)
 {
   uint8_t tcpip_mac_addr[6];
   uint8_t tmp_ip_addr[4];
-  uint32_t tmp_mac_addr=0;
+  
+  if (!tcpip_present())
+  {
+    pp_printf("No TCPIP module is found!\n");
+    return;
+  }
   
   get_mac_addr(tcpip_mac_addr);
-  pp_printf("mac is %x:%x\n",tcpip_mac_addr[0],tcpip_mac_addr[1]);
   memcpy((uint8_t *)(BASE_TCPIP_CFG + TCPIP_MAC_HIGH16 + 2), (uint8_t *)tcpip_mac_addr, 2);
   memcpy((uint8_t *)(BASE_TCPIP_CFG + TCPIP_MAC_LOW32), (uint8_t *)tcpip_mac_addr+2, 4);
 
@@ -104,7 +118,7 @@ void tcpip_rx_tcp_port(uint16_t port)
   *rtp = (uint32_t)port;
 }
 
-void tcpip_poll()
+uint8_t tcpip_poll()
 {
   uint8_t * ip;
   static uint16_t arp_count = 0;
@@ -126,7 +140,7 @@ void tcpip_poll()
 
 DEFINE_WRC_TASK(tcpip) = {
   .name = "tcpip",
-  .enable = &link_status,
+  .enable = &tcpip_status,
   .init = tcpip_init,
   .job = tcpip_poll,
 };

@@ -14,10 +14,10 @@ void tcpip_get_hisIP(uint8_t *ip);
 void tcpip_set_hisMAC(uint8_t mac_addr[]);
 void tcpip_rx_tcp_port(uint16_t port);
 
-enum tcpip_status {
-	TCPIP_ARP,
-	TCPIP_OK,
-};
-extern enum tcpip_status tcpip_status;
+#define TCPIP_NULL 0
+#define TCPIP_PRS 1
+#define TCPIP_ARP 2
+#define TCPIP_OK 3
+uint8_t tcpip_status;
 
 #endif
