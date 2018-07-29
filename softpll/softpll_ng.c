@@ -99,7 +99,7 @@ static inline void sequencing_fsm(struct softpll_state *s, int tag_value, int ta
 		case SEQ_CLEAR_DACS:
 		{
 			/* Helper always starts at the maximum value (to make sure it locks on positive offset */
-			SPLL->DAC_HPLL = s->helper.pi.y_max;
+			// SPLL->DAC_HPLL = s->helper.pi.y_max;
 
 			/* Main starts at midscale */
 			SPLL->DAC_MAIN = (s->mpll.pi.y_max + s->mpll.pi.y_min) / 2;
@@ -123,7 +123,9 @@ static inline void sequencing_fsm(struct softpll_state *s, int tag_value, int ta
 				if(s->mode == SPLL_MODE_GRAND_MASTER)
 					s->seq_state = SEQ_START_EXT;
 				else
-					s->seq_state = SEQ_START_HELPER;
+					// s->seq_state = SEQ_START_HELPER;
+					// wrthu, no need to use helper PLL.
+					s->seq_state = SEQ_START_MAIN;
 			}
 			break;
 		}
@@ -154,29 +156,29 @@ static inline void sequencing_fsm(struct softpll_state *s, int tag_value, int ta
 			break;
 		}
 
-		case SEQ_START_HELPER:
-		{
-			helper_start(&s->helper);
+		// case SEQ_START_HELPER:
+		// {
+		// 	helper_start(&s->helper);
 
-			s->seq_state = SEQ_WAIT_HELPER;
-			break;
-		}
+		// 	s->seq_state = SEQ_WAIT_HELPER;
+		// 	break;
+		// }
 
-		case SEQ_WAIT_HELPER:
-		{
-			if (s->helper.ld.locked && s->helper.ld.lock_changed)
-			{
-				if (s->mode == SPLL_MODE_SLAVE)
-				{
-					s->seq_state = SEQ_START_MAIN;
-				} else {
-					start_ptrackers(s);
-					s->seq_state = SEQ_READY;	
-					set_channel_status(s->mpll.id_ref, 1);
-				}
-			}
-			break;
-		}
+		// case SEQ_WAIT_HELPER:
+		// {
+		// 	if (s->helper.ld.locked && s->helper.ld.lock_changed)
+		// 	{
+		// 		if (s->mode == SPLL_MODE_SLAVE)
+		// 		{
+		// 			s->seq_state = SEQ_START_MAIN;
+		// 		} else {
+		// 			start_ptrackers(s);
+		// 			s->seq_state = SEQ_READY;	
+		// 			set_channel_status(s->mpll.id_ref, 1);
+		// 		}
+		// 	}
+		// 	break;
+		// }
 
 		case SEQ_START_MAIN:
 		{
@@ -202,10 +204,10 @@ static inline void sequencing_fsm(struct softpll_state *s, int tag_value, int ta
 				s->delock_count++;
 				s->seq_state = SEQ_CLEAR_DACS;
 				set_channel_status(s->mpll.id_ref, 0);
-			} else if (!s->helper.ld.locked) {
-				s->delock_count++;
-				s->seq_state = SEQ_CLEAR_DACS;
-				set_channel_status(s->mpll.id_ref, 0);
+			// } else if (!s->helper.ld.locked) {
+			// 	s->delock_count++;
+			// 	s->seq_state = SEQ_CLEAR_DACS;
+			// 	set_channel_status(s->mpll.id_ref, 0);
 			} else if (s->mode == SPLL_MODE_SLAVE && !s->mpll.ld.locked) {
 				s->delock_count++;
 				s->seq_state = SEQ_CLEAR_DACS;
@@ -219,10 +221,10 @@ static inline void sequencing_fsm(struct softpll_state *s, int tag_value, int ta
 static inline void update_loops(struct softpll_state *s, int tag_value, int tag_source)
 {
 
-	helper_update(&s->helper, tag_value, tag_source);
+	// helper_update(&s->helper, tag_value, tag_source);
 
-	if(s->helper.ld.locked)
-	{
+	// if(s->helper.ld.locked)
+	//{
 		mpll_update(&s->mpll, tag_value, tag_source);
 
 		if(s->seq_state == SEQ_READY) {
@@ -234,7 +236,7 @@ static inline void update_loops(struct softpll_state *s, int tag_value, int tag_
 
 			update_ptrackers(s, tag_value, tag_source);
 		}
-	}
+	//}
 }
 
 void _irq_entry(void)
@@ -332,7 +334,7 @@ void spll_init(int mode, int slave_ref_channel, int align_pps)
 	else
 		helper_ref = spll_n_chan_ref; // Master/GM mode: lock the helper to the local ref clock
 
-	helper_init(&s->helper, helper_ref);
+	// helper_init(&s->helper, helper_ref);
 	mpll_init(&s->mpll, slave_ref_channel, spll_n_chan_ref);
 
 	for (i = 0; i < spll_n_chan_out - 1; i++) {
@@ -642,7 +644,8 @@ int spll_update()
 	stats.irq_cnt = softpll.irq_count;
 	stats.seq_state = softpll.seq_state;
 	stats.align_state = softpll.ext.align_state;
-	stats.H_lock = softpll.helper.ld.locked;
+	// stats.H_lock = softpll.helper.ld.locked;
+	stats.H_lock = 1;
 	stats.M_lock = softpll.mpll.ld.locked;
 	stats.H_y = softpll.helper.pi.y;
 	stats.M_y = softpll.mpll.pi.y;
