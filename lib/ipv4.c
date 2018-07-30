@@ -220,6 +220,7 @@ static int rmupdate_poll(void)
 		switch(type)
 		{
 			case FLASH_ERASE:
+				wrc_ptp_run(0);
 				data_addr = (buf[UDP_END+8]<<24)+(buf[UDP_END+9]<<16)+(buf[UDP_END+10]<<8)+buf[UDP_END+11];
 				data_size = (buf[UDP_END+12]<<24)+(buf[UDP_END+13]<<16)+(buf[UDP_END+14]<<8)+buf[UDP_END+15];
 				flash_erase(data_addr,data_size);
