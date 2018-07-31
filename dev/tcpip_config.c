@@ -35,8 +35,8 @@ void tcpip_init(void)
   memcpy((uint8_t *)(BASE_TCPIP_CFG + TCPIP_MAC_LOW32), (uint8_t *)tcpip_mac_addr+2, 4);
 
   // default udp tx dst/src port
-  tcpip_tx_dst_port(60000);
-  tcpip_tx_src_port(60000);
+  tcpip_tx_dst_port(2000);
+  tcpip_tx_src_port(2000);
 
   getIP(tmp_ip_addr);
   // tcpip module, default IP
