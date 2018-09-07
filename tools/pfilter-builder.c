@@ -232,6 +232,7 @@ enum pf_symbolic_regs {
 	FRAME_IP_OK, /* unicast or broadcast */
 
 	/* A temporary register, and the CPU target */
+	FRAME_FOR_2ND,
 	FRAME_FOR_CPU, /* must be last */
 };
 
@@ -396,7 +397,8 @@ void pfilter_init_novlan(char *fname)
 	/* PTP UDP (peer-to-p:  01:00:5e:00:00:6b    224.0.0.197) */
 	pfilter_cmp(2, 0x006b, 0xffff, OR, R_TMP);
 
-	pfilter_logic3(FRAME_MAC_OK, FRAME_MAC_PTP, AND, R_TMP, OR, FRAME_MAC_OK);
+	//pfilter_logic3(FRAME_MAC_OK, FRAME_MAC_PTP, AND, R_TMP, OR, FRAME_MAC_OK);
+	pfilter_logic2(FRAME_MAC_PTP, FRAME_MAC_PTP, AND, R_TMP);
 
 	/* Tagged is dropped. We'll invert the check in the vlan rule-set */
 	pfilter_cmp(6, 0x8100, 0xffff, MOV, R_TMP);
@@ -415,6 +417,7 @@ void pfilter_init_novlan(char *fname)
 	pfilter_cmp(11, 0x0001, 0x00ff, MOV, FRAME_ICMP);
 	pfilter_cmp(11, 0x0011, 0x00ff, MOV, FRAME_UDP);
 	pfilter_logic2(FRAME_UDP, FRAME_UDP, AND, FRAME_IP_OK);
+	pfilter_logic2(FRAME_ICMP, FRAME_ICMP, AND, FRAME_IP_OK);
 
 #ifdef CONFIG_WR_NIC_CPU
 	/* For CPU: icmp unicast or ptp (or latency) */
@@ -422,8 +425,12 @@ void pfilter_init_novlan(char *fname)
 	pfilter_logic2(FRAME_FOR_CPU, FRAME_TYPE_PTP2, MOV, R_ZERO);
 #else
 	/* For CPU: arp or icmp unicast or ptp (or latency) */
-	pfilter_logic2(FRAME_FOR_CPU, FRAME_TYPE_ARP, OR, FRAME_TYPE_PTP2);
-	pfilter_logic3(FRAME_FOR_CPU, FRAME_IP_OK, AND, FRAME_ICMP, OR, FRAME_FOR_CPU);
+	//pfilter_logic2(FRAME_FOR_CPU, FRAME_TYPE_ARP, OR, FRAME_TYPE_PTP2);
+	/* For CPU: just ptp (or latency) */
+	pfilter_logic2(FRAME_FOR_CPU, FRAME_MAC_PTP, OR, FRAME_TYPE_PTP2);
+	//pfilter_logic3(FRAME_FOR_CPU, FRAME_IP_OK, AND, FRAME_ICMP, OR, FRAME_FOR_CPU);
+	/* For LM32_2ND: arp or icmp or udp */
+	pfilter_logic3(FRAME_FOR_2ND, FRAME_TYPE_ARP, OR, FRAME_ICMP, OR, FRAME_UDP);
 #endif
 
 
@@ -433,14 +440,20 @@ void pfilter_init_novlan(char *fname)
 	pfilter_cmp(18, 0x0100, 0xff00, OR, PORT_UDP_HOST);	/* ports 256-511 */
 
 	/* The CPU gets those ports in a proper UDP frame, plus the previous selections */
-	pfilter_logic3(R_CLASS(0), FRAME_UDP, AND, PORT_UDP_HOST, OR, FRAME_FOR_CPU);
+	//pfilter_logic3(R_CLASS(0), FRAME_UDP, AND, PORT_UDP_HOST, OR, FRAME_FOR_CPU);
+	/* For CPU: just ptp */
+	pfilter_logic2(R_CLASS(0), FRAME_FOR_CPU, OR, FRAME_FOR_CPU);
 
 	/* Etherbone is UDP at port 0xebd0, let's "or" in the last move */
-	pfilter_cmp(18, 0xebd0, 0xffff, MOV, PORT_UDP_ETHERBONE);
+	//pfilter_cmp(18, 0xebd0, 0xffff, MOV, PORT_UDP_ETHERBONE);
 
 	/* and now copy out fabric selections: 7 etherbone, 6 for anything else */
-	pfilter_logic2(R_CLASS(7), FRAME_UDP, AND, PORT_UDP_ETHERBONE);
-	pfilter_logic2(R_CLASS(6), FRAME_UDP, NAND, PORT_UDP_ETHERBONE);
+	//pfilter_logic2(R_CLASS(7), FRAME_UDP, AND, PORT_UDP_ETHERBONE);
+	//pfilter_logic2(R_CLASS(6), FRAME_UDP, NAND, PORT_UDP_ETHERBONE);
+	/* For LM32_2ND: arp or icmp or udp */
+	pfilter_logic2(R_CLASS(7), FRAME_FOR_2ND, OR, FRAME_FOR_2ND);
+	/* drop anything else */
+  pfilter_logic3(R_DROP, FRAME_FOR_CPU, OR, FRAME_FOR_2ND, NOT, R_ZERO);
 
 	/*
 	 * Note that earlier we used to be more strict in ptp ethtype (only proper multicast),
