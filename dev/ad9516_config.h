@@ -78,7 +78,7 @@ const struct ad9516_reg ad9516_base_config_34[] = {
 {0x0003, 0xC3},
 {0x0004, 0x00},
 {0x0010, 0x7C},
-{0x0011, 0x04},
+{0x0011, 0x05},
 {0x0012, 0x00},
 {0x0013, 0x0C},
 {0x0014, 0x12},
@@ -143,7 +143,26 @@ const struct ad9516_reg ad9516_base_config_34[] = {
 {0x0231, 0x00},
 };
 
+/* Config for 25 MHz VCTCXO reference (RDiv = 5, use REF1) */
+const struct ad9516_reg ad9516_ref_tcxo[] = {
+{0x0011, 0x05},
+{0x0012, 0x00}, /* RDiv = 5 */
+{0x001C, 0x06}  /* Use REF1 */
+};
 
+/* Config for 20 MHz VCTCXO reference (RDiv = 0, use REF1) */
+//const struct ad9516_reg ad9516_ref_tcxo[] = {
+//{0x0011, 0x04},
+//{0x0012, 0x00}, /* RDiv = 4 */
+//{0x001C, 0x06}  /* Use REF1 */
+//};
+
+/* Config for 10 MHz external reference (RDiv = 2, use REF2) */
+const struct ad9516_reg ad9516_ref_ext[] = {
+{0x0011, 0x02},
+{0x0012, 0x00}, /* RDiv = 2 */
+{0x001C, 0x46}  /* Use REF1 */
+};
 
 /* Configuration for the SCB version greater than or equal 3.4: Base + 6, 7, 8, 9 outputs*/
 const struct ad9516_reg ad9516_ext_base_config[] = {
@@ -217,18 +236,3 @@ const struct ad9516_reg ad9516_ext_base_config[] = {
 {0x0230, 0x00},
 {0x0231, 0x00},
 };
-
-/* Config for 25 MHz VCTCXO reference (RDiv = 5, use REF1) */
-const struct ad9516_reg ad9516_ref_tcxo[] = {
-{0x0011, 0x04},
-{0x0012, 0x00}, /* RDiv = 4 */
-{0x001C, 0x06}  /* Use REF1 */
-};
-
-/* Config for 10 MHz external reference (RDiv = 2, use REF2) */
-const struct ad9516_reg ad9516_ref_ext[] = {
-{0x0011, 0x02},
-{0x0012, 0x00}, /* RDiv = 2 */
-{0x001C, 0x46}  /* Use REF1 */
-};
-

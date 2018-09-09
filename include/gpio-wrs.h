@@ -10,8 +10,6 @@
 
 #include "board.h"
 
-
-
 struct GPIO_WB
 {
   uint32_t CODR;  /*Clear output register*/

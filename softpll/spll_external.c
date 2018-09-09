@@ -14,7 +14,6 @@
 #include "softpll_ng.h"
 #include "irq.h"
 #include "gpio-wrs.h"
-#include "ext-board.h"
 
 #define ALIGN_SAMPLE_PERIOD 100000
 #define ALIGN_TARGET 0
@@ -29,8 +28,6 @@ void external_init(volatile struct spll_external_state *s, int ext_ref,
 {
     int idx = spll_n_chan_ref + spll_n_chan_out;
 
-    if (gpio_in(GPIO_EXT_BOARD_DETECT))
-      idx++;
 
     helper_init(s->helper, idx);
     mpll_init(s->main, idx, spll_n_chan_ref);
@@ -42,7 +39,7 @@ void external_init(volatile struct spll_external_state *s, int ext_ref,
 void external_start(struct spll_external_state *s)
 {
 	helper_start(s->helper);
-    
+
 	SPLL->ECCR = SPLL_ECCR_EXT_EN;
 
 	s->align_state = ALIGN_STATE_WAIT_CLKIN;
@@ -52,17 +49,11 @@ void external_start(struct spll_external_state *s)
 
 int external_locked(volatile struct spll_external_state *s)
 {
-	if (!s->helper->ld.locked || !s->main->ld.locked)
-	  return 0;
-	
-	if (!gpio_in(GPIO_EXT_BOARD_DETECT) &&	(!(SPLL->ECCR & SPLL_ECCR_EXT_REF_LOCKED) ||  // ext PLL became unlocked
-		 (SPLL->ECCR & SPLL_ECCR_EXT_REF_STOPPED)))   // 10MHz unplugged (only SPEC)
+	if (!s->helper->ld.locked || !s->main->ld.locked ||
+		!(SPLL->ECCR & SPLL_ECCR_EXT_REF_LOCKED) ||  // ext PLL became unlocked
+		 (SPLL->ECCR & SPLL_ECCR_EXT_REF_STOPPED))   // 10MHz unplugged (only SPEC)
 		return 0;
-//FIXME A bug prevents the correct locking if the external lock check is executed
-//	Correct way to solve it: export the LOCK signal from the gateware and check it
-//	if (gpio_in(GPIO_EXT_BOARD_DETECT) && ext_ad9516_locked())
-//		return 1;
-	
+
 	switch(s->align_state) {
 		case ALIGN_STATE_EXT_OFF:
 		case ALIGN_STATE_WAIT_CLKIN:
@@ -95,34 +86,33 @@ static int align_sample(int channel, int *v)
 int external_align_fsm(volatile struct spll_external_state *s)
 {
 	int v, done_sth = 0;
-	uint32_t f_ext = 0;
 
 	switch(s->align_state) {
 		case ALIGN_STATE_EXT_OFF:
 			break;
 
 		case ALIGN_STATE_WAIT_CLKIN:
-			if(!gpio_in(GPIO_EXT_BOARD_DETECT) && !(SPLL->ECCR & SPLL_ECCR_EXT_REF_STOPPED) ) {
+				if (!ext_ad9516_init()) {
 				SPLL->ECCR |= SPLL_ECCR_EXT_REF_PLLRST;
 				s->align_state = ALIGN_STATE_WAIT_PLOCK;
 				done_sth++;
-			}
-			f_ext = spll_measure_frequency(SPLL_OSC_EXT);
-			if (gpio_in(GPIO_EXT_BOARD_DETECT) && (f_ext > 9999000) && (f_ext < 10001000)) 		
-			       if (!ext_ad9516_init()) {
-				  s->align_state = ALIGN_STATE_WAIT_PLOCK;
-			          pp_printf("External AD9516 locked\n");
-			       }
-			
+				}
+//			if( !(SPLL->ECCR & SPLL_ECCR_EXT_REF_STOPPED) ) {
+//				SPLL->ECCR |= SPLL_ECCR_EXT_REF_PLLRST;
+//				s->align_state = ALIGN_STATE_WAIT_PLOCK;
+//				done_sth++;
+//			}
 			break;
 
 		case ALIGN_STATE_WAIT_PLOCK:
 			SPLL->ECCR &= (~SPLL_ECCR_EXT_REF_PLLRST);
-			if(!gpio_in(GPIO_EXT_BOARD_DETECT) && SPLL->ECCR & SPLL_ECCR_EXT_REF_STOPPED )
+			if( SPLL->ECCR & SPLL_ECCR_EXT_REF_STOPPED )
 				s->align_state = ALIGN_STATE_WAIT_CLKIN;
-			else if((!gpio_in(GPIO_EXT_BOARD_DETECT) && SPLL->ECCR & SPLL_ECCR_EXT_REF_LOCKED ) || 
-			  gpio_in(GPIO_EXT_BOARD_DETECT) && ext_ad9516_locked())		
+//			else if( SPLL->ECCR & SPLL_ECCR_EXT_REF_LOCKED )
+			else if(ext_ad9516_locked()) {
+				pp_printf("External AD9516 locked\n");
 				s->align_state = ALIGN_STATE_START;
+			}
 			done_sth++;
 			break;
 
@@ -163,9 +153,6 @@ int external_align_fsm(volatile struct spll_external_state *s)
 				s->align_shift = 0;
 				pll_verbose("EXT: CSync complete.\n");
 				done_sth++;
-				//REMOVE
-				//mpll_set_phase_shift(s->main, +9000);
-				//s->align_state = ALIGN_STATE_COMPENSATE_DELAY;
 			}
 			break;
 

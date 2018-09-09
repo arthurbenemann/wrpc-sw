@@ -20,7 +20,6 @@
 #include "board.h"
 #include "syscon.h"
 #include "gpio-wrs.h"
-#include "ext-board.h"
 
 #include "rt_ipc.h"
 
@@ -73,23 +72,17 @@ struct ad9516_reg {
 #define GPIO_PLL_RESET_N 1
 #define GPIO_SYS_CLK_SEL 0
 #define GPIO_PERIPH_RESET_N 3
+#define GPIO_EXT_PLL_RESET_N 4
 
 #define CS_PLL	0 /* AD9516 on SPI CS0 */
 
-
-
-
-static void *oc_spi_base;
-
 static int oc_spi_init(void *base_addr)
 {
-	//oc_spi_base = base_addr;
-
 	writel(100, base_addr + SPI_REG_DIVIDER);
 	return 0;
 }
 
-static int oc_spi_txrx(void *base, int ss, int nbits, uint32_t in, uint32_t *out)
+static int oc_spi_txrx(void *oc_spi_base, int ss, int nbits, uint32_t in, uint32_t *out)
 {
 	uint32_t rval;
 
@@ -98,17 +91,17 @@ static int oc_spi_txrx(void *base, int ss, int nbits, uint32_t in, uint32_t *out
 
 	writel(SPI_CTRL_ASS | SPI_CTRL_CHAR_LEN(nbits)
 		     | SPI_CTRL_TXNEG,
-		     base + SPI_REG_CTRL);
+		     oc_spi_base + SPI_REG_CTRL);
 
-	writel(in, base + SPI_REG_TX0);
-	writel((1 << ss), base + SPI_REG_SS);
+	writel(in, oc_spi_base + SPI_REG_TX0);
+	writel((1 << ss), oc_spi_base + SPI_REG_SS);
 	writel(SPI_CTRL_ASS | SPI_CTRL_CHAR_LEN(nbits)
 		     | SPI_CTRL_TXNEG | SPI_CTRL_GO_BSY,
-		     base + SPI_REG_CTRL);
+		     oc_spi_base + SPI_REG_CTRL);
 
-	while(readl(base + SPI_REG_CTRL) & SPI_CTRL_GO_BSY)
+	while(readl(oc_spi_base + SPI_REG_CTRL) & SPI_CTRL_GO_BSY)
 		;
-	*out = readl(base + SPI_REG_RX0);
+	*out = readl(oc_spi_base + SPI_REG_RX0);
 	return 0;
 }
 
@@ -117,42 +110,37 @@ static int oc_spi_txrx(void *base, int ss, int nbits, uint32_t in, uint32_t *out
  * "reg" is 12 bits, "val" is 8 bits, but both are better used as int
  */
 
-static void ad9516_write_reg(void *base, int reg, int val)
+static void ad9516_write_reg(void *oc_spi_base, int reg, int val)
 {
-	oc_spi_txrx(base, CS_PLL, 24, (reg << 8) | val, NULL);
+	oc_spi_txrx(oc_spi_base, CS_PLL, 24, (reg << 8) | val, NULL);
 }
 
-static int ad9516_read_reg(void *base, int reg)
+static int ad9516_read_reg(void *oc_spi_base, int reg)
 {
 	uint32_t rval;
-	oc_spi_txrx(base, CS_PLL, 24, (reg << 8) | (1 << 23), &rval);
+	oc_spi_txrx(oc_spi_base, CS_PLL, 24, (reg << 8) | (1 << 23), &rval);
 	return rval & 0xff;
 }
 
-
-
-static void ad9516_load_regset(void *base, const struct ad9516_reg *regs, int n_regs, int commit)
+static void ad9516_load_regset(void *oc_spi_base, const struct ad9516_reg *regs, int n_regs, int commit)
 {
 	int i;
 	for(i=0; i<n_regs; i++)
-		ad9516_write_reg(base, regs[i].reg, regs[i].val);
+		ad9516_write_reg(oc_spi_base, regs[i].reg, regs[i].val);
 		
 	if(commit)
-		ad9516_write_reg(base, 0x232, 1);
+		ad9516_write_reg(oc_spi_base, 0x232, 1);
 }
 
 
-static void ad9516_wait_lock(void *base)
+static void ad9516_wait_lock(void *oc_spi_base)
 {
-	while ((ad9516_read_reg(base,  0x1f) & 1) == 0);
+	while ((ad9516_read_reg(oc_spi_base,  0x1f) & 1) == 0);
 }
-
-
-
 
 #define SECONDARY_DIVIDER 0x100
 
-static int ad9516_set_output_divider(void *spi_base, int output, int ratio, int phase_offset)
+static int ad9516_set_output_divider(void *oc_spi_base, int output, int ratio, int phase_offset)
 {
 	uint8_t lcycles = (ratio/2) - 1;
 	uint8_t hcycles = (ratio - (ratio / 2)) - 1;
@@ -165,12 +153,12 @@ static int ad9516_set_output_divider(void *spi_base, int output, int ratio, int 
 
 		if(ratio == 1)  /* bypass the divider */
 		{
-			uint8_t div_ctl = ad9516_read_reg(spi_base, base + 1);
-			ad9516_write_reg(spi_base, base + 1, div_ctl | (1<<7) | (phase_offset & 0xf)); 
+			uint8_t div_ctl = ad9516_read_reg(oc_spi_base, base + 1);
+			ad9516_write_reg(oc_spi_base, base + 1, div_ctl | (1<<7) | (phase_offset & 0xf)); 
 		} else {
-			uint8_t div_ctl = ad9516_read_reg(spi_base, base + 1);
-			ad9516_write_reg(spi_base, base + 1, (div_ctl & (~(1<<7))) | (phase_offset & 0xf));  /* disable bypass bit */
-			ad9516_write_reg(spi_base, base, (lcycles << 4) | hcycles);
+			uint8_t div_ctl = ad9516_read_reg(oc_spi_base, base + 1);
+			ad9516_write_reg(oc_spi_base, base + 1, (div_ctl & (~(1<<7))) | (phase_offset & 0xf));  /* disable bypass bit */
+			ad9516_write_reg(oc_spi_base, base, (lcycles << 4) | hcycles);
 		}
 	} else { /* LVDS/CMOS outputs */
 			
@@ -181,16 +169,16 @@ static int ad9516_set_output_divider(void *spi_base, int output, int ratio, int 
 		if(!secondary)
 		{
 			if(ratio == 1)  /* bypass the divider 1 */
-				ad9516_write_reg(spi_base, base + 3, ad9516_read_reg(spi_base, base + 3) | 0x10); 
+				ad9516_write_reg(oc_spi_base, base + 3, ad9516_read_reg(oc_spi_base, base + 3) | 0x10); 
 			else {
-				ad9516_write_reg(spi_base,base, (lcycles << 4) | hcycles); 
-				ad9516_write_reg(spi_base,base + 1, phase_offset & 0xf);
+				ad9516_write_reg(oc_spi_base,base, (lcycles << 4) | hcycles); 
+				ad9516_write_reg(oc_spi_base,base + 1, phase_offset & 0xf);
 			}
 		} else {
 			if(ratio == 1)  /* bypass the divider 2 */
-				ad9516_write_reg(spi_base,base + 3, ad9516_read_reg(spi_base, base + 3) | 0x20); 
+				ad9516_write_reg(oc_spi_base,base + 3, ad9516_read_reg(oc_spi_base, base + 3) | 0x20); 
 			else {
-				ad9516_write_reg(spi_base,base + 2, (lcycles << 4) | hcycles); 
+				ad9516_write_reg(oc_spi_base,base + 2, (lcycles << 4) | hcycles); 
 //				ad9516_write_reg(base + 1, phase_offset & 0xf);
 				
 		}
@@ -198,45 +186,35 @@ static int ad9516_set_output_divider(void *spi_base, int output, int ratio, int 
 	}
 
 	/* update */
-	ad9516_write_reg(spi_base, 0x232, 0x0);
-	ad9516_write_reg(spi_base, 0x232, 0x1);
-	ad9516_write_reg(spi_base, 0x232, 0x0);
+	ad9516_write_reg(oc_spi_base, 0x232, 0x0);
+	ad9516_write_reg(oc_spi_base, 0x232, 0x1);
+	ad9516_write_reg(oc_spi_base, 0x232, 0x0);
 	return 0;
 }
 
-static int ad9516_set_vco_divider(void *spi_base, int ratio) /* Sets the VCO divider (2..6) or 0 to enable static output */
+static int ad9516_set_vco_divider(void *oc_spi_base, int ratio) /* Sets the VCO divider (2..6) or 0 to enable static output */
 {
 	if(ratio == 0)
-		ad9516_write_reg(spi_base, 0x1e0, 0x5); /* static mode */
+		ad9516_write_reg(oc_spi_base, 0x1e0, 0x5); /* static mode */
 	else
-		ad9516_write_reg(spi_base, 0x1e0, (ratio-2));
-	ad9516_write_reg(spi_base, 0x232, 0x1);
-	ad9516_write_reg(spi_base, 0x232, 0x0);
-
+		ad9516_write_reg(oc_spi_base, 0x1e0, (ratio-2));
+	ad9516_write_reg(oc_spi_base, 0x232, 0x1);
+	ad9516_write_reg(oc_spi_base, 0x232, 0x0);
 	return 0;
 }
 
-static void ad9516_sync_outputs(void *spi_base)
+static void ad9516_sync_outputs(void *oc_spi_base)
 {
 	/* VCO divider: static mode */
-	ad9516_write_reg(spi_base, 0x1E0, 0x7);
-	ad9516_write_reg(spi_base, 0x232, 0x1);
+	ad9516_write_reg(oc_spi_base, 0x1E0, 0x7);
+	ad9516_write_reg(oc_spi_base, 0x232, 0x1);
 
 	/* Sync the outputs when they're inactive to avoid +-1 cycle uncertainity */
-	ad9516_write_reg(spi_base, 0x230, 1);
-	ad9516_write_reg(spi_base, 0x232, 1);
-	ad9516_write_reg(spi_base, 0x230, 0);
-	ad9516_write_reg(spi_base, 0x232, 1);
-	ad9516_write_reg(spi_base, 0x232, 0x0);
-
-}
-
-int ext_ad9516_locked (void)
-{
-	if ((ad9516_read_reg((void *)BASE_SPI_EXT_BOARD,  0x1f) & 1))
-	    return 1;
-
-	return 0;
+	ad9516_write_reg(oc_spi_base, 0x230, 1);
+	ad9516_write_reg(oc_spi_base, 0x232, 1);
+	ad9516_write_reg(oc_spi_base, 0x230, 0);
+	ad9516_write_reg(oc_spi_base, 0x232, 1);
+	ad9516_write_reg(oc_spi_base, 0x232, 0);
 }
 
 int ad9516_init(int scb_version)
@@ -244,8 +222,7 @@ int ad9516_init(int scb_version)
 	pp_printf("Initializing AD9516 PLL...\n");
 
 	oc_spi_init((void *)BASE_SPI);
-	
-	void *spi_base = (void *)BASE_SPI;
+	void *oc_spi_base = (void *)BASE_SPI;
 
 	gpio_out(GPIO_SYS_CLK_SEL, 0); /* switch to the standby reference clock, since the PLL is off after reset */
 
@@ -256,31 +233,31 @@ int ad9516_init(int scb_version)
 	timer_delay(10);
 	
 	/* Use unidirectional SPI mode */
-	ad9516_write_reg(spi_base, 0x000, 0x99);
+	ad9516_write_reg(oc_spi_base, 0x000, 0x99);
 
 	/* Check the presence of the chip */
-	if (ad9516_read_reg(spi_base, 0x3) != 0xc3) {
+	if (ad9516_read_reg(oc_spi_base, 0x3) != 0xc3) {
 		pp_printf("Error: AD9516 PLL not responding.\n");
 		return -1;
 	}
 
 	if( scb_version >= 34)	//New SCB v3.4. 10MHz Output.
-		ad9516_load_regset(spi_base, ad9516_base_config_34, ARRAY_SIZE(ad9516_base_config_34), 0);
+		ad9516_load_regset(oc_spi_base, ad9516_base_config_34, ARRAY_SIZE(ad9516_base_config_34), 0);
 	else 				//Old one
-		ad9516_load_regset(spi_base, ad9516_base_config_33, ARRAY_SIZE(ad9516_base_config_33), 0);
+		ad9516_load_regset(oc_spi_base, ad9516_base_config_33, ARRAY_SIZE(ad9516_base_config_33), 0);
 
-	ad9516_load_regset(spi_base, ad9516_ref_tcxo, ARRAY_SIZE(ad9516_ref_tcxo), 1);
-	ad9516_wait_lock(spi_base);
+	ad9516_load_regset(oc_spi_base, ad9516_ref_tcxo, ARRAY_SIZE(ad9516_ref_tcxo), 1);
+	ad9516_wait_lock(oc_spi_base);
 
-	ad9516_sync_outputs(spi_base);
+	ad9516_sync_outputs(oc_spi_base);
 
 	if( scb_version >= 34) {	//New SCB v3.4. 10MHz Output.
 
-		ad9516_set_output_divider(spi_base, 2, 4, 0);  	// OUT2. 187.5 MHz. - not anymore
-		ad9516_set_output_divider(spi_base, 3, 4, 0);  	// OUT3. 187.5 MHz. - not anymore
+		ad9516_set_output_divider(oc_spi_base, 2, 4, 0);  	// OUT2. 187.5 MHz. - not anymore
+		ad9516_set_output_divider(oc_spi_base, 3, 4, 0);  	// OUT3. 187.5 MHz. - not anymore
 
-		ad9516_set_output_divider(spi_base, 4, 1, 0);  	// OUT4. 500 MHz.
-		ad9516_set_output_divider(spi_base, 9, 20,0);
+		ad9516_set_output_divider(oc_spi_base, 4, 1, 0);  	// OUT4. 500 MHz.
+		ad9516_set_output_divider(oc_spi_base, 9, 20,0);
 
 		/*The following PLL outputs have been configured through the ad9516_base_config_34 register,
 		 * so it doesn't need to replicate the configuration:
@@ -293,13 +270,13 @@ int ad9516_init(int scb_version)
 
 	} else {	//Old one
 
-		ad9516_set_output_divider(spi_base, 9, 4, 0);  /* AUX/SWCore = 187.5 MHz */ //not needed anymore
-		ad9516_set_output_divider(spi_base, 7, 8, 0); /* REF = 62.5 MHz */
-		ad9516_set_output_divider(spi_base, 4, 8, 0);  /* GTX = 62.5 MHz */
+		ad9516_set_output_divider(oc_spi_base, 9, 4, 0);  /* AUX/SWCore = 187.5 MHz */ //not needed anymore
+		ad9516_set_output_divider(oc_spi_base, 7, 8, 0); /* REF = 62.5 MHz */
+		ad9516_set_output_divider(oc_spi_base, 4, 8, 0);  /* GTX = 62.5 MHz */
 	}
 
-	ad9516_sync_outputs(spi_base);
-	ad9516_set_vco_divider(spi_base, 3); 
+	ad9516_sync_outputs(oc_spi_base);
+	ad9516_set_vco_divider(oc_spi_base, 3); 
 	
 	pp_printf("AD9516 locked.\n");
 
@@ -311,10 +288,9 @@ int ad9516_init(int scb_version)
 }
 
 int ext_ad9516_init (void) {
- 	pp_printf("Initializing external AD9516 PLL...\n");
+	pp_printf("Initializing external AD9516 PLL...\n");
 	oc_spi_init((void *)BASE_SPI_EXT_BOARD);
-	void *spi_base = (void *)BASE_SPI_EXT_BOARD;
-
+	void *oc_spi_base = (void *)BASE_SPI_EXT_BOARD;
 	
 	/* reset the PLL */
 	gpio_out(GPIO_EXT_PLL_RESET_N, 0);
@@ -323,49 +299,48 @@ int ext_ad9516_init (void) {
 	timer_delay(10);
 	
 	/* Use unidirectional SPI mode */
-	ad9516_write_reg((void *)spi_base, 0x000, 0x99);
+	ad9516_write_reg((void *)oc_spi_base, 0x000, 0x99);
 
 	/* Check the presence of the chip */
-	if (ad9516_read_reg((void *)spi_base, 0x3) != 0xc3) {
+	if (ad9516_read_reg((void *)oc_spi_base, 0x3) != 0xc3) {
 		pp_printf("Error: External AD9516 PLL not responding.\n");
 		return -1;
 	}
-	ad9516_write_reg(spi_base, 0x018, 0x0); // reset VCO calibration
-	ad9516_write_reg(spi_base, 0x232, 0x0);
-	ad9516_write_reg(spi_base, 0x232, 0x1);
-	ad9516_write_reg(spi_base, 0x232, 0x0);
-	
-  	ad9516_set_vco_divider(spi_base, 3); 
-	ad9516_load_regset(spi_base, ad9516_ext_base_config, ARRAY_SIZE(ad9516_ext_base_config), 1);
-	 
-//	while ((ad9516_read_reg(spi_base,  0x1f) & (1 << 6)) == 0);
+	ad9516_write_reg(oc_spi_base, 0x018, 0x0); // reset VCO calibration
+	ad9516_write_reg(oc_spi_base, 0x232, 0x0);
+	ad9516_write_reg(oc_spi_base, 0x232, 0x1);
+	ad9516_write_reg(oc_spi_base, 0x232, 0x0);	
+	ad9516_set_vco_divider(oc_spi_base, 3); 
+	ad9516_load_regset(oc_spi_base, ad9516_ext_base_config, ARRAY_SIZE(ad9516_ext_base_config), 1);
+//	while ((ad9516_read_reg(oc_spi_base,  0x1f) & (1 << 6)) == 0);
 //	pp_printf("Calibration done\n");
-
-	ad9516_set_output_divider(spi_base, 6, 8, 0);  	// OUT6. 62.5MHz
-	
-	ad9516_set_output_divider(spi_base, 8, 20, 0);  	// OUT6. 62.5MHz
-
-
+	ad9516_set_output_divider(oc_spi_base, 6, 8, 0);  	// OUT6. 62.5MHz
+	ad9516_set_output_divider(oc_spi_base, 8, 20, 0);  	// OUT6. 62.5MHz
 	return 0; 
-  
-  
 }
 
+int ext_ad9516_locked (void)
+{
+	if ((ad9516_read_reg((void *)BASE_SPI_EXT_BOARD,  0x1f) & 1))
+		return 1;
+	return 0;
+}
 
 int rts_debug_command(int command, int value)
 {
+	void *oc_spi_base = (void *)BASE_SPI;
 	switch(command)
 	{
 		case RTS_DEBUG_ENABLE_SERDES_CLOCKS:
 			if(value)
 			{
-				ad9516_write_reg((void *)BASE_SPI, 0xf4, 0x08); // OUT4 enabled
-				ad9516_write_reg((void *)BASE_SPI, 0x232, 0x0);
-				ad9516_write_reg((void *)BASE_SPI, 0x232, 0x1);
+				ad9516_write_reg(oc_spi_base, 0xf4, 0x08); // OUT4 enabled
+				ad9516_write_reg(oc_spi_base, 0x232, 0x0);
+				ad9516_write_reg(oc_spi_base, 0x232, 0x1);
 			} else {
-				ad9516_write_reg((void *)BASE_SPI, 0xf4, 0x0a); // OUT4 power-down, no serdes clock
-				ad9516_write_reg((void *)BASE_SPI, 0x232, 0x0);
-				ad9516_write_reg((void *)BASE_SPI, 0x232, 0x1);
+				ad9516_write_reg(oc_spi_base, 0xf4, 0x0a); // OUT4 power-down, no serdes clock
+				ad9516_write_reg(oc_spi_base, 0x232, 0x0);
+				ad9516_write_reg(oc_spi_base, 0x232, 0x1);
 			}
 			break;
 	}
