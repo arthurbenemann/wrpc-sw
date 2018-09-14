@@ -652,26 +652,19 @@ int spll_update()
 	return ret != 0;
 }
 
-static int spll_measure_frequency(int osc)
+static uint32_t spll_measure_frequency(int channel)
 {
-	volatile uint32_t *reg;
+	int i;
+	SPLL->F_MEAS_CR = SPLL_F_MEAS_CR_CHAN_SEL_W(channel);
 
-	switch(osc) {
-		case SPLL_OSC_REF:
-			reg = &SPLL->F_REF;
-			break;
-		case SPLL_OSC_DMTD:
-			reg = &SPLL->F_DMTD;
-			break;
-		case SPLL_OSC_EXT:
-			reg = &SPLL->F_EXT;
-			break;
-		default:
-			return 0;
-	}
+/*	for(i = 0; i < 2; i++)
+	{
+		SPLL->F_MEAS_VALUE = SPLL_F_MEAS_VALUE_VALID;
+		while( !( SPLL->F_MEAS_VALUE & SPLL_F_MEAS_VALUE_VALID ) );
+	}*/
+	timer_delay_ms(2000);
 
-    timer_delay_ms(2000);
-    return (*reg ) & (0xfffffff);
+    return SPLL->F_MEAS_VALUE & 0xfffffff;
 }
 
 static int calc_apr(int meas_min, int meas_max, int f_center )
@@ -702,23 +695,36 @@ static int calc_apr(int meas_min, int meas_max, int f_center )
 
 void check_vco_frequencies()
 {
+	int idx_dmtd = spll_n_chan_out + spll_n_chan_ref;
+	int idx_ext = spll_n_chan_out + spll_n_chan_ref + 1;
+	int i;
+
 	disable_irq();
 
 	int f_min, f_max;
-	pll_verbose("SoftPLL VCO Frequency/APR test:\n");
+	pp_printf("SoftPLL VCO Frequency/APR test:\n");
 
+	spll_set_dac(0, 32768);
 	spll_set_dac(-1, 0);
-	f_min = spll_measure_frequency(SPLL_OSC_DMTD);
+	f_min = spll_measure_frequency(idx_dmtd);
 	spll_set_dac(-1, 65535);
-	f_max = spll_measure_frequency(SPLL_OSC_DMTD);
-	pll_verbose("DMTD VCO:  Low=%d Hz Hi=%d Hz, APR = %d ppm.\n", f_min, f_max, calc_apr(f_min, f_max, 62500000));
+	f_max = spll_measure_frequency(idx_dmtd);
+	pp_printf("DMTD VCO:  Low=%d Hz Hi=%d Hz, APR = %d ppm.\n", f_min, f_max, calc_apr(f_min, f_max, 62500000));
 
-	spll_set_dac(0, 0);
-	f_min = spll_measure_frequency(SPLL_OSC_REF);
-	spll_set_dac(0, 65535);
-	f_max = spll_measure_frequency(SPLL_OSC_REF);
-	pll_verbose("REF VCO:   Low=%d Hz Hi=%d Hz, APR = %d ppm.\n", f_min, f_max, calc_apr(f_min, f_max, REF_CLOCK_FREQ_HZ));
+	for(i = 0; i < spll_n_chan_out; i++)
+	{
+		char name[8];
+		spll_set_dac(0, 32768);
+		spll_set_dac(0, 0);
+		f_min = spll_measure_frequency(i);
+		spll_set_dac(0, 65535);
+		f_max = spll_measure_frequency(i);
+		if( i == 0)
+			pp_sprintf(name, "REF ");
+		else
+			pp_sprintf(name, "AUX%d", i-1);
+		pp_printf("%s VCO:   Low=%d Hz Hi=%d Hz, APR = %d ppm.\n", i == 0 ? "REF" : "AUX", name, f_min, f_max, calc_apr(f_min, f_max, REF_CLOCK_FREQ_HZ));
+	}
 
-	f_min = spll_measure_frequency(SPLL_OSC_EXT);
-	pll_verbose("EXT clock: Freq=%d Hz\n", f_min);
+
 }

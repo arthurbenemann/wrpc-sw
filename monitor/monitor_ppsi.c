@@ -207,7 +207,7 @@ int wrc_mon_gui(void)
 
 	spll_get_num_channels(NULL, &n_out);
 
-	for(i = 0; i < n_out; i++) {
+	for(i = 0; i < n_out - 1; i++) {
 		cprintf(C_GREY, "Aux clock %d status:        ", i);
 
 		aux_stat = spll_get_aux_status(i);
