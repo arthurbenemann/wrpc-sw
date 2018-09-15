@@ -32,7 +32,9 @@ WARNING: These parameters must be in sync with the generics of the HDL instantia
 /* Helper PLL N divider (2**(-N) is the frequency offset). Must be big enough
    to offer reasonable PLL bandwidth, and small enough so the offset frequency fits
    within the tuning range of the helper oscillator. */
-#define HPLL_N 14
+// HPLL_N should be 12 when using the cascaded PLL, wrthu
+// #define HPLL_N 14
+#define HPLL_N 12
 
 /* Fractional bits in PI controller coefficients */
 #define PI_FRACBITS 12
