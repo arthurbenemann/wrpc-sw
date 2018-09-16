@@ -282,6 +282,7 @@ void _irq_entry(void)
 
 void spll_very_init()
 {
+	SPLL = (volatile struct SPLL_WB *)BASE_SOFTPLL;
 	PPSG = (volatile struct PPSG_WB *)BASE_PPS_GEN;
 	PPSG->CR = PPSG_CR_CNT_EN | PPSG_CR_CNT_RST | PPSG_CR_PWIDTH_W(PPS_WIDTH);
 }
