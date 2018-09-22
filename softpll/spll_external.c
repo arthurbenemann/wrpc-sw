@@ -32,8 +32,7 @@
 
 #define EXT_PERIOD_NS 100
 #define EXT_FREQ_HZ 10000000
-#define EXT_PPS_LATENCY_PS 30000 // fixme: make configurable
-
+#define EXT_PPS_LATENCY_PS 64400 // fixme: make configurable, change for WRSFL
 
 void external_init(volatile struct spll_external_state *s, int ext_ref,
 			  int realign_clocks)

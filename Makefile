@@ -89,7 +89,7 @@ OUTPUT := $(OUTPUT-y)
 
 GIT_VER = $(shell git describe --always --dirty | sed  's;^wr-switch-sw-;;')
 
-all: tools $(OUTPUT).ram $(OUTPUT).vhd $(OUTPUT).mif
+all: tools $(OUTPUT).ram $(OUTPUT).mif
 
 .PRECIOUS: %.elf %.bin
 .PHONY: all tools clean gitmodules $(PPSI)/ppsi.o
@@ -134,9 +134,6 @@ config.o: .config
 
 %.ram: tools %.bin
 	./tools/genraminit $*.bin 0 > $@
-
-%.vhd: tools %.bin
-	./tools/genramvhd -s `. ./.config; echo $$CONFIG_RAMSIZE` $*.bin > $@
 
 %.mif: tools %.bin
 	./tools/genrammif $*.bin `. ./.config; echo $$CONFIG_RAMSIZE` > $@

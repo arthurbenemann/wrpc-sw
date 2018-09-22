@@ -3,7 +3,7 @@ SDBFS ?= no
 
 CFLAGS = -Wall -ggdb -I../include
 LDFLAGS = -lutil
-ALL    = genraminit genramvhd genrammif wrpc-uart-sw
+ALL    = genraminit genrammif wrpc-uart-sw
 ALL   += wrpc-w1-read wrpc-w1-write flash-write flash-read
 
 ifneq ($(EB),no)
