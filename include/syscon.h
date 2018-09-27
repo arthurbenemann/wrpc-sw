@@ -81,9 +81,12 @@ struct SYSCON_WB {
 /*GPIO pins*/
 #define GPIO_LED_LINK SYSC_GPSR_LED_LINK
 #define GPIO_LED_STAT SYSC_GPSR_LED_STAT
+#define GPIO_DP_LED_LINK SYSC_GPSR_DP_LED_LINK
+#define GPIO_DP_LED_STAT SYSC_GPSR_DP_LED_STAT
 #define GPIO_BTN1     SYSC_GPSR_BTN1
 #define GPIO_BTN2     SYSC_GPSR_BTN2
 #define GPIO_SFP_DET  SYSC_GPSR_SFP_DET
+#define GPIO_DP_SFP_DET  SYSC_GPSR_DP_SFP_DET
 #define GPIO_SPI_SCLK SYSC_GPSR_SPI_SCLK
 #define GPIO_SPI_NCS  SYSC_GPSR_SPI_NCS
 #define GPIO_SPI_MOSI SYSC_GPSR_SPI_MOSI
@@ -91,6 +94,7 @@ struct SYSCON_WB {
 
 #define WRPC_FMC_I2C  0
 #define WRPC_SFP_I2C  1
+#define WRPC_DP_SFP_I2C  2
 #define FMC_I2C_DELAY 15
 #define SFP_I2C_DELAY 300
 
@@ -100,7 +104,7 @@ struct s_i2c_if {
 	uint32_t loop_delay;
 };
 
-extern struct s_i2c_if i2c_if[2];
+extern struct s_i2c_if i2c_if[3];
 
 void timer_init(uint32_t enable);
 

@@ -52,11 +52,12 @@
 #define HAS_GENSDBFS 0
 #endif
 
-extern uint32_t cal_phase_transition;
+extern uint32_t cal_phase_transition[2];
 extern uint8_t has_eeprom;
 
 struct s_sfpinfo {
 	char pn[SFP_PN_LEN];
+	uint8_t port;
 	int32_t alpha;
 	int32_t dTx;
 	int32_t dRx;
@@ -65,11 +66,11 @@ struct s_sfpinfo {
 
 void storage_init(int i2cif, int i2c_addr);
 
-int storage_sfpdb_erase(void);
-int storage_match_sfp(struct s_sfpinfo *sfp);
-int storage_get_sfp(struct s_sfpinfo *sfp, uint8_t add, uint8_t pos);
+int storage_sfpdb_erase(int port);
+int storage_match_sfp(struct s_sfpinfo *sfp, int port);
+int storage_get_sfp(struct s_sfpinfo *sfp, uint8_t add, uint8_t pos, int port);
 
-int storage_phtrans(uint32_t *val, uint8_t write);
+int storage_phtrans(uint32_t *val, uint8_t write, int port);
 
 int storage_init_erase(void);
 int storage_init_add(const char *args[]);

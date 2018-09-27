@@ -24,7 +24,7 @@ static uint32_t tics, tics_zero;
 void syslog_init(void)
 {
 	syslog_socket = ptpd_netif_create_socket(&__static_syslog_socket, NULL,
-					       PTPD_SOCK_UDP, 514 /* time */);
+					       PTPD_SOCK_UDP, 514 /* time */, 0/*port*/);
 	syslog_addr.sport = syslog_addr.dport = htons(514);
 	tics_zero = timer_get_tics();
 }
@@ -76,7 +76,7 @@ static int syslog_header(char *buf, int level, unsigned char ip[4])
 	int len;
 
 	shw_pps_gen_get_time(&secs, NULL);
-	getIP(ip);
+	getIP(ip,0);
 	len = pp_sprintf(buf + UDP_END, "<%i> %s %s ", level,
 			 format_time(secs, TIME_FORMAT_SYSLOG),
 			 format_ip(b, ip));
@@ -90,7 +90,7 @@ static void syslog_send(void *buf, unsigned char *ip, int len)
 	memcpy(&syslog_addr.saddr, ip, 4);
 	fill_udp((void *)buf, len, &syslog_addr);
 	memcpy(&addr.mac, syslog_mac, 6);
-	ptpd_netif_sendto(syslog_socket, &addr, buf, len, 0);
+	ptpd_netif_sendto(syslog_socket, &addr, buf, len, 0, 0/*port*/);
 	return;
 }
 
@@ -120,7 +120,7 @@ int syslog_poll(void)
 	else
 		s = &((struct wr_data *)ppi->ext_data)->servo_state;
 
-	if (ip_status == IP_TRAINING)
+	if (ip_status[0] == IP_TRAINING)
 		return 0;
 	if (!syslog_addr.daddr)
 		return 0;
@@ -138,9 +138,9 @@ int syslog_poll(void)
 		goto send;
 	}
 
-	if (link_status == LINK_WENT_DOWN)
+	if (link_status[0] == LINK_WENT_DOWN)
 		down_tics = now;
-	if (link_status == LINK_UP && down_tics) {
+	if (link_status[0] == LINK_UP && down_tics) {
 		down_tics = now - down_tics;
 		len = syslog_header(buf, SYSLOG_DEFAULT_LEVEL, ip);
 		len += pp_sprintf(buf + len, "Link up after %i.%03i s",
@@ -260,7 +260,7 @@ void syslog_report(const char *msg)
 	unsigned char ip[4];
 	int len;
 
-	if (ip_status == IP_TRAINING)
+	if (ip_status[0] == IP_TRAINING)
 		return;
 	if (!syslog_addr.daddr)
 		return;

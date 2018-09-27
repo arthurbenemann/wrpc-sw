@@ -41,17 +41,20 @@ static int cmd_ip(const char *args[])
 	char buf[20];
 
 	if (!args[0] || !strcasecmp(args[0], "get")) {
-		getIP(ip);
+		getIP(ip, 0);
+		getIP(ip, 1);
 	} else if (!strcasecmp(args[0], "set") && args[1]) {
-		ip_status = IP_OK_STATIC;
+		ip_status[0] = IP_OK_STATIC;
 		decode_ip(args[1], ip);
-		setIP(ip);
+		setIP(ip, 0);
+		ip[3]=ip[3]+1;
+		setIP(ip, 1);
 	} else {
 		return -EINVAL;
 	}
 
 	format_ip(buf, ip);
-	switch (ip_status) {
+	switch (ip_status[0]) {
 	case IP_TRAINING:
 		pp_printf("IP-address: in training\n");
 		break;

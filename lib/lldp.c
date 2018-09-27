@@ -255,7 +255,7 @@ static int lldp_poll(void)
 		/* Update only when IP or MAC changed */
 		/* TODO: or VLAN changed */
 		if (memcmp(&new_mac, &old_mac, ETH_ALEN)
-		    || (HAS_IP && (ip_status != IP_TRAINING)
+		    || (HAS_IP && (ip_status[0] != IP_TRAINING)
 			&& memcmp(&new_ipWR, &old_ipWR, IPLEN))
 		   ) {
 			/* update LLDP info */

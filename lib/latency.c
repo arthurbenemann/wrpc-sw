@@ -45,7 +45,7 @@ static void latency_init(void)
 	latency_addr.ethertype = htons(CONFIG_LATENCY_ETHTYPE);
 	latency_socket = ptpd_netif_create_socket(&__static_latency_socket,
 						  &latency_addr,
-						  PTPD_SOCK_RAW_ETHERNET, 0);
+						  PTPD_SOCK_RAW_ETHERNET, 0, 0, 0/*port*/);
 }
 
 static struct latency_frame {
@@ -129,7 +129,7 @@ static int latency_poll_rx(void)
 	int i, j;
 
 	i = ptpd_netif_recvfrom(latency_socket, &addr,
-				  &frame, sizeof(frame), &ts_tmp);
+				  &frame, sizeof(frame), &ts_tmp, 0/*port*/);
 	if (i < sizeof(frame))
 		return 0;
 
@@ -225,7 +225,7 @@ static int latency_poll_tx(void)
 	frame.type = 1;
 	latency_socket->prio = prios[0];
 	ptpd_netif_sendto(latency_socket, &latency_addr, &frame, sizeof(frame),
-			  frame.ts + 0);
+			  frame.ts + 0, 0/*port*/);
 	frame.ts[0].nsec -= ltest_fake_delay_ns;
 	if (frame.ts[0].nsec < 0) {
 		frame.ts[0].nsec += 1000 * 1000 * 1000;
@@ -235,7 +235,7 @@ static int latency_poll_tx(void)
 	frame.type = 2;
 	latency_socket->prio = prios[1];
 	ptpd_netif_sendto(latency_socket, &latency_addr, &frame, sizeof(frame),
-			  frame.ts + 1);
+			  frame.ts + 1, 0/*port*/);
 	frame.ts[1].nsec -= ltest_fake_delay_ns;
 	if (frame.ts[1].nsec < 0) {
 		frame.ts[1].nsec += 1000 * 1000 * 1000;
@@ -245,7 +245,7 @@ static int latency_poll_tx(void)
 	frame.type = 3;
 	latency_socket->prio = prios[2];
 	ptpd_netif_sendto(latency_socket, &latency_addr, &frame, sizeof(frame),
-			  NULL);
+			  NULL, 0/*port*/);
 	ltest_fake_delay_ns = 0;
 
 	/* Every 10s remind we are sending ltest */

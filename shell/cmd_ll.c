@@ -36,12 +36,12 @@ DEFINE_WRC_COMMAND(devmem) = {
 	.exec = cmd_devmem,
 };
 
-extern struct pp_instance ppi_static;
+extern struct pp_instance ppi_static[wr_num_ports];
 
 static int cmd_delays(const char *args[])
 {
 	int tx, rx;
-	struct wr_data *wrp = (void *)(ppi_static.ext_data);
+	struct wr_data *wrp = (void *)(ppi_static[0].ext_data);
 	struct wr_servo_state *s = &wrp->servo_state;
 
 	if (args[0] && !args[1]) {
@@ -51,11 +51,11 @@ static int cmd_delays(const char *args[])
 	if (args[1]) {
 		fromdec(args[0], &tx);
 		fromdec(args[1], &rx);
-		sfp_deltaTx = tx;
-		sfp_deltaRx = rx;
+		sfp_deltaTx[0] = tx;
+		sfp_deltaRx[0] = rx;
 		/* Change the active value too (add bislide here) */
 		s->delta_tx_m = tx;
-		s->delta_rx_m = rx + ep_get_bitslide();
+		s->delta_rx_m = rx + ep_get_bitslide(0);
 	} else {
 		pp_printf("tx: %i   rx: %i\n", sfp_deltaTx, sfp_deltaRx);
 	}

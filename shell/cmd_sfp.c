@@ -34,7 +34,10 @@
 
 static int cmd_sfp(const char *args[])
 {
-	int8_t sfpcount = 1, i, temp, ret;
+	int8_t sfpcount[2] = {1,1};
+	int8_t i, temp, ret[2];
+	int port;
+
 	struct s_sfpinfo sfp;
 
 	if (!args[0]) {
@@ -42,7 +45,7 @@ static int cmd_sfp(const char *args[])
 		return -EINVAL;
 	}
 	if (!strcasecmp(args[0], "erase")) {
-		if (storage_sfpdb_erase() == EE_RET_I2CERR) {
+		if (storage_sfpdb_erase(0) == EE_RET_I2CERR) {
 			pp_printf("Could not erase DB\n");
 			return -EIO;
 		}
@@ -56,7 +59,12 @@ static int cmd_sfp(const char *args[])
 		sfp.dTx = atoi(args[2]);
 		sfp.dRx = atoi(args[3]);
 		sfp.alpha = atoi(args[4]);
-		temp = storage_get_sfp(&sfp, SFP_ADD, 0);
+
+		if (args[5])
+			sfp.port = atoi(args[5]);
+		else
+			sfp.port = 0;
+		temp = storage_get_sfp(&sfp, SFP_ADD, 0, sfp.port);
 		if (temp == EE_RET_DBFULL) {
 			pp_printf("SFP DB is full\n");
 			return -ENOSPC;
@@ -64,55 +72,54 @@ static int cmd_sfp(const char *args[])
 			pp_printf("I2C error\n");
 			return -EIO;
 		} else if (temp < 0) {
-			pp_printf("SFP database error (%d)\n", temp);
+			pp_printf("Port %d SFP database error (%d)\n", sfp.port, temp);
 			return -EFAULT;
 		}
-		pp_printf("%d SFPs in DB\n", temp);
+		pp_printf("Port %d has %d SFPs in DB\n", sfp.port, temp);
 		return 0;
 	} else if (!strcasecmp(args[0], "show")) {
-		for (i = 0; i < sfpcount; ++i) {
-			sfpcount = storage_get_sfp(&sfp, SFP_GET, i);
-			if (sfpcount == 0) {
-				pp_printf("SFP database empty\n");
-				return 0;
-			} else if (sfpcount < 0) {
-				pp_printf("SFP database error (%d)\n",
-					  sfpcount);
-				return -EFAULT;
+		for (port = 0; port < 2; ++port) {
+			sfpcount[port] = storage_get_sfp(&sfp, SFP_GET, i, port);
+			if (sfpcount[port] == 0) {
+				pp_printf("Port %d SFP database empty\n", port);
+			} else if (sfpcount[port] < 0) {
+				pp_printf("Port %d SFP database error (%d)\n", port,
+					  sfpcount[0]);
+				ret[port] = -EFAULT;
+			} else {
+				for (i = 0; i< sfpcount[0]; ++i) {
+					pp_printf("Port %d, SFP %d: PN:", port, i + 1);
+					for (temp = 0; temp < SFP_PN_LEN; ++temp)
+						pp_printf("%c", sfp.pn[temp]);
+					pp_printf(" dTx: %8d dRx: %8d alpha: %8d\n", sfp.dTx,
+						sfp.dRx, sfp.alpha);
+				}
 			}
-			pp_printf("%d: PN:", i + 1);
-			for (temp = 0; temp < SFP_PN_LEN; ++temp)
-				pp_printf("%c", sfp.pn[temp]);
-			pp_printf(" dTx: %8d dRx: %8d alpha: %8d\n", sfp.dTx,
-				sfp.dRx, sfp.alpha);
 		}
-		return 0;
+		return (ret[0] || ret[1]);
 	} else if (!strcasecmp(args[0], "match")) {
-		ret = sfp_match();
-		if (ret == -ENODEV) {
-			pp_printf("No SFP.\n");
-			return ret;
+		for (port = 0; port < 2; ++port) {
+			ret[port] = sfp_match(port);
+			if (ret[0] == -ENODEV)
+				pp_printf("Port %d No SFP.\n", port);
+			else if (ret[0] == -EIO)
+				pp_printf("Port %d SFP read error\n", port);
+			else if (ret == -ENXIO)
+				pp_printf("Port %d Could not match to DB\n", port);
+			else {
+				/* match successful */
+				pp_printf("\nPort %d SFP matched, dTx=%d dRx=%d alpha=%d\n",
+					port, sfp_deltaTx[0], sfp_deltaRx[0], sfp_alpha[0]);
+			}
 		}
-		if (ret == -EIO) {
-			pp_printf("SFP read error\n");
-			return ret;
-		}
+		return (ret[0] || ret[1]);
 
-		/* SFP read correctly */
-		for (temp = 0; temp < SFP_PN_LEN; ++temp)
-			pp_printf("%c", sfp_pn[temp]);
-		pp_printf("\n");
-
-		if (ret == -ENXIO) {
-			pp_printf("Could not match to DB\n");
-			return ret;
-		}
-		/* match successful */
-		pp_printf("SFP matched, dTx=%d dRx=%d alpha=%d\n",
-			sfp_deltaTx, sfp_deltaRx, sfp_alpha);
-		return ret;
 	} else if (args[1] && !strcasecmp(args[0], "ena")) {
-		ep_sfp_enable(atoi(args[1]));
+		if (args[2])
+			sfp.port = atoi(args[2]);
+		else
+			sfp.port = 0;
+		ep_sfp_enable(atoi(args[1]), sfp.port);
 		return 0;
 	} else {
 		pp_printf("Wrong parameter\n");

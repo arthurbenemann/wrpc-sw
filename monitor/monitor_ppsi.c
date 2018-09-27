@@ -28,8 +28,8 @@
 #define WRC_DIAG_REFRESH_PERIOD (1 * TICS_PER_SECOND)
 
 extern struct pp_servo servo;
-extern struct pp_instance ppi_static;
-struct pp_instance *ppi = &ppi_static;
+extern struct pp_instance ppi_static[wr_num_ports];
+struct pp_instance *ppi = &ppi_static[0];
 const char *ptp_unknown_str= "unknown";
 
 static void wrc_mon_std_servo(void);
@@ -135,7 +135,7 @@ int wrc_mon_gui(void)
 	else
 		cprintf(C_RED,   "Link down ");
 
-	minic_get_stats(&tx, &rx);
+	minic_get_stats(&tx, &rx, 0);
 	cprintf(C_GREY, "(RX: %d, TX: %d)", rx, tx);
 
 	if (!state.state) {
@@ -146,9 +146,9 @@ int wrc_mon_gui(void)
 		uint8_t ip[4];
 
 		cprintf(C_WHITE, " IPv4: ");
-		getIP(ip);
+		getIP(ip, 0);
 		format_ip(buf, ip);
-		switch (ip_status) {
+		switch (ip_status[0]) {
 		case IP_TRAINING:
 			cprintf(C_RED, "BOOTP running");
 			break;
@@ -334,7 +334,7 @@ static int wrc_log_stats(void)
 
 	shw_pps_gen_get_time(&sec, &nsec);
 	wrpc_get_port_state(&state, NULL);
-	minic_get_stats(&tx, &rx);
+	minic_get_stats(&tx, &rx, 0);
 	pp_printf("lnk:%d rx:%d tx:%d ", state.state, rx, tx);
 	pp_printf("lock:%d ", state.locked ? 1 : 0);
 	pp_printf("ptp:%s ", wrc_ptp_state());
@@ -423,7 +423,7 @@ int wrc_wr_diags(void)
 	wdiag_set_valid(0);
 	
 	/* frame statistics */
-	minic_get_stats(&tx, &rx);
+	minic_get_stats(&tx, &rx, 0);
 	wdiags_write_cnts(tx,rx);
 
 	/* local time */

@@ -28,7 +28,7 @@
 #define ICMP_CHECKSUM	(ICMP_CODE+1)
 #define ICMP_END	(ICMP_CHECKSUM+2)
 
-int process_icmp(uint8_t * buf, int len)
+int process_icmp(uint8_t * buf, int len, int port)
 {
 	int iplen, hisBodyLen;
 	uint8_t hisIP[4];
@@ -36,7 +36,7 @@ int process_icmp(uint8_t * buf, int len)
 	uint16_t sum;
 
 	/* Is it IP targetting us? */
-	getIP(myIP);
+	getIP(myIP,port);
 	if (buf[IP_VERSION] != 0x45 || memcmp(buf + IP_DEST, myIP, 4))
 		return 0;
 

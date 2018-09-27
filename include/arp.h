@@ -20,5 +20,5 @@
 #define ARP_TPA        (ARP_THA+6)
 #define ARP_END        (ARP_TPA+4)
 
-void send_arp(uint8_t * hisIP);
+int send_arp(uint8_t * hisIP, int port);
 #endif

@@ -28,7 +28,8 @@ static int cmd_stat(const char *args[])
 
 	/* arguments: bts, on, off */
 	if (!strcasecmp(args[0], "bts")) {
-		pp_printf("%d ps\n", ep_get_bitslide());
+		pp_printf("port 0 %d ps\n", ep_get_bitslide(0));
+		pp_printf("port 1 %d ps\n", ep_get_bitslide(1));
 	} else if (!strcasecmp(args[0], "on")) {
 		wrc_stat_running = 1;
 		wrc_stats_last--; /* force a line to be printed */

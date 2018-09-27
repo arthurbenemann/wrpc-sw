@@ -10,9 +10,9 @@
 #ifndef __RXTS_CALIBRATOR_H
 #define __RXTS_CALIBRATOR_H
 
-void rxts_calibration_start(void);
-int rxts_calibration_update(uint32_t *t24p_value);
-int measure_t24p(uint32_t *value);
-int calib_t24p(int mode, uint32_t *value);
+void rxts_calibration_start(uint8_t port);
+int rxts_calibration_update(uint32_t *t24p_value, int port);
+int measure_t24p(uint32_t *value, int port);
+int calib_t24p(int mode, uint32_t *value, int port);
 
 #endif

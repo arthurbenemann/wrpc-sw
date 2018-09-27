@@ -40,7 +40,7 @@ int prepare_bootp(struct wr_sockaddr *addr, uint8_t * buf, int retry)
 	buf[BOOTP_HOPS] = 0;
 
 	/* A unique identifier for the request !!! FIXME */
-	get_mac_addr(buf + BOOTP_XID);
+	get_mac_addr(buf + BOOTP_XID, 0);
 	buf[BOOTP_XID + 0] ^= buf[BOOTP_XID + 4];
 	buf[BOOTP_XID + 1] ^= buf[BOOTP_XID + 5];
 	buf[BOOTP_XID + 2] ^= (retry >> 8) & 0xFF;
@@ -56,7 +56,7 @@ int prepare_bootp(struct wr_sockaddr *addr, uint8_t * buf, int retry)
 	memset(buf + BOOTP_GIADDR, 0, 4);
 
 	memset(buf + BOOTP_CHADDR, 0, 16);
-	get_mac_addr(buf + BOOTP_CHADDR);	/* own MAC address */
+	get_mac_addr(buf + BOOTP_CHADDR, 0);	/* own MAC address */
 
 	memset(buf + BOOTP_SNAME, 0, 64);	/* desired BOOTP server */
 	memset(buf + BOOTP_FILE, 0, 128);	/* desired BOOTP file */
@@ -81,7 +81,7 @@ int process_bootp(uint8_t * buf, int len)
 	uint8_t mac[6];
 	uint8_t ip[4];
 
-	get_mac_addr(mac);
+	get_mac_addr(mac, 0);
 
 	if (len != BOOTP_END)
 		return 0;
@@ -92,10 +92,10 @@ int process_bootp(uint8_t * buf, int len)
 	if (memcmp(buf + BOOTP_CHADDR, mac, 6))
 		return 0;
 
-	ip_status = IP_OK_BOOTP;
-	setIP(buf + BOOTP_YIADDR);
+	ip_status[0] = IP_OK_BOOTP;
+	setIP(buf + BOOTP_YIADDR, 0);
 
-	getIP(ip);
+	getIP(ip, 0);
 	pp_printf("Discovered IP address (%d.%d.%d.%d)!\n",
 	        ip[0], ip[1], ip[2], ip[3]);
 

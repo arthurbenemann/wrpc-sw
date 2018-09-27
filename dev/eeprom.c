@@ -59,7 +59,7 @@
 
 #define SFP_DB_EMPTY 0xff
 
-static uint8_t sfpcount = SFP_DB_EMPTY;
+static uint8_t sfpcount[2] = {SFP_DB_EMPTY,SFP_DB_EMPTY};
 
 uint8_t has_eeprom = 0;
 

@@ -21,10 +21,10 @@
 
 #define TX_OOB 0x1000
 
-void minic_init(void);
-void minic_disable(void);
-int minic_poll_rx(void);
-void minic_get_stats(int *tx_frames, int *rx_frames);
+void minic_init(int port);
+void minic_disable(int port);
+int minic_poll_rx(int port);
+void minic_get_stats(int *tx_frames, int *rx_frames, int port);
 
 struct wr_ethhdr {
 	uint8_t dstmac[6];
@@ -44,11 +44,11 @@ struct wr_minic {
 	int tx_count, rx_count;
 };
 
-extern struct wr_minic minic;
+extern struct wr_minic minic[2];
 
 int minic_rx_frame(struct wr_ethhdr *hdr, uint8_t * payload, uint32_t buf_size,
-		   struct hw_timestamp *hwts);
+		   struct hw_timestamp *hwts, int port);
 int minic_tx_frame(struct wr_ethhdr_vlan *hdr, uint8_t * payload, uint32_t size,
-		   struct hw_timestamp *hwts);
+		   struct hw_timestamp *hwts, int port);
 
 #endif

@@ -23,23 +23,24 @@
 static int cmd_calibration(const char *args[])
 {
 	uint32_t trans;
+	int port=0;
 
 	if (args[0] && !strcasecmp(args[0], "force")) {
-		if (measure_t24p(&trans) < 0)
+		if (measure_t24p(&trans, port) < 0)
 			return -1;
-		return storage_phtrans(&trans, 1);
+		return storage_phtrans(&trans, 1, port);
 	} else if (!args[0]) {
-		if (storage_phtrans(&trans, 0) > 0) {
-			pp_printf("Found phase transition in EEPROM: %dps\n",
-				trans);
-			cal_phase_transition = trans;
+		if (storage_phtrans(&trans, 0, port) > 0) {
+			pp_printf("Port %d Found phase transition in EEPROM: %dps\n",
+				port, trans);
+			cal_phase_transition[port] = trans;
 			return 0;
 		} else {
-			pp_printf("Measuring t2/t4 phase transition...\n");
-			if (measure_t24p(&trans) < 0)
+			pp_printf("Port %d Measuring t2/t4 phase transition...\n", port);
+			if (measure_t24p(&trans, port) < 0)
 				return -1;
-			cal_phase_transition = trans;
-			return storage_phtrans(&trans, 1);
+			cal_phase_transition[port] = trans;
+			return storage_phtrans(&trans, 1, port);
 		}
 	}
 

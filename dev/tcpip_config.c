@@ -30,7 +30,7 @@ void tcpip_init(void)
     return;
   }
   
-  get_mac_addr(tcpip_mac_addr);
+  get_mac_addr(tcpip_mac_addr, 0);
   memcpy((uint8_t *)(BASE_TCPIP_CFG + TCPIP_MAC_HIGH16 + 2), (uint8_t *)tcpip_mac_addr, 2);
   memcpy((uint8_t *)(BASE_TCPIP_CFG + TCPIP_MAC_LOW32), (uint8_t *)tcpip_mac_addr+2, 4);
 
@@ -38,7 +38,7 @@ void tcpip_init(void)
   tcpip_tx_dst_port(60000);
   tcpip_tx_src_port(60000);
 
-  getIP(tmp_ip_addr);
+  getIP(tmp_ip_addr, 0);
   // tcpip module, default IP
   tcpip_ip_addr(tmp_ip_addr);
   // tcpip module, default gateway & tx ip addr
@@ -133,7 +133,7 @@ uint8_t tcpip_poll()
     return 0;
   
   tcpip_get_hisIP(ip);
-  send_arp(ip);
+  send_arp(ip, 0);
   arp_count=0;
 
 }

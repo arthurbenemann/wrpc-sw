@@ -39,7 +39,7 @@ struct rule_set {
 };
 
 
-extern volatile struct EP_WB *EP;
+extern volatile struct EP_WB *EP[wr_num_ports];
 
 static uint32_t swap32(uint32_t v)
 {
@@ -52,7 +52,7 @@ static uint32_t swap32(uint32_t v)
 	return res;
 }
 
-void pfilter_init_default(void)
+void pfilter_init_default(int port)
 {
 	struct rule_set *s;
 	uint8_t mac[6];
@@ -60,7 +60,7 @@ void pfilter_init_default(void)
 	uint32_t m, *vini, *vend, *v, *v_vlan = NULL;
 	uint64_t cmd_word;
 	int i;
-	static int inited;
+	static int inited[2];
 	uint32_t latency_ethtype = CONFIG_LATENCY_ETHTYPE;
 
 	/* If vlan, use rule-set 1, else rule-set 0 */
@@ -92,20 +92,20 @@ void pfilter_init_default(void)
 	 * First time: be extra-careful that the rule-set is ok. But if
 	 * we change MAC address, this is re-called, and v[] is already changed
 	 */
-	if (!inited) {
+	if (!inited[port]) {
 		if (   (((v[2] >> 13) & 0xffff) != 0x1234)
 		    || (((v[4] >> 13) & 0xffff) != 0x5678)
 		    || (((v[6] >> 13) & 0xffff) != 0x9abc)) {
 			pp_printf("pfilter: wrong rule-set, can't apply\n");
 			return;
 		}
-		inited++;
+		inited[port]++;
 	}
 	/*
 	 * Patch the local MAC address in place,
 	 * in the first three instructions after NOP
 	 */
-	get_mac_addr(mac);
+	get_mac_addr(mac,port);
 	v[2] &= ~(0xffff << 13);
 	v[4] &= ~(0xffff << 13);
 	v[6] &= ~(0xffff << 13);
@@ -143,7 +143,7 @@ void pfilter_init_default(void)
 		}
 	}
 
-	EP->PFCR0 = 0;		// disable pfilter
+	EP[port]->PFCR0 = 0;		// disable pfilter
 
 	for (i = 0, v = vini + 1; v < vend; v += 2, i++) {
 		uint32_t cr0, cr1;
@@ -157,8 +157,8 @@ void pfilter_init_default(void)
 		cr0 = EP_PFCR0_MM_ADDR_W(i) | EP_PFCR0_MM_DATA_MSB_W(cmd_word >> 12) |
 		    EP_PFCR0_MM_WRITE_MASK;
 
-		EP->PFCR1 = cr1;
-		EP->PFCR0 = cr0;
+		EP[port]->PFCR1 = cr1;
+		EP[port]->PFCR0 = cr0;
 	}
 
 	/* Restore the 0xaaa vlan number, so we can re-patch next time */
@@ -177,5 +177,5 @@ void pfilter_init_default(void)
 	v[4] |= 0x5678 << 13;
 	v[6] |= 0x9abc << 13;
 
-	EP->PFCR0 = EP_PFCR0_ENABLE;
+	EP[port]->PFCR0 = EP_PFCR0_ENABLE;
 }

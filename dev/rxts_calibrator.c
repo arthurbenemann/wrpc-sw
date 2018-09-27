@@ -122,7 +122,7 @@ static int cal_cur_phase;
    ptpnetif's check lock function when the PLL has already locked, to avoid
    complicating the API of ptp-noposix/ppsi. */
 
-void rxts_calibration_start(void)
+void rxts_calibration_start(uint8_t port)
 {
 	cal_cur_phase = 0;
 	det_rising.prev_val = det_falling.prev_val = -1;
@@ -136,7 +136,7 @@ void rxts_calibration_start(void)
 
 /* Updates RX timestamper state machine. Non-zero return value means that
    calibration is done. */
-int rxts_calibration_update(uint32_t *t24p_value)
+int rxts_calibration_update(uint32_t *t24p_value, int port)
 {
 	int32_t ttrans = 0;
 
@@ -145,7 +145,7 @@ int rxts_calibration_update(uint32_t *t24p_value)
 
 	/* generate a fake RX timestamp and check if falling edge counter is
 	   ahead of rising edge counter */
-	int flip = ep_timestamper_cal_pulse();
+	int flip = ep_timestamper_cal_pulse(port);
 
 	/* look for transitions (with deglitching) */
 	lookup_transition(&det_rising, flip, cal_cur_phase, 1);
@@ -193,82 +193,82 @@ int rxts_calibration_update(uint32_t *t24p_value)
 }
 
 /* legacy function for 'calibration force' command */
-int measure_t24p(uint32_t *value)
+int measure_t24p(uint32_t *value, int port)
 {
 	int rv;
 	pp_printf("Waiting for link...\n");
-	while (!ep_link_up(NULL))
+	while (!ep_link_up(NULL, port))
 		timer_delay_ms(100);
 
-	spll_init(SPLL_MODE_SLAVE, 0, 1);
+	spll_init(SPLL_MODE_SLAVE, port, 1);
 	pp_printf("Locking PLL...\n");
 	while (!spll_check_lock(0))
 		timer_delay_ms(100);
 	pp_printf("\n");
 
 	pp_printf("Calibrating RX timestamper...\n");
-	rxts_calibration_start();
+	rxts_calibration_start(port);
 
-	while (!(rv = rxts_calibration_update(value))) ;
+	while (!(rv = rxts_calibration_update(value,port))) ;
 	return rv;
 }
 
 /* Delays for master must have been calibrated while running as slave */
-static int calib_t24p_master(uint32_t *value)
+static int calib_t24p_master(uint32_t *value, int port)
 {
 	int rv;
 
-	rv = storage_phtrans(value, 0);
+	rv = storage_phtrans(value, 0, port);
 	if(rv < 0) {
 		pp_printf("Error %d while reading t24p from storage\n", rv);
 		return rv;
 	}
-	pp_printf("t24p read from storage: %d ps\n", *value);
+	pp_printf("port %d t24p read from storage: %d ps\n", port,*value);
 	return rv;
 }
 
 
 /*SoftPLL must be locked prior calling this function*/
-static int calib_t24p_slave(uint32_t *value)
+static int calib_t24p_slave(uint32_t *value, int port)
 {
 	int rv;
 	uint32_t prev;
 	int retries = 0;
 
-	while (!(rv = rxts_calibration_update(value))) {
-		if (retries > CALIB_RETRIES || ep_link_up(NULL) == LINK_DOWN)
+	while (!(rv = rxts_calibration_update(value,port))) {
+		if (retries > CALIB_RETRIES || ep_link_up(NULL, port) == LINK_DOWN)
 			return -1;
  		retries++;
 	}
 	if (rv < 0) {
 		/* Fall back on master == eeprom-or-error */
-		return calib_t24p_master(value);
+		return calib_t24p_master(value,port);
 	}
 
 	/*
 	 * Let's see if we have a matching value in EEPROM:
 	 * accept a 200ps difference, otherwise rewrite eeprom
 	 */
-	rv = storage_phtrans(&prev, 0 /* rd */);
+	rv = storage_phtrans(&prev, 0 /* rd */, port);
 	if (rv < 0 || (prev < *value - 200) || (prev > *value + 200)) {
-		rv = storage_phtrans(value, 1);
+		rv = storage_phtrans(value, 1, port);
 		pp_printf("Wrote new t24p value: %d ps (%s)\n", *value,
 			  rv < 0 ? "Failed" : "Success");
 	}
 	return 0;
 }
 
-int calib_t24p(int mode, uint32_t *value)
+int calib_t24p(int mode, uint32_t *value, int port)
 {
 	int ret;
 
 	if (mode == WRC_MODE_SLAVE)
-		ret = calib_t24p_slave(value);
+		ret = calib_t24p_slave(value, port);
 	else
-		ret = calib_t24p_master(value);
+		ret = calib_t24p_master(value, port);
 
 	//update phtrans value in socket struct
 	if (ret >= 0)
-		ptpd_netif_set_phase_transition(*value);
+		ptpd_netif_set_phase_transition(*value, port);
 	return ret;
 }

@@ -30,8 +30,10 @@
 #define SDB_VENDOR	0x46696c6544617461LL /* "FileData" */
 #define SDB_DEV_INIT	0x77722d69 /* wr-i (nit) */
 #define SDB_DEV_MAC	0x6d61632d /* mac- (address) */
-#define SDB_DEV_SFP	0x7366702d /* sfp- (database) */
-#define SDB_DEV_CALIB	0x63616c69 /* cali (bration) */
+#define SDB_DEV_SFP 0x7366702d /* sfp- (database) */
+#define SDB_DEV_DP_SFP 0x8366702d /* sfp1- (database) */
+#define SDB_DEV_CALIB 0x63616c69 /* cali (bration) */
+#define SDB_DEV_DP_CALIB 0x73616c69 /* cali (bration) */
 
 /* constants for scanning I2C EEPROMs */
 #define EEPROM_START_ADR 0
@@ -316,7 +318,7 @@ int get_persistent_mac(uint8_t portnum, uint8_t *mac)
 
 	if (IS_HOST_PROCESS) {
 		/* we don't have sdb working, so get the real eth address */
-		get_mac_addr(mac);
+		get_mac_addr(mac, 0);
 		return 0;
 	}
 
@@ -392,11 +394,16 @@ int set_persistent_mac(uint8_t portnum, uint8_t *mac)
 
 
 /* Erase SFB database in the memory */
-int32_t storage_sfpdb_erase(void)
+int32_t storage_sfpdb_erase(int port)
 {
 	int ret;
+	uint32_t sdb_dev_addr;
+	if (port==0)
+		sdb_dev_addr = SDB_DEV_SFP;
+	else
+		sdb_dev_addr = SDB_DEV_DP_SFP;
 
-	if (sdbfs_open_id(&wrc_sdb, SDB_VENDOR, SDB_DEV_SFP) < 0)
+	if (sdbfs_open_id(&wrc_sdb, SDB_VENDOR, sdb_dev_addr) < 0)
 		return -1;
 	ret = sdbfs_ferase(&wrc_sdb, 0, wrc_sdb.f_len);
 	if (ret == wrc_sdb.f_len)
@@ -418,7 +425,7 @@ static int sfp_valid(struct s_sfpinfo *sfp)
 	return 1;
 }
 
-static int sfp_entry(struct s_sfpinfo *sfp, uint8_t oper, uint8_t pos)
+static int sfp_entry(struct s_sfpinfo *sfp, uint8_t oper, uint8_t pos, int port)
 {
 	static uint8_t sfpcount = 0;
 	struct s_sfpinfo tempsfp;
@@ -426,11 +433,16 @@ static int sfp_entry(struct s_sfpinfo *sfp, uint8_t oper, uint8_t pos)
 	uint8_t i, chksum = 0;
 	uint8_t *ptr;
 	int sdb_offset;
+	uint32_t sdb_dev_addr;
+	if (port==0)
+		sdb_dev_addr = SDB_DEV_SFP;
+	else
+		sdb_dev_addr = SDB_DEV_DP_SFP;
 
 	if (pos >= SFPS_MAX)
 		return EE_RET_POSERR;	/* position outside the range */
 
-	if (sdbfs_open_id(&wrc_sdb, SDB_VENDOR, SDB_DEV_SFP) < 0)
+	if (sdbfs_open_id(&wrc_sdb, SDB_VENDOR, sdb_dev_addr) < 0)
 		return -1;
 
 	/* Read how many SFPs are in the database, but only in the first
@@ -495,7 +507,7 @@ out:
 	return ret;
 }
 
-static int storage_update_sfp(struct s_sfpinfo *sfp)
+static int storage_update_sfp(struct s_sfpinfo *sfp, int port)
 {
 	int sfpcount = 1;
 	int temp;
@@ -506,7 +518,7 @@ static int storage_update_sfp(struct s_sfpinfo *sfp)
 	/* copy entries from flash to the memory, update entry if matched */
 	for (i = 0; i < sfpcount; ++i) {
 		dbsfp = &sfp_db[i];
-		sfpcount = sfp_entry(dbsfp, SFP_GET, i);
+		sfpcount = sfp_entry(dbsfp, SFP_GET, i, port);
 		if (sfpcount <= 0)
 			return sfpcount;
 		if (!strncmp(dbsfp->pn, sfp->pn, 16)) {
@@ -518,7 +530,7 @@ static int storage_update_sfp(struct s_sfpinfo *sfp)
 	}
 
 	/* erase entire database */
-	if (storage_sfpdb_erase() == EE_RET_I2CERR) {
+	if (storage_sfpdb_erase(port) == EE_RET_I2CERR) {
 			pp_printf("Could not erase DB\n");
 			return -1;
 		}
@@ -526,7 +538,7 @@ static int storage_update_sfp(struct s_sfpinfo *sfp)
 	/* add all SFPs */
 	for (i = 0; i < sfpcount; ++i) {
 		dbsfp = &sfp_db[i];
-		temp = sfp_entry(dbsfp, SFP_ADD, 0);
+		temp = sfp_entry(dbsfp, SFP_ADD, 0, port);
 		if (temp < 0) {
 			/* if error, return it */
 			return temp;
@@ -535,35 +547,35 @@ static int storage_update_sfp(struct s_sfpinfo *sfp)
 	return i;
 }
 
-int storage_get_sfp(struct s_sfpinfo *sfp, uint8_t oper, uint8_t pos)
+int storage_get_sfp(struct s_sfpinfo *sfp, uint8_t oper, uint8_t pos, int port)
 {
 	struct s_sfpinfo tmp_sfp;
 
 	if (oper == SFP_GET) {
 		/* Get SFP entry */
-		return sfp_entry(sfp, SFP_GET, pos);
+		return sfp_entry(sfp, SFP_GET, pos, port);
 	}
 
 	/* storage_match_sfp replaces content of parameter, so do the copy
 	 * first */
 	tmp_sfp = *sfp;
-	if (!storage_match_sfp(&tmp_sfp)) { /* add a new sfp entry */
+	if (!storage_match_sfp(&tmp_sfp, port)) { /* add a new sfp entry */
 		pp_printf("Adding new SFP entry\n");
-		return sfp_entry(sfp, SFP_ADD, 0);
+		return sfp_entry(sfp, SFP_ADD, 0, port);
 	}
 
 	pp_printf("Update existing SFP entry\n");
-	return storage_update_sfp(sfp);
+	return storage_update_sfp(sfp, port);
 }
 
-int storage_match_sfp(struct s_sfpinfo *sfp)
+int storage_match_sfp(struct s_sfpinfo *sfp, int port)
 {
 	uint8_t sfpcount = 1;
 	int8_t i;
 	struct s_sfpinfo dbsfp;
 
 	for (i = 0; i < sfpcount; ++i) {
-		sfpcount = sfp_entry(&dbsfp, SFP_GET, i);
+		sfpcount = sfp_entry(&dbsfp, SFP_GET, i, port);
 		if (sfpcount <= 0)
 			return sfpcount;
 		if (!strncmp(dbsfp.pn, sfp->pn, 16)) {
@@ -581,12 +593,17 @@ int storage_match_sfp(struct s_sfpinfo *sfp)
  * Phase transition ("calibration" file)
  */
 #define VALIDITY_BIT 0x80000000
-int storage_phtrans(uint32_t *valp, uint8_t write)
+int storage_phtrans(uint32_t *valp, uint8_t write, int port)
 {
 	int ret = -1;
 	uint32_t value;
+	uint32_t sdb_dev_addr;
+	if (port==0)
+		sdb_dev_addr = SDB_DEV_CALIB;
+	else
+		sdb_dev_addr = SDB_DEV_DP_CALIB;
 
-	if (sdbfs_open_id(&wrc_sdb, SDB_VENDOR, SDB_DEV_CALIB) < 0)
+	if (sdbfs_open_id(&wrc_sdb, SDB_VENDOR, sdb_dev_addr) < 0)
 		return -1;
 	if (write) {
 		sdbfs_ferase(&wrc_sdb, 0, wrc_sdb.f_len);

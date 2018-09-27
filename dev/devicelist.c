@@ -11,8 +11,8 @@
 #include <libsdbfs.h>
 
 /* The following pointers are exported */
-unsigned char *BASE_MINIC;
-unsigned char *BASE_EP;
+unsigned char *BASE_MINIC[wr_num_ports];
+unsigned char *BASE_EP[wr_num_ports];
 unsigned char *BASE_SOFTPLL;
 unsigned char *BASE_PPS_GEN;
 unsigned char *BASE_SYSCON;
@@ -65,8 +65,10 @@ struct wrc_device {
 };
 
 struct wrc_device devs[] = {
-	{&BASE_MINIC,         VID_CERN,	0xab28633a},
-	{&BASE_EP,            VID_CERN,	0x650c2d4f},
+	{&BASE_MINIC[0],      VID_CERN,	0xab28633a},
+	{&BASE_MINIC[1],      VID_CERN,	0xa224633b},
+	{&BASE_EP[0],         VID_CERN,	0x650c2d4f},
+	{&BASE_EP[1],         VID_CERN,	0x621c2d4e},
 	{&BASE_SOFTPLL,       VID_CERN,	0x65158dc0},
 	{&BASE_PPS_GEN,       VID_CERN,	0xde0d8ced},
 	{&BASE_SYSCON,        VID_CERN,	0xff07fc47},

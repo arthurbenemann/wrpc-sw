@@ -16,14 +16,14 @@
 #define SFP_GET 0
 #define SFP_ADD 1
 
-extern char sfp_pn[SFP_PN_LEN];
+extern char sfp_pn[2][SFP_PN_LEN];
 
-extern int32_t sfp_in_db;
-extern int32_t sfp_alpha;
-extern int32_t sfp_deltaTx;
-extern int32_t sfp_deltaRx;
+extern int32_t sfp_in_db[2];
+extern int32_t sfp_alpha[2];
+extern int32_t sfp_deltaTx[2];
+extern int32_t sfp_deltaRx[2];
 
 /* Match plugged SFP with a DB entry */
-int sfp_match(void);
+int sfp_match(int port);
 
 #endif

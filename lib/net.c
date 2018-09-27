@@ -24,40 +24,41 @@
 #include "softpll_ng.h"
 #include "ipv4.h"
 
-static struct wrpc_socket *socks[NET_MAX_SOCKETS];
+static struct wrpc_socket *socks[2][NET_MAX_SOCKETS];
 
 //#define net_verbose pp_printf
-int ptpd_netif_get_hw_addr(struct wrpc_socket *sock, mac_addr_t *mac)
+int ptpd_netif_get_hw_addr(struct wrpc_socket *sock, mac_addr_t *mac, int port)
 {
-	get_mac_addr((uint8_t *) mac);
-
+	get_mac_addr((uint8_t *) mac, port);
 	return 0;
 }
 
-void ptpd_netif_set_phase_transition(uint32_t phase)
+void ptpd_netif_set_phase_transition(uint32_t phase, int port)
 {
 	int i;
 
-	for (i=0; i< ARRAY_SIZE(socks); ++i) {
-		socks[i]->phase_transition = phase;
+	for (i=0; i< ARRAY_SIZE(socks[port]); ++i) {
+		socks[port][i]->phase_transition = phase;
 	}
 }
 
 
 struct wrpc_socket *ptpd_netif_create_socket(struct wrpc_socket *sock,
 					     struct wr_sockaddr * bind_addr,
-					     int udp_or_raw, int udpport)
+					     int udp_or_raw, int udpport, int port)
 {
 	int i;
 	struct hal_port_state pstate;
+	const char *port_name;
 
 	/* Look for the first available socket. */
-	for (i = 0; i < ARRAY_SIZE(socks); i++)
-		if (!socks[i]) {
-			socks[i] = sock;
+	for (i = 0; i < ARRAY_SIZE(socks[port]); i++)
+		if (!socks[port][i]) {
+			socks[port][i] = sock;
 			break;
 		}
-	if (i == ARRAY_SIZE(socks)) {
+
+	if (i == ARRAY_SIZE(socks[port])) {
 		pp_printf("%s: no socket slots left\n", __func__);
 		return NULL;
 	}
@@ -65,7 +66,9 @@ struct wrpc_socket *ptpd_netif_create_socket(struct wrpc_socket *sock,
 		    sock, ntohs(bind_addr->ethertype),
 		    udpport, i);
 
-	if (wrpc_get_port_state(&pstate, "wr0" /* unused */) < 0)
+	port_name = (port) ? "wr0" : "wr1";
+
+	if (wrpc_get_port_state(&pstate, port_name) < 0)
 		return NULL;
 
 	/* copy and complete the bind information. If MAC is 0 use unicast */
@@ -79,8 +82,7 @@ struct wrpc_socket *ptpd_netif_create_socket(struct wrpc_socket *sock,
 	}
 
 	/*get mac from endpoint */
-	get_mac_addr(sock->local_mac);
-
+	get_mac_addr(sock->local_mac, port);
 	sock->phase_transition = pstate.t2_phase_transition;
 	sock->dmtd_phase = pstate.phase_val;
 
@@ -92,12 +94,12 @@ struct wrpc_socket *ptpd_netif_create_socket(struct wrpc_socket *sock,
 	return sock;
 }
 
-int ptpd_netif_close_socket(struct wrpc_socket *s)
+int ptpd_netif_close_socket(struct wrpc_socket *sock, int port)
 {
 	int i;
-	for (i = 0; i < ARRAY_SIZE(socks); i++)
-		if (socks[i] == s)
-			socks[i] = NULL;
+	for (i = 0; i < ARRAY_SIZE(socks[port]); i++)
+		if (socks[port][i] == sock)
+			socks[port][i] = NULL;
 	return 0;
 }
 
@@ -218,7 +220,7 @@ static int wrap_copy_out(struct sockq *q, void *src, size_t len)
 }
 
 int ptpd_netif_recvfrom(struct wrpc_socket *s, struct wr_sockaddr *from, void *data,
-			size_t data_length, struct wr_timestamp *rx_timestamp)
+			size_t data_length, struct wr_timestamp *rx_timestamp, int port)
 {
 	struct sockq *q = &s->queue;
 
@@ -246,8 +248,8 @@ int ptpd_netif_recvfrom(struct wrpc_socket *s, struct wr_sockaddr *from, void *d
 	if (rx_timestamp) {
 		rx_timestamp->raw_nsec = hwts.nsec;
 		rx_timestamp->raw_ahead = hwts.ahead;
-		spll_busy = (uint8_t) spll_shifter_busy(0);
-		spll_read_ptracker(0, &rx_timestamp->raw_phase, NULL);
+		spll_busy = (uint8_t) spll_shifter_busy(port);
+		spll_read_ptracker(port, &rx_timestamp->raw_phase, NULL);
 
 		rx_timestamp->sec = hwts.sec;
 		rx_timestamp->nsec = hwts.nsec;
@@ -271,7 +273,7 @@ int ptpd_netif_recvfrom(struct wrpc_socket *s, struct wr_sockaddr *from, void *d
 }
 
 int ptpd_netif_sendto(struct wrpc_socket * sock, struct wr_sockaddr *to, void *data,
-		      size_t data_length, struct wr_timestamp *tx_timestamp)
+		      size_t data_length, struct wr_timestamp *tx_timestamp, int port)
 {
 	struct wrpc_socket *s = (struct wrpc_socket *)sock;
 	struct hw_timestamp hwts;
@@ -294,7 +296,7 @@ int ptpd_netif_sendto(struct wrpc_socket * sock, struct wr_sockaddr *to, void *d
 
 	rval =
 	    minic_tx_frame(&hdr, (uint8_t *) data,
-			   data_length, &hwts);
+			   data_length, &hwts, port);
 
 
 	if (tx_timestamp) {
@@ -306,7 +308,7 @@ int ptpd_netif_sendto(struct wrpc_socket * sock, struct wr_sockaddr *to, void *d
 	return rval;
 }
 
-static int update_rx_queues(void)
+static int update_rx_queues()
 {
 	struct wrpc_socket *s = NULL, *raws = NULL, *udps = NULL;
 	struct sockq *q;
@@ -320,7 +322,7 @@ static int update_rx_queues(void)
 
 	recvd =
 	    minic_rx_frame(&hdr, buffer, sizeof(buffer),
-			   &hwts);
+			   &hwts, 0/*port*/);
 
 	if (recvd <= 0)		/* No data received? */
 		return 0;
@@ -347,8 +349,8 @@ static int update_rx_queues(void)
 	else
 		port = 0;
 
-	for (i = 0; i < ARRAY_SIZE(socks); i++) {
-		s = socks[i];
+	for (i = 0; i < ARRAY_SIZE(socks[0]); i++) {
+		s = socks[0][i];
 		if (!s)
 			continue;
 		if (hdr.ethtype != s->bind_addr.ethertype)
@@ -397,8 +399,105 @@ static int update_rx_queues(void)
 		    q->avail, q->n, q_required);
 	return 1;
 }
+
+static int update_dp_rx_queues(void)
+{
+	struct wrpc_socket *s = NULL, *raws = NULL, *udps = NULL;
+	struct sockq *q;
+	struct hw_timestamp hwts;
+	static struct wr_ethhdr hdr;
+	int recvd, i, q_required;
+	static uint8_t buffer[NET_MAX_SKBUF_SIZE - 32];
+	uint8_t *payload = buffer;
+	uint16_t size, port;
+	uint16_t ethtype, tag;
+
+	recvd = minic_rx_frame(&hdr, buffer, sizeof(buffer), &hwts, 1);
+    
+	if (recvd <= 0)return 0;
+
+	/* Remove the vlan tag, but  make sure it's the right one */
+	ethtype = hdr.ethtype;
+	tag = 0;
+	if (ntohs(ethtype) == 0x8100) {
+		memcpy(&tag, buffer, 2);
+		memcpy(&hdr.ethtype, buffer + 2, 2);
+		payload += 4;
+		recvd -= 4;
+	}
+	if ((ntohs(tag) & 0xfff) != wrc_vlan_number) {
+		net_verbose("%s: want vlan %i, got %i: discard\n",
+				    __func__, wrc_vlan_number,
+				    ntohs(tag) & 0xfff);
+			return 0;
+	}
+
+	/* Prepare for IP/UDP checks */
+	if (payload[IP_VERSION] == 0x45 && payload[IP_PROTOCOL] == 17)
+		port = payload[UDP_DPORT] << 8 | payload[UDP_DPORT + 1];
+	else
+		port = 0;
+
+	for (i = 0; i < ARRAY_SIZE(socks[1]); i++) {
+		s = socks[1][i];
+		if (!s)
+			continue;
+		if (hdr.ethtype != s->bind_addr.ethertype)
+			continue;
+		if (!port && !s->bind_addr.udpport)
+			raws = s; /* match with raw socket */
+		if (port && s->bind_addr.udpport == port)
+			udps = s; /*  match with udp socket */
+	}
+	s = udps;
+
+	if (!s)
+		s = raws;
+	if (!s) {
+		net_verbose("%s: could not find socket for packet\n",
+			   __FUNCTION__);
+		return 1;
+	}
+
+	q = &s->queue;
+	q_required =
+	    sizeof(struct wr_ethhdr) + recvd + sizeof(struct hw_timestamp) + 2;
+
+	if (q->avail < q_required) {
+		net_verbose
+		    ("%s: queue for socket full; [avail %d required %d]\n",
+		     __FUNCTION__, q->avail, q_required);
+		return 1;
+	}
+
+	size = recvd;
+
+	q->avail -= wrap_copy_out(q, &size, 2);
+	q->avail -= wrap_copy_out(q, &hwts, sizeof(struct hw_timestamp));
+	q->avail -= wrap_copy_out(q, &hdr, sizeof(struct wr_ethhdr));
+	q->avail -= wrap_copy_out(q, payload, size);
+	q->n++;
+
+	net_verbose("Q: Size %d head %d Smac %x:%x:%x:%x:%x:%x\n", recvd,
+		   q->head, hdr.srcmac[0], hdr.srcmac[1], hdr.srcmac[2],
+		   hdr.srcmac[3], hdr.srcmac[4], hdr.srcmac[5]);
+
+	net_verbose("%s: saved packet to socket %04x:%04x "
+		    "[avail %d n %d size %d]\n", __FUNCTION__,
+		    ntohs(s->bind_addr.ethertype),
+		    s->bind_addr.udpport,
+		    q->avail, q->n, q_required);
+	return 1;
+}
+
 DEFINE_WRC_TASK(net_bh) = {
 	.name = "net-bh",
-	.enable = &link_status,
+	.enable = &link_status[0],
 	.job = update_rx_queues,
+};
+
+DEFINE_WRC_TASK(dp_net_bh) = {
+	.name = "dp-net-bh",
+	.enable = &link_status[1],
+	.job = update_dp_rx_queues,
 };

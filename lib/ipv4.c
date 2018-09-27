@@ -19,26 +19,30 @@
 #include "flash.h"
 #include "tcpip_config.h"
 
-enum ip_status ip_status = IP_TRAINING;
-static uint8_t myIP[4];
+enum ip_status ip_status[2] = {IP_TRAINING,IP_TRAINING};
+static uint8_t myIP[2][4];
 /* magic UDP is deadbeef */
 const uint8_t magicUDP[4] ={0x62,0x65,0x65,0x66};
 
 /* bootp: bigger buffer, UDP based */
-static uint8_t __bootp_queue[512];
-static struct wrpc_socket __static_bootp_socket = {
-	.queue.buff = __bootp_queue,
-	.queue.size = sizeof(__bootp_queue),
+static uint8_t __bootp_queue[2][512];
+static struct wrpc_socket __static_bootp_socket[2] = {
+	{.queue.buff = __bootp_queue[0],
+	.queue.size = sizeof(__bootp_queue[0]),},
+	{.queue.buff = __bootp_queue[1],
+	.queue.size = sizeof(__bootp_queue[1]),}
 };
-static struct wrpc_socket *bootp_socket;
+static struct wrpc_socket *bootp_socket[2];
 
 /* ICMP: smaller buffer */
-static uint8_t __icmp_queue[128];
-static struct wrpc_socket __static_icmp_socket = {
-	.queue.buff = __icmp_queue,
-	.queue.size = sizeof(__icmp_queue),
+static uint8_t __icmp_queue[2][128];
+static struct wrpc_socket __static_icmp_socket[2] = {
+	{.queue.buff = __icmp_queue[0],
+	.queue.size = sizeof(__icmp_queue[0]),},
+	{.queue.buff = __icmp_queue[1],
+	.queue.size = sizeof(__icmp_queue[1]),}
 };
-static struct wrpc_socket *icmp_socket;
+static struct wrpc_socket *icmp_socket[2];
 
 /* RDATE: even smaller buffer -- but we require 86. 96 is "even". */
 static uint8_t __rdate_queue[96];
@@ -83,23 +87,26 @@ static void ipv4_init(void)
 	struct wr_sockaddr saddr;
 
 	/* Bootp: use UDP engine activated by function arguments  */
-	bootp_socket = ptpd_netif_create_socket(&__static_bootp_socket, NULL,
-						PTPD_SOCK_UDP, 68 /* bootpc */);
+	bootp_socket[0] = ptpd_netif_create_socket(&__static_bootp_socket[0], NULL,
+						PTPD_SOCK_UDP, 68 /* bootpc */, 0);
+	bootp_socket[1] = ptpd_netif_create_socket(&__static_bootp_socket[1], NULL,
+						PTPD_SOCK_UDP, 68 /* bootpc */, 1);
 
 	/* time (rdate): UDP */
 	rdate_socket = ptpd_netif_create_socket(&__static_rdate_socket, NULL,
-					       PTPD_SOCK_UDP, 37 /* time */);
+					       PTPD_SOCK_UDP, 37 /* time */, 0);
 
 	/* remote update (rmupdate): UDP */
 	rmupdate_socket = ptpd_netif_create_socket(&__static_rmupdate_socket, NULL,
-						PTPD_SOCK_UDP, 71 /* remote update */);
+						PTPD_SOCK_UDP, 71 /* remote update */, 0);
 
 	/* ICMP: specify raw (not UDP), with IPV4 ethtype */
 	memset(&saddr, 0, sizeof(saddr));
 	saddr.ethertype = htons(0x0800);
-	icmp_socket = ptpd_netif_create_socket(&__static_icmp_socket, &saddr,
-					       PTPD_SOCK_RAW_ETHERNET, 0);
-
+	icmp_socket[0] = ptpd_netif_create_socket(&__static_icmp_socket[0], &saddr,
+					       PTPD_SOCK_RAW_ETHERNET, 0, 0);
+	icmp_socket[1] = ptpd_netif_create_socket(&__static_icmp_socket[1], &saddr,
+					       PTPD_SOCK_RAW_ETHERNET, 0, 1);
 	syslog_init();
 }
 
@@ -113,10 +120,10 @@ static int bootp_poll(void)
 	uint8_t buf[400];
 	int len, ret = 0;
 
-	len = ptpd_netif_recvfrom(bootp_socket, &addr,
-				  buf, sizeof(buf), NULL);
+	len = ptpd_netif_recvfrom(bootp_socket[0], &addr,
+				  buf, sizeof(buf), NULL, 0);
 
-	if (ip_status != IP_TRAINING)
+	if (ip_status[0] != IP_TRAINING)
 		return 0;
 
 	if (len > 0)
@@ -126,29 +133,29 @@ static int bootp_poll(void)
 		return ret;
 
 	len = prepare_bootp(&addr, buf, ++bootp_retry);
-	ptpd_netif_sendto(bootp_socket, &addr, buf, len, 0);
+	ptpd_netif_sendto(bootp_socket[0], &addr, buf, len, 0, 0);
 	return 1;
 }
 
-static int icmp_poll(void)
+static int icmp_poll(int port)
 {
 	struct wr_sockaddr addr;
 	uint8_t buf[128];
 	int len;
 
-	len = ptpd_netif_recvfrom(icmp_socket, &addr,
-				  buf, sizeof(buf), NULL);
+	len = ptpd_netif_recvfrom(icmp_socket[port], &addr,
+				  buf, sizeof(buf), NULL, port);
 	if (len <= 0)
 		return 0;
-	if (ip_status == IP_TRAINING)
+	if (ip_status[port] == IP_TRAINING)
 		return 0;
 
 	/* check the destination IP */
-	if (check_dest_ip(buf))
+	if (check_dest_ip(buf, port))
 		return 0;
 
-	if ((len = process_icmp(buf, len)) > 0)
-		ptpd_netif_sendto(icmp_socket, &addr, buf, len, 0);
+	if ((len = process_icmp(buf, len, port)) > 0)
+		ptpd_netif_sendto(icmp_socket[port], &addr, buf, len, 0, port);
 	return 1;
 }
 
@@ -161,12 +168,12 @@ static int rdate_poll(void)
 	int len;
 
 	len = ptpd_netif_recvfrom(rdate_socket, &addr,
-				  buf, sizeof(buf), NULL);
+				  buf, sizeof(buf), NULL, 0/* port */);
 	if (len <= 0)
 		return 0;
 
 	/* check the destination IP */
-	if (check_dest_ip(buf))
+	if (check_dest_ip(buf,0))
 		return 0;
 
 	shw_pps_gen_get_time(&secs, NULL);
@@ -177,7 +184,7 @@ static int rdate_poll(void)
 	memcpy(buf + UDP_END, &result, sizeof(result));
 
 	fill_udp(buf, len, NULL);
-	ptpd_netif_sendto(rdate_socket, &addr, buf, len, 0);
+	ptpd_netif_sendto(rdate_socket, &addr, buf, len, 0, 0);
 	return 1;
 }
 
@@ -192,13 +199,13 @@ static int rmupdate_poll(void)
 	int data_size;
 
 	len = ptpd_netif_recvfrom(rmupdate_socket, &addr,
-				  buf, sizeof(buf), NULL);
+				  buf, sizeof(buf), NULL, 0);
 	if (len <= 0)
 		return 0;	
 
 
 	/* check the destination IP */
-	if (check_dest_ip(buf))
+	if (check_dest_ip(buf, 0))
 		return 0;
 	
 	if (check_magic_udp(buf)<0)
@@ -260,7 +267,7 @@ static int rmupdate_poll(void)
 	}
 
 	fill_udp(buf, len, NULL);
-	ptpd_netif_sendto(rdate_socket, &addr, buf, len, 0);
+	ptpd_netif_sendto(rdate_socket, &addr, buf, len, 0, 0);
 	return 1;
 }
 
@@ -268,11 +275,12 @@ static int ipv4_poll(void)
 {
 	int ret = 0;
 
-	if (link_status == LINK_WENT_UP && ip_status == IP_OK_BOOTP)
-		ip_status = IP_TRAINING;
+	if (link_status[0] == LINK_WENT_UP && ip_status[0] == IP_OK_BOOTP)
+		ip_status[0] = IP_TRAINING;
 	ret = bootp_poll();
 
-	ret += icmp_poll();
+	ret += icmp_poll(0);
+	ret += icmp_poll(1);
 
 	ret += rdate_poll();
 
@@ -283,38 +291,38 @@ static int ipv4_poll(void)
 	return ret != 0;
 }
 
-void getIP(unsigned char *IP)
+void getIP(unsigned char *IP, int port)
 {
-	memcpy(IP, myIP, 4);
+	memcpy(IP, myIP[port], 4);
 }
 
 DEFINE_WRC_TASK(ipv4) = {
 	.name = "ipv4",
-	.enable = &link_status,
+	.enable = &link_status[0],
 	.init = ipv4_init,
 	.job = ipv4_poll,
 };
 
-void setIP(unsigned char *IP)
+void setIP(unsigned char *IP, int port)
 {
-	uint8_t tmp[4];
+	// uint8_t tmp[4];
 	// volatile unsigned int *eb_ip =
 	//    (unsigned int *)(BASE_ETHERBONE_CFG + EB_IPV4);
 	// unsigned int ip;
 	// while (*eb_ip != ip)
 	// 	*eb_ip = ip;
 
-	memcpy(myIP, IP, 4);
-    
+	memcpy(myIP[port], IP, 4);
+
 	bootp_retry = 0;
 }
 
 /* Check the destination IP of the incoming packet */
-int check_dest_ip(unsigned char *buf)
+int check_dest_ip(unsigned char *buf, int port)
 {
 	if (!buf)
 		return -1;
-	return memcmp(buf + IP_DEST, myIP, 4);
+	return memcmp(buf + IP_DEST, myIP[port], 4);
 }
 
 /* Check the magic number of the incoming remote update packet */
