@@ -31,9 +31,9 @@
 #define SDB_DEV_INIT	0x77722d69 /* wr-i (nit) */
 #define SDB_DEV_MAC	0x6d61632d /* mac- (address) */
 #define SDB_DEV_SFP 0x7366702d /* sfp- (database) */
-#define SDB_DEV_DP_SFP 0x8366702d /* sfp1- (database) */
+#define SDB_DEV_DP_SFP 0x64702d73 /* dp-s (fp-database) */
 #define SDB_DEV_CALIB 0x63616c69 /* cali (bration) */
-#define SDB_DEV_DP_CALIB 0x73616c69 /* cali (bration) */
+#define SDB_DEV_DP_CALIB 0x64702d63 /* dp-c (alibration) */
 
 /* constants for scanning I2C EEPROMs */
 #define EEPROM_START_ADR 0
@@ -178,7 +178,7 @@ static void storage_sdb_list(struct sdbfs *fs)
 
 	while ((d = sdbfs_scan(fs, new)) != NULL) {
 		d->sdb_component.product.record_type = '\0';
-		pp_printf("file 0x%08x @ %4i, name %s\n",
+		pp_printf("file 0x%08x @ %4x, name %s\n",
 			  (int)(d->sdb_component.product.device_id),
 			  (int)(d->sdb_component.addr_first),
 			  (char *)(d->sdb_component.product.name));

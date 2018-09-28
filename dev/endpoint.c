@@ -72,7 +72,9 @@ void get_mac_addr(uint8_t dev_addr[], int port)
 void ep_init(uint8_t mac_addr[], int port)
 {
 	EP[port] = (volatile struct EP_WB *)BASE_EP[port];
+	pp_printf("Port %d address is %x", port, EP[port]);
 	set_mac_addr(mac_addr,port);
+	pp_printf("Port %d address is %x", port, EP[port]);
 	ep_sfp_enable(1,port);
 
 	if (!IS_WR_NODE_SIM){

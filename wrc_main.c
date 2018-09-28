@@ -107,6 +107,7 @@ static void wrc_initialize(void)
 		mac_addr[1][4], mac_addr[1][5]);
 
 	net_rst();
+
 	//Duplicate the configuration for both ports.
 	for (port=0; port<wr_num_ports;port++)
 	{	

@@ -35,7 +35,7 @@
 static int cmd_sfp(const char *args[])
 {
 	int8_t sfpcount[2] = {1,1};
-	int8_t i, temp, ret[2];
+	int8_t i, temp, ret[2]={0,0};
 	int port;
 
 	struct s_sfpinfo sfp;
@@ -45,11 +45,19 @@ static int cmd_sfp(const char *args[])
 		return -EINVAL;
 	}
 	if (!strcasecmp(args[0], "erase")) {
-		if (storage_sfpdb_erase(0) == EE_RET_I2CERR) {
-			pp_printf("Could not erase DB\n");
-			return -EIO;
+		if (args[1])
+			port = atoi(args[1]);
+		else
+			port = 0;
+		
+		if (port > 1) return -EINVAL;
+		
+		if (storage_sfpdb_erase(port) == EE_RET_I2CERR) {
+			pp_printf("Port %d Could not erase DB\n", port);
+			ret[port] = -EIO;
 		}
-		return 0;
+		return (ret[0]||ret[1]);
+
 	} else if (args[4] && !strcasecmp(args[0], "add")) {
 		temp = strnlen(args[1], SFP_PN_LEN);
 		for (i = 0; i < temp; ++i)
@@ -64,6 +72,9 @@ static int cmd_sfp(const char *args[])
 			sfp.port = atoi(args[5]);
 		else
 			sfp.port = 0;
+
+		if (sfp.port > 1) return -EINVAL;
+
 		temp = storage_get_sfp(&sfp, SFP_ADD, 0, sfp.port);
 		if (temp == EE_RET_DBFULL) {
 			pp_printf("SFP DB is full\n");
@@ -119,6 +130,9 @@ static int cmd_sfp(const char *args[])
 			sfp.port = atoi(args[2]);
 		else
 			sfp.port = 0;
+
+		if (sfp.port > 1) return -EINVAL;
+
 		ep_sfp_enable(atoi(args[1]), sfp.port);
 		return 0;
 	} else {

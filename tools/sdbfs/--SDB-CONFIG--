@@ -28,3 +28,11 @@ sfp-database
 calibration
 	write = 1
 	maxsize = 128
+
+dp-sfp-database
+	write = 1
+	maxsize = 128
+
+dp-calibration
+	write = 1
+	maxsize = 128

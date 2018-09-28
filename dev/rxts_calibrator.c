@@ -220,7 +220,7 @@ static int calib_t24p_master(uint32_t *value, int port)
 
 	rv = storage_phtrans(value, 0, port);
 	if(rv < 0) {
-		pp_printf("Error %d while reading t24p from storage\n", rv);
+		pp_printf("port %d Error %d while reading t24p from storage\n", port, rv);
 		return rv;
 	}
 	pp_printf("port %d t24p read from storage: %d ps\n", port,*value);

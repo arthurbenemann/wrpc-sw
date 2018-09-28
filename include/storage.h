@@ -89,7 +89,7 @@ extern struct storage_config storage_cfg;
 #define MEM_FLASH     0
 #define MEM_EEPROM    1
 #define MEM_1W_EEPROM 2
-#define SDBFS_REC 5
+#define SDBFS_REC 7
 
 int storage_read_hdl_cfg(void);
 

@@ -1,11 +1,11 @@
 EB    ?= no
-SDBFS ?= ../../fpga-config-space/sdbfs/userspace/
+SDBFS ?= ./sdbfs-tools
 
 CFLAGS = -Wall -ggdb -I../include -I../liblinux -I../liblinux/extest
 CFLAGS += -D__GIT_VER__="\"$(GIT_VER)\"" -D__GIT_USR__="\"$(GIT_USR)\""
 LDFLAGS = -lutil -L../liblinux -ldevmap -L../liblinux/extest -lextest
 LDFLAGS += -lreadline
-ALL    = genraminit genramvhd genrammif
+ALL    = genraminit genramvhd genrammif gensdbfs
 ALL   += wrpc-w1-read wrpc-w1-write
 ALL   += pfilter-builder
 ALL   += wrpc-dump mapper
@@ -18,6 +18,8 @@ ALL += eb-w1-write
 endif
 ifneq ($(SDBFS),no)
 ALL += sdb-wrpc.bin
+ALL += sdb-wrpc-flash.bin
+ALL += sdb-wrpc-standalone.bin
 endif
 
 AS		= as
@@ -47,6 +49,12 @@ eb-w1-write: eb-w1-write.c ../dev/w1.c ../dev/w1-eeprom.c eb-w1.c
 sdb-wrpc.bin: sdbfs
 	$(SDBFS)/gensdbfs $< $@
 
+sdb-wrpc-flash.bin: sdbfs-flash
+	$(SDBFS)/gensdbfs -b 65536 $< $@
+
+sdb-wrpc-standalone.bin : sdb-wrpc-flash.bin
+	cut -b 3014657- $< > $@
+
 wrpc-dump: wrpc-dump.c dump-info-host.o
 	$(CC) $(CFLAGS) -I../ppsi/include -I../ppsi/arch-wrpc/include -I.. \
 	-I ../softpll \
@@ -73,6 +81,10 @@ dump-info-host.o: ../dump-info.o
 
 ../dump-info.o: ../dump-info.c
 	$(MAKE) -C .. dump-info.o
+
+gensdbfs:
+	$(MAKE) -C $(SDBFS)
+
 clean:
 	rm -f $(ALL) *.o *~ dump-info-host.bin
 

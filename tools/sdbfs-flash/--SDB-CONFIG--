@@ -3,7 +3,7 @@
 # FLASH. That is why our default position for various parameters is right after
 # the bitstream.
 .
-	position = 1507328
+	position = 0x2e0000
 
 # Allocation granularity is 64 bytes
 # We start with bitstream file at position 0, later the same set of files as for
@@ -12,7 +12,7 @@
 bitstream
   write = 1
   position = 0
-  maxsize = 1507328
+  maxsize = 0x2e0000
 
 mac-address
 	write = 1
@@ -22,11 +22,19 @@ wr-init
 	write = 1
 	maxsize = 256
 
-# each sfp takes 29 bytes, 4 of them fit in 128 bytes
+# each sfp takes 29 bytes, 8 of them fit in 256 bytes
 sfp-database
+	write = 1
+	maxsize = 256
+
+calibration
 	write = 1
 	maxsize = 128
 
-calibration
+dp-sfp-database
+	write = 1
+	maxsize = 256
+
+dp-calibration
 	write = 1
 	maxsize = 128
