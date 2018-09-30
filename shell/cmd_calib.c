@@ -22,29 +22,39 @@
 
 static int cmd_calibration(const char *args[])
 {
-	uint32_t trans;
-	int port=0;
+	uint32_t trans[wr_num_ports];
+	int port = 0;
+	int ret=0;
 
 	if (args[0] && !strcasecmp(args[0], "force")) {
-		if (measure_t24p(&trans, port) < 0)
-			return -1;
-		return storage_phtrans(&trans, 1, port);
-	} else if (!args[0]) {
-		if (storage_phtrans(&trans, 0, port) > 0) {
-			pp_printf("Port %d Found phase transition in EEPROM: %dps\n",
-				port, trans);
-			cal_phase_transition[port] = trans;
-			return 0;
-		} else {
+		for (port = 0; port < wr_num_ports; port++) {
 			pp_printf("Port %d Measuring t2/t4 phase transition...\n", port);
-			if (measure_t24p(&trans, port) < 0)
-				return -1;
-			cal_phase_transition[port] = trans;
-			return storage_phtrans(&trans, 1, port);
+			if (measure_t24p(&trans[port], port) < 0)
+				ret = -1;
+			else
+			{
+				ret = storage_phtrans(&trans[port], 1, port);
+			}
+		}
+		return ret;
+	} else if (!args[0]) {
+		for (port = 0; port < wr_num_ports; port++) {
+			if (storage_phtrans(&trans[port], 0, port) > 0) {
+				pp_printf("Port %d Found phase transition in EEPROM: %dps\n",
+					port, trans[port]);
+				cal_phase_transition[port] = trans[port];
+			} else {
+				pp_printf("Port %d Measuring t2/t4 phase transition...\n", port);
+				if (measure_t24p(&trans[port], port) < 0)
+					ret =-1;		
+				else {
+					cal_phase_transition[port] = trans[port];
+					ret = storage_phtrans(&trans[port], 1, port);
+				}
+			}
 		}
 	}
-
-	return 0;
+	return ret;
 }
 
 DEFINE_WRC_COMMAND(calibration) = {

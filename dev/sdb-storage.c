@@ -606,6 +606,7 @@ int storage_phtrans(uint32_t *valp, uint8_t write, int port)
 	if (sdbfs_open_id(&wrc_sdb, SDB_VENDOR, sdb_dev_addr) < 0)
 		return -1;
 	if (write) {
+		pp_printf("Port %d Updating t2/t4 phase transition...\n", port);
 		sdbfs_ferase(&wrc_sdb, 0, wrc_sdb.f_len);
 		value = *valp | VALIDITY_BIT;
 		if (sdbfs_fwrite(&wrc_sdb, 0, &value, sizeof(value))

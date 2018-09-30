@@ -115,8 +115,8 @@ static int lookup_transition(struct trans_detect_state *state, int flip_bit,
 	return 0;
 }
 
-static struct trans_detect_state det_rising, det_falling;
-static int cal_cur_phase;
+static struct trans_detect_state det_rising[wr_num_ports], det_falling[wr_num_ports];
+static int cal_cur_phase[wr_num_ports];
 
 /* Starts RX timestamper calibration process state machine. Invoked by
    ptpnetif's check lock function when the PLL has already locked, to avoid
@@ -124,13 +124,13 @@ static int cal_cur_phase;
 
 void rxts_calibration_start(uint8_t port)
 {
-	cal_cur_phase = 0;
-	det_rising.prev_val = det_falling.prev_val = -1;
-	det_rising.state = det_falling.state = TD_WAIT_INACTIVE;
-	det_rising.sample_count = 0;
-	det_falling.sample_count = 0;
-	det_rising.trans_phase = 0;
-	det_falling.trans_phase = 0;
+	cal_cur_phase[port] = 0;
+	det_rising[port].prev_val = det_falling[port].prev_val = -1;
+	det_rising[port].state = det_falling[port].state = TD_WAIT_INACTIVE;
+	det_rising[port].sample_count = 0;
+	det_falling[port].sample_count = 0;
+	det_rising[port].trans_phase = 0;
+	det_falling[port].trans_phase = 0;
 	spll_set_phase_shift(0, 0);
 }
 
@@ -148,28 +148,28 @@ int rxts_calibration_update(uint32_t *t24p_value, int port)
 	int flip = ep_timestamper_cal_pulse(port);
 
 	/* look for transitions (with deglitching) */
-	lookup_transition(&det_rising, flip, cal_cur_phase, 1);
-	lookup_transition(&det_falling, flip, cal_cur_phase, 0);
+	lookup_transition(&det_rising[port], flip, cal_cur_phase[port], 1);
+	lookup_transition(&det_falling[port], flip, cal_cur_phase[port], 0);
 
-	if (cal_cur_phase >= CAL_SCAN_RANGE) {
-		if (det_rising.state != TD_DONE || det_falling.state != TD_DONE) 
+	if (cal_cur_phase[port] >= CAL_SCAN_RANGE) {
+		if (det_rising[port].state != TD_DONE || det_falling[port].state != TD_DONE) 
 		{
 			wrc_verbose("RXTS calibration error.\n");
 			return -1;
 		}
 
 		/* normalize */
-		while (det_falling.trans_phase >= REF_CLOCK_PERIOD_PS)
-			det_falling.trans_phase -= REF_CLOCK_PERIOD_PS;
-		while (det_rising.trans_phase >= REF_CLOCK_PERIOD_PS)
-			det_rising.trans_phase -= REF_CLOCK_PERIOD_PS;
+		while (det_falling[port].trans_phase >= REF_CLOCK_PERIOD_PS)
+			det_falling[port].trans_phase -= REF_CLOCK_PERIOD_PS;
+		while (det_rising[port].trans_phase >= REF_CLOCK_PERIOD_PS)
+			det_rising[port].trans_phase -= REF_CLOCK_PERIOD_PS;
 
 		/* Use falling edge as second sample of rising edge */
-		if (det_falling.trans_phase > det_rising.trans_phase)
-			ttrans = det_falling.trans_phase - REF_CLOCK_PERIOD_PS/2;
-		else if(det_falling.trans_phase < det_rising.trans_phase)
-			ttrans = det_falling.trans_phase + REF_CLOCK_PERIOD_PS/2;
-		ttrans += det_rising.trans_phase;
+		if (det_falling[port].trans_phase > det_rising[port].trans_phase)
+			ttrans = det_falling[port].trans_phase - REF_CLOCK_PERIOD_PS/2;
+		else if(det_falling[port].trans_phase < det_rising[port].trans_phase)
+			ttrans = det_falling[port].trans_phase + REF_CLOCK_PERIOD_PS/2;
+		ttrans += det_rising[port].trans_phase;
 		ttrans /= 2;
 
 		/*normalize ttrans*/
@@ -178,17 +178,16 @@ int rxts_calibration_update(uint32_t *t24p_value, int port)
 
 
 		wrc_verbose("RXTS calibration: R@%dps, F@%dps, transition@%dps\n",
-			  det_rising.trans_phase, det_falling.trans_phase,
+			  det_rising[port].trans_phase, det_falling[port].trans_phase,
 			  ttrans);
 
 		*t24p_value = (uint32_t)ttrans;
 		return 1;
 	}
 
-	cal_cur_phase += CAL_SCAN_STEP;
+	cal_cur_phase[port] += CAL_SCAN_STEP;
 
-	spll_set_phase_shift(0, cal_cur_phase);
-
+	spll_set_phase_shift(0, cal_cur_phase[port]);
 	return 0;
 }
 
@@ -262,7 +261,7 @@ int calib_t24p(int mode, uint32_t *value, int port)
 {
 	int ret;
 
-	if (mode == WRC_MODE_SLAVE)
+	if ((mode == WRC_MODE_SLAVE) && (port==0))
 		ret = calib_t24p_slave(value, port);
 	else
 		ret = calib_t24p_master(value, port);
