@@ -427,7 +427,7 @@ static int sfp_valid(struct s_sfpinfo *sfp)
 
 static int sfp_entry(struct s_sfpinfo *sfp, uint8_t oper, uint8_t pos, int port)
 {
-	static uint8_t sfpcount = 0;
+	static uint8_t sfpcount[wr_num_ports];
 	struct s_sfpinfo tempsfp;
 	int ret = -1;
 	uint8_t i, chksum = 0;
@@ -448,31 +448,31 @@ static int sfp_entry(struct s_sfpinfo *sfp, uint8_t oper, uint8_t pos, int port)
 	/* Read how many SFPs are in the database, but only in the first
 	 * call */
 	if (!pos) {
-		sfpcount = 0;
-		sdb_offset = sizeof(sfpcount);
+		sfpcount[port] = 0;
+		sdb_offset = sizeof(sfpcount[port]);
 		while (sdbfs_fread(&wrc_sdb, sdb_offset, &tempsfp,
 					sizeof(tempsfp)) == sizeof(tempsfp)) {
 			if (!sfp_valid(&tempsfp))
 				break;
-			sfpcount++;
-			sdb_offset = sizeof(sfpcount) + sfpcount * sizeof(tempsfp);
+			sfpcount[port]++;
+			sdb_offset = sizeof(sfpcount[port]) + sfpcount[port] * sizeof(tempsfp);
 		}
 	}
 
-	if ((oper == SFP_ADD) && (sfpcount == SFPS_MAX)) {
+	if ((oper == SFP_ADD) && (sfpcount[port] == SFPS_MAX)) {
 		/* no more space to add new SFPs */
 		ret = EE_RET_DBFULL;
 		goto out;
 	}
 
-	if (!pos && (oper == SFP_GET) && sfpcount == 0) {
+	if (!pos && (oper == SFP_GET) && sfpcount[port] == 0) {
 		/* no SFPs in the database */
 		ret = 0;
 		goto out;
 	}
 
 	if (oper == SFP_GET) {
-		sdb_offset = sizeof(sfpcount) + pos * sizeof(*sfp);
+		sdb_offset = sizeof(sfpcount[port]) + pos * sizeof(*sfp);
 		if (sdbfs_fread(&wrc_sdb, sdb_offset, sfp, sizeof(*sfp))
 				!= sizeof(*sfp))
 			goto out;
@@ -494,14 +494,15 @@ static int sfp_entry(struct s_sfpinfo *sfp, uint8_t oper, uint8_t pos, int port)
 			chksum = chksum + *(ptr++);
 		sfp->chksum = chksum;
 		/* add SFP at the end of DB */
-		sdb_offset = sizeof(sfpcount) + sfpcount * sizeof(*sfp);
+		sdb_offset = sizeof(sfpcount[port]) + sfpcount[port] * sizeof(*sfp);
+
 		if (sdbfs_fwrite(&wrc_sdb, sdb_offset, sfp, sizeof(*sfp))
 				!= sizeof(*sfp)) {
 			goto out;
 		}
-		sfpcount++;
+		sfpcount[port]++;
 	}
-	ret = sfpcount;
+	ret = sfpcount[port];
 out:
 	sdbfs_close(&wrc_sdb);
 	return ret;

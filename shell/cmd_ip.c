@@ -15,6 +15,29 @@
 #include "softpll_ng.h"
 #include "shell.h"
 
+void print_ip(void)
+{
+	unsigned char ip[wr_num_ports][4];
+	char buf[20];
+	int port;
+
+	for (port = 0; port < wr_num_ports; port++) {
+		getIP(ip[port], port);
+		format_ip(buf, ip[port]);
+		switch (ip_status[port]) {
+		case IP_TRAINING:
+			pp_printf("IP-address: in training\n");
+			break;
+		case IP_OK_BOOTP:
+			pp_printf("IP-address: %s (from bootp)\n", buf);
+			break;
+		case IP_OK_STATIC:
+			pp_printf("IP-address: %s (static assignment)\n", buf);
+			break;
+		}
+	}
+}
+
 void decode_ip(const char *str, unsigned char *ip)
 {
 	int i, x;
@@ -38,32 +61,22 @@ char *format_ip(char *s, const unsigned char *ip)
 static int cmd_ip(const char *args[])
 {
 	unsigned char ip[4];
-	char buf[20];
+	int port;
 
 	if (!args[0] || !strcasecmp(args[0], "get")) {
-		getIP(ip, 0);
-		getIP(ip, 1);
+		print_ip();
 	} else if (!strcasecmp(args[0], "set") && args[1]) {
-		ip_status[0] = IP_OK_STATIC;
+		if (args[2])
+			port = atoi(args[2]);
+		else
+			port = 0;
+		if (port > 1) return -EINVAL;
+		ip_status[port] = IP_OK_STATIC;
 		decode_ip(args[1], ip);
-		setIP(ip, 0);
-		ip[3]=ip[3]+1;
-		setIP(ip, 1);
+		setIP(ip, port);
+		print_ip();
 	} else {
 		return -EINVAL;
-	}
-
-	format_ip(buf, ip);
-	switch (ip_status[0]) {
-	case IP_TRAINING:
-		pp_printf("IP-address: in training\n");
-		break;
-	case IP_OK_BOOTP:
-		pp_printf("IP-address: %s (from bootp)\n", buf);
-		break;
-	case IP_OK_STATIC:
-		pp_printf("IP-address: %s (static assignment)\n", buf);
-		break;
 	}
 	return 0;
 }
