@@ -29,10 +29,9 @@
 
 extern struct pp_servo servo;
 extern struct pp_instance ppi_static[wr_num_ports];
-struct pp_instance *ppi = &ppi_static[0];
 const char *ptp_unknown_str= "unknown";
-
-static void wrc_mon_std_servo(void);
+const char *port_name[] = {"wr0", "wr1"};
+static void wrc_mon_std_servo(struct pp_instance* ppi, int port);
 int wrc_wr_diags(void);
 
 #define PRINT64_FACTOR	1000000000LL
@@ -58,7 +57,7 @@ static char* print64(uint64_t x, int align)
 }
 
 
-static const char* wrc_ptp_state(void)
+static const char* wrc_ptp_state(struct pp_instance *ppi, int port)
 {
 	struct pp_state_table_item *ip = NULL;
 	for (ip = pp_state_table; ip->state != PPS_END_OF_TABLE; ip++) {
@@ -71,13 +70,19 @@ static const char* wrc_ptp_state(void)
 	return ip->name;
 }
 
-static int wrc_mon_status(void)
+static int wrc_mon_status(struct pp_instance *ppi, int port)
 {
 	struct wr_servo_state *s =
 			&((struct wr_data *)ppi->ext_data)->servo_state;
 
 	cprintf(C_BLUE, "\n\nPTP status: ");
-	cprintf(C_WHITE, "%s", wrc_ptp_state());
+	cprintf(C_WHITE, "%s", wrc_ptp_state(ppi, port));
+
+	if (port>=1) {
+		cprintf(C_RED,
+			"\n\nSync info not valid\n");
+		return 0;
+	}
 
 	if ((!s->flags & WR_FLAG_VALID) || (ppi->state != PPS_SLAVE)) {
 		cprintf(C_RED,
@@ -100,20 +105,25 @@ int wrc_mon_gui(void)
 	int aux_stat;
 	uint64_t sec;
 	uint32_t nsec;
-	struct wr_servo_state *s =
-			&((struct wr_data *)ppi->ext_data)->servo_state;
+	struct pp_instance *ppi[wr_num_ports];
+	struct wr_servo_state *s[wr_num_ports];
 	int64_t crtt;
 	int64_t total_asymmetry;
 	char buf[20];
 	int n_out, i;
-
+	int port;
+	
+	for (port = 0; port < wr_num_ports; ++port) {
+		ppi[port] = &(ppi_static[port]);
+		s[port] = &((struct wr_data *)ppi[port]->ext_data)->servo_state;
+	}
 	if (!last_jiffies)
 		last_jiffies = timer_get_tics() - 1 -  wrc_ui_refperiod;
 	if (time_before(timer_get_tics(), last_jiffies + wrc_ui_refperiod)
-		&& last_servo_count == s->update_count)
+		&& last_servo_count == s[port]->update_count)
 		return 0;
 	last_jiffies = timer_get_tics();
-	last_servo_count = s->update_count;
+	last_servo_count = s[port]->update_count;
 
 	term_clear();
 
@@ -125,140 +135,143 @@ int wrc_mon_gui(void)
 	cprintf(C_BLUE, "\n\nTAI Time:                  ");
 	cprintf(C_WHITE, "%s", format_time(sec, TIME_FORMAT_LEGACY));
 
-	/*show_ports */
-	wrpc_get_port_state(&state, NULL);
-	cprintf(C_BLUE, "\n\nLink status:");
+	for (port = 0; port < wr_num_ports; ++port) {
+		wrpc_get_port_state(&state, port_name[port]);
+		cprintf(C_BLUE, "\n\nLink status:");
 
-	cprintf(C_WHITE, "\n%s: ", "wru1");
-	if (state.state)
-		cprintf(C_GREEN, "Link up   ");
-	else
-		cprintf(C_RED,   "Link down ");
+		cprintf(C_WHITE, "\n%s: ", port_name[port]);
+		if (state.state)
+			cprintf(C_GREEN, "Link up   ");
+		else
+			cprintf(C_RED,   "Link down ");
 
-	minic_get_stats(&tx, &rx, 0);
-	cprintf(C_GREY, "(RX: %d, TX: %d)", rx, tx);
+		minic_get_stats(&tx, &rx, port);
+		cprintf(C_GREY, "(RX: %d, TX: %d)", rx, tx);
 
-	if (!state.state) {
-		return 1;
-	}
-
-	if (HAS_IP) {
-		uint8_t ip[4];
-
-		cprintf(C_WHITE, " IPv4: ");
-		getIP(ip, 0);
-		format_ip(buf, ip);
-		switch (ip_status[0]) {
-		case IP_TRAINING:
-			cprintf(C_RED, "BOOTP running");
-			break;
-		case IP_OK_BOOTP:
-			cprintf(C_GREEN, "%s (from bootp)", buf);
-			break;
-		case IP_OK_STATIC:
-			cprintf(C_GREEN, "%s (static assignment)", buf);
-			break;
+		if (!state.state) {
+			continue;
 		}
+
+		if (HAS_IP) {
+			uint8_t ip[4];
+
+			cprintf(C_WHITE, " IPv4: ");
+			getIP(ip, port);
+			format_ip(buf, ip);
+			switch (ip_status[port]) {
+			case IP_TRAINING:
+				cprintf(C_RED, "BOOTP running");
+				break;
+			case IP_OK_BOOTP:
+				cprintf(C_GREEN, "%s (from bootp)", buf);
+				break;
+			case IP_OK_STATIC:
+				cprintf(C_GREEN, "%s (static assignment)", buf);
+				break;
+			}
+		}
+
+		cprintf(C_GREY, "\nMode: ");
+
+		if (!WR_DSPOR(ppi[port])->wrModeOn) {
+			cprintf(C_RED, "WR Off");
+			wrc_mon_std_servo(ppi[port], port);
+			continue;
+		}
+
+		if (port==0)
+		{
+			switch (ptp_mode) {
+			case WRC_MODE_GM:
+			case WRC_MODE_MASTER:
+				cprintf(C_WHITE, "WR Master  ");
+				break;
+			case WRC_MODE_SLAVE:
+				cprintf(C_WHITE, "WR Slave   ");
+				break;
+			default:
+				cprintf(C_RED,   "WR Unknown ");
+			}
+		} else {
+			cprintf(C_WHITE, "WR Master  ");
+		}
+		
+		if (state.locked)
+			cprintf(C_GREEN, "Locked ");
+		else
+			cprintf(C_RED,   "NoLock ");
+		if (state.calib.rx_calibrated && state.calib.tx_calibrated)
+			cprintf(C_GREEN, "Calibrated");
+		else
+			cprintf(C_RED, "Uncalibrated");
+
+		if (wrc_mon_status(ppi[port], port) == 0)
+			continue;
+
+		cprintf(C_GREY, "Servo state:               ");
+		cprintf(C_WHITE, "%s\n", s[port]->servo_state_name);
+		cprintf(C_GREY, "Phase tracking:            ");
+		if (s[port]->tracking_enabled)
+			cprintf(C_GREEN, "ON\n");
+		else
+			cprintf(C_RED, "OFF\n");
+		/* sync source not implemented */
+		/*cprintf(C_GREY, "Synchronization source:    ");
+		cprintf(C_WHITE, "%s\n", cur_servo_state.sync_source);*/
+
+		spll_get_num_channels(NULL, &n_out);
+
+		for(i = 0; i < n_out; i++) {
+			cprintf(C_GREY, "Aux clock %d status:        ", i);
+
+			aux_stat = spll_get_aux_status(i);
+
+			if (aux_stat & SPLL_AUX_ENABLED)
+				cprintf(C_GREEN, "enabled");
+
+			if (aux_stat & SPLL_AUX_LOCKED)
+				cprintf(C_GREEN, ", locked");
+			pp_printf("\n");
+		}
+
+		cprintf(C_BLUE, "\nTiming parameters:\n");
+
+		cprintf(C_GREY, "Round-trip time (mu): ");
+		cprintf(C_WHITE, "%s ps\n", print64(s[port]->picos_mu, 1));
+		cprintf(C_GREY, "Master-slave delay:   ");
+		cprintf(C_WHITE, "%s ps\n", print64(s[port]->delta_ms, 1));
+
+		cprintf(C_GREY, "Master PHY delays:           ");
+		cprintf(C_WHITE, "TX: %9d ps, RX: %9d ps\n",
+			(int32_t) s[port]->delta_tx_m,
+			(int32_t) s[port]->delta_rx_m);
+
+		cprintf(C_GREY, "Slave PHY delays:            ");
+		cprintf(C_WHITE, "TX: %9d ps, RX: %9d ps\n",
+			(int32_t) s[port]->delta_tx_s,
+			(int32_t) s[port]->delta_rx_s);
+		total_asymmetry = s[port]->picos_mu - 2LL * s[port]->delta_ms;
+		cprintf(C_GREY, "Total link asymmetry:");
+		cprintf(C_WHITE, "%21d ps\n", (int32_t) (total_asymmetry));
+
+		crtt = s[port]->picos_mu - s[port]->delta_tx_m - s[port]->delta_rx_m
+			- s[port]->delta_tx_s - s[port]->delta_rx_s;
+		cprintf(C_GREY, "Cable rtt delay:      ");
+		cprintf(C_WHITE, "%s ps\n", print64(crtt, 1));
+
+		cprintf(C_GREY, "Clock offset:");
+		cprintf(C_WHITE, "%29d ps\n", (int32_t) (s[port]->offset));
+
+		cprintf(C_GREY, "Phase setpoint:");
+		cprintf(C_WHITE, "%27d ps\n", (s[port]->cur_setpoint));
+
+		cprintf(C_GREY, "Skew:     ");
+		/* precision is limited to 32 */
+		cprintf(C_WHITE, "%32d ps\n", (int32_t) (s[port]->skew));
+
+		cprintf(C_GREY, "Update counter:");
+		cprintf(C_WHITE, "%27d\n", (int32_t) (s[port]->update_count));
 	}
-
-	cprintf(C_GREY, "\nMode: ");
-
-	if (!WR_DSPOR(ppi)->wrModeOn) {
-		cprintf(C_RED, "WR Off");
-		wrc_mon_std_servo();
-		return 1;
-	}
-
-	switch (ptp_mode) {
-	case WRC_MODE_GM:
-	case WRC_MODE_MASTER:
-		cprintf(C_WHITE, "WR Master  ");
-		break;
-	case WRC_MODE_SLAVE:
-		cprintf(C_WHITE, "WR Slave   ");
-		break;
-	default:
-		cprintf(C_RED,   "WR Unknown ");
-	}
-
-	if (state.locked)
-		cprintf(C_GREEN, "Locked ");
-	else
-		cprintf(C_RED,   "NoLock ");
-	if (state.calib.rx_calibrated && state.calib.tx_calibrated)
-		cprintf(C_GREEN, "Calibrated");
-	else
-		cprintf(C_RED, "Uncalibrated");
-
-
-	if (wrc_mon_status() == 0)
-		return 1;
-
-	cprintf(C_GREY, "Servo state:               ");
-	cprintf(C_WHITE, "%s\n", s->servo_state_name);
-	cprintf(C_GREY, "Phase tracking:            ");
-	if (s->tracking_enabled)
-		cprintf(C_GREEN, "ON\n");
-	else
-		cprintf(C_RED, "OFF\n");
-	/* sync source not implemented */
-	/*cprintf(C_GREY, "Synchronization source:    ");
-	cprintf(C_WHITE, "%s\n", cur_servo_state.sync_source);*/
-
-	spll_get_num_channels(NULL, &n_out);
-
-	for(i = 0; i < n_out; i++) {
-		cprintf(C_GREY, "Aux clock %d status:        ", i);
-
-		aux_stat = spll_get_aux_status(i);
-
-		if (aux_stat & SPLL_AUX_ENABLED)
-			cprintf(C_GREEN, "enabled");
-
-		if (aux_stat & SPLL_AUX_LOCKED)
-			cprintf(C_GREEN, ", locked");
-		pp_printf("\n");
-
-	}
-
-	cprintf(C_BLUE, "\nTiming parameters:\n");
-
-	cprintf(C_GREY, "Round-trip time (mu): ");
-	cprintf(C_WHITE, "%s ps\n", print64(s->picos_mu, 1));
-	cprintf(C_GREY, "Master-slave delay:   ");
-	cprintf(C_WHITE, "%s ps\n", print64(s->delta_ms, 1));
-
-	cprintf(C_GREY, "Master PHY delays:           ");
-	cprintf(C_WHITE, "TX: %9d ps, RX: %9d ps\n",
-		(int32_t) s->delta_tx_m,
-		(int32_t) s->delta_rx_m);
-
-	cprintf(C_GREY, "Slave PHY delays:            ");
-	cprintf(C_WHITE, "TX: %9d ps, RX: %9d ps\n",
-		(int32_t) s->delta_tx_s,
-		(int32_t) s->delta_rx_s);
-	total_asymmetry = s->picos_mu - 2LL * s->delta_ms;
-	cprintf(C_GREY, "Total link asymmetry:");
-	cprintf(C_WHITE, "%21d ps\n", (int32_t) (total_asymmetry));
-
-	crtt = s->picos_mu - s->delta_tx_m - s->delta_rx_m
-		- s->delta_tx_s - s->delta_rx_s;
-	cprintf(C_GREY, "Cable rtt delay:      ");
-	cprintf(C_WHITE, "%s ps\n", print64(crtt, 1));
-
-	cprintf(C_GREY, "Clock offset:");
-	cprintf(C_WHITE, "%29d ps\n", (int32_t) (s->offset));
-
-	cprintf(C_GREY, "Phase setpoint:");
-	cprintf(C_WHITE, "%27d ps\n", (s->cur_setpoint));
-
-	cprintf(C_GREY, "Skew:     ");
-	/* precision is limited to 32 */
-	cprintf(C_WHITE, "%32d ps\n", (int32_t) (s->skew));
-
-	cprintf(C_GREY, "Update counter:");
-	cprintf(C_WHITE, "%27d\n", (int32_t) (s->update_count));
-
 	return 1;
 }
 
@@ -278,9 +291,9 @@ static inline void cprintf_time(int color, struct pp_time *time)
 	}
 }
 
-static void wrc_mon_std_servo(void)
+static void wrc_mon_std_servo(struct pp_instance *ppi, int port)
 {
-	if (wrc_mon_status() == 0)
+	if (wrc_mon_status(ppi, port) == 0)
 		return;
 
 	cprintf(C_GREY, "\nClock offset:                 ");
@@ -311,11 +324,18 @@ static int wrc_log_stats(void)
 	int aux_stat;
 	uint64_t sec;
 	uint32_t nsec;
-	struct wr_servo_state *s =
-			&((struct wr_data *)ppi->ext_data)->servo_state;
+	struct pp_instance *ppi[wr_num_ports];
+	struct wr_servo_state *s[wr_num_ports];
 	static uint32_t last_jiffies;
 	int n_out;
 	int i;
+	int port;
+
+	for (port = 0; port < wr_num_ports; ++port) {
+		ppi[port] = &(ppi_static[port]);
+		s[port] = &((struct wr_data *)ppi[port]->ext_data)->servo_state;
+	}
+	port=0;
 
 	if (!wrc_stat_running)
 		return 0;
@@ -323,24 +343,24 @@ static int wrc_log_stats(void)
 	if (!last_jiffies)
 		last_jiffies = timer_get_tics() - 1 -  wrc_ui_refperiod;
 	/* stats update condition for Slave mode */
-	if (wrc_stats_last == s->update_count && ptp_mode==WRC_MODE_SLAVE)
+	if (wrc_stats_last == s[port]->update_count && ptp_mode==WRC_MODE_SLAVE)
 		return 0;
 	/* stats update condition for Master mode */
 	if (time_before(timer_get_tics(), last_jiffies + wrc_ui_refperiod) &&
 			ptp_mode != WRC_MODE_SLAVE)
 		return 0;
 	last_jiffies = timer_get_tics();
-	wrc_stats_last = s->update_count;
+	wrc_stats_last = s[port]->update_count;
 
 	shw_pps_gen_get_time(&sec, &nsec);
-	wrpc_get_port_state(&state, NULL);
-	minic_get_stats(&tx, &rx, 0);
+	wrpc_get_port_state(&state, port_name[port]);
+	minic_get_stats(&tx, &rx, port);
 	pp_printf("lnk:%d rx:%d tx:%d ", state.state, rx, tx);
 	pp_printf("lock:%d ", state.locked ? 1 : 0);
-	pp_printf("ptp:%s ", wrc_ptp_state());
+	pp_printf("ptp:%s ", wrc_ptp_state(ppi[port], port));
 	if(ptp_mode == WRC_MODE_SLAVE) {
-		pp_printf("sv:%d ", (s->flags & WR_FLAG_VALID) ? 1 : 0);
-		pp_printf("ss:'%s' ", s->servo_state_name);
+		pp_printf("sv:%d ", (s[port]->flags & WR_FLAG_VALID) ? 1 : 0);
+		pp_printf("ss:'%s' ", s[port]->servo_state_name);
 	}
 
 	spll_get_num_channels(NULL, &n_out);
@@ -353,23 +373,23 @@ static int wrc_log_stats(void)
 	/* fixme: clock is not always 125 MHz */
 	pp_printf("sec:%d nsec:%d ", (uint32_t) sec, nsec);
 	if(ptp_mode == WRC_MODE_SLAVE) {
-		pp_printf("mu:%s ", print64(s->picos_mu, 0));
-		pp_printf("dms:%s ", print64(s->delta_ms, 0));
-		pp_printf("dtxm:%d drxm:%d ", (int32_t) s->delta_tx_m,
-			(int32_t) s->delta_rx_m);
-		pp_printf("dtxs:%d drxs:%d ", (int32_t) s->delta_tx_s,
-			(int32_t) s->delta_rx_s);
-		int64_t total_asymmetry = s->picos_mu -
-				  2LL * s->delta_ms;
+		pp_printf("mu:%s ", print64(s[port]->picos_mu, 0));
+		pp_printf("dms:%s ", print64(s[port]->delta_ms, 0));
+		pp_printf("dtxm:%d drxm:%d ", (int32_t) s[port]->delta_tx_m,
+			(int32_t) s[port]->delta_rx_m);
+		pp_printf("dtxs:%d drxs:%d ", (int32_t) s[port]->delta_tx_s,
+			(int32_t) s[port]->delta_rx_s);
+		int64_t total_asymmetry = s[port]->picos_mu -
+				  2LL * s[port]->delta_ms;
 		pp_printf("asym:%d ", (int32_t) (total_asymmetry));
-		pp_printf("crtt:%s ", print64(s->picos_mu -
-					s->delta_tx_m -
-					s->delta_rx_m -
-					s->delta_tx_s -
-					s->delta_rx_s, 0));
-		pp_printf("cko:%d ", (int32_t) (s->offset));
-		pp_printf("setp:%d ", (int32_t) (s->cur_setpoint));
-		pp_printf("ucnt:%d ", (int32_t) s->update_count);
+		pp_printf("crtt:%s ", print64(s[port]->picos_mu -
+					s[port]->delta_tx_m -
+					s[port]->delta_rx_m -
+					s[port]->delta_tx_s -
+					s[port]->delta_rx_s, 0));
+		pp_printf("cko:%d ", (int32_t) (s[port]->offset));
+		pp_printf("setp:%d ", (int32_t) (s[port]->cur_setpoint));
+		pp_printf("ucnt:%d ", (int32_t) s[port]->update_count);
 	}
 	pp_printf("hd:%d md:%d ad:%d ", spll_get_dac(-1), spll_get_dac(0),
 		spll_get_dac(1));
@@ -382,8 +402,15 @@ static int wrc_log_stats(void)
 			  (int)((temp & 0xffff) * 10 * 1000 >> 16));
 	}
 
-	pp_printf("\n");
 
+	// port 1
+	port=1;
+	wrpc_get_port_state(&state, "wr1");
+	minic_get_stats(&tx, &rx, port);
+	pp_printf("p1 lnk:%d rx:%d tx:%d ", state.state, rx, tx);
+	pp_printf("p1 lock:%d ", state.locked ? 1 : 0);
+	pp_printf("p1 ptp:%s ", wrc_ptp_state(ppi[port], port));
+	pp_printf("\n");
 	return 1;
 }
 
@@ -394,6 +421,7 @@ DEFINE_WRC_TASK(stats) = {
 
 int wrc_wr_diags(void)
 {
+	struct pp_instance *ppi[wr_num_ports];
 	struct hal_port_state ps;
 	static uint32_t last_jiffies;
 	int tx, rx;
@@ -402,6 +430,12 @@ int wrc_wr_diags(void)
 	int n_out;
 	uint32_t aux_stat=0;
 	int temp=0, valid=0, snapshot=0,i;
+	int port=0;
+
+	for (port = 0; port < wr_num_ports; ++port) {
+		ppi[port] = &(ppi_static[port]);
+	}
+	port=0;
 
 	valid    = wdiag_get_valid();
 	snapshot = wdiag_get_snapshot();
@@ -423,7 +457,7 @@ int wrc_wr_diags(void)
 	wdiag_set_valid(0);
 	
 	/* frame statistics */
-	minic_get_stats(&tx, &rx, 0);
+	minic_get_stats(&tx, &rx, port);
 	wdiags_write_cnts(tx,rx);
 
 	/* local time */
@@ -431,7 +465,7 @@ int wrc_wr_diags(void)
 	wdiags_write_time(sec, nsec);
 	
 	/* port state (from hal) */
-	wrpc_get_port_state(&ps, NULL);
+	wrpc_get_port_state(&ps, port_name[port]);
 	wdiags_write_port_state((ps.state  ? 1 : 0), (ps.locked ? 1 : 0));
 
 	/* port PTP State (from ppsi)
@@ -457,15 +491,14 @@ int wrc_wr_diags(void)
 	106: WRS_RESP_CALIB_REQ
 	107: WRS_WR_LINK_ON
 	*/
-	wdiags_write_ptp_state((uint8_t )ppi->state);
+	wdiags_write_ptp_state((uint8_t )ppi[port]->state);
 
 	/* servo state (if slave)s */
 	if(ptp_mode == WRC_MODE_SLAVE){
-		struct wr_servo_state *ss =
-			&((struct wr_data *)ppi->ext_data)->servo_state;
-		int32_t asym   = (int32_t)(ss->picos_mu-2LL * ss->delta_ms);
-		int wr_mode    = (ss->flags & WR_FLAG_VALID) ? 1 : 0;
-		int servostate =  ss->state;
+		struct wr_servo_state *ss[wr_num_ports];
+		int32_t asym[wr_num_ports];
+		int wr_mode[wr_num_ports];
+		int servostate[wr_num_ports];
 		/* see ppsi/proto-ext-whiterabbit/wr-constants.c:
 		0: WR_UNINITIALIZED = 0,
 		1: WR_SYNC_NSEC,
@@ -474,9 +507,13 @@ int wrc_wr_diags(void)
 		4: WR_TRACK_PHASE,
 		5: WR_WAIT_OFFSET_STABLE */
 		
-		wdiags_write_servo_state(wr_mode, servostate, ss->picos_mu,
-					 ss->delta_ms, asym, ss->offset,
-					 ss->cur_setpoint,ss->update_count);
+		ss[port] = &((struct wr_data *)ppi[port]->ext_data)->servo_state;
+		asym[port] = (int32_t)(ss[port]->picos_mu-2LL * ss[port]->delta_ms);
+		wr_mode[port] = (ss[port]->flags & WR_FLAG_VALID) ? 1 : 0;
+		servostate[port] = ss[port]->state;
+		wdiags_write_servo_state(wr_mode[port], servostate[port], ss[port]->picos_mu,
+					 ss[port]->delta_ms, asym[port], ss[port]->offset,
+					 ss[port]->cur_setpoint,ss[port]->update_count);
 	}
 	
 	/* auxiliar channels (if any) */
