@@ -85,12 +85,13 @@ unsigned int ipv4_checksum(unsigned short *buf, int shorts)
 static void ipv4_init(void)
 {
 	struct wr_sockaddr saddr;
+	int port;
 
 	/* Bootp: use UDP engine activated by function arguments  */
-	bootp_socket[0] = ptpd_netif_create_socket(&__static_bootp_socket[0], NULL,
-						PTPD_SOCK_UDP, 68 /* bootpc */, 0);
-	bootp_socket[1] = ptpd_netif_create_socket(&__static_bootp_socket[1], NULL,
-						PTPD_SOCK_UDP, 68 /* bootpc */, 1);
+	for (port=0; port < wr_num_ports; ++port) {
+		bootp_socket[port] = ptpd_netif_create_socket(&__static_bootp_socket[0], NULL,
+							PTPD_SOCK_UDP, 68 /* bootpc */, port);
+	}
 
 	/* time (rdate): UDP */
 	rdate_socket = ptpd_netif_create_socket(&__static_rdate_socket, NULL,
@@ -103,10 +104,10 @@ static void ipv4_init(void)
 	/* ICMP: specify raw (not UDP), with IPV4 ethtype */
 	memset(&saddr, 0, sizeof(saddr));
 	saddr.ethertype = htons(0x0800);
-	icmp_socket[0] = ptpd_netif_create_socket(&__static_icmp_socket[0], &saddr,
-					       PTPD_SOCK_RAW_ETHERNET, 0, 0);
-	icmp_socket[1] = ptpd_netif_create_socket(&__static_icmp_socket[1], &saddr,
-					       PTPD_SOCK_RAW_ETHERNET, 0, 1);
+	for (port=0; port < wr_num_ports; ++port) {
+		icmp_socket[port] = ptpd_netif_create_socket(&__static_icmp_socket[0], &saddr,
+						       PTPD_SOCK_RAW_ETHERNET, 0, port);
+	}
 	syslog_init();
 }
 

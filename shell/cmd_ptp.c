@@ -17,6 +17,10 @@ struct subcmd {
 } subcmd[] = {
 	{"start", wrc_ptp_run, 1},
 	{"stop", wrc_ptp_run, 0},
+#ifdef CONFIG_DUALPORT
+	{"start1", wrc_ptp_run, 3},
+	{"stop1", wrc_ptp_run, 2},
+#endif
 	{"e2e", wrc_ptp_sync_mech, PP_E2E_MECH},
 	{"delay", wrc_ptp_sync_mech, PP_E2E_MECH},
 #ifdef CONFIG_P2P
@@ -31,7 +35,13 @@ struct subcmd {
 #endif
 };
 
+#ifdef CONFIG_DUALPORT
+static char *is_run[] = {"Port 0&1 stopped", "Port 0 running, Port 1 stopped", 
+						 "Port 0 stopped, Port 1 running","Port 0&1 running"};
+#else
 static char *is_run[] = {"stopped", "running"};
+#endif
+
 static char *is_mech[] = {[PP_E2E_MECH] = "e2e", [PP_P2P_MECH] = "p2p"};
 static char *is_mode[] = {[WRC_MODE_GM] = "gm", [WRC_MODE_MASTER] = "master",
 			  [WRC_MODE_SLAVE] = "slave"

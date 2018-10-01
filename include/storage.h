@@ -52,7 +52,7 @@
 #define HAS_GENSDBFS 0
 #endif
 
-extern uint32_t cal_phase_transition[2];
+extern uint32_t cal_phase_transition[wr_num_ports];
 extern uint8_t has_eeprom;
 
 struct s_sfpinfo {

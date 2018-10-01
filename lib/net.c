@@ -66,7 +66,11 @@ struct wrpc_socket *ptpd_netif_create_socket(struct wrpc_socket *sock,
 		    sock, ntohs(bind_addr->ethertype),
 		    udpport, i);
 
-	port_name = (port) ? "wr0" : "wr1";
+	switch(port){
+		case 0: port_name="wr0";break;
+		case 1: port_name="wr1";break;
+		default:port_name="wr0";
+	};
 
 	if (wrpc_get_port_state(&pstate, port_name) < 0)
 		return NULL;

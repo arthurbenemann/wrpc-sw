@@ -80,6 +80,10 @@ void rtipc_action(void);
 extern uint32_t __div64_32(uint64_t *n, uint32_t base);
 
 // CUTE DP
-#define wr_num_ports  2
+#ifdef CONFIG_DUALPORT
+#define wr_num_ports 2
+#else
+#define wr_num_ports 1
+#endif
 
 #endif /* __WRC_H__ */

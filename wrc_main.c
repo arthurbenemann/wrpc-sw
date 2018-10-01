@@ -99,18 +99,15 @@ static void wrc_initialize(void)
 		mac_addr[1][5]=mac_addr[0][5];
 	}
 
-	pp_printf("PORT 0 Local MAC address: %02x:%02x:%02x:%02x:%02x:%02x\n",
-		mac_addr[0][0], mac_addr[0][1], mac_addr[0][2], mac_addr[0][3],
-		mac_addr[0][4], mac_addr[0][5]);
-	pp_printf("PORT 1 Local MAC address: %02x:%02x:%02x:%02x:%02x:%02x\n",
-		mac_addr[1][0], mac_addr[1][1], mac_addr[1][2], mac_addr[1][3],
-		mac_addr[1][4], mac_addr[1][5]);
-
 	net_rst();
 
 	//Duplicate the configuration for both ports.
 	for (port=0; port<wr_num_ports;port++)
 	{	
+
+		pp_printf("PORT %d Local MAC address: %02x:%02x:%02x:%02x:%02x:%02x\n", port,
+			mac_addr[port][0], mac_addr[port][1], mac_addr[port][2], mac_addr[port][3],
+			mac_addr[port][4], mac_addr[port][5]);
 		ep_init(mac_addr[port], port);
 		/* Sleep for 1s to make sure WRS v4.2 always realizes that
 		 * the link is down */
@@ -133,8 +130,9 @@ static void wrc_initialize(void)
 	_endram = ENDRAM_MAGIC;
 
 	wrc_ptp_set_mode(WRC_MODE_SLAVE);
-	wrc_ptp_start(0);
-	wrc_ptp_start(1);
+	for (port=0; port<wr_num_ports;port++) {
+		wrc_ptp_start(port);
+	}
 	shw_pps_gen_get_time(NULL, &prev_nanos_for_profile);
 	/* get tics */
 	prev_ticks_for_profile = timer_get_tics();
@@ -149,50 +147,41 @@ uint8_t link_status[wr_num_ports];
 
 static int wrc_check_link(void)
 {
-	static int prev_state[wr_num_ports] = {-1,-1};
+	static int prev_state[] = {-1,-1};
 	int state[wr_num_ports];
 	int rv = 0;
 	int port;
-	for(port=0; port<wr_num_ports; port++)
+	for(port=0; port<wr_num_ports; port++) {
 		state[port] = ep_link_up(NULL, port);
 
-	if (!prev_state[0] && state[0]) {
-		wrc_verbose("Port 0 Link up.\n");
-		gpio_out(GPIO_LED_LINK, 1);
-		sfp_match(0);
-		wrc_ptp_start(0);
-		link_status[0] = LINK_WENT_UP;
-		rv = 1;
-	} else if (prev_state[0] && !state[0]) {
-		wrc_verbose("Port 0 Link down.\n");
-		gpio_out(GPIO_LED_LINK, 0);
-		link_status[0] = LINK_WENT_DOWN;
-		wrc_ptp_stop(0);
-		rv = 1;
-		/* special case */
-		spll_init(SPLL_MODE_FREE_RUNNING_MASTER, 0, 1);
-		shw_pps_gen_enable_output(0);
-	} else
-		link_status[0] = (state[0] ? LINK_UP : LINK_DOWN);
-	prev_state[0] = state[0];
-	
-
-	if (!prev_state[1] && state[1]) {
-		wrc_verbose("Port 1 Link up.\n");
-		gpio_out(GPIO_DP_LED_LINK, 1);
-		sfp_match(1);
-		wrc_ptp_start(1);
-		link_status[1] = LINK_WENT_UP;
-		rv = 1;
-	} else if (prev_state[1] && !state[1]) {
-		wrc_verbose("Port 1 Link down.\n");
-		gpio_out(GPIO_DP_LED_LINK, 1);
-		link_status[1] = LINK_WENT_DOWN;
-		wrc_ptp_stop(1);
-		rv = 1;
-	} else
-		link_status[1] = (state[1] ? LINK_UP : LINK_DOWN);
-	prev_state[1] = state[1];
+		if (!prev_state[port] && state[port]) {
+			wrc_verbose("Port 0 Link up.\n");
+			if (port==0)
+				gpio_out(GPIO_LED_LINK, 1);
+			else
+				gpio_out(GPIO_DP_LED_LINK, 1);
+			sfp_match(port);
+			wrc_ptp_start(port);
+			link_status[port] = LINK_WENT_UP;
+			rv = 1;
+		} else if (prev_state[port] && !state[port]) {
+			wrc_verbose("Port %d Link down.\n",port);
+			if (port==0)
+				gpio_out(GPIO_LED_LINK, 0);
+			else
+				gpio_out(GPIO_DP_LED_LINK, 0);
+			link_status[port] = LINK_WENT_DOWN;
+			wrc_ptp_stop(port);
+			rv = 1;
+			/* special case */
+			if (port==0) {
+				spll_init(SPLL_MODE_FREE_RUNNING_MASTER, 0, 1);
+				shw_pps_gen_enable_output(0);
+			}
+		} else
+			link_status[port] = (state[port] ? LINK_UP : LINK_DOWN);
+		prev_state[port] = state[port];
+	}
 
 	return rv;
 }
