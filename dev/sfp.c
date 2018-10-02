@@ -19,12 +19,12 @@
 #include "storage.h"
 
 /* Calibration data (from EEPROM if available) */
-int32_t sfp_alpha[2] = {64398396,-64398396}; /* default values if could not read EEPROM */
-int32_t sfp_deltaTx[2] = {0,0};
-int32_t sfp_deltaRx[2] = {0,0};
-int32_t sfp_in_db[2] = {0,0};
+int32_t sfp_alpha[] = {64398396,-64398396}; /* default values if could not read EEPROM */
+int32_t sfp_deltaTx[] = {0,0};
+int32_t sfp_deltaRx[] = {0,0};
+int32_t sfp_in_db[] = {0,0};
 
-char sfp_pn[2][SFP_PN_LEN];
+char sfp_pn[wr_num_ports][SFP_PN_LEN];
 
 int sfp_present(int port)
 {

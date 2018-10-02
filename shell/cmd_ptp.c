@@ -12,15 +12,11 @@
 
 struct subcmd {
 	char *name;
-	int (*fun)(int);
+	int (*fun)(int, int);
 	int arg;
 } subcmd[] = {
 	{"start", wrc_ptp_run, 1},
 	{"stop", wrc_ptp_run, 0},
-#ifdef CONFIG_DUALPORT
-	{"start1", wrc_ptp_run, 3},
-	{"stop1", wrc_ptp_run, 2},
-#endif
 	{"e2e", wrc_ptp_sync_mech, PP_E2E_MECH},
 	{"delay", wrc_ptp_sync_mech, PP_E2E_MECH},
 #ifdef CONFIG_P2P
@@ -35,13 +31,7 @@ struct subcmd {
 #endif
 };
 
-#ifdef CONFIG_DUALPORT
-static char *is_run[] = {"Port 0&1 stopped", "Port 0 running, Port 1 stopped", 
-						 "Port 0 stopped, Port 1 running","Port 0&1 running"};
-#else
 static char *is_run[] = {"stopped", "running"};
-#endif
-
 static char *is_mech[] = {[PP_E2E_MECH] = "e2e", [PP_P2P_MECH] = "p2p"};
 static char *is_mode[] = {[WRC_MODE_GM] = "gm", [WRC_MODE_MASTER] = "master",
 			  [WRC_MODE_SLAVE] = "slave"
@@ -54,20 +44,29 @@ static int cmd_ptp(const char *args[])
 {
 	int i, j, ret;
 	struct subcmd *c;
-
+	int port;
 
 	if (!args[0]) {
-		pp_printf("%s; %s %s\n",
-			  is_run[wrc_ptp_run(-1)],
-			  is_mech[wrc_ptp_sync_mech(-1)],
-			  is_mode[wrc_ptp_get_mode()]);
+		for (port = 0; port < wr_num_ports; ++port)
+		{
+			pp_printf("port %d %s; %s %s\n", port,
+				  is_run[wrc_ptp_run(-1, port)],
+				  is_mech[wrc_ptp_sync_mech(-1, port)],
+				  is_mode[wrc_ptp_get_mode(port)]);
+		}
 		return 0;
 	}
 
 	for (j = 0; args[j]; j++) {
 		for (i = 0, c = subcmd; i < ARRAY_SIZE(subcmd); i++, c++) {
 			if (!strcasecmp(args[j], c->name)) {
-				ret = c->fun(c->arg);
+				if (args[j+1]){
+					port = atoi(args[j+1]);
+					j++;
+				}
+				else
+					port = 0;
+				ret = c->fun(c->arg, port);
 				if (ret < 0)
 					return ret;
 				break;

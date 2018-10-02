@@ -181,7 +181,7 @@ int wrc_mon_gui(void)
 
 		if (port==0)
 		{
-			switch (ptp_mode) {
+			switch (ptp_mode[port]) {
 			case WRC_MODE_GM:
 			case WRC_MODE_MASTER:
 				cprintf(C_WHITE, "WR Master  ");
@@ -343,11 +343,11 @@ static int wrc_log_stats(void)
 	if (!last_jiffies)
 		last_jiffies = timer_get_tics() - 1 -  wrc_ui_refperiod;
 	/* stats update condition for Slave mode */
-	if (wrc_stats_last == s[port]->update_count && ptp_mode==WRC_MODE_SLAVE)
+	if (wrc_stats_last == s[port]->update_count && ptp_mode[port]==WRC_MODE_SLAVE)
 		return 0;
 	/* stats update condition for Master mode */
 	if (time_before(timer_get_tics(), last_jiffies + wrc_ui_refperiod) &&
-			ptp_mode != WRC_MODE_SLAVE)
+			ptp_mode[port] != WRC_MODE_SLAVE)
 		return 0;
 	last_jiffies = timer_get_tics();
 	wrc_stats_last = s[port]->update_count;
@@ -358,7 +358,7 @@ static int wrc_log_stats(void)
 	pp_printf("lnk:%d rx:%d tx:%d ", state.state, rx, tx);
 	pp_printf("lock:%d ", state.locked ? 1 : 0);
 	pp_printf("ptp:%s ", wrc_ptp_state(ppi[port], port));
-	if(ptp_mode == WRC_MODE_SLAVE) {
+	if(ptp_mode[port] == WRC_MODE_SLAVE) {
 		pp_printf("sv:%d ", (s[port]->flags & WR_FLAG_VALID) ? 1 : 0);
 		pp_printf("ss:'%s' ", s[port]->servo_state_name);
 	}
@@ -494,7 +494,7 @@ int wrc_wr_diags(void)
 	wdiags_write_ptp_state((uint8_t )ppi[port]->state);
 
 	/* servo state (if slave)s */
-	if(ptp_mode == WRC_MODE_SLAVE){
+	if(ptp_mode[port] == WRC_MODE_SLAVE){
 		struct wr_servo_state *ss[wr_num_ports];
 		int32_t asym[wr_num_ports];
 		int wr_mode[wr_num_ports];

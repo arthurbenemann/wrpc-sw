@@ -579,7 +579,9 @@ int storage_match_sfp(struct s_sfpinfo *sfp, int port)
 		sfpcount = sfp_entry(&dbsfp, SFP_GET, i, port);
 		if (sfpcount <= 0)
 			return sfpcount;
+
 		if (!strncmp(dbsfp.pn, sfp->pn, 16)) {
+			sfp->port = dbsfp.port;
 			sfp->dTx = dbsfp.dTx;
 			sfp->dRx = dbsfp.dRx;
 			sfp->alpha = dbsfp.alpha;

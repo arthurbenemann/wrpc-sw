@@ -41,7 +41,7 @@ extern int32_t sfp_alpha[2];
 int wrpc_get_port_state(struct hal_port_state *state, const char *port_name)
 {
 	int port = atoi(&port_name[2]);
-	int wrc_mode = wrc_ptp_get_mode();
+	int wrc_mode = wrc_ptp_get_mode(port);
 
 	if(port == 0)
 		if(wrc_mode == WRC_MODE_SLAVE)

@@ -129,7 +129,8 @@ static void wrc_initialize(void)
 	wrc_ui_mode = UI_SHELL_MODE;
 	_endram = ENDRAM_MAGIC;
 
-	wrc_ptp_set_mode(WRC_MODE_SLAVE);
+	wrc_ptp_set_mode(WRC_MODE_MASTER, 1);
+	wrc_ptp_set_mode(WRC_MODE_SLAVE, 0);
 	for (port=0; port<wr_num_ports;port++) {
 		wrc_ptp_start(port);
 	}

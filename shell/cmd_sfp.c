@@ -34,7 +34,7 @@
 
 static int cmd_sfp(const char *args[])
 {
-	int8_t sfpcount[2] = {1,1};
+	int8_t sfpcount[] = {1,1};
 	int8_t i, temp, ret=0;
 	int port;
 
@@ -88,7 +88,7 @@ static int cmd_sfp(const char *args[])
 		pp_printf("Port %d has %d SFPs in DB\n", sfp.port, temp);
 		return 0;
 	} else if (!strcasecmp(args[0], "show")) {
-		for (port = 0; port < 2; ++port) {
+		for (port = 0; port < wr_num_ports; ++port) {
 			for (i = 0; i< sfpcount[port]; ++i) {
 				sfpcount[port] = storage_get_sfp(&sfp, SFP_GET, i, port);
 				if (sfpcount[port] == 0) {
@@ -108,20 +108,32 @@ static int cmd_sfp(const char *args[])
 		}
 		return ret;
 	} else if (!strcasecmp(args[0], "match")) {
-		for (port = 0; port < 2; ++port) {
+		for (port = 0; port < wr_num_ports; ++port) {
+			
 			ret = sfp_match(port);
-			if (ret == -ENODEV)
+			if (ret == -ENODEV) {
 				pp_printf("Port %d No SFP.\n", port);
-			else if (ret == -EIO)
+				continue;
+			} else if (ret == -EIO) {
 				pp_printf("Port %d SFP read error\n", port);
-			else if (ret == -ENXIO)
+				continue;
+			} 
+
+			/* SFP read correctly */
+			for (temp = 0; temp < SFP_PN_LEN; ++temp)
+				pp_printf("%c", sfp_pn[port][temp]);
+			pp_printf("\n");
+
+			if (ret == -ENXIO) {
 				pp_printf("Port %d Could not match to DB\n", port);
-			else {
-				/* match successful */
-				pp_printf("\nPort %d SFP matched, dTx=%d dRx=%d alpha=%d\n",
-					port, sfp_deltaTx[0], sfp_deltaRx[0], sfp_alpha[0]);
+				continue;
 			}
+
+			/* match successful */
+			pp_printf("Port %d SFP matched, dTx=%d dRx=%d alpha=%d\n",
+				port, sfp_deltaTx[0], sfp_deltaRx[0], sfp_alpha[0]);
 		}
+	
 		return ret;
 
 	} else if (args[1] && !strcasecmp(args[0], "ena")) {
