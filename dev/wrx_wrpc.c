@@ -4,12 +4,15 @@
 //#include "ptpd.h"
 //#include "ptpd_exports.h"
 #include "sfp.h"
+#include <ppsi/ppsi.h>
 
 #include <hw/endpoint_regs.h>
 #include <hw/endpoint_mdio.h>
 
 #define WRX_BASE      0x00000700	//!< Base address of WRX 256 bytes mailbox DPRAM (wr-cores: Aux-Master)
 #define WRX_OFFSET		0x00020000	//!< wr-cores: WB_SECONDARY_CON
+
+extern struct pp_instance ppi_static;
 
 
 /* Map structure at memory location */
@@ -50,6 +53,7 @@ void wrxInit(uint8_t mac_addr[], uint16_t autonegotiation)
     printf("SFP part Id: %s", c);
 */
 }
+
 
 // Execute on a regular basis (once per second) in main-loop
 //void wrxUpdate(int linkStatus, PtpPortDS *ptpPortDS)
@@ -100,12 +104,17 @@ void wrxUpdate(int linkStatus)
     else {
         info->status |= WRX_STATUS_AUTONEG_ON;
     }
+*/
+    struct pp_instance * ppi = &ppi_static;
 
-    info->pState = ptpPortDS->portState;
-    info->wState = ptpPortDS->wrPortState;
-    wr_servo_state_t *s = &ptpPortDS->wr_servo;
-    info->sState = s->next_state;
-
+    //info->pState = ptpPortDS->portState;
+    info->pState = ppi->state;
+    //info->wState = ptpPortDS->wrPortState;
+    info->wState = WR_DSPOR(ppi)->wrPortState;
+    //wr_servo_state_t *s = &ptpPortDS->wr_servo;
+    //info->sState = s->next_state;
+    info->sState = ((struct wr_data *)ppi->ext_data)->servo_state.state;
+/*    
     info->sDeltaTX = s->delta_tx_s;
     info->sDeltaRX = s->delta_rx_s;
     info->mDeltaTX = s->delta_tx_m;
