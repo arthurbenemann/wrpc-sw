@@ -27,29 +27,29 @@
 #define ALIGN_STATE_LOCKED 6
 #define ALIGN_STATE_START_MAIN 8
 
-#define ALIGN_SAMPLE_PERIOD 100000
+#define ALIGN_SAMPLE_PERIOD 10000000
 #define ALIGN_TARGET 0
 
 #define EXT_PERIOD_NS 100
 #define EXT_FREQ_HZ 10000000
-#define EXT_PPS_LATENCY_PS 64400 // fixme: make configurable, change for WRSFL
+#define EXT_PPS_LATENCY_PS 13980 // fixme: make configurable, change for WRSFL
 
 void external_init(volatile struct spll_external_state *s, int ext_ref,
 			  int realign_clocks)
 {
-    int idx = spll_n_chan_ref + spll_n_chan_out;
+	int idx = spll_n_chan_ref + spll_n_chan_out;
 
 
-    helper_init(s->helper, idx);
-    mpll_init(s->main, idx, spll_n_chan_ref);
+	helper_init(s->helper, idx);
+	mpll_init(s->main, idx, spll_n_chan_ref);
 
-    s->align_state = ALIGN_STATE_EXT_OFF;
-    s->enabled = 0;
+	s->align_state = ALIGN_STATE_EXT_OFF;
+	s->enabled = 0;
 }
 
 void external_start(struct spll_external_state *s)
 {
-    helper_start(s->helper);
+	helper_start(s->helper);
 
 	SPLL->ECCR = SPLL_ECCR_EXT_EN;
 
@@ -112,7 +112,7 @@ void external_align_fsm(volatile struct spll_external_state *s)
 			SPLL->AL_CR = 2;
 			if(s->helper->ld.locked && s->main->ld.locked) {
 				PPSG->CR = PPSG_CR_CNT_EN | PPSG_CR_PWIDTH_W(10);
-			PPSG->ADJ_NSEC = 3;
+			PPSG->ADJ_NSEC = 5;
 			PPSG->ESCR = PPSG_ESCR_SYNC;
 			s->align_state = ALIGN_STATE_INIT_CSYNC;
 			TRACE_DEV("EXT: DMTD locked.\n");
@@ -139,10 +139,10 @@ void external_align_fsm(volatile struct spll_external_state *s)
 			if(align_sample(1, &v)) {
 				v %= ALIGN_SAMPLE_PERIOD;
 				if(v == 0 || v >= ALIGN_SAMPLE_PERIOD / 2) {
-					s->align_target = EXT_PERIOD_NS;
-					s->align_step = -100;
-				} else if (s > 0) {
 					s->align_target = 0;
+					s->align_step = -100;					
+				} else if (s > 0) {
+					s->align_target = EXT_PERIOD_NS;
 					s->align_step = 100;
 				}
 
@@ -159,7 +159,7 @@ void external_align_fsm(volatile struct spll_external_state *s)
 					mpll_set_phase_shift(s->main, s->align_shift);
 				} else if (v == s->align_target) {
 					s->align_shift += EXT_PPS_LATENCY_PS;
-				mpll_set_phase_shift(s->main, s->align_shift);
+					mpll_set_phase_shift(s->main, s->align_shift);
 					s->align_state = ALIGN_STATE_COMPENSATE_DELAY;
 				}
 			}
