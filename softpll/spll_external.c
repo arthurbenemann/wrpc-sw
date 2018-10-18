@@ -14,7 +14,7 @@
 #include "softpll_ng.h"
 #include "irq.h"
 
-#define ALIGN_SAMPLE_PERIOD 100000
+#define ALIGN_SAMPLE_PERIOD 10000000
 #define ALIGN_TARGET 0
 
 #define EXT_PERIOD_NS 100
@@ -30,16 +30,16 @@ int ext_pps_latency[] = {
 void external_init(volatile struct spll_external_state *s, int ext_ref,
 			  int realign_clocks)
 {
-    int idx = spll_n_chan_ref + spll_n_chan_out;
+	int idx = spll_n_chan_ref + spll_n_chan_out;
 
     if (spll_ljd_present)
       idx++;
 
-    helper_init(s->helper, idx);
-    mpll_init(s->main, idx, spll_n_chan_ref);
+	helper_init(s->helper, idx);
+	mpll_init(s->main, idx, spll_n_chan_ref);
 
-    s->align_state = ALIGN_STATE_EXT_OFF;
-    s->enabled = 0;
+	s->align_state = ALIGN_STATE_EXT_OFF;
+	s->enabled = 0;
 }
 
 void external_start(struct spll_external_state *s)
@@ -163,7 +163,7 @@ int external_align_fsm(volatile struct spll_external_state *s)
 			SPLL->AL_CR = 2;
 			if(s->helper->ld.locked && s->main->locked) {
 				PPSG->CR = PPSG_CR_CNT_EN | PPSG_CR_PWIDTH_W(10);
-				PPSG->ADJ_NSEC = 3;
+				PPSG->ADJ_NSEC = 5;
 				PPSG->ESCR = PPSG_ESCR_SYNC;
 				s->align_state = ALIGN_STATE_INIT_CSYNC;
 				pll_verbose("EXT: DMTD locked.\n");
@@ -195,10 +195,10 @@ int external_align_fsm(volatile struct spll_external_state *s)
 			if(align_sample(1, &v)) {
 				v %= ALIGN_SAMPLE_PERIOD;
 				if(v == 0 || v >= ALIGN_SAMPLE_PERIOD / 2) {
-					s->align_target = EXT_PERIOD_NS;
-					s->align_step = -100;
-				} else if (s > 0) {
 					s->align_target = 0;
+					s->align_step = -100;					
+				} else if (s > 0) {
+					s->align_target = EXT_PERIOD_NS;
 					s->align_step = 100;
 				}
 
