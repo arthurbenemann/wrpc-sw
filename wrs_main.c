@@ -27,8 +27,8 @@ int main(void)
 	uart_init_hw();
 	TRACE("\n");
 	TRACE("WR Switch Real Time Subsystem (c) CERN 2011 - 2014\n");
-	TRACE("Revision: %s, built: %s %s.\n",
-	      build_revision, build_date, build_time);
+	TRACE("Revision: %s, built: %s %s by %s.\n",
+	      build_revision, build_date, build_time, build_by);
 	TRACE("SCB version: %d. %s\n", scb_ver,(scb_ver>=34)?"10 MHz SMC Output.":"" );
 	TRACE("Start counter %d\n", stats.start_cnt);
 	TRACE("--\n");

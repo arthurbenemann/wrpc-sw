@@ -114,7 +114,7 @@ sdb-lib/libsdbfs.a:
 	$(MAKE) -C sdb-lib
 
 $(OUTPUT).elf: $(LDS-y) $(AUTOCONF) gitmodules $(OUTPUT).o config.o
-	$(CC) $(CFLAGS) -D__GIT_VER__="\"$(GIT_VER)\"" -c revision.c
+	$(CC) $(CFLAGS) -D__GIT_VER__="\"$(GIT_VER)\"" -D__GIT_USR__="\"$(GIT_USR)\"" -c revision.c
 	${CC} -o $@ revision.o config.o $(OUTPUT).o $(LDFLAGS)
 	${OBJDUMP} -d $(OUTPUT).elf > $(OUTPUT)_disasm.S
 	$(SIZE) $@

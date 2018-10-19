@@ -12,7 +12,7 @@
 
 #include "spll_external.h"
 #include "spll_debug.h"
-
+#include "softpll_ng.h"
 #include <pp-printf.h>
 #include "trace.h"
 #include "irq.h"
@@ -32,7 +32,7 @@
 
 #define EXT_PERIOD_NS 100
 #define EXT_FREQ_HZ 10000000
-#define EXT_PPS_LATENCY_PS 13980 // fixme: make configurable, change for WRSFL
+//#define EXT_PPS_LATENCY_PS 13980 // fixme: make configurable, change for WRSFL
 
 void external_init(volatile struct spll_external_state *s, int ext_ref,
 			  int realign_clocks)
@@ -158,7 +158,7 @@ void external_align_fsm(volatile struct spll_external_state *s)
 					s->align_shift += s->align_step;
 					mpll_set_phase_shift(s->main, s->align_shift);
 				} else if (v == s->align_target) {
-					s->align_shift += EXT_PPS_LATENCY_PS;
+					s->align_shift += stats.ext_pps_latency_ps;
 					mpll_set_phase_shift(s->main, s->align_shift);
 					s->align_state = ALIGN_STATE_COMPENSATE_DELAY;
 				}

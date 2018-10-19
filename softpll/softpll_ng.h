@@ -130,7 +130,7 @@ int spll_get_dac(int out_channel);
 
 void check_vco_frequencies();
 
-#define SPLL_STATS_VER 2
+#define SPLL_STATS_VER 4
 
 /* info reported through .stat section */
 /* due to endiannes problem strings has to be 4 bytes alligned */
@@ -150,6 +150,9 @@ struct spll_stats {
 	char commit_id[32];
 	char build_date[16];
 	char build_time[16];
+	char build_by[32];
+
+	int ext_pps_latency_ps; // added by hm
 };
 
 /* This only exists in wr-switch, but we should use it always */

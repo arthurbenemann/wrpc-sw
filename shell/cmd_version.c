@@ -14,7 +14,7 @@ static int cmd_ver(const char *args[])
 	int hwram = sysc_get_memsize();
 
 	pp_printf("WR Core build: %s%s\n", build_revision, SUPPORT);
-	pp_printf("Built: %s %s\n", build_date, build_time); /* may be empty */
+	pp_printf("Built: %s %s by %s\n", build_date, build_time, build_by); /* may be empty */
 	pp_printf("Built for %d kB RAM, stack is %d bytes\n",
 		  CONFIG_RAMSIZE / 1024, CONFIG_STACKSIZE);
 	/* hardware reports memory size, with a 16kB granularity */
