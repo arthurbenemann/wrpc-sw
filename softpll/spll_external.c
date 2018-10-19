@@ -215,7 +215,10 @@ int external_align_fsm(volatile struct spll_external_state *s)
 					s->align_shift += s->align_step;
 					mpll_set_phase_shift(s->main, s->align_shift);
 				} else if (v == s->align_target) {
+					/* Constant latency depending on a WRS type */
 					s->align_shift += get_pps_latency(spll_ljd_present);
+					/* Latency tuned by WRS ARM software */
+					s->align_shift += stats->ext_pps_latency_ps;
 					mpll_set_phase_shift(s->main, s->align_shift);
 					s->align_state = ALIGN_STATE_COMPENSATE_DELAY;
 				}
