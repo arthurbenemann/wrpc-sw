@@ -26,7 +26,7 @@
    The bigger, the better precision, but slower rate */
 #define DMTD_AVG_SAMPLES 256
 
-static int autoneg_enabled;
+static int autoneg_enabled[wr_num_ports];
 volatile struct EP_WB *EP[wr_num_ports];
 
 /* functions for accessing PCS (MDIO) registers */
@@ -112,7 +112,7 @@ int ep_enable(int enabled, int autoneg, int port)
 /* Enable TX/RX paths, reset RMON counters */
 	EP[port]->ECR = EP_ECR_TX_EN | EP_ECR_RX_EN | EP_ECR_RST_CNT;
 
-	autoneg_enabled = autoneg;
+	autoneg_enabled[port] = autoneg;
 
 /* Reset the GTP Transceiver - it's important to do the GTP phase alignment every time
    we start up the software, otherwise the calibration RX/TX deltas may not be correct */
@@ -140,7 +140,7 @@ int ep_link_up(uint16_t * lpa,int port)
 	uint16_t flags = MDIO_MSR_LSTATUS;
 	volatile uint16_t msr;
 
-	if (autoneg_enabled)
+	if (autoneg_enabled[port])
 		flags |= MDIO_MSR_ANEGCOMPLETE;
 
 	msr = pcs_read(MDIO_REG_MSR,port);

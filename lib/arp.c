@@ -19,9 +19,9 @@
 static uint8_t __arp_queue[2][128];
 static struct wrpc_socket __static_arp_socket[2] = {
 	{.queue.buff = __arp_queue[0],
-	.queue.size = sizeof(__arp_queue),},
+	.queue.size = sizeof(__arp_queue[0]),},
 	{.queue.buff = __arp_queue[1],
-	.queue.size = sizeof(__arp_queue),},
+	.queue.size = sizeof(__arp_queue[1]),},
 };
 static struct wrpc_socket *arp_socket[2];
 
@@ -108,7 +108,7 @@ static int arp_poll(void)
 					       &addr, buf, sizeof(buf), 0, port)) > 0)
 		{
 			if ((len = process_arp(buf, len, 0)) > 0)
-				ptpd_netif_sendto(arp_socket, &addr, buf, len, 0, port);
+				ptpd_netif_sendto(arp_socket[port], &addr, buf, len, 0, port);
 			ret = 1;
 		}
 	}
@@ -140,7 +140,7 @@ int send_arp(uint8_t * hisIP, int port)
 	getIP(buf + ARP_SPA, port);
 	memset(buf + ARP_THA, 0x00, 6);  /* Broadcast */
 	memcpy(buf + ARP_TPA, hisIP, 4);
-	return (ptpd_netif_sendto(arp_socket, &addr, buf, ARP_END+10, 0, port));
+	return (ptpd_netif_sendto(arp_socket[port], &addr, buf, ARP_END+10, 0, port));
 }
 
 DEFINE_WRC_TASK(arp) = {

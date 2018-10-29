@@ -261,7 +261,7 @@ int calib_t24p(int mode, uint32_t *value, int port)
 {
 	int ret;
 
-	if ((mode == WRC_MODE_SLAVE) && (port==0))
+	if (mode == WRC_MODE_SLAVE)
 		ret = calib_t24p_slave(value, port);
 	else
 		ret = calib_t24p_master(value, port);

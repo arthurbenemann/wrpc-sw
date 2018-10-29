@@ -60,7 +60,7 @@ void pfilter_init_default(int port)
 	uint32_t m, *vini, *vend, *v, *v_vlan = NULL;
 	uint64_t cmd_word;
 	int i;
-	static int inited[2];
+	static int inited;
 	uint32_t latency_ethtype = CONFIG_LATENCY_ETHTYPE;
 
 	/* If vlan, use rule-set 1, else rule-set 0 */
@@ -92,14 +92,14 @@ void pfilter_init_default(int port)
 	 * First time: be extra-careful that the rule-set is ok. But if
 	 * we change MAC address, this is re-called, and v[] is already changed
 	 */
-	if (!inited[port]) {
+	if (!inited) {
 		if (   (((v[2] >> 13) & 0xffff) != 0x1234)
 		    || (((v[4] >> 13) & 0xffff) != 0x5678)
 		    || (((v[6] >> 13) & 0xffff) != 0x9abc)) {
 			pp_printf("pfilter: wrong rule-set, can't apply\n");
 			return;
 		}
-		inited[port]++;
+		inited++;
 	}
 	/*
 	 * Patch the local MAC address in place,

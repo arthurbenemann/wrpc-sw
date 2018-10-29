@@ -40,7 +40,7 @@
   fc = (raw >> 28) & 0xf;
 
 struct wr_minic minic[wr_num_ports];
-int ver_supported;
+int ver_supported[wr_num_ports];
 
 static inline void minic_writel(uint32_t reg, uint32_t data, int port)
 {
@@ -81,10 +81,10 @@ void minic_init(int port)
 	if (MINIC_MCR_VER_R(mcr) != MINIC_HDL_VERSION) {
 		pp_printf("Error: Minic HDL version %d not supported by sw\n",
 				MINIC_MCR_VER_R(mcr));
-		ver_supported = 0;
+		ver_supported[port] = 0;
 		return;
 	}
-	ver_supported = 1;
+	ver_supported[port] = 1;
 
 	/* disable interrupts, driver does polling */
 	minic_writel(MINIC_REG_EIC_IDR, MINIC_EIC_IDR_TX |
@@ -103,7 +103,7 @@ int minic_poll_rx(port)
 {
 	uint32_t mcr;
 
-	if (!ver_supported)
+	if (!ver_supported[port])
 		return 0;
 
 	mcr = minic_readl(MINIC_REG_MCR, port);
@@ -127,7 +127,7 @@ int minic_rx_frame(struct wr_ethhdr *hdr, uint8_t * payload, uint32_t buf_size,
 
 
 	/* check if there is something in the Rx FIFO to be retrieved */
-	if ((minic_readl(MINIC_REG_MCR, port) & MINIC_MCR_RX_EMPTY) || !ver_supported)
+	if ((minic_readl(MINIC_REG_MCR, port) & MINIC_MCR_RX_EMPTY) || !ver_supported[port])
 		return 0;
 
 	hdr_size = 0;
@@ -230,7 +230,7 @@ int minic_tx_frame(struct wr_ethhdr_vlan *hdr, uint8_t *payload, uint32_t size,
 	int i, hsize;
 	uint16_t *ptr;
 
-	if (!ver_supported)
+	if (!ver_supported[port])
 		return 0;
 
 	if (hdr->ethtype == htons(0x8100))
