@@ -1,7 +1,8 @@
 # Tomasz Wlostowski for CERN, 2011,2012
 -include $(CURDIR)/.config
 
-CROSS_COMPILE ?= lm32-elf-
+CROSS_COMPILE ?= /user/twlostow/apps/gcc-lm32/bin/lm32-elf-
+#CROSS_COMPILE ?= lm32-elf-
 
 ifdef CONFIG_HOST_PROCESS
   CROSS_COMPILE =

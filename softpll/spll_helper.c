@@ -23,7 +23,7 @@ void helper_init(struct spll_helper_state *s, int ref_channel)
 
 	/* Phase branch lock detection */
 	s->ld.threshold = 200;
-	s->ld.lock_samples = 10000;
+	s->ld.lock_samples = 1000;
 	s->ld.delock_samples = 100;
 	s->ref_src = ref_channel;
 }

@@ -132,7 +132,8 @@ int diag_write_word(uint32_t adr, uint32_t val)
 
 void net_rst(void)
 {
-	syscon->GPSR |= SYSC_GPSR_NET_RST;
+    pp_printf("sysc gpsr %p\n", &syscon->GPSR);
+//	syscon->GPSR |= SYSC_GPSR_NET_RST;
 }
 
 int wdiag_set_valid(int enable)

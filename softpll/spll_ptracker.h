@@ -14,13 +14,17 @@
 
 /* NOTE: Please increment WRPC_SHMEM_VERSION if you change this structure */
 struct spll_ptracker_state {
-	int enabled, id;
+	int enabled, id, id_ref;
 	int n_avg, acc, avg_count, preserve_sign;
 	int phase_val, ready;
+	int tag_ref;
+	int ref_for_id;
 };
 
 void ptracker_init(struct spll_ptracker_state *s, int id, int num_avgs);
 void ptracker_start(struct spll_ptracker_state *s);
 int ptrackers_update(struct spll_ptracker_state *ptrackers, int tag, int source);
+void ptracker_delta_start(struct spll_ptracker_state *ptrackers, int id_ref, int id_meas);
+
 
 #endif // __SPLL_PTRACKER_H

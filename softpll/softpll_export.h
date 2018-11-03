@@ -29,6 +29,10 @@
 /* Disabled mode: SoftPLL inactive */
 #define SPLL_MODE_DISABLED 4
 
+/* Phasebox mode: a cross-channel phase measurement toy */
+#define SPLL_MODE_PHASEBOX 5
+
+
 #define SEQ_START_EXT 1
 #define SEQ_WAIT_EXT 2
 #define SEQ_START_HELPER 3

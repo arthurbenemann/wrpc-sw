@@ -50,7 +50,7 @@ int board_update(void);
 #endif
 #define BOARD_MAX_CHAN_REF		1
 #define BOARD_MAX_CHAN_AUX		2
-#define BOARD_MAX_PTRACKERS		1
+#define BOARD_MAX_PTRACKERS		10
 
 #ifdef CONFIG_IP
 #define HAS_IP 1

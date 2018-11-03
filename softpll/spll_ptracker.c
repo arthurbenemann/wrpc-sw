@@ -11,8 +11,6 @@
 
 #include "softpll_ng.h"
 
-static int tag_ref = -1;
-
 void ptracker_init(struct spll_ptracker_state *s, int id, int num_avgs)
 {
 	s->id = id;
@@ -21,7 +19,7 @@ void ptracker_init(struct spll_ptracker_state *s, int id, int num_avgs)
 	s->acc = 0;
 	s->avg_count = 0;
 	s->enabled = 0;
-
+	s->ref_for_id = -1;
 }
 
 void ptracker_start(struct spll_ptracker_state *s)
@@ -36,6 +34,25 @@ void ptracker_start(struct spll_ptracker_state *s)
 	spll_enable_tagger(spll_n_chan_ref, 1);
 }
 
+void ptracker_delta_start(struct spll_ptracker_state *ptrackers, int id_ref, int id_meas)
+{
+	struct spll_ptracker_state *pt_ref = &ptrackers[ id_ref ];
+	struct spll_ptracker_state *pt_meas = &ptrackers[ id_meas ];
+
+	pt_ref->ref_for_id = id_meas;
+
+	pt_meas->preserve_sign = 0;
+	pt_meas->enabled = 1;
+	pt_meas->ready = 0;
+	pt_meas->acc = 0;
+	pt_meas->n_avg = 1; //PTRACKER_AVERAGE_SAMPLES;
+	pt_meas->avg_count = 0;
+
+	spll_enable_tagger(id_ref, 1);
+	spll_enable_tagger(id_meas, 1);
+}
+
+
 int ptrackers_update(struct spll_ptracker_state *ptrackers, int tag,
 			   int source)
 {
@@ -44,21 +61,26 @@ int ptrackers_update(struct spll_ptracker_state *ptrackers, int tag,
 														/* 1/4 - 1/2  */   0, 0, 0, 0,
 														/* 1/2 - 3/4  */   0, 0, 0, 0,
 														/* 3/4 - 1   */    (1<<HPLL_N), 0, 0, 0};
-												
-	if(source == spll_n_chan_ref)
-	{
-		tag_ref = tag;
-		return 0;
-	}
-
-
 	register struct spll_ptracker_state *s = ptrackers + source;
+
+	if( s->ref_for_id >= 0 )
+	{
+		ptrackers[s->ref_for_id].tag_ref = tag;
+	}
 
 	if(!s->enabled)
 		return 0;
 
-	register int delta = (tag - tag_ref) & ((1 << HPLL_N) - 1);
+	register int delta = (tag - s->tag_ref) & ((1 << HPLL_N) - 1);
 	register int index = delta >> (HPLL_N - 2);
+
+	if (s->n_avg == 1)
+	{
+		s->ready = 1;
+		s->preserve_sign = index << 2;
+		s->phase_val = delta + adj_tab[ index + s->preserve_sign ];
+		return;
+	}
 
 
 	if (s->avg_count == 0) {
@@ -74,7 +96,7 @@ int ptrackers_update(struct spll_ptracker_state *ptrackers, int tag,
 		s->avg_count ++;
 
 		if (s->avg_count == s->n_avg) {
-			s->phase_val = s->acc / s->n_avg;
+			s->phase_val = delta; //s->acc / s->n_avg;
 			s->ready = 1;
 			s->acc = 0;
 			s->avg_count = 0;

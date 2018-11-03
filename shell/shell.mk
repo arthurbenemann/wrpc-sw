@@ -12,6 +12,7 @@ obj-$(CONFIG_EMBEDDED_NODE) += \
 	shell/cmd_stat.o \
 	shell/cmd_sfp.o \
 	shell/cmd_pll.o \
+	shell/cmd_measure.o \
 	shell/cmd_calib.o \
 	shell/cmd_time.o \
 	shell/cmd_gui.o \

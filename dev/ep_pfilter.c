@@ -54,6 +54,7 @@ static uint32_t swap32(uint32_t v)
 
 void pfilter_init_default(void)
 {
+#if 0
 	struct rule_set *s;
 	uint8_t mac[6];
 	char buf[20];
@@ -178,4 +179,7 @@ void pfilter_init_default(void)
 	v[6] |= 0x9abc << 13;
 
 	EP->PFCR0 = EP_PFCR0_ENABLE;
+#endif
+	EP->PFCR0 = 0;
+
 }
