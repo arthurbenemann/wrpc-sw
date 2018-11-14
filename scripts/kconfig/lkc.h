@@ -34,6 +34,10 @@ extern "C" {
 #define _(text) gettext(text)
 #define N_(text) (text)
 
+#ifndef HAS_
+#define HAS_ "HAS_"
+#endif
+
 #ifndef CONFIG_
 #define CONFIG_ "CONFIG_"
 #endif

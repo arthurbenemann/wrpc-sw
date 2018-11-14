@@ -549,6 +549,8 @@ header_print_symbol(FILE *fp, struct symbol *sym, const char *value, void *arg)
 
 		switch (*value) {
 		case 'n':
+			fprintf(fp, "#define %s%s%s 0\n",
+			    HAS_, sym->name, suffix);
 			break;
 		case 'm':
 			suffix = "_MODULE";
@@ -556,6 +558,8 @@ header_print_symbol(FILE *fp, struct symbol *sym, const char *value, void *arg)
 		default:
 			fprintf(fp, "#define %s%s%s 1\n",
 			    CONFIG_, sym->name, suffix);
+			fprintf(fp, "#define %s%s%s 1\n",
+			    HAS_, sym->name, suffix);
 		}
 		break;
 	}
