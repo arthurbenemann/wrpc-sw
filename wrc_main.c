@@ -160,7 +160,7 @@ static int wrc_check_link(void)
 	if (first_run==0)
 	{
 		for(port=0; port<wr_num_ports; port++) {
-			prev_state[port] = 0;
+			prev_state[port] = -1;
 		}
 		first_run++;
 	} else {
