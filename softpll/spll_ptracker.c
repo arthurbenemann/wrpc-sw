@@ -40,10 +40,10 @@ int ptrackers_update(struct spll_ptracker_state *ptrackers, int tag,
 			   int source)
 {
 	const int adj_tab[16] = { /* psign */ 
-														/* 0   - 1/4   */  0, 0, 0, -(1<<HPLL_N),
-														/* 1/4 - 1/2  */   0, 0, 0, 0,
-														/* 1/2 - 3/4  */   0, 0, 0, 0,
-														/* 3/4 - 1   */    (1<<HPLL_N), 0, 0, 0};
+								/* 0   - 1/4   */  0, 0, 0, -(1<<HPLL_N),
+								/* 1/4 - 1/2  */   0, 0, 0, 0,
+								/* 1/2 - 3/4  */   0, 0, 0, 0,
+								/* 3/4 - 1   */    (1<<HPLL_N), 0, 0, 0};
 												
 	if(source == spll_n_chan_ref)
 	{
