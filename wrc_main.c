@@ -50,11 +50,11 @@ int wrc_vlan_number = CONFIG_VLAN_NR;
 static uint32_t prev_nanos_for_profile;
 static uint32_t prev_ticks_for_profile;
 uint32_t print_task_time_threshold = CONFIG_DEFAULT_PRINT_TASK_TIME_THRESHOLD;
+uint8_t mac_addr[wr_num_ports][6];
 
 static void wrc_initialize(void)
 {
 	int port;
-	uint8_t mac_addr[wr_num_ports][6];
 	sdb_find_devices();
 	uart_init_hw();
 
@@ -153,6 +153,7 @@ static int wrc_check_link(void)
 {
 	static int prev_state[wr_num_ports];
 	static uint8_t first_run=0;
+	uint8_t mac_addr[wr_num_ports][6];
 	int state[wr_num_ports];
 	int rv = 0;
 	int port;
@@ -181,12 +182,22 @@ static int wrc_check_link(void)
 				else gpio_out(GPIO_DP_LED_LINK, 0);
 				link_status[port] = LINK_WENT_DOWN;
 				wrc_ptp_stop(port);
-				rv = 1;
 				/* special case */
 				if (port==0) {
+					net_rst();
+					ep_init(mac_addr[0], 0);
+					ep_init(mac_addr[1], 1);
+					/* Sleep for 1s to make sure WRS v4.2 always realizes that
+					 * the link is down */
+					timer_delay_ms(200);
+					ep_enable(1, 1, 0);
+					ep_enable(1, 1, 1);
+					minic_init(0);
+					minic_init(1);
 					spll_init(SPLL_MODE_FREE_RUNNING_MASTER, 0, 1);
 					shw_pps_gen_enable_output(0);
 				}
+				rv = 1;
 			} else {
 				link_status[port] = (state[port] ? LINK_UP : LINK_DOWN);
 			}
