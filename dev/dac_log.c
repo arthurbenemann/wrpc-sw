@@ -42,7 +42,7 @@ void spll_log_dac(int y)
 static void daclog_init(void)
 {
 	daclog_socket = ptpd_netif_create_socket(&__static_daclog_socket, NULL,
-						 PTPD_SOCK_UDP, 1050);
+						 PTPD_SOCK_UDP, 1050, 0);
 	daclog_addr.sport = daclog_addr.dport = htons(1050);
 }
 

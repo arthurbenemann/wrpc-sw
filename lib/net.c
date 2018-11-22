@@ -496,12 +496,12 @@ static int update_dp_rx_queues(void)
 
 DEFINE_WRC_TASK(net_bh) = {
 	.name = "net-bh",
-	.enable = &link_status[0],
+	.enable = &(link_status[0]),
 	.job = update_rx_queues,
 };
 
 DEFINE_WRC_TASK(dp_net_bh) = {
 	.name = "dp-net-bh",
-	.enable = &link_status[1],
+	.enable = &(link_status[1]),
 	.job = update_dp_rx_queues,
 };

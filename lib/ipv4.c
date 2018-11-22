@@ -89,7 +89,7 @@ static void ipv4_init(void)
 
 	/* Bootp: use UDP engine activated by function arguments  */
 	for (port=0; port < wr_num_ports; ++port) {
-		bootp_socket[port] = ptpd_netif_create_socket(&__static_bootp_socket[0], NULL,
+		bootp_socket[port] = ptpd_netif_create_socket(&__static_bootp_socket[port], NULL,
 							PTPD_SOCK_UDP, 68 /* bootpc */, port);
 	}
 
@@ -105,7 +105,7 @@ static void ipv4_init(void)
 	memset(&saddr, 0, sizeof(saddr));
 	saddr.ethertype = htons(0x0800);
 	for (port=0; port < wr_num_ports; ++port) {
-		icmp_socket[port] = ptpd_netif_create_socket(&__static_icmp_socket[0], &saddr,
+		icmp_socket[port] = ptpd_netif_create_socket(&__static_icmp_socket[port], &saddr,
 						       PTPD_SOCK_RAW_ETHERNET, 0, port);
 	}
 	syslog_init();

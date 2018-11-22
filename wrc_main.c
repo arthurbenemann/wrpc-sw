@@ -174,12 +174,6 @@ static int wrc_check_link(void)
 				sfp_match(port);
 				wrc_ptp_start(port);
 				link_status[port] = LINK_WENT_UP;
-				/* special case */
-				if (port==0)
-				{
-					spll_init(SPLL_MODE_SLAVE, 0, 1);
-					shw_pps_gen_unmask_output(0);
-				}
 				rv = 1;
 			} else if (prev_state[port] && !state[port]) {
 				wrc_verbose("Port %d Link down.\n",port);

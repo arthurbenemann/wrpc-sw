@@ -35,7 +35,7 @@ static void arp_init(void)
 	saddr.ethertype = htons(0x0806);	/* ARP */
 
 	for(port = 0; port<wr_num_ports; ++port)
-		arp_socket[port] = ptpd_netif_create_socket(&__static_arp_socket, &saddr,
+		arp_socket[port] = ptpd_netif_create_socket(&__static_arp_socket[port], &saddr,
 					      PTPD_SOCK_RAW_ETHERNET, 0, port);
 }
 
