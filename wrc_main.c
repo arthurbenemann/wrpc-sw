@@ -102,6 +102,7 @@ static void wrc_initialize(void)
 	//Duplicate the configuration for both ports.
 	for (port=0; port<wr_num_ports;port++)
 	{	
+		minic_rst(port);
 
 		pp_printf("PORT %d Local MAC address: %02x:%02x:%02x:%02x:%02x:%02x\n", port,
 			mac_addr[port][0], mac_addr[port][1], mac_addr[port][2], mac_addr[port][3],
@@ -118,8 +119,7 @@ static void wrc_initialize(void)
 	wrc_ptp_init();
 	/* try reading t24 phase transition from EEPROM */
 	for (port=0; port<wr_num_ports;port++){
-		cal_phase_transition[port] = 2389; // default
-		calib_t24p(WRC_MODE_MASTER, &cal_phase_transition[port],port);
+		cal_phase_transition[port] = 5800; // default
 	}
 
 	spll_very_init();
@@ -153,7 +153,6 @@ static int wrc_check_link(void)
 {
 	static int prev_state[wr_num_ports];
 	static uint8_t first_run=0;
-	uint8_t mac_addr[wr_num_ports][6];
 	int state[wr_num_ports];
 	int rv = 0;
 	int port;
@@ -173,6 +172,7 @@ static int wrc_check_link(void)
 				if (port==0) gpio_out(GPIO_LED_LINK, 1);
 				else gpio_out(GPIO_DP_LED_LINK, 1);
 				sfp_match(port);
+				calib_t24p(WRC_MODE_MASTER, &cal_phase_transition[port],port);
 				wrc_ptp_start(port);
 				link_status[port] = LINK_WENT_UP;
 				rv = 1;
@@ -182,18 +182,13 @@ static int wrc_check_link(void)
 				else gpio_out(GPIO_DP_LED_LINK, 0);
 				link_status[port] = LINK_WENT_DOWN;
 				wrc_ptp_stop(port);
+				minic_rst(port);
+				ep_init(mac_addr[port], port);
+				timer_delay_ms(200);
+				ep_enable(1, 1, port);
+				minic_init(port);
 				/* special case */
 				if (port==0) {
-					net_rst();
-					ep_init(mac_addr[0], 0);
-					ep_init(mac_addr[1], 1);
-					/* Sleep for 1s to make sure WRS v4.2 always realizes that
-					 * the link is down */
-					timer_delay_ms(200);
-					ep_enable(1, 1, 0);
-					ep_enable(1, 1, 1);
-					minic_init(0);
-					minic_init(1);
 					spll_init(SPLL_MODE_FREE_RUNNING_MASTER, 0, 1);
 					shw_pps_gen_enable_output(0);
 				}

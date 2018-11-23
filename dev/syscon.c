@@ -136,6 +136,14 @@ void net_rst(void)
 	syscon->GPSR |= SYSC_GPSR_NET_RST;
 }
 
+void minic_rst(int port)
+{
+	if (port==0)
+		syscon->GPSR |= SYSC_GPSR_MINIC_RST;
+	else
+		syscon->GPSR |= SYSC_GPSR_MINIC_DP_RST;
+}
+
 int wdiag_set_valid(int enable)
 {
 	if (enable)

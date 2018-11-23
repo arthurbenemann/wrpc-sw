@@ -223,6 +223,14 @@ static int calib_t24p_master(uint32_t *value, int port)
 		return rv;
 	}
 	pp_printf("port %d t24p read from storage: %d ps\n", port,*value);
+	if ((*value)>100000)
+	{
+		pp_printf("Port %d Measuring t2/t4 phase transition...\n", port);
+		measure_t24p(value, port);
+		rv=storage_phtrans(value, 1, port);
+		pp_printf("Wrote new t24p value: %d ps (%s)\n", *value,
+			  rv < 0 ? "Failed" : "Success");
+	}
 	return rv;
 }
 

@@ -144,6 +144,7 @@ int diag_read_word(uint32_t adr, int bank, uint32_t *val);
 int diag_write_word(uint32_t adr, uint32_t val);
 
 void net_rst(void);
+void minic_rst(int port);
 
 int wdiag_set_valid(int enable);
 int wdiag_get_valid(void);
