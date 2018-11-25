@@ -183,9 +183,7 @@ static int wrc_check_link(void)
 				link_status[port] = LINK_WENT_DOWN;
 				wrc_ptp_stop(port);
 				minic_rst(port);
-				ep_init(mac_addr[port], port);
-				timer_delay_ms(200);
-				ep_enable(1, 1, port);
+				timer_delay_ms(1);
 				minic_init(port);
 				/* special case */
 				if (port==0) {
