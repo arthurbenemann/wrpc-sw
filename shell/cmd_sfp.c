@@ -131,7 +131,7 @@ static int cmd_sfp(const char *args[])
 
 			/* match successful */
 			pp_printf("Port %d SFP matched, dTx=%d dRx=%d alpha=%d\n",
-				port, sfp_deltaTx[0], sfp_deltaRx[0], sfp_alpha[0]);
+				port, sfp_deltaTx[port], sfp_deltaRx[port], sfp_alpha[port]);
 		}
 	
 		return ret;
