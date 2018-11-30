@@ -188,7 +188,7 @@ static int wrc_check_link(void)
 				/* special case */
 				if (port==0) {
 					spll_init(SPLL_MODE_FREE_RUNNING_MASTER, 0, 1);
-					shw_pps_gen_enable_output(0);
+					shw_pps_gen_enable_output(1);
 				}
 				rv = 1;
 			} else {
