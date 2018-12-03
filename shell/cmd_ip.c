@@ -26,13 +26,13 @@ void print_ip(void)
 		format_ip(buf, ip[port]);
 		switch (ip_status[port]) {
 		case IP_TRAINING:
-			pp_printf("IP-address: in training\n");
+			pp_printf("port %d IP-address: in training\n",port);
 			break;
 		case IP_OK_BOOTP:
-			pp_printf("IP-address: %s (from bootp)\n", buf);
+			pp_printf("port %d IP-address: %s (from bootp)\n", port, buf);
 			break;
 		case IP_OK_STATIC:
-			pp_printf("IP-address: %s (static assignment)\n", buf);
+			pp_printf("port %d IP-address: %s (static assignment)\n", port, buf);
 			break;
 		}
 	}
@@ -74,6 +74,11 @@ static int cmd_ip(const char *args[])
 		ip_status[port] = IP_OK_STATIC;
 		decode_ip(args[1], ip);
 		setIP(ip, port);
+		if (port==0) {
+			ip[3]=ip[3]+1;
+			setIP(ip, 1);
+			ip_status[1] = IP_OK_STATIC;
+		}
 		print_ip();
 	} else {
 		return -EINVAL;

@@ -25,14 +25,12 @@ static uint8_t myIP[2][4];
 const uint8_t magicUDP[4] ={0x62,0x65,0x65,0x66};
 
 /* bootp: bigger buffer, UDP based */
-static uint8_t __bootp_queue[2][512];
-static struct wrpc_socket __static_bootp_socket[2] = {
-	{.queue.buff = __bootp_queue[0],
-	.queue.size = sizeof(__bootp_queue[0]),},
-	{.queue.buff = __bootp_queue[1],
-	.queue.size = sizeof(__bootp_queue[1]),}
+static uint8_t __bootp_queue[512];
+static struct wrpc_socket __static_bootp_socket = {
+	.queue.buff = __bootp_queue,
+	.queue.size = sizeof(__bootp_queue)
 };
-static struct wrpc_socket *bootp_socket[2];
+static struct wrpc_socket *bootp_socket;
 
 /* ICMP: smaller buffer */
 static uint8_t __icmp_queue[2][128];
@@ -53,12 +51,12 @@ static struct wrpc_socket __static_rdate_socket = {
 static struct wrpc_socket *rdate_socket;
 
 /* remoteupdate: bigger buffer, UDP based */
-static uint8_t __rmupdate_queue[340];
-static struct wrpc_socket __static_rmupdate_socket = {
-	.queue.buff = __rmupdate_queue,
-	.queue.size = sizeof(__rmupdate_queue),
+static uint8_t __remote_update_queue[340];
+static struct wrpc_socket __static_remote_update_socket = {
+	.queue.buff = __remote_update_queue,
+	.queue.size = sizeof(__remote_update_queue),
 };
-static struct wrpc_socket *rmupdate_socket;
+static struct wrpc_socket *remote_update_socket;
 
 /* syslog is selected by Kconfig, so we have weak aliases here */
 void __attribute__((weak)) syslog_init(void)
@@ -85,29 +83,26 @@ unsigned int ipv4_checksum(unsigned short *buf, int shorts)
 static void ipv4_init(void)
 {
 	struct wr_sockaddr saddr;
-	int port;
+	int port=0;
 
 	/* Bootp: use UDP engine activated by function arguments  */
-	for (port=0; port < wr_num_ports; ++port) {
-		bootp_socket[port] = ptpd_netif_create_socket(&__static_bootp_socket[port], NULL,
-							PTPD_SOCK_UDP, 68 /* bootpc */, port);
-	}
+	bootp_socket = ptpd_netif_create_socket(&__static_bootp_socket, NULL,
+							PTPD_SOCK_UDP, 68 /* bootpc */, 0);
 
 	/* time (rdate): UDP */
 	rdate_socket = ptpd_netif_create_socket(&__static_rdate_socket, NULL,
 					       PTPD_SOCK_UDP, 37 /* time */, 0);
 
-	/* remote update (rmupdate): UDP */
-	rmupdate_socket = ptpd_netif_create_socket(&__static_rmupdate_socket, NULL,
+	/* remote update (remote_update): UDP */
+	remote_update_socket = ptpd_netif_create_socket(&__static_remote_update_socket, NULL,
 						PTPD_SOCK_UDP, 71 /* remote update */, 0);
 
 	/* ICMP: specify raw (not UDP), with IPV4 ethtype */
 	memset(&saddr, 0, sizeof(saddr));
 	saddr.ethertype = htons(0x0800);
-	for (port=0; port < wr_num_ports; ++port) {
-		icmp_socket[port] = ptpd_netif_create_socket(&__static_icmp_socket[port], &saddr,
-						       PTPD_SOCK_RAW_ETHERNET, 0, port);
-	}
+	// All SNMPs go through port 0
+	icmp_socket[0] = ptpd_netif_create_socket(&__static_icmp_socket[0], &saddr,
+						       PTPD_SOCK_RAW_ETHERNET, 0, 0);
 	syslog_init();
 }
 
@@ -121,7 +116,7 @@ static int bootp_poll(void)
 	uint8_t buf[400];
 	int len, ret = 0;
 
-	len = ptpd_netif_recvfrom(bootp_socket[0], &addr,
+	len = ptpd_netif_recvfrom(bootp_socket, &addr,
 				  buf, sizeof(buf), NULL, 0);
 
 	if (ip_status[0] != IP_TRAINING)
@@ -134,30 +129,31 @@ static int bootp_poll(void)
 		return ret;
 
 	len = prepare_bootp(&addr, buf, ++bootp_retry);
-	ptpd_netif_sendto(bootp_socket[0], &addr, buf, len, 0, 0);
+	ptpd_netif_sendto(bootp_socket, &addr, buf, len, 0, 0);
 	return 1;
 }
 
-static int icmp_poll(int port)
+static int icmp_poll()
 {
 	struct wr_sockaddr addr;
 	uint8_t buf[128];
 	int len;
+	int port=0;
 
-	len = ptpd_netif_recvfrom(icmp_socket[port], &addr,
-				  buf, sizeof(buf), NULL, port);
+	len = ptpd_netif_recvfrom(icmp_socket[0], &addr,
+					  buf, sizeof(buf), NULL, 0);
 	if (len <= 0)
 		return 0;
-	if (ip_status[port] == IP_TRAINING)
-		return 0;
-
 	/* check the destination IP */
-	if (check_dest_ip(buf, port))
-		return 0;
-
-	if ((len = process_icmp(buf, len, port)) > 0)
-		ptpd_netif_sendto(icmp_socket[port], &addr, buf, len, 0, port);
-	return 1;
+	for (port= 0;port<wr_num_ports;++port)
+	{
+		if(check_dest_ip(buf, port)==0){
+			if ((len = process_icmp(buf, len, port)) > 0) 
+				ptpd_netif_sendto(icmp_socket[0], &addr, buf, len, 0, 0);
+			return 1;
+		}
+	}
+	return 0;
 }
 
 static int rdate_poll(void)
@@ -189,7 +185,7 @@ static int rdate_poll(void)
 	return 1;
 }
 
-static int rmupdate_poll(void)
+static int remote_update_poll(void)
 {
 	struct wr_sockaddr addr;
 	uint8_t buf[512];
@@ -200,7 +196,7 @@ static int rmupdate_poll(void)
 	int data_size;
 	int port;
 
-	len = ptpd_netif_recvfrom(rmupdate_socket, &addr,
+	len = ptpd_netif_recvfrom(remote_update_socket, &addr,
 				  buf, sizeof(buf), NULL, 0);
 	if (len <= 0)
 		return 0;	
@@ -270,7 +266,7 @@ static int rmupdate_poll(void)
 	}
 
 	fill_udp(buf, len, NULL);
-	ptpd_netif_sendto(rdate_socket, &addr, buf, len, 0, 0);
+	ptpd_netif_sendto(remote_update_socket, &addr, buf, len, 0, 0);
 	return 1;
 }
 
@@ -282,12 +278,11 @@ static int ipv4_poll(void)
 		ip_status[0] = IP_TRAINING;
 	ret = bootp_poll();
 
-	ret += icmp_poll(0);
-	ret += icmp_poll(1);
+	ret += icmp_poll();
 
 	ret += rdate_poll();
 
-	ret += rmupdate_poll();
+	ret += remote_update_poll();
 
 	ret += syslog_poll();
 

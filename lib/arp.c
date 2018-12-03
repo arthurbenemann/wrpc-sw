@@ -34,27 +34,25 @@ static void arp_init(void)
 	// memset(&saddr.mac, 0xFF, 6);	/* Broadcast */
 	saddr.ethertype = htons(0x0806);	/* ARP */
 
-	for(port = 0; port<wr_num_ports; ++port)
-		arp_socket[port] = ptpd_netif_create_socket(&__static_arp_socket[port], &saddr,
-					      PTPD_SOCK_RAW_ETHERNET, 0, port);
+	arp_socket[port] = ptpd_netif_create_socket(&__static_arp_socket[port], &saddr,
+						PTPD_SOCK_RAW_ETHERNET, 0, port);
 }
 
-static int process_arp(uint8_t * buf, int len, int port)
+static int process_arp(uint8_t * buf, int len)
 {
 	uint8_t hisMAC[6];
 	uint8_t hisIP[4];
-	uint8_t myIP[4];
+	int port=0;
+	uint8_t myIP[2][4];
 
 	if (len < ARP_END)
 		return 0;
 
-	/* Is it ARP request targetting our IP? */
-	getIP(myIP, port);
 	if (buf[ARP_OPER + 0] != 0)
 		return 0;
 
-	if ( ((buf[ARP_OPER + 1] != 1)||memcmp(buf + ARP_TPA, myIP, 4)) == 0 )
-	{		
+	if (buf[ARP_OPER + 1] == 1)
+	{
 		memcpy(hisMAC, buf + ARP_SHA, 6);
 		memcpy(hisIP, buf + ARP_SPA, 4);
 		// ------------- ARP ------------
@@ -70,14 +68,22 @@ static int process_arp(uint8_t * buf, int len, int port)
 		// Response
 		buf[ARP_OPER + 0] = 0;
 		buf[ARP_OPER + 1] = 2;
-		// my MAC+IP
-		get_mac_addr(buf + ARP_SHA, port);
-		memcpy(buf + ARP_SPA, myIP, 4);
-		// his MAC+IP
-		memcpy(buf + ARP_THA, hisMAC, 6);
-		memcpy(buf + ARP_TPA, hisIP, 4);
+		// my MAC
+		get_mac_addr(buf + ARP_SHA, 0);
 
-		return ARP_END;
+		for (port = 0; port < wr_num_ports; ++port)
+		{
+			/* Is it ARP request targetting our IP? */
+			getIP(myIP[port], port);
+			if (memcmp(buf + ARP_TPA, myIP[port], 4) == 0)
+			{
+				memcpy(buf + ARP_SPA, myIP[port], 4);
+				// his MAC+IP
+				memcpy(buf + ARP_THA, hisMAC, 6);
+				memcpy(buf + ARP_TPA, hisIP, 4);
+				return ARP_END;
+			}
+		}
 	}
 
 	tcpip_get_hisIP(hisIP);
@@ -96,21 +102,19 @@ static int arp_poll(void)
 	uint8_t buf[ARP_END + 100];
 	struct wr_sockaddr addr;
 	int len;
-	int port;
+	int port=0;
 	int ret;
 
-	if (ip_status == IP_TRAINING)
+	if (ip_status[port] == IP_TRAINING)
 		return 0;		/* can't do ARP w/o an address... */
 
 	ret = 0;
-	for (port=0; port<wr_num_ports; ++port) {
-		if ((len = ptpd_netif_recvfrom(arp_socket[port],
-					       &addr, buf, sizeof(buf), 0, port)) > 0)
-		{
-			if ((len = process_arp(buf, len, 0)) > 0)
-				ptpd_netif_sendto(arp_socket[port], &addr, buf, len, 0, port);
-			ret = 1;
-		}
+	if ((len = ptpd_netif_recvfrom(arp_socket[port],
+				       &addr, buf, sizeof(buf), 0, port)) > 0)
+	{	
+		if ((len = process_arp(buf, len)) > 0)
+			ptpd_netif_sendto(arp_socket[port], &addr, buf, len, 0, port);
+		ret = 1;
 	}
 	return ret;
 }
@@ -145,7 +149,7 @@ int send_arp(uint8_t * hisIP, int port)
 
 DEFINE_WRC_TASK(arp) = {
 	.name = "arp",
-	.enable = &link_status[0],
+	.enable = &(link_status[0]),
 	.init = arp_init,
 	.job = arp_poll,
 };

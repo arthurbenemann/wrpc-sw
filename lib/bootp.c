@@ -96,7 +96,14 @@ int process_bootp(uint8_t * buf, int len)
 	setIP(buf + BOOTP_YIADDR, 0);
 
 	getIP(ip, 0);
-	pp_printf("Discovered IP address (%d.%d.%d.%d)!\n",
+	pp_printf("Port 0 Discovered IP address (%d.%d.%d.%d)!\n",
+	        ip[0], ip[1], ip[2], ip[3]);
+
+	// for dualport
+	ip[3] = ip[3]+1;
+	setIP(ip, 1);
+	getIP(ip, 1);
+	pp_printf("Port 1 Discovered IP address (%d.%d.%d.%d)!\n",
 	        ip[0], ip[1], ip[2], ip[3]);
 
 	return 1;
