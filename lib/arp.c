@@ -84,16 +84,16 @@ static int process_arp(uint8_t * buf, int len)
 				return ARP_END;
 			}
 		}
-	}
-
-	tcpip_get_hisIP(hisIP);
-	if ( ((buf[ARP_OPER + 1] != 2)||memcmp(buf + ARP_SPA, hisIP, 4)) == 0 )
+	} else if (buf[ARP_OPER + 1] == 2)
 	{
-		memcpy(hisMAC, buf + ARP_SHA, 6);
-		tcpip_set_hisMAC(hisMAC);
-		tcpip_status = TCPIP_OK;
+		tcpip_get_hisIP(hisIP);
+		if (memcmp(buf + ARP_SPA, hisIP, 4) == 0)
+		{
+			memcpy(hisMAC, buf + ARP_SHA, 6);
+			tcpip_set_hisMAC(hisMAC);
+			tcpip_status = TCPIP_OK;	
+		}
 	}
-
 	return 0;
 }
 

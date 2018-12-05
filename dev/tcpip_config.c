@@ -103,6 +103,8 @@ void tcpip_set_hisMAC(uint8_t mac_addr[])
 {
   memcpy((uint8_t *)(BASE_TCPIP_CFG + TCPIP_UDP_TX_DST_MAC_HIGH16 + 2), (uint8_t *)mac_addr, 2);
   memcpy((uint8_t *)(BASE_TCPIP_CFG + TCPIP_UDP_TX_DST_MAC_LOW32), (uint8_t *)mac_addr+2, 4);
+  // Set the mac ready signal
+  memset((uint8_t *)(BASE_TCPIP_CFG + TCPIP_UDP_TX_DST_MAC_HIGH16), 0xFF, 2);
 }
 
 void tcpip_get_hisMAC(uint8_t mac_addr[])
