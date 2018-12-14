@@ -83,7 +83,7 @@ basicstyle=\footnotesize\ttfamily, backgroundcolor=\color{light-gray}, label=lst
   \end{center}
 }
 
-\def \wrpcrelease {wrpc-v4.1}
+\def \wrpcrelease {wrpc-v4.2-sis8300ku}
 
 \newcommand{\code}[1]{\texttt{#1}}
 
@@ -188,7 +188,7 @@ following locations:
 
   \end{itemize*}
 Repositories containing the WRPC gateware and software (\textit{wr-cores},
-\textit{wrpc-sw}) are tagged with \texttt{wrpc-v4.1} tag. Other tools used to
+\textit{wrpc-sw}) are tagged with \texttt{wrpc-v4.2-sis8300ku} tag. Other tools used to
 build the core and load it into the FPGA should be used in their newest stable
 releases, unless otherwise stated.
 
@@ -211,6 +211,7 @@ can be chosen:
   VME crate with a single board computer running Linux\footref{note_a20}
 \item \href{http://www.ohwr.org/projects/fasec}{FASEC board} +
   \href{http://www.ohwr.org/projects/fmc-dio-5chttla}{FMC DIO card}
+\item \href{https://www.struck.de/sis8300-ku.html}{Struck SIS8300-KU digitizer board}
 \end{itemize}
 
 To be able to test White Rabbit synchronization you would also need
@@ -247,7 +248,7 @@ which contains a description of the software compilation process.
 
 Before running the synthesis process you have to make sure your environment is
 set up correctly. You will need a synthesis software from your FPGA vendor.
-Depending on whether you want to run the WRPC on Xilinx (e.g. SPEC, SVEC boards) or
+Depending on whether you want to run the WRPC on Xilinx (e.g. SPEC, SVEC, FASEC, SIS8300-KU boards) or
 Altera/Intel (e.g. VFC-HD) FPGA, you should install either Xilinx ISE or Quartus
 Prime software.
 
@@ -310,13 +311,13 @@ $ chmod a+x /usr/bin/hdlmake
 \end{lstlisting}
 
 Having all the tools in place, you can now clone the main WR PTP Core git
-repository for the v4.1 release. The set of commands below clones the WR PTP Core
+repository for the v4.2 release. The set of commands below clones the WR PTP Core
 repository, checks out the release tag, and downloads other HDL repositories
 (submodules) needed to synthesize the core:
 \begin{lstlisting}
 $ git clone git://ohwr.org/hdl-core-lib/wr-cores.git <your_location>/wr-cores
 $ cd <your_location>/wr-cores
-$ git checkout wrpc-v4.1
+$ git checkout wrpc-v4.2-sis8300ku
 $ git submodule init
 $ git submodule update
 \end{lstlisting}
@@ -384,37 +385,17 @@ scratch you can use the following commands:
 \subsubsection{Running the synthesis (Vivado)}
 The workflow in Xilinx Vivado is different than for ISE and Quartus. It is
 heavily based on packed IP cores and schematic entry. Therefore, if you would
-like to synthesize the reference design for Zynq (FASEC board), you
-need to go through two Vivado projects:
-\begin{itemize*}
-  \item \texttt{<your\_location>/wr-cores/syn/wrc\_board\_fasec\_ip} - is a
-    project created with \textit{hdlmake} from all HDL files necessary to
-    synthesize the WR PTP Core with all its peripherals for Zynq (Kintex-7 FPGA).
-    The project contains also IP-XACT module description to generate Vivado IP
-    Core for further synthesis with a complete FASEC reference design.
-  \item \texttt{<your\_location>/wr-cores/syn/fasec\_ref\_design} - is a main
-    reference design project for FASEC board. It is made with the Vivado Block
-    Design instantiating Processing System, reset circuits, AXI interconnects
-    and WR PTP Core IP generated from \texttt{wrc\_board\_fasec\_ip} project.
-\end{itemize*}
+like to synthesize the reference design for Kintex Ultrascale (SIS8300-KU board), you need to first
+re-create a Vivado project using the provided TCL script (Vivado projects are not really movable between different machines):
 
-First, please execute the \texttt{build.tcl} script in Vivado batch mode
-\footnote{You can also use Tools->Run Tcl Script... from Vivado gui} to create
-WR PTP Core IP:
-\begin{lstlisting}
-$ cd <your_location>/wr-cores/syn/wrc_board_fasec_ip
-$ vivado -mode batch -source build.tcl
-\end{lstlisting}
+\begin{itemize}
+\item Launch Vivado 2018.2
+\item From the tcl shell, chdir to \texttt{<your\_location>/wr-cores/top/sis8300ku\_ref\_design}
+\item Run the \texttt{project.tcl} script by typing \texttt{source project.tcl}
+\end{itemize}
 
-After this step, you can generate the main reference design Vivado project,
-using Tcl scripts in the repository:
-\begin{lstlisting}
-$ cd <your_location>/wr-cores/syn/fasec_ref_design
-$ vivado -mode batch -source build.tcl
-\end{lstlisting}
+If everything goes well, Vivado will create a fresh reference design project with a top level design block diagram instantiating the SIS8300KU WR Core board support module, the Xilinx PCI Express endpoint core and an AXI interconnect. Click "Generate Bitstream" and wait for some minutes to get the bitstream.
 
-Open the project file \texttt{fasec\_ref\_design.xpr} and continue with regular
-Vivado flow to synthesize the bitstream.
 
 % ==========================================================================
 \subsection{LM32 software compilation}
@@ -447,13 +428,13 @@ $ export CROSS_COMPILE="<your_location>/lm32/bin/lm32-elf-"
 \end{lstlisting}
 
 To get the sources of the WRPC software, please clone the \textit{wrpc-sw} git
-repository tagged with \texttt{wrpc-v4.1} tag. The commands in the listing below
+repository tagged with \texttt{wrpc-v4.2-sis8300ku} tag. The commands in the listing below
 clone the \textit{wrpc-sw} repository together with submodules needed for this software.\\
 \begin{lstlisting}
 $ git clone git://ohwr.org/hdl-core-lib/wr-cores/wrpc-sw.git \
 <your_location>/wrpc-sw
 $ cd <your_location>/wrpc-sw
-$ git checkout wrpc-v4.1
+$ git checkout wrpc-v4.2-sis8300ku
 \end{lstlisting}
 
 \textbf{Note:} If you use WRPC within another project, you may need to checkout
@@ -671,7 +652,7 @@ To check the content of the SFP database you can execute the \textit{sfp show}
 shell command.\\
 
 \noindent\textbf{Note:} The $\Delta_{TX}$ and $\Delta_{RX}$ parameters above are
-the defaults for wrpc-v4.1 release bitstream available on \textit{ohwr.org},
+the defaults for wrpc-v4.2 release bitstream available on \textit{ohwr.org},
 running on the SPEC v4 board and calibrated to port 1 of a~WR Switch
 v3.3. These values as well as the default parameters for other boards are
 available on the calibration wiki page
@@ -709,7 +690,7 @@ Cesium clock). Depending on your board you should connect:
 
 \vspace{1em}
 WRPC has a possibility to load user-defined intialization script on every
-startup. If you run WRPC release v4.1 or higher, the default LM32 software
+startup. If you run WRPC release v4.2 or higher, the default LM32 software
 comes with a built-in init script. The default script disables VLAN support,
 loads calibration values from the SFP database (provided that it was written
 earlier by the user) and starts PTP in slave mode. Here are the actual WRPC
@@ -1660,7 +1641,7 @@ processed by the WRPC, class 6 is used for Streamers traffic, class 7 is used
 for Etherbone traffic (see HDL documentation for boards HDL modules and
 selection between Streamers, Etherbone and Plain modes).
 
-The default WR PTP Core v4.1 release firmware comes with the following VIDs:
+The default WR PTP Core v4.2 release firmware comes with the following VIDs:
 \begin{itemize}
   \item \textbf{VID 1} - for class 0, traffic processed inside the WR PTP Core
   \item \textbf{VID 10} and \textbf{VID 11} - for class 7, Etherbone traffic
@@ -2344,5 +2325,19 @@ bare in mind that WR Streamers Diagnostics module is available only when
 \input{wbgen/wrc_diags.tex}
 \newpage
 \input{wbgen/wr_streamers_wb.tex}
+
+\appendix
+\clearpage
+\section{SIS8300-KU specific information}
+\label{SIS8300-KU specific information}
+
+\subsection{Accessing WRPC serial console}
+The SIS8300-KU console support is done in different way than in the SPEC and it needs a different tool. There is a Python script available in the WRPC repository, allowing to access the serial console (VUART) for diagnostic or monitoring purposes:
+
+\begin{lstlisting}
+$ cd tools/sis8300ku
+$ make
+$ ./sis83k_wr_refdesign_vuart.py
+\end{lstlisting}
 
 \end{document}
