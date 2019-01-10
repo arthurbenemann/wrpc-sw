@@ -188,6 +188,7 @@ static int rmupdate_poll(void)
 	int len;
 	uint32_t type;
 	uint32_t data_addr;
+	static uint32_t prog_data_addr;
 	uint8_t* reg_addr;
 	int data_size;
 
@@ -204,14 +205,14 @@ static int rmupdate_poll(void)
 	if (check_magic_udp(buf)<0)
 	{
 		// magic data error
-		memset(buf+UDP_END, 0x00000001, 4);
-		len = UDP_END + 4 + 64;
+		memset(buf+UDP_END, 0xfe, 1);
+		len = UDP_END + 12 + 64;
 	}
 	else if (check_magic_udp(buf)>0)
 	{
 		// udp checksum err
-		memset(buf+UDP_END, 0xffff0000, 4);
-		len = UDP_END + 4 + 64;
+		memset(buf+UDP_END, 0xff, 1);
+		len = UDP_END + 12 + 64;
 		return 0;
 	}
 	else 
@@ -224,14 +225,24 @@ static int rmupdate_poll(void)
 				data_addr = (buf[UDP_END+8]<<24)+(buf[UDP_END+9]<<16)+(buf[UDP_END+10]<<8)+buf[UDP_END+11];
 				data_size = (buf[UDP_END+12]<<24)+(buf[UDP_END+13]<<16)+(buf[UDP_END+14]<<8)+buf[UDP_END+15];
 				flash_erase(data_addr,data_size);
-				memset(buf+UDP_END+12, 0x00000000, 4);
-				len = UDP_END + 16 + 64;
+				prog_data_addr = data_addr;
+				memset(buf+UDP_END, 0x00, 1);
+				len = UDP_END + 12 + 64;
+				break;
 			case FLASH_WRITE:
 				data_addr = (buf[UDP_END+8]<<24)+(buf[UDP_END+9]<<16)+(buf[UDP_END+10]<<8)+buf[UDP_END+11];
 				data_size = (buf[UDP_END+12]<<24)+(buf[UDP_END+13]<<16)+(buf[UDP_END+14]<<8)+buf[UDP_END+15];
-				flash_write(data_addr,buf+UDP_END+16,data_size);
-				memset(buf+UDP_END+12, 0x00000000, 4);
-				len = UDP_END + 16 + 64 ;
+				if (prog_data_addr==data_addr)
+				{
+					flash_write(data_addr,buf+UDP_END+16,data_size);
+					prog_data_addr=prog_data_addr+256;
+					memset(buf+UDP_END, 0x00, 1);
+				} else {
+					pp_printf("Prog addr error %x\n",data_addr);
+					// reply lose error
+					memset(buf+UDP_END, 0xfd, 1);
+				}
+				len = UDP_END + 12 + 64 ;
 				break;
 			case FLASH_READ:
 				data_addr = (buf[UDP_END+8]<<24)+(buf[UDP_END+9]<<16)+(buf[UDP_END+10]<<8)+buf[UDP_END+11];
@@ -253,8 +264,8 @@ static int rmupdate_poll(void)
 				len = UDP_END + 16 + data_size + 64;
 				break;
 			default:
-				// type error
-				memset(buf+UDP_END, 0x00000002, 4);
+				// operation type error
+				memset(buf+UDP_END, 0xfc, 1);
 				len = UDP_END + 4 + 64;
 		}
 	}
