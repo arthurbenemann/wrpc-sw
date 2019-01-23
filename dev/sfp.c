@@ -28,7 +28,7 @@ char sfp_pn[wr_num_ports][SFP_PN_LEN];
 
 int sfp_present(int port)
 {
-	return (port) ? (!gpio_in(GPIO_DP_SFP_DET)) : (!gpio_in(GPIO_SFP_DET));
+	return (port) ? (!gpio_in(GPIO_SFP1_DET)) : (!gpio_in(GPIO_SFP_DET));
 }
 
 static int sfp_read_part_id(char *part_id, int port)

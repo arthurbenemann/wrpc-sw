@@ -13,7 +13,7 @@
 struct s_i2c_if i2c_if[3] = {
 	{SYSC_GPSR_FMC_SCL, SYSC_GPSR_FMC_SDA, FMC_I2C_DELAY},
 	{SYSC_GPSR_SFP_SCL, SYSC_GPSR_SFP_SDA, SFP_I2C_DELAY},
-	{SYSC_GPSR_DP_SFP_SCL, SYSC_GPSR_DP_SFP_SDA, SFP_I2C_DELAY},
+	{SYSC_GPSR_SFP1_SCL, SYSC_GPSR_SFP1_SDA, SFP_I2C_DELAY},
 };
 
 volatile struct SYSCON_WB *syscon;
@@ -134,14 +134,6 @@ int diag_write_word(uint32_t adr, uint32_t val)
 void net_rst(void)
 {
 	syscon->GPSR |= SYSC_GPSR_NET_RST;
-}
-
-void minic_rst(int port)
-{
-	if (port==0)
-		syscon->GPSR |= SYSC_GPSR_MINIC_RST;
-	else
-		syscon->GPSR |= SYSC_GPSR_MINIC_DP_RST;
 }
 
 int wdiag_set_valid(int enable)

@@ -102,8 +102,6 @@ static void wrc_initialize(void)
 	//Duplicate the configuration for both ports.
 	for (port=0; port<wr_num_ports;port++)
 	{	
-		minic_rst(port);
-
 		pp_printf("PORT %d Local MAC address: %02x:%02x:%02x:%02x:%02x:%02x\n", port,
 			mac_addr[port][0], mac_addr[port][1], mac_addr[port][2], mac_addr[port][3],
 			mac_addr[port][4], mac_addr[port][5]);
@@ -170,7 +168,6 @@ static int wrc_check_link(void)
 			if (!prev_state[port] && state[port]) {
 				wrc_verbose("Port 0 Link up.\n");
 				if (port==0) gpio_out(GPIO_LED_LINK, 1);
-				else gpio_out(GPIO_DP_LED_LINK, 1);
 				sfp_match(port);
 				calib_t24p(WRC_MODE_MASTER, &cal_phase_transition[port],port);
 				wrc_ptp_start(port);
@@ -179,10 +176,8 @@ static int wrc_check_link(void)
 			} else if (prev_state[port] && !state[port]) {
 				wrc_verbose("Port %d Link down.\n",port);
 				if (port==0) gpio_out(GPIO_LED_LINK, 0);
-				else gpio_out(GPIO_DP_LED_LINK, 0);
 				link_status[port] = LINK_WENT_DOWN;
 				wrc_ptp_stop(port);
-				minic_rst(port);
 				timer_delay_ms(1);
 				minic_init(port);
 				/* special case */

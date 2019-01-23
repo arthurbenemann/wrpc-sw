@@ -81,12 +81,10 @@ struct SYSCON_WB {
 /*GPIO pins*/
 #define GPIO_LED_LINK SYSC_GPSR_LED_LINK
 #define GPIO_LED_STAT SYSC_GPSR_LED_STAT
-#define GPIO_DP_LED_LINK SYSC_GPSR_DP_LED_LINK
-#define GPIO_DP_LED_STAT SYSC_GPSR_DP_LED_STAT
 #define GPIO_BTN1     SYSC_GPSR_BTN1
 #define GPIO_BTN2     SYSC_GPSR_BTN2
 #define GPIO_SFP_DET  SYSC_GPSR_SFP_DET
-#define GPIO_DP_SFP_DET  SYSC_GPSR_DP_SFP_DET
+#define GPIO_SFP1_DET  SYSC_GPSR_SFP1_DET
 #define GPIO_SPI_SCLK SYSC_GPSR_SPI_SCLK
 #define GPIO_SPI_NCS  SYSC_GPSR_SPI_NCS
 #define GPIO_SPI_MOSI SYSC_GPSR_SPI_MOSI
@@ -144,7 +142,6 @@ int diag_read_word(uint32_t adr, int bank, uint32_t *val);
 int diag_write_word(uint32_t adr, uint32_t val);
 
 void net_rst(void);
-void minic_rst(int port);
 
 int wdiag_set_valid(int enable);
 int wdiag_get_valid(void);
