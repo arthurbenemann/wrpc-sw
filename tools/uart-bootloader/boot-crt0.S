@@ -89,10 +89,15 @@
 	
         .global	_start  
 _start: 
-	   
-        .global _reset_handler
-        .type 	_reset_handler, @function
 _reset_handler:
+	calli _reset_handler_bootldr
+
+
+.section .text
+	   
+        .global _reset_handler_bootldr
+        .type 	_reset_handler_bootldr, @function
+_reset_handler_bootldr:
     xor r0, r0, r0
     wcsr    IE, r0
     wcsr    IM, r0
@@ -102,7 +107,7 @@ _reset_handler:
     wcsr    EBA, r1
     calli   _crt0
     nop
-        .size	_reset_handler, .-_reset_handler
+/*        .size	_reset_handler, .-_reset_handler */
 
         .global _crt0
         .type 	_crt0, @function

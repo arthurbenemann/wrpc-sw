@@ -27,8 +27,12 @@
 #define BASE_CLOCK 62500000 // Xtal frequency
 
 #define BASE_UART 0x20500
+#define BASE_SYSCON 0x20400
 
 #define UART_BAUDRATE 115200
+
+void timer_init();
+uint32_t timer_get_tics();
 
 static inline void writel ( uint32_t reg, uint32_t val)
 {
@@ -38,6 +42,11 @@ static inline void writel ( uint32_t reg, uint32_t val)
 static inline uint32_t readl ( uint32_t reg )
 {
 	return *(volatile uint32_t *)(reg);
+}
+
+static inline uint32_t get_ms_ticks()
+{
+	return timer_get_tics();
 }
 
 #endif
