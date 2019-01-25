@@ -424,11 +424,11 @@ void pfilter_init_novlan(char *fname)
 	pfilter_logic3(R_CLASS(0), FRAME_UDP, AND, PORT_UDP_HOST, OR, FRAME_FOR_CPU);
 
 	/* Etherbone is UDP at port 0xebd0, let's "or" in the last move */
-	pfilter_cmp(18, 0xebd0, 0xffff, MOV, PORT_UDP_ETHERBONE);
+	//pfilter_cmp(18, 0xebd0, 0xffff, MOV, PORT_UDP_ETHERBONE);
 
 	/* and now copy out fabric selections: 7 etherbone, 6 for anything else */
-	pfilter_logic2(R_CLASS(7), FRAME_UDP, AND, PORT_UDP_ETHERBONE);
-	pfilter_logic3(R_CLASS(6), FRAME_UDP, NAND, PORT_UDP_ETHERBONE, OR, FRAME_TCP);
+	//pfilter_logic2(R_CLASS(7), FRAME_UDP, AND, PORT_UDP_ETHERBONE);
+	pfilter_logic3(R_CLASS(6), FRAME_FOR_CPU, NOT, PORT_UDP_HOST, OR, FRAME_TCP);
 
 	/*
 	 * Note that earlier we used to be more strict in ptp ethtype (only proper multicast),
