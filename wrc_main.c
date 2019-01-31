@@ -61,6 +61,10 @@ static void wrc_initialize(void)
 	pp_printf("WR Core: starting up...\n");
 
 	timer_init(1);
+
+	mprintf("Board low-level setup\n");
+	ertm14_init();
+
 	get_hw_name(wrc_hw_name);
 	storage_read_hdl_cfg();
 	wrpc_w1_init();

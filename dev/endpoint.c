@@ -109,6 +109,7 @@ int ep_enable(int enabled, int autoneg)
 /* Load default packet classifier rules - see ep_pfilter.c for details */
 	pfilter_init_default();
 
+	pp_printf("Enable\n");
 /* Enable TX/RX paths, reset RMON counters */
 	EP->ECR = EP_ECR_TX_EN | EP_ECR_RX_EN | EP_ECR_RST_CNT;
 
