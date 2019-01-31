@@ -62,7 +62,7 @@ static void wrc_initialize(void)
 
 	timer_init(1);
 
-	mprintf("Board low-level setup\n");
+	pp_printf("Board low-level setup\n");
 	ertm14_init();
 
 	get_hw_name(wrc_hw_name);

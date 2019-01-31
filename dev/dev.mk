@@ -13,10 +13,10 @@ obj-$(CONFIG_EMBEDDED_NODE) += \
 	dev/devicelist.o \
 	dev/rxts_calibrator.o \
 	dev/flash.o \
-	dev/ad951x.o \
+	dev/bb_spi.o \
 	dev/gpio.o \
-	dev/bb_spi.o
-
+	dev/ad951x.o
+	
 obj-$(CONFIG_WR_NODE) += \
 	dev/temperature.o \
 	dev/pps_gen.o

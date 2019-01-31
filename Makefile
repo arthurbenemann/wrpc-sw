@@ -30,7 +30,7 @@ LDS-$(CONFIG_WR_NODE)   = arch/lm32/ram.ld
 LDS-$(CONFIG_WR_SWITCH) = arch/lm32/ram-wrs.ld
 LDS-$(CONFIG_HOST_PROCESS) =
 
-obj-$(CONFIG_WR_NODE)   += wrc_main.o
+obj-$(CONFIG_WR_NODE)   += wrc_main.o ertm14.o
 obj-$(CONFIG_WR_NODE_SIM) += wrc_main_sim.o
 obj-$(CONFIG_WR_SWITCH) += wrs_main.o
 obj-$(CONFIG_WR_SWITCH) += ipc/minipc-mem-server.o ipc/rt_ipc.o
@@ -42,7 +42,7 @@ obj-y += dump-info.o
 
 
 cflags-y =	-ffreestanding -include $(AUTOCONF) -Iinclude \
-			-I. -Isoftpll -Iipc
+			-I. -Isoftpll -Iipc -Iertm14
 cflags-y +=	-I$(CURDIR)/pp_printf
 cflags-$(CONFIG_LM32) +=  -Iinclude/std
 
