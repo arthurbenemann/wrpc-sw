@@ -90,7 +90,7 @@
         .global	_start  
 _start: 
 _reset_handler:
-	calli _reset_handler_bootldr
+	bi _reset_handler_bootldr
 
 
 .section .text

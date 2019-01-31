@@ -8,5 +8,6 @@ void timer_init()
 
 uint32_t timer_get_tics()
 {
+	pp_printf("getTics: 0x%x\n", BASE_SYSCON + SYSC_REG_TVR, readl( BASE_SYSCON + SYSC_REG_TVR ));
 	return readl( BASE_SYSCON + SYSC_REG_TVR );
 }

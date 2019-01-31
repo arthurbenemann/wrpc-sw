@@ -56,6 +56,7 @@
 
 uint8_t rxbuf[RX_BUF_SIZE];
 int     boot_wait;
+static uint32_t orig_reset_vector = 0x4;
 
 typedef void (*voidfunc_t)();
 
@@ -185,7 +186,23 @@ void on_cmd_write_ram(uint8_t *payload, int len)
     uint32_t base = unpack_be32(payload);
 
     for (i = 0; i < len - 4; i++)
-        *(uint8_t *)(base + i) = payload[i + 4];
+    {
+        if (base + i < 4)
+        { // special case for the entry vector address
+            switch(base + i)
+            {
+                case 1: orig_reset_vector = ((uint32_t)payload[i+4]) << 18; break;
+                case 2: orig_reset_vector |= ((uint32_t)payload[i+4]) << 10; break;
+                case 3: orig_reset_vector |= ((uint32_t)payload[i+4]) << 2; break;
+                default:
+                    break;
+            }
+        }
+        else
+        {
+            *(uint8_t *)(base + i) = payload[i + 4];
+        }
+    }
 
     send_reply(RSP_OK);
 }
@@ -294,7 +311,7 @@ void boot_fsm()
 
 void start_user()
 {
-    voidfunc_t f = (voidfunc_t)CONFIG_USER_START;
+    voidfunc_t f = (voidfunc_t)orig_reset_vector;
 
     f();
 }
