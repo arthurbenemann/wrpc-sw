@@ -16,18 +16,18 @@
 
 static int cmd_init(const char *args[])
 {
-	if (args[0] && !strcasecmp(args[0], "erase")) {
+	if (args[0] && !strcmp(args[0], "erase")) {
 		if (storage_init_erase() < 0)
 			pp_printf("Could not erase init script\n");
-	} else if (args[1] && !strcasecmp(args[0], "add")) {
+	} else if (args[1] && !strcmp(args[0], "add")) {
 		if (storage_init_add(args) < 0)
 			pp_printf("Could not add the command\n");
 		else
 			pp_printf("OK.\n");
-	} else if (args[0] && !strcasecmp(args[0], "show")) {
+	} else if (args[0] && !strcmp(args[0], "show")) {
 		shell_show_build_init();
 		storage_init_show();
-	} else if (args[0] && !strcasecmp(args[0], "boot")) {
+	} else if (args[0] && !strcmp(args[0], "boot")) {
 		shell_boot_script();
 	}
 

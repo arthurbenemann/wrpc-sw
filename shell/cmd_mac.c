@@ -43,18 +43,18 @@ static int cmd_mac(const char *args[])
 	unsigned char mac[6];
 	char buf[32];
 
-	if (!args[0] || !strcasecmp(args[0], "get")) {
+	if (!args[0] || !strcmp(args[0], "get")) {
 		/* get current MAC */
 		get_mac_addr(mac);
-	} else if (!strcasecmp(args[0], "getp")) {
+	} else if (!strcmp(args[0], "getp")) {
 		/* get persistent MAC */
 		get_mac_addr(mac);
 		get_persistent_mac(ONEWIRE_PORT, mac);
-	} else if (!strcasecmp(args[0], "set") && args[1]) {
+	} else if (!strcmp(args[0], "set") && args[1]) {
 		decode_mac(args[1], mac);
 		set_mac_addr(mac);
 		pfilter_init_default();
-	} else if (!strcasecmp(args[0], "setp") && args[1]) {
+	} else if (!strcmp(args[0], "setp") && args[1]) {
 		decode_mac(args[1], mac);
 		set_persistent_mac(ONEWIRE_PORT, mac);
 	} else {

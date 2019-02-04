@@ -21,11 +21,11 @@ extern int wrc_phase_tracking;
 
 static int cmd_ptrack(const char *args[])
 {
-	if (args[0] && !strcasecmp(args[0], "enable")) {
+	if (args[0] && !strcmp(args[0], "enable")) {
 		wr_servo_enable_tracking(1);
 		wrc_phase_tracking = 1;
 	}
-	else if (args[0] && !strcasecmp(args[0], "disable")) {
+	else if (args[0] && !strcmp(args[0], "disable")) {
 		wr_servo_enable_tracking(0);
 		wrc_phase_tracking = 0;
 	}

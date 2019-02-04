@@ -40,9 +40,9 @@ static int cmd_ip(const char *args[])
 	unsigned char ip[4];
 	char buf[20];
 
-	if (!args[0] || !strcasecmp(args[0], "get")) {
+	if (!args[0] || !strcmp(args[0], "get")) {
 		getIP(ip);
-	} else if (!strcasecmp(args[0], "set") && args[1]) {
+	} else if (!strcmp(args[0], "set") && args[1]) {
 		ip_status = IP_OK_STATIC;
 		decode_ip(args[1], ip);
 		setIP(ip);

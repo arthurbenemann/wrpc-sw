@@ -41,13 +41,13 @@ static int cmd_sfp(const char *args[])
 		pp_printf("Wrong parameter\n");
 		return -EINVAL;
 	}
-	if (!strcasecmp(args[0], "erase")) {
+	if (!strcmp(args[0], "erase")) {
 		if (storage_sfpdb_erase() == EE_RET_I2CERR) {
 			pp_printf("Could not erase DB\n");
 			return -EIO;
 		}
 		return 0;
-	} else if (args[4] && !strcasecmp(args[0], "add")) {
+	} else if (args[4] && !strcmp(args[0], "add")) {
 		temp = strnlen(args[1], SFP_PN_LEN);
 		for (i = 0; i < temp; ++i)
 			sfp.pn[i] = args[1][i];
@@ -69,7 +69,7 @@ static int cmd_sfp(const char *args[])
 		}
 		pp_printf("%d SFPs in DB\n", temp);
 		return 0;
-	} else if (!strcasecmp(args[0], "show")) {
+	} else if (!strcmp(args[0], "show")) {
 		for (i = 0; i < sfpcount; ++i) {
 			sfpcount = storage_get_sfp(&sfp, SFP_GET, i);
 			if (sfpcount == 0) {
@@ -87,7 +87,7 @@ static int cmd_sfp(const char *args[])
 				sfp.dRx, sfp.alpha);
 		}
 		return 0;
-	} else if (!strcasecmp(args[0], "match")) {
+	} else if (!strcmp(args[0], "match")) {
 		ret = sfp_match();
 		if (ret == -ENODEV) {
 			pp_printf("No SFP.\n");
@@ -111,7 +111,7 @@ static int cmd_sfp(const char *args[])
 		pp_printf("SFP matched, dTx=%d dRx=%d alpha=%d\n",
 			sfp_deltaTx, sfp_deltaRx, sfp_alpha);
 		return ret;
-	} else if (args[1] && !strcasecmp(args[0], "ena")) {
+	} else if (args[1] && !strcmp(args[0], "ena")) {
 		ep_sfp_enable(atoi(args[1]));
 		return 0;
 	} else {

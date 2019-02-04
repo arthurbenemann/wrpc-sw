@@ -27,7 +27,7 @@ static int cmd_diag(const char *args[])
 		return 0;
 	}
 
-	if (!strcasecmp(args[0], "ro") && args[1]) {
+	if (!strcmp(args[0], "ro") && args[1]) {
 		addr = atoi(args[1]);
 		ret = diag_read_word(addr, DIAG_RO_BANK, &val);
 		if (!ret)
@@ -35,7 +35,7 @@ static int cmd_diag(const char *args[])
 		return ret;
 	}
 
-	if (!strcasecmp(args[0], "rw") && args[1]) {
+	if (!strcmp(args[0], "rw") && args[1]) {
 		addr = atoi(args[1]);
 		ret = diag_read_word(addr, DIAG_RW_BANK, &val);
 		if (!ret)
@@ -43,7 +43,7 @@ static int cmd_diag(const char *args[])
 		return ret;
 	}
 
-	if (!strcasecmp(args[0], "w") && args[1] && args[2]) {
+	if (!strcmp(args[0], "w") && args[1] && args[2]) {
 		addr = atoi(args[1]);
 		val  = atoi(args[2]);
 		ret = diag_write_word(addr, val);

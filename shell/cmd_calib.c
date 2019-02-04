@@ -24,7 +24,7 @@ static int cmd_calibration(const char *args[])
 {
 	uint32_t trans;
 
-	if (args[0] && !strcasecmp(args[0], "force")) {
+	if (args[0] && !strcmp(args[0], "force")) {
 		if (measure_t24p(&trans) < 0)
 			return -1;
 		return storage_phtrans(&trans, 1);

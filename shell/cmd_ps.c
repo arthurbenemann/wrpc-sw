@@ -19,11 +19,11 @@ static int cmd_ps(const char *args[])
 	struct wrc_task *t;
 
 	if (args[0]) {
-		if(!strcasecmp(args[0], "reset")) {
+		if(!strcmp(args[0], "reset")) {
 			for_each_task(t)
 			    t->nrun = t->seconds = t->nanos = t->max_run_ticks = 0;
 			return 0;
-		} else if (!strcasecmp(args[0], "max")) {
+		} else if (!strcmp(args[0], "max")) {
 			if (args[1])
 				print_task_time_threshold = atoi(args[1]);
 			pp_printf("print_task_time_threshold %d\n",

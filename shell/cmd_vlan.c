@@ -16,9 +16,9 @@ static int cmd_vlan(const char *args[])
 {
 	int i;
 
-	if (!args[0] || !strcasecmp(args[0], "get")) {
+	if (!args[0] || !strcmp(args[0], "get")) {
 		/* nothing... */
-	} else if (!strcasecmp(args[0], "set") && args[1]) {
+	} else if (!strcmp(args[0], "set") && args[1]) {
 		fromdec(args[1], &i);
 		if (i < 1 || i > 4095) {
 			pp_printf("%i (\"%s\") out of range\n", i, args[1]);
@@ -26,7 +26,7 @@ static int cmd_vlan(const char *args[])
 		}
 		wrc_vlan_number = i;
 		pfilter_init_default();
-	} else if (!strcasecmp(args[0], "off")) {
+	} else if (!strcmp(args[0], "off")) {
 		wrc_vlan_number = 0;
 		pfilter_init_default();
 

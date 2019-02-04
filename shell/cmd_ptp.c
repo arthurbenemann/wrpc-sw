@@ -56,7 +56,7 @@ static int cmd_ptp(const char *args[])
 
 	for (j = 0; args[j]; j++) {
 		for (i = 0, c = subcmd; i < ARRAY_SIZE(subcmd); i++, c++) {
-			if (!strcasecmp(args[j], c->name)) {
+			if (!strcmp(args[j], c->name)) {
 				ret = c->fun(c->arg);
 				if (ret < 0)
 					return ret;

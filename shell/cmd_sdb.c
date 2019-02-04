@@ -40,14 +40,14 @@ static int cmd_sdb(const char *args[])
 		i2c_adr = atoi(args[3]);
 
 	/* Writing SDBFS image */
-	if (!strcasecmp(args[0], "fs") && args[2]) {
+	if (!strcmp(args[0], "fs") && args[2]) {
 		/* if all the parameters were specified from the cmd line, we
 		 * use these */
 		storage_gensdbfs(atoi(args[1]), atoi(args[2]), blocksize,
 				i2c_adr);
 		return 0;
 	}
-	if (!strcasecmp(args[0], "fs") && storage_cfg.valid &&
+	if (!strcmp(args[0], "fs") && storage_cfg.valid &&
 			(atoi(args[1]) == MEM_FLASH ||
 			 atoi(args[1]) == MEM_FRAM)) {
 		/* if available, we can also use Flash parameters specified with
@@ -57,12 +57,12 @@ static int cmd_sdb(const char *args[])
 		return 0;
 	}
 	/* Erasing SDBFS image */
-	if (!strcasecmp(args[0], "fse") && args[2]) {
+	if (!strcmp(args[0], "fse") && args[2]) {
 		storage_sdbfs_erase(atoi(args[1]), atoi(args[2]), blocksize,
 				i2c_adr);
 		return 0;
 	}
-	if (!strcasecmp(args[0], "fse") && storage_cfg.valid &&
+	if (!strcmp(args[0], "fse") && storage_cfg.valid &&
 			(atoi(args[1]) == MEM_FLASH ||
 			 atoi(args[1]) == MEM_FRAM)) {
 		storage_sdbfs_erase(atoi(args[1]), storage_cfg.baseadr,
