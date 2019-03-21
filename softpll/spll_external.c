@@ -198,7 +198,7 @@ int external_align_fsm(volatile struct spll_external_state *s)
 					s->align_target = 0;
 					s->align_step = -100;					
 				} else if (s > 0) {
-					s->align_target = EXT_PERIOD_NS;
+					s->align_target = ALIGN_SAMPLE_PERIOD-EXT_PERIOD_NS;
 					s->align_step = 100;
 				}
 
