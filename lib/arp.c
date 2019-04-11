@@ -38,11 +38,23 @@ static void arp_init(void)
 						PTPD_SOCK_RAW_ETHERNET, 0, port);
 }
 
-static int process_arp(uint8_t * buf, int len)
+static void dp_arp_init(void)
+{
+	struct wr_sockaddr saddr;
+	int port=1;
+	/* Configure socket filter */
+	memset(&saddr, 0, sizeof(saddr));
+	// memset(&saddr.mac, 0xFF, 6);	/* Broadcast */
+	saddr.ethertype = htons(0x0806);	/* ARP */
+
+	arp_socket[port] = ptpd_netif_create_socket(&__static_arp_socket[port], &saddr,
+							PTPD_SOCK_RAW_ETHERNET, 0, port);
+}
+
+static int process_arp(uint8_t * buf, int len, int port)
 {
 	uint8_t hisMAC[6];
 	uint8_t hisIP[4];
-	int port=0;
 	uint8_t myIP[2][4];
 
 	if (len < ARP_END)
@@ -69,7 +81,7 @@ static int process_arp(uint8_t * buf, int len)
 		buf[ARP_OPER + 0] = 0;
 		buf[ARP_OPER + 1] = 2;
 		// my MAC
-		get_mac_addr(buf + ARP_SHA, 0);
+		get_mac_addr(buf + ARP_SHA, port);
 
 		for (port = 0; port < wr_num_ports; ++port)
 		{
@@ -105,14 +117,36 @@ static int arp_poll(void)
 	int port=0;
 	int ret;
 
-	if (ip_status[port] == IP_TRAINING)
-		return 0;		/* can't do ARP w/o an address... */
+	if ((link_status[port]!=LINK_UP) || (ip_status[port] == IP_TRAINING))
+		return 0;
 
 	ret = 0;
 	if ((len = ptpd_netif_recvfrom(arp_socket[port],
 				       &addr, buf, sizeof(buf), 0, port)) > 0)
 	{	
-		if ((len = process_arp(buf, len)) > 0)
+		if ((len = process_arp(buf, len, port)) > 0)
+			ptpd_netif_sendto(arp_socket[port], &addr, buf, len, 0, port);
+		ret = 1;
+	}
+	return ret;
+}
+
+static int dp_arp_poll(void)
+{
+	uint8_t buf[ARP_END + 100];
+	struct wr_sockaddr addr;
+	int len;
+	int port=1;
+	int ret;
+
+	if ((link_status[port]!=LINK_UP) || (ip_status[port] == IP_TRAINING))
+		return 0;
+
+	ret = 0;
+	if ((len = ptpd_netif_recvfrom(arp_socket[port],
+				       &addr, buf, sizeof(buf), 0, port)) > 0)
+	{	
+		if ((len = process_arp(buf, len, port)) > 0)
 			ptpd_netif_sendto(arp_socket[port], &addr, buf, len, 0, port);
 		ret = 1;
 	}
@@ -152,4 +186,11 @@ DEFINE_WRC_TASK(arp) = {
 	.enable = &(link_status[0]),
 	.init = arp_init,
 	.job = arp_poll,
+};
+
+DEFINE_WRC_TASK(dp_arp) = {
+	.name = "dp-arp",
+	.enable = &(link_status[1]),
+	.init = dp_arp_init,
+	.job = dp_arp_poll,
 };

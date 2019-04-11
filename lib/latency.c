@@ -219,6 +219,9 @@ static int latency_poll_tx(void)
 	 * Send three frames -- lazily in native byte order. Possibly
 	 * subtract a fake delay, to trigger reporting.
 	 */
+	if (link_status[0]!=LINK_UP)
+		return 0;
+
 	memset(&frame, 0, sizeof(frame));
 	frame.sequence = sequence++;
 
@@ -274,7 +277,7 @@ static int latency_poll(void)
 	return latency_poll_tx();
 }
 
-DEFINE_WRC_TASK(uptime) = {
+DEFINE_WRC_TASK(latency) = {
 	.name = "latency-probe",
 	.init = latency_init,
 	.job = latency_poll,

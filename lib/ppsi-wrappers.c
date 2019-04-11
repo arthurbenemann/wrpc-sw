@@ -43,11 +43,10 @@ int wrpc_get_port_state(struct hal_port_state *state, const char *port_name)
 	int port = atoi(&port_name[2]);
 	int wrc_mode = wrc_ptp_get_mode(port);
 
-	if(port == 0)
-		if(wrc_mode == WRC_MODE_SLAVE)
-			state->mode = HEXP_PORT_MODE_WR_SLAVE;
-		else
-			state->mode = HEXP_PORT_MODE_WR_MASTER;
+	if(wrc_mode == WRC_MODE_SLAVE)
+		state->mode = HEXP_PORT_MODE_WR_SLAVE;
+	else
+		state->mode = HEXP_PORT_MODE_WR_MASTER;
 
 	/* all deltas are added anyway */
 	ep_get_deltas(&state->calib.delta_tx_board, &state->calib.delta_rx_board, port);

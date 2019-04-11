@@ -74,11 +74,6 @@ static int cmd_ip(const char *args[])
 		ip_status[port] = IP_OK_STATIC;
 		decode_ip(args[1], ip);
 		setIP(ip, port);
-		if (port==0) {
-			ip[3]=ip[3]+1;
-			setIP(ip, 1);
-			ip_status[1] = IP_OK_STATIC;
-		}
 		print_ip();
 	} else {
 		return -EINVAL;

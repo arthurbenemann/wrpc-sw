@@ -245,6 +245,9 @@ static int lldp_poll(void)
 	uint8_t new_mac[ETH_ALEN];
 	static uint8_t old_mac[ETH_ALEN];
 
+	if (link_status[0]!=LINK_UP)
+		return 0;
+
 	/* periodic tasks */
 	if (ticks > LLDP_TX_TICK_INTERVAL) {
 		get_mac_addr(new_mac);

@@ -55,7 +55,7 @@ void sdb_print_devices(void)
 /* To save a little size, we enumerate our vendors */
 #define VID_CERN	0x0000ce42LL
 #define VID_GSI		0x00000651LL
-#define VID_THU		0x00001103LL
+#define VID_THU		0x00746875LL
 
 struct wrc_device {
 	unsigned char **base;

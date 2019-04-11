@@ -4,8 +4,10 @@
 
 #include "endpoint.h"
 #include "arp.h"
+#include "ptpd_netif.h"
 #include "hw/tcpip-config.h"
 #include "tcpip_config.h"
+#include "lib/ipv4.h"
 
 extern uint8_t tcpip_status = TCPIP_NULL;
 
@@ -25,18 +27,16 @@ void tcpip_init(void)
   uint8_t tmp_ip_addr[4];
   
   if (!tcpip_present())
-  {
-    pp_printf("No TCPIP module is found!\n");
     return;
-  }
   
   get_mac_addr(tcpip_mac_addr, 0);
   memcpy((uint8_t *)(BASE_TCPIP_CFG + TCPIP_MAC_HIGH16 + 2), (uint8_t *)tcpip_mac_addr, 2);
   memcpy((uint8_t *)(BASE_TCPIP_CFG + TCPIP_MAC_LOW32), (uint8_t *)tcpip_mac_addr+2, 4);
 
   // default udp tx dst/src port
-  tcpip_tx_dst_port(60000);
-  tcpip_tx_src_port(60000);
+  tcpip_tx_src_port(2000);
+  tcpip_tx_dst_port(2000);
+  // tcpip_rx_tcp_port(8000);
 
   getIP(tmp_ip_addr, 0);
   // tcpip module, default IP
@@ -49,7 +49,6 @@ void tcpip_init(void)
   // tcpip module, default subnet mask
   tmp_ip_addr[0]=0xff;tmp_ip_addr[1]=0xff;tmp_ip_addr[2]=0xff;tmp_ip_addr[3]=0x00;
   tcpip_subnet_addr(tmp_ip_addr);
-  
 }
 
 void tcpip_ip_addr(uint8_t *ip)
@@ -113,30 +112,37 @@ void tcpip_get_hisMAC(uint8_t mac_addr[])
   memcpy(mac_addr+2, (uint8_t *)(BASE_TCPIP_CFG + TCPIP_UDP_TX_DST_MAC_LOW32), 4);
 }
 
-void tcpip_rx_tcp_port(uint16_t port)
-{
-  volatile unsigned int *rtp =
-      (unsigned int *)(BASE_TCPIP_CFG + TCPIP_TCP_LOCAL_PORT);  
-  *rtp = (uint32_t)port;
-}
+// void tcpip_rx_tcp_port(uint16_t port)
+// {
+//   volatile unsigned int *rtp =
+//       (unsigned int *)(BASE_TCPIP_CFG + TCPIP_TCP_LOCAL_PORT);  
+//   *rtp = (uint32_t)port;
+// }
 
 uint8_t tcpip_poll()
 {
   uint8_t * ip;
-  static uint16_t arp_count = 0;
+  static uint32_t last_jiffies;
 
-  if (tcpip_status == TCPIP_OK)
+  if (link_status[0]!=LINK_UP)
     return 0;
 
-  if (tcpip_status == TCPIP_ARP)
-    arp_count++;
-
-  if (arp_count<65530)
+  if(ip_status == IP_TRAINING)
     return 0;
+
+  if (tcpip_status != TCPIP_ARP)
+    return 0;
+  
+  if (!last_jiffies)
+    last_jiffies = timer_get_tics() - 1 -  TICS_PER_SECOND;
+
+  if (time_before(timer_get_tics(), last_jiffies + TICS_PER_SECOND))
+    return 0;
+  last_jiffies = timer_get_tics();  
   
   tcpip_get_hisIP(ip);
   send_arp(ip, 0);
-  arp_count=0;
+  return 1;
 
 }
 

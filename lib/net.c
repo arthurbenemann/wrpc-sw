@@ -62,9 +62,9 @@ struct wrpc_socket *ptpd_netif_create_socket(struct wrpc_socket *sock,
 		pp_printf("%s: no socket slots left\n", __func__);
 		return NULL;
 	}
-	net_verbose("%s: socket %p for %04x:%04x, slot %i\n", __func__,
+	net_verbose("%s: socket %p for %04x:%04x, slot %i, port %d\n", __func__,
 		    sock, ntohs(bind_addr->ethertype),
-		    udpport, i);
+		    udpport, i, port);
 
 	switch(port){
 		case 0: port_name="wr0";break;
@@ -321,7 +321,7 @@ static int update_rx_queues()
 	int recvd, i, q_required;
 	static uint8_t buffer[NET_MAX_SKBUF_SIZE - 32];
 	uint8_t *payload = buffer;
-	uint16_t size, port;
+	uint16_t size, udpport;
 	uint16_t ethtype, tag;
 
 	recvd =
@@ -349,9 +349,9 @@ static int update_rx_queues()
 
 	/* Prepare for IP/UDP checks */
 	if (payload[IP_VERSION] == 0x45 && payload[IP_PROTOCOL] == 17)
-		port = payload[UDP_DPORT] << 8 | payload[UDP_DPORT + 1];
+		udpport = payload[UDP_DPORT] << 8 | payload[UDP_DPORT + 1];
 	else
-		port = 0;
+		udpport = 0;
 
 	for (i = 0; i < ARRAY_SIZE(socks[0]); i++) {
 		s = socks[0][i];
@@ -359,9 +359,9 @@ static int update_rx_queues()
 			continue;
 		if (hdr.ethtype != s->bind_addr.ethertype)
 			continue;
-		if (!port && !s->bind_addr.udpport)
+		if (!udpport && !s->bind_addr.udpport)
 			raws = s; /* match with raw socket */
-		if (port && s->bind_addr.udpport == port)
+		if (udpport && s->bind_addr.udpport == udpport)
 			udps = s; /*  match with udp socket */
 	}
 	s = udps;
@@ -413,7 +413,7 @@ static int update_dp_rx_queues(void)
 	int recvd, i, q_required;
 	static uint8_t buffer[NET_MAX_SKBUF_SIZE - 32];
 	uint8_t *payload = buffer;
-	uint16_t size, port;
+	uint16_t size, udpport;
 	uint16_t ethtype, tag;
 
 	recvd = minic_rx_frame(&hdr, buffer, sizeof(buffer), &hwts, 1);
@@ -438,9 +438,9 @@ static int update_dp_rx_queues(void)
 
 	/* Prepare for IP/UDP checks */
 	if (payload[IP_VERSION] == 0x45 && payload[IP_PROTOCOL] == 17)
-		port = payload[UDP_DPORT] << 8 | payload[UDP_DPORT + 1];
+		udpport = payload[UDP_DPORT] << 8 | payload[UDP_DPORT + 1];
 	else
-		port = 0;
+		udpport = 0;
 
 	for (i = 0; i < ARRAY_SIZE(socks[1]); i++) {
 		s = socks[1][i];
@@ -448,9 +448,9 @@ static int update_dp_rx_queues(void)
 			continue;
 		if (hdr.ethtype != s->bind_addr.ethertype)
 			continue;
-		if (!port && !s->bind_addr.udpport)
+		if (!udpport && !s->bind_addr.udpport)
 			raws = s; /* match with raw socket */
-		if (port && s->bind_addr.udpport == port)
+		if (udpport && s->bind_addr.udpport == udpport)
 			udps = s; /*  match with udp socket */
 	}
 	s = udps;

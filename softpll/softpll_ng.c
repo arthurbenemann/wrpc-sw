@@ -341,7 +341,8 @@ void spll_init(int mode, int slave_ref_channel, int align_pps)
 	}
 	
 	if(mode == SPLL_MODE_FREE_RUNNING_MASTER)
-		PPSG->ESCR = PPSG_ESCR_PPS_VALID | PPSG_ESCR_TM_VALID;
+		// PPSG->ESCR = PPSG_ESCR_PPS_VALID | PPSG_ESCR_TM_VALID;
+		PPSG->ESCR = PPSG_ESCR_PPS_VALID;
 	
 	for (i = 0; i < spll_n_chan_ref; i++)
 		ptracker_init(&s->ptrackers[i], i, PTRACKER_AVERAGE_SAMPLES);
@@ -487,13 +488,13 @@ void spll_show_stats()
 		statename = "<Unknown>";
 
 	if (softpll.mode > 0)
-		    pp_printf("softpll: irqs %d seq %s mode %d "
-		     "alignment_state %d HL%d ML%d HY=%d MY=%d DelCnt=%d\n",
-		      s->irq_count, statename,
-			      s->mode, s->ext.align_state,
-			      s->helper.ld.locked, s->mpll.ld.locked,
-			      s->helper.pi.y, s->mpll.pi.y,
-			      s->delock_count);
+		pp_printf("softpll: irqs %d seq %s mode %d "
+		"alignment_state %d HL%d ML%d HY=%d MY=%d DelCnt=%d\n",
+		s->irq_count, statename,
+		s->mode, s->ext.align_state,
+		s->helper.ld.locked, s->mpll.ld.locked,
+		s->helper.pi.y, s->mpll.pi.y,
+		s->delock_count);
 }
 
 int spll_shifter_busy(int channel)

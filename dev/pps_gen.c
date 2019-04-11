@@ -70,14 +70,16 @@ void shw_pps_gen_set_time(uint64_t seconds, uint32_t nanoseconds, int counter)
 {
 	ppsg_write(ADJ_UTCLO, (uint32_t) (seconds & 0xffffffffLL));
 	ppsg_write(ADJ_UTCHI, (uint32_t) (seconds >> 32) & 0xff);
+	if (counter == PPSG_SET_SEC)
+			ppsg_write(ESCR, (ppsg_read(ESCR) & 0xffffffe7) | PPSG_ESCR_SEC_SET);
+	return;
+	
 	ppsg_write(ADJ_NSEC,
 		   (int32_t) ((int64_t) nanoseconds * 1000LL /
 			      (int64_t) REF_CLOCK_PERIOD_PS));
 
 	if (counter == PPSG_SET_ALL)
 		ppsg_write(CR, (ppsg_read(CR) & 0xfffffffb) | PPSG_CR_CNT_SET);
-	else if (counter == PPSG_SET_SEC)
-		ppsg_write(ESCR, (ppsg_read(ESCR) & 0xffffffe7) | PPSG_ESCR_SEC_SET);
 	else if (counter == PPSG_SET_NSEC)
 		ppsg_write(ESCR, (ppsg_read(ESCR) & 0xffffffe7) | PPSG_ESCR_NSEC_SET);
 }
@@ -127,10 +129,24 @@ int shw_pps_gen_enable_output(int enable)
 	uint32_t escr = ppsg_read(ESCR);
 	if (enable)
 		ppsg_write(ESCR,
-			   escr | PPSG_ESCR_PPS_VALID | PPSG_ESCR_TM_VALID);
+			   escr | PPSG_ESCR_PPS_VALID);
 	else
 		ppsg_write(ESCR,
-			   escr & ~(PPSG_ESCR_PPS_VALID | PPSG_ESCR_TM_VALID));
+			   escr & ~(PPSG_ESCR_PPS_VALID));
+
+	return 0;
+}
+
+/* Time valid or unvalid */
+int shw_pps_gen_time_valid(int valid)
+{
+	uint32_t escr = ppsg_read(ESCR);
+	if (valid)
+		ppsg_write(ESCR,
+			   escr | PPSG_ESCR_TM_VALID);
+	else
+		ppsg_write(ESCR,
+			   escr & ~(PPSG_ESCR_TM_VALID));
 
 	return 0;
 }

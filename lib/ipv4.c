@@ -86,24 +86,24 @@ static void ipv4_init(void)
 	int port=0;
 
 	/* Bootp: use UDP engine activated by function arguments  */
-	bootp_socket = ptpd_netif_create_socket(&__static_bootp_socket, NULL,
-							PTPD_SOCK_UDP, 68 /* bootpc */, 0);
+	// bootp_socket = ptpd_netif_create_socket(&__static_bootp_socket, NULL,
+	// 						PTPD_SOCK_UDP, 68 /* bootpc */, port);
 
 	/* time (rdate): UDP */
 	rdate_socket = ptpd_netif_create_socket(&__static_rdate_socket, NULL,
-					       PTPD_SOCK_UDP, 37 /* time */, 0);
+					       PTPD_SOCK_UDP, 37 /* time */, port);
 
 	/* remote update (remote_update): UDP */
 	remote_update_socket = ptpd_netif_create_socket(&__static_remote_update_socket, NULL,
-						PTPD_SOCK_UDP, 71 /* remote update */, 0);
+						PTPD_SOCK_UDP, 71 /* remote update */, port);
 
 	/* ICMP: specify raw (not UDP), with IPV4 ethtype */
 	memset(&saddr, 0, sizeof(saddr));
 	saddr.ethertype = htons(0x0800);
 	// All SNMPs go through port 0
-	icmp_socket[0] = ptpd_netif_create_socket(&__static_icmp_socket[0], &saddr,
-						       PTPD_SOCK_RAW_ETHERNET, 0, 0);
-	syslog_init();
+	icmp_socket[port] = ptpd_netif_create_socket(&__static_icmp_socket[port], &saddr,
+						       PTPD_SOCK_RAW_ETHERNET, 0, port);
+	// syslog_init();
 }
 
 static int bootp_retry = 0;
@@ -137,21 +137,18 @@ static int icmp_poll()
 {
 	struct wr_sockaddr addr;
 	uint8_t buf[128];
-	int len;
 	int port=0;
+	int len;
 
-	len = ptpd_netif_recvfrom(icmp_socket[0], &addr,
-					  buf, sizeof(buf), NULL, 0);
+	len = ptpd_netif_recvfrom(icmp_socket[port], &addr,
+					  buf, sizeof(buf), NULL, port);
 	if (len <= 0)
 		return 0;
 	/* check the destination IP */
-	for (port= 0;port<wr_num_ports;++port)
-	{
-		if(check_dest_ip(buf, port)==0){
-			if ((len = process_icmp(buf, len, port)) > 0) 
-				ptpd_netif_sendto(icmp_socket[0], &addr, buf, len, 0, 0);
-			return 1;
-		}
+	if(check_dest_ip(buf, port)==0){
+		if ((len = process_icmp(buf, len, port)) > 0) 
+			ptpd_netif_sendto(icmp_socket[port], &addr, buf, len, 0, port);
+		return 1;
 	}
 	return 0;
 }
@@ -192,6 +189,7 @@ static int remote_update_poll(void)
 	int len;
 	uint32_t type;
 	uint32_t data_addr;
+	static uint32_t prog_data_addr;
 	uint8_t* reg_addr;
 	int data_size;
 	int port;
@@ -201,7 +199,6 @@ static int remote_update_poll(void)
 	if (len <= 0)
 		return 0;	
 
-
 	/* check the destination IP */
 	if (check_dest_ip(buf, 0))
 		return 0;
@@ -209,14 +206,14 @@ static int remote_update_poll(void)
 	if (check_magic_udp(buf)<0)
 	{
 		// magic data error
-		memset(buf+UDP_END, 0x00000001, 4);
-		len = UDP_END + 4 + 64;
+		memset(buf+UDP_END, 0xfe, 1);
+		len = UDP_END + 12 + 64;
 	}
 	else if (check_magic_udp(buf)>0)
 	{
 		// udp checksum err
-		memset(buf+UDP_END, 0xffff0000, 4);
-		len = UDP_END + 4 + 64;
+		memset(buf+UDP_END, 0xff, 1);
+		len = UDP_END + 12 + 64;
 		return 0;
 	}
 	else 
@@ -225,19 +222,30 @@ static int remote_update_poll(void)
 		switch(type)
 		{
 			case FLASH_ERASE:
+				wrc_ptp_set_mode(WRC_MODE_MASTER, 0);
 				for (port = 0; port < wr_num_ports; ++port)
 					wrc_ptp_run(0,port);
 				data_addr = (buf[UDP_END+8]<<24)+(buf[UDP_END+9]<<16)+(buf[UDP_END+10]<<8)+buf[UDP_END+11];
 				data_size = (buf[UDP_END+12]<<24)+(buf[UDP_END+13]<<16)+(buf[UDP_END+14]<<8)+buf[UDP_END+15];
 				flash_erase(data_addr,data_size);
-				memset(buf+UDP_END+12, 0x00000000, 4);
-				len = UDP_END + 16 + 64;
+				prog_data_addr = data_addr;
+				memset(buf+UDP_END, 0x00, 1);
+				len = UDP_END + 12 + 64;
+				break;
 			case FLASH_WRITE:
 				data_addr = (buf[UDP_END+8]<<24)+(buf[UDP_END+9]<<16)+(buf[UDP_END+10]<<8)+buf[UDP_END+11];
 				data_size = (buf[UDP_END+12]<<24)+(buf[UDP_END+13]<<16)+(buf[UDP_END+14]<<8)+buf[UDP_END+15];
-				flash_write(data_addr,buf+UDP_END+16,data_size);
-				memset(buf+UDP_END+12, 0x00000000, 4);
-				len = UDP_END + 16 + 64 ;
+				if (prog_data_addr==data_addr)
+				{
+					flash_write(data_addr,buf+UDP_END+16,data_size);
+					prog_data_addr=prog_data_addr+256;
+					memset(buf+UDP_END, 0x00, 1);
+				} else {
+					pp_printf("Prog addr error %x\n",data_addr);
+					// reply lose error
+					memset(buf+UDP_END, 0xfd, 1);
+				}
+				len = UDP_END + 12 + 64 ;
 				break;
 			case FLASH_READ:
 				data_addr = (buf[UDP_END+8]<<24)+(buf[UDP_END+9]<<16)+(buf[UDP_END+10]<<8)+buf[UDP_END+11];
@@ -259,8 +267,8 @@ static int remote_update_poll(void)
 				len = UDP_END + 16 + data_size + 64;
 				break;
 			default:
-				// type error
-				memset(buf+UDP_END, 0x00000002, 4);
+				// operation type error
+				memset(buf+UDP_END, 0xfc, 1);
 				len = UDP_END + 4 + 64;
 		}
 	}
@@ -274,9 +282,10 @@ static int ipv4_poll(void)
 {
 	int ret = 0;
 
-	if (link_status[0] == LINK_WENT_UP && ip_status[0] == IP_OK_BOOTP)
-		ip_status[0] = IP_TRAINING;
-	ret = bootp_poll();
+	if (link_status[0]!=LINK_UP)
+		return 0;
+
+	// ret = bootp_poll();
 
 	ret += icmp_poll();
 
@@ -284,7 +293,19 @@ static int ipv4_poll(void)
 
 	ret += remote_update_poll();
 
-	ret += syslog_poll();
+	// ret += syslog_poll();
+
+	return ret != 0;
+}
+
+static int dp_ipv4_poll(void)
+{
+	int ret = 0;
+
+	if (link_status[1]!=LINK_UP)
+		return 0;
+
+	ret = dp_icmp_poll();
 
 	return ret != 0;
 }
@@ -296,7 +317,7 @@ void getIP(unsigned char *IP, int port)
 
 DEFINE_WRC_TASK(ipv4) = {
 	.name = "ipv4",
-	.enable = &link_status[0],
+	.enable = &(link_status[0]),
 	.init = ipv4_init,
 	.job = ipv4_poll,
 };

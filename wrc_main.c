@@ -127,14 +127,8 @@ static void wrc_initialize(void)
 	wrc_ui_mode = UI_SHELL_MODE;
 	_endram = ENDRAM_MAGIC;
 
-	for (port=1; port<wr_num_ports;port++)
-		wrc_ptp_set_mode(WRC_MODE_MASTER, port);
+	wrc_ptp_set_mode(WRC_MODE_MASTER, 0);
 	
-	wrc_ptp_set_mode(WRC_MODE_SLAVE, 0);
-
-	for (port=0; port<wr_num_ports;port++) {
-		wrc_ptp_start(port);
-	}
 	shw_pps_gen_get_time(NULL, &prev_nanos_for_profile);
 	/* get tics */
 	prev_ticks_for_profile = timer_get_tics();
@@ -158,7 +152,19 @@ static int wrc_check_link(void)
 	if (first_run==0)
 	{
 		for(port=0; port<wr_num_ports; port++) {
+			sfp_match(port);
+			calib_t24p(WRC_MODE_MASTER, &cal_phase_transition[port],port);
 			prev_state[port] = -1;
+			state[port] = ep_link_up(NULL, port);
+			if (state[port])
+			{
+				wrc_ptp_start(port);
+				link_status[port] = LINK_UP;
+				if (port==0) gpio_out(GPIO_LED_LINK, 1);
+			} else {
+				link_status[port] = LINK_DOWN;
+				if (port==0) gpio_out(GPIO_LED_LINK, 0);
+			}
 		}
 		first_run++;
 	} else {
@@ -178,13 +184,7 @@ static int wrc_check_link(void)
 				if (port==0) gpio_out(GPIO_LED_LINK, 0);
 				link_status[port] = LINK_WENT_DOWN;
 				wrc_ptp_stop(port);
-				timer_delay_ms(1);
 				minic_init(port);
-				/* special case */
-				if (port==0) {
-					spll_init(SPLL_MODE_FREE_RUNNING_MASTER, 0, 1);
-					shw_pps_gen_enable_output(1);
-				}
 				rv = 1;
 			} else {
 				link_status[port] = (state[port] ? LINK_UP : LINK_DOWN);

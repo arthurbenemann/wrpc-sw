@@ -195,8 +195,9 @@ int minic_rx_frame(struct wr_ethhdr *hdr, uint8_t * payload, uint32_t buf_size,
 
 		EXPLODE_WR_TIMESTAMP(raw_ts, counter_r, counter_f);
 
-		if (counter_r > 3 * REF_CLOCK_FREQ_HZ / 4
-		    && counter_ppsg < 250000000)
+		// if (counter_r > 3 * REF_CLOCK_FREQ_HZ / 4
+		//     && counter_ppsg < 250000000)
+		if (counter_ppsg < counter_r*(REF_CLOCK_PERIOD_PS / 1000))
 			sec--;
 
 		hwts->sec = sec;

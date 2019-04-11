@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 
+void tcpip_init(void);
 void tcpip_ip_addr(uint8_t *ip);
 void tcpip_gateway_addr(uint8_t *gw);
 void tcpip_subnet_addr(uint8_t *sn);

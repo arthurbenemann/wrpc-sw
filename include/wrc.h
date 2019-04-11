@@ -86,4 +86,7 @@ extern uint32_t __div64_32(uint64_t *n, uint32_t base);
 #define wr_num_ports 1
 #endif
 
+// pps delay between ext pps in and pps out
+int ext_pps_latency_ps;
+
 #endif /* __WRC_H__ */

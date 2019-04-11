@@ -26,6 +26,7 @@ struct subcmd {
 	{"gm", wrc_ptp_set_mode, WRC_MODE_GM},
 	{"master", wrc_ptp_set_mode, WRC_MODE_MASTER},
 	{"slave", wrc_ptp_set_mode, WRC_MODE_SLAVE},
+	{"cascaded", wrc_ptp_set_mode, WRC_MODE_CASCADED},
 #ifdef CONFIG_ABSCAL
 	{"abscal", wrc_ptp_set_mode, WRC_MODE_ABSCAL},
 #endif
@@ -34,7 +35,7 @@ struct subcmd {
 static char *is_run[] = {"stopped", "running"};
 static char *is_mech[] = {[PP_E2E_MECH] = "e2e", [PP_P2P_MECH] = "p2p"};
 static char *is_mode[] = {[WRC_MODE_GM] = "gm", [WRC_MODE_MASTER] = "master",
-			  [WRC_MODE_SLAVE] = "slave"
+			  [WRC_MODE_SLAVE] = "slave", [WRC_MODE_CASCADED] = "cascaded"
 #ifdef CONFIG_ABSCAL
  			  , [WRC_MODE_ABSCAL] = "abscal"
 #endif

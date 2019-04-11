@@ -195,6 +195,7 @@ int rxts_calibration_update(uint32_t *t24p_value, int port)
 int measure_t24p(uint32_t *value, int port)
 {
 	int rv;
+	int retry_cnt;
 	pp_printf("Waiting for link...\n");
 	while (!ep_link_up(NULL, port))
 		timer_delay_ms(100);
@@ -202,7 +203,12 @@ int measure_t24p(uint32_t *value, int port)
 	spll_init(SPLL_MODE_SLAVE, port, 1);
 	pp_printf("Locking PLL...\n");
 	while (!spll_check_lock(0))
+	{
 		timer_delay_ms(100);
+		retry_cnt++;
+		if (retry_cnt>400)
+			return -1;
+	}
 	pp_printf("\n");
 
 	pp_printf("Calibrating RX timestamper...\n");
@@ -223,14 +229,6 @@ static int calib_t24p_master(uint32_t *value, int port)
 		return rv;
 	}
 	pp_printf("port %d t24p read from storage: %d ps\n", port,*value);
-	if ((*value)>100000)
-	{
-		pp_printf("Port %d Measuring t2/t4 phase transition...\n", port);
-		measure_t24p(value, port);
-		rv=storage_phtrans(value, 1, port);
-		pp_printf("Wrote new t24p value: %d ps (%s)\n", *value,
-			  rv < 0 ? "Failed" : "Success");
-	}
 	return rv;
 }
 

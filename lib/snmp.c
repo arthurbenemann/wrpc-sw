@@ -1653,6 +1653,9 @@ static int snmp_poll(void)
 	uint8_t buf[200];
 	int len;
 
+	if (link_status[0]!=LINK_UP)
+		return 0;
+
 	/* no need to wait for IP address: we won't get queries */
 	len = ptpd_netif_recvfrom(snmp_socket, &addr,
 				  buf, sizeof(buf), NULL, 0/*port*/);

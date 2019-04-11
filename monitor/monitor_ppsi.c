@@ -120,10 +120,10 @@ int wrc_mon_gui(void)
 	if (!last_jiffies)
 		last_jiffies = timer_get_tics() - 1 -  wrc_ui_refperiod;
 	if (time_before(timer_get_tics(), last_jiffies + wrc_ui_refperiod)
-		&& last_servo_count == s[port]->update_count)
+		&& last_servo_count == s[0]->update_count)
 		return 0;
 	last_jiffies = timer_get_tics();
-	last_servo_count = s[port]->update_count;
+	last_servo_count = s[0]->update_count;
 
 	term_clear();
 
@@ -179,9 +179,7 @@ int wrc_mon_gui(void)
 			continue;
 		}
 
-		if (port==0)
-		{
-			switch (ptp_mode[port]) {
+		switch (ptp_mode[port]) {
 			case WRC_MODE_GM:
 			case WRC_MODE_MASTER:
 				cprintf(C_WHITE, "WR Master  ");
@@ -191,11 +189,8 @@ int wrc_mon_gui(void)
 				break;
 			default:
 				cprintf(C_RED,   "WR Unknown ");
-			}
-		} else {
-			cprintf(C_WHITE, "WR Master  ");
 		}
-		
+
 		if (state.locked)
 			cprintf(C_GREEN, "Locked ");
 		else

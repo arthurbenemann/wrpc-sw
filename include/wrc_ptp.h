@@ -6,6 +6,7 @@
 #define WRC_MODE_MASTER 2
 #define WRC_MODE_SLAVE 3
 #define WRC_MODE_ABSCAL 4
+#define WRC_MODE_CASCADED 5
 
 extern int ptp_mode[wr_num_ports];
 
