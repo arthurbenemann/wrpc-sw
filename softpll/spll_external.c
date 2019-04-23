@@ -160,10 +160,10 @@ int external_align_fsm(volatile struct spll_external_state *s)
 			if(align_sample(1, &v)) {
 				v %= ALIGN_SAMPLE_PERIOD;
 				if(v == 0 || v >= ALIGN_SAMPLE_PERIOD / 2) {
-					s->align_target = EXT_PERIOD_NS;
+					s->align_target = 0;
 					s->align_step = -100;
 				} else if (s > 0) {
-					s->align_target = 0;
+					s->align_target = ALIGN_SAMPLE_PERIOD-EXT_PERIOD_NS;
 					s->align_step = 100;
 				}
 
