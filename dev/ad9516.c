@@ -231,6 +231,8 @@ static void ad9516_sync_outputs(void *spi_base)
 
 }
 
+
+// This function is related to a not very well documented bug in the external softpll init code.
 int ext_ad9516_locked (void)
 {
 	if ((ad9516_read_reg((void *)BASE_SPI_EXT_BOARD,  0x1f) & 1))
