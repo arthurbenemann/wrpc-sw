@@ -1,3 +1,11 @@
+/*
+ * This work is part of the White Rabbit project
+ *
+ * Copyright (C) 2012 - 2013 CERN (www.cern.ch)
+ * Author: Tomasz Wlostowski <tomasz.wlostowski@cern.ch>
+ *
+ * Released according to the GNU GPL, version 2 or any later version.
+ */
 #ifndef __RT_IPC_H
 #define __RT_IPC_H
 
@@ -100,7 +108,7 @@ struct rts_pll_state {
 /* API */
 
 /* Connects to the RT CPU */
-int rts_connect();
+int rts_connect(void);
 
 /* Queries the RT CPU PLL state */
 int rts_get_state(struct rts_pll_state *state);

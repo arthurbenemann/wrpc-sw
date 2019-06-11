@@ -9,8 +9,7 @@
 
 /* spll_helper.c - implmentation of the Helper PLL servo algorithm. */
 
-#include "spll_helper.h"
-#include "spll_debug.h"
+#include "softpll_ng.h"
 
 const int helper_precomp_coefs [] = 
 { /*b0*/ 60648,
@@ -25,8 +24,13 @@ void helper_init(struct spll_helper_state *s, int ref_channel)
 	/* Phase branch PI controller */
 	s->pi.y_min = 5;
 	s->pi.y_max = (1 << DAC_BITS) - 5;
-	s->pi.kp = 150;//(int)(0.3 * 32.0 * 16.0);	// / 2;
-	s->pi.ki = 2;//(int)(0.03 * 32.0 * 3.0);	// / 2;
+#if defined(CONFIG_WR_NODE)
+	s->pi.kp = -150;//(int)(0.3 * 32.0 * 16.0);	// / 2;
+	s->pi.ki = -2;//(int)(0.03 * 32.0 * 3.0);	// / 2;
+#else
+	s->pi.kp = 150;
+	s->pi.ki = 2;
+#endif
 	s->pi.anti_windup = 1;
 
 	/* Phase branch lock detection */
@@ -92,8 +96,11 @@ void helper_start(struct spll_helper_state *s)
 {
 	/* Set the bias to the upper end of tuning range. This is to ensure that
 	   the HPLL will always lock on positive frequency offset. */
+#if defined(CONFIG_WR_SWITCH)
 	s->pi.bias = s->pi.y_max;
-
+#else
+	s->pi.bias = s->pi.y_min;
+#endif
 	s->p_setpoint = 0;
 	s->p_adder = 0;
 	s->sample_n = 0;

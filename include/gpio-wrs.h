@@ -1,3 +1,8 @@
+/*
+ * This work is part of the White Rabbit project
+ *
+ * Released according to the GNU GPL, version 2 or any later version.
+ */
 #ifndef __GPIO_H
 #define __GPIO_H
 
@@ -31,7 +36,7 @@ static inline void gpio_dir(int pin, int val)
     __gpio->DDR &= ~(1<<pin);
 }
 
-static inline int gpio_in(int bank, int pin)
+static inline int gpio_in(int pin)
 {
   return __gpio->PSR & (1<<pin) ? 1: 0;
 }

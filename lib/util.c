@@ -12,8 +12,6 @@
 #include <time.h>
 #include <wrc.h>
 
-#include "util.h"
-
 /* cut from libc sources */
 
 #define 	YEAR0   1900
@@ -43,7 +41,7 @@ static const int _ytab[2][12] = {
 	{31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31}
 };
 
-char *format_time(uint64_t sec)
+char *format_time(uint64_t sec, int format)
 {
 	struct tm t;
 	static char buf[64];
@@ -71,9 +69,23 @@ char *format_time(uint64_t sec)
 	t.tm_mday = dayno + 1;
 	t.tm_isdst = 0;
 
-	sprintf(buf, "%s, %s %d, %d, %02d:%02d:%02d", _days[t.tm_wday],
-		_months[t.tm_mon], t.tm_mday, t.tm_year + YEAR0, t.tm_hour,
-		t.tm_min, t.tm_sec);
+	switch(format) {
+	case TIME_FORMAT_LEGACY:
+	default:
+		sprintf(buf, "%s, %s %d, %d, %02d:%02d:%02d", _days[t.tm_wday],
+			_months[t.tm_mon], t.tm_mday, t.tm_year + YEAR0,
+			t.tm_hour, t.tm_min, t.tm_sec);
+		break;
+	case TIME_FORMAT_SYSLOG:
+		sprintf(buf, "%s %2d %02d:%02d:%02d", _months[t.tm_mon],
+			t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec);
+		break;
+	case TIME_FORMAT_SORTED:
+		sprintf(buf, "%4d-%02d-%02d-%02d:%02d:%02d",
+			t.tm_year + YEAR0, t.tm_mon + 1, t.tm_mday,
+			t.tm_hour, t.tm_min, t.tm_sec);
+		break;
+	}
 
 	return buf;
 }
@@ -81,25 +93,34 @@ char *format_time(uint64_t sec)
 void cprintf(int color, const char *fmt, ...)
 {
 	va_list ap;
-	mprintf("\e[0%d;3%dm", color & C_DIM ? 2 : 1, color & 0x7f);
+	pp_printf("\e[0%d;3%dm", color & C_DIM ? 2 : 1, color & 0x7f);
 	va_start(ap, fmt);
 	vprintf(fmt, ap);
 	va_end(ap);
-	mprintf("\e[m");
+	pp_printf("\e[m");
 }
 
 void pcprintf(int row, int col, int color, const char *fmt, ...)
 {
 	va_list ap;
-	mprintf("\e[%d;%df", row, col);
-	mprintf("\e[0%d;3%dm", color & C_DIM ? 2 : 1, color & 0x7f);
+	pp_printf("\e[%d;%df", row, col);
+	pp_printf("\e[0%d;3%dm", color & C_DIM ? 2 : 1, color & 0x7f);
 	va_start(ap, fmt);
 	vprintf(fmt, ap);
 	va_end(ap);
-	mprintf("\e[m");
+	pp_printf("\e[m");
 }
 
-void term_clear()
+void __debug_printf(const char *fmt, ...)
 {
-	mprintf("\e[2J\e[1;1H");
+	va_list ap;
+	va_start(ap, fmt);
+	vprintf(fmt, ap);
+	va_end(ap);
+}
+
+
+void term_clear(void)
+{
+	pp_printf("\e[2J\e[1;1H");
 }

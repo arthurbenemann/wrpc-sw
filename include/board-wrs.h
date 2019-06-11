@@ -1,3 +1,8 @@
+/*
+ * This work is part of the White Rabbit project
+ *
+ * Released according to the GNU GPL, version 2 or any later version.
+ */
 #ifndef __BOARD_H
 #define __BOARD_H
 
@@ -16,6 +21,7 @@
 #define BASE_GPIO 0x10300
 #define BASE_TIMER 0x10400
 #define BASE_PPS_GEN 0x10500
+#define BASE_SPI_EXT_BOARD 0x10700
 
 /* spll parameter that are board-specific */
 #define BOARD_DIVIDE_DMTD_CLOCKS	0

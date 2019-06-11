@@ -84,7 +84,9 @@ SECTIONS
 
 	/* First location in stack is highest address in RAM (stack area) */
 	PROVIDE(_fstack = ORIGIN(stack) + LENGTH(stack) - 4);
+
+	/* We have no ppi_static nor fifo_log in wrs builds */
+	PROVIDE(ppi_static = 0);
+	PROVIDE(fifo_log = 0);
 }
 
-/* We need to provide mprintf to ptp-noposix object files, if missing */
-PROVIDE(mprintf = pp_printf);

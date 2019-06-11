@@ -10,4 +10,15 @@ SECTIONS
 		KEEP(*(.cmd))
 		__cmd_end = .;
 	}
+	.temp : {
+		__temp_begin = .;
+		KEEP(*(.temp))
+		__temp_end = .;
+	}
+	.task : {
+		__task_begin = .;
+		KEEP(*(.task0))
+		KEEP(*(.task))
+		__task_end = .;
+	}
 }

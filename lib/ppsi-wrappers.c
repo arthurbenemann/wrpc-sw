@@ -1,3 +1,12 @@
+/*
+ * This work is part of the White Rabbit project
+ *
+ * Copyright (C) 2013 - 2015 CERN (www.cern.ch)
+ * Author: Tomasz Wlostowski <tomasz.wlostowski@cern.ch>
+ * Author: Adam Wujek <adam.wujek@cern.ch>
+ *
+ * Released according to the GNU GPL, version 2 or any later version.
+ */
 #include <stdint.h>
 #include <libwr/hal_shmem.h>
 #include <libwr/shmem.h>
@@ -10,14 +19,6 @@
 struct wrs_shm_head *ppsi_head;
 
 /* Following code from ptp-noposix/libposix/freestanding-wrapper.c */
-
-uint64_t ptpd_netif_get_msec_tics(void)
-{
-#if TICS_PER_SECOND != 1000
-#error "This code assumes 1kHz timer"
-#endif
-  return timer_get_tics();
-}
 
 static int read_phase_val(struct hal_port_state *port)
 {
@@ -57,20 +58,13 @@ int wrpc_get_port_state(struct hal_port_state *port, const char *port_name)
 	port->locked = spll_check_lock(0);
 	/*  port->lock_priority = 0;*/
 	/*spll_get_phase_shift(0, NULL, (int32_t *)&port->phase_setpoint);*/
-	port->clock_period  = 8000;
+	port->clock_period  = REF_CLOCK_PERIOD_PS;
 	port->t2_phase_transition = cal_phase_transition;
 	port->t4_phase_transition = cal_phase_transition;
 	get_mac_addr(port->hw_addr);
 	port->hw_index      = 0;
 
 	return 0;
-}
-
-int ptpd_netif_get_dmtd_phase(wr_socket_t *sock, int32_t *phase)
-{
-        if(phase)
-                return spll_read_ptracker(0, phase, NULL);
-        return 0;
 }
 
 /* dummy function, no shmem locks (no even shmem) are implemented in wrpc */

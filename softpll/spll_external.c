@@ -10,29 +10,17 @@
 /* spll_external.h - implementation of SoftPLL servo for the 
    external (10 MHz - Grandmaster mode) reference channel */
 
-#include "spll_external.h"
-#include "spll_debug.h"
-
-#include <pp-printf.h>
-#include "trace.h"
+#include <wrc.h>
+#include "softpll_ng.h"
 #include "irq.h"
-
-#define ALIGN_STATE_EXT_OFF 0
-#define ALIGN_STATE_START 1
-#define ALIGN_STATE_INIT_CSYNC 2
-#define ALIGN_STATE_WAIT_CSYNC 3
-#define ALIGN_STATE_START_ALIGNMENT 7
-#define ALIGN_STATE_WAIT_SAMPLE 4
-#define ALIGN_STATE_COMPENSATE_DELAY 5
-#define ALIGN_STATE_LOCKED 6
-#define ALIGN_STATE_START_MAIN 8
+#include "gpio-wrs.h"
 
 #define ALIGN_SAMPLE_PERIOD 100000
 #define ALIGN_TARGET 0
 
 #define EXT_PERIOD_NS 100
 #define EXT_FREQ_HZ 10000000
-#define EXT_PPS_LATENCY_PS 30000 // fixme: make configurable
+//#define EXT_PPS_LATENCY_PS 63000 // fixme: make configurable
 
 
 void external_init(volatile struct spll_external_state *s, int ext_ref,
@@ -50,11 +38,11 @@ void external_init(volatile struct spll_external_state *s, int ext_ref,
 
 void external_start(struct spll_external_state *s)
 {
-    helper_start(s->helper);
+	helper_start(s->helper);
 
 	SPLL->ECCR = SPLL_ECCR_EXT_EN;
 
-	s->align_state = ALIGN_STATE_START;
+	s->align_state = ALIGN_STATE_WAIT_CLKIN;
 	s->enabled = 1;
 	spll_debug (DBG_EVENT | DBG_EXT, DBG_EVT_START, 1);
 }
@@ -62,11 +50,14 @@ void external_start(struct spll_external_state *s)
 int external_locked(volatile struct spll_external_state *s)
 {
 	if (!s->helper->ld.locked || !s->main->ld.locked ||
-		!(SPLL->ECCR & SPLL_ECCR_EXT_REF_PRESENT))
+		!(SPLL->ECCR & SPLL_ECCR_EXT_REF_LOCKED) ||  // ext PLL became unlocked
+		 (SPLL->ECCR & SPLL_ECCR_EXT_REF_STOPPED))   // 10MHz unplugged (only SPEC)
 		return 0;
 
 	switch(s->align_state) {
 		case ALIGN_STATE_EXT_OFF:
+		case ALIGN_STATE_WAIT_CLKIN:
+		case ALIGN_STATE_WAIT_PLOCK:
 		case ALIGN_STATE_START:
 		case ALIGN_STATE_START_MAIN:
 		case ALIGN_STATE_INIT_CSYNC:
@@ -92,12 +83,37 @@ static int align_sample(int channel, int *v)
 	return 0; // sample not valid
 }
 
-void external_align_fsm(volatile struct spll_external_state *s)
+int external_align_fsm(volatile struct spll_external_state *s)
 {
-	int v;
-	switch(s->align_state) {
+	int v, done_sth = 0;
 
+	switch(s->align_state) {
 		case ALIGN_STATE_EXT_OFF:
+			break;
+
+		case ALIGN_STATE_WAIT_CLKIN:
+				if (!ext_ad9516_init()) {
+				SPLL->ECCR |= SPLL_ECCR_EXT_REF_PLLRST;
+				s->align_state = ALIGN_STATE_WAIT_PLOCK;
+				done_sth++;
+				}
+//			if( !(SPLL->ECCR & SPLL_ECCR_EXT_REF_STOPPED) ) {
+//				SPLL->ECCR |= SPLL_ECCR_EXT_REF_PLLRST;
+//				s->align_state = ALIGN_STATE_WAIT_PLOCK;
+//				done_sth++;
+//			}
+			break;
+
+		case ALIGN_STATE_WAIT_PLOCK:
+			SPLL->ECCR &= (~SPLL_ECCR_EXT_REF_PLLRST);
+			if( SPLL->ECCR & SPLL_ECCR_EXT_REF_STOPPED )
+				s->align_state = ALIGN_STATE_WAIT_CLKIN;
+//			else if( SPLL->ECCR & SPLL_ECCR_EXT_REF_LOCKED )
+			else if(ext_ad9516_locked()) {
+				pp_printf("External AD9516 locked\n");
+				s->align_state = ALIGN_STATE_START;
+			}
+			done_sth++;
 			break;
 
 		case ALIGN_STATE_START:
@@ -106,6 +122,7 @@ void external_align_fsm(volatile struct spll_external_state *s)
 				mpll_start(s->main);
 				enable_irq();
 				s->align_state = ALIGN_STATE_START_MAIN;
+				done_sth++;
 			}
 			break;
 
@@ -113,10 +130,11 @@ void external_align_fsm(volatile struct spll_external_state *s)
 			SPLL->AL_CR = 2;
 			if(s->helper->ld.locked && s->main->ld.locked) {
 				PPSG->CR = PPSG_CR_CNT_EN | PPSG_CR_PWIDTH_W(10);
-			PPSG->ADJ_NSEC = 3;
-			PPSG->ESCR = PPSG_ESCR_SYNC;
-			s->align_state = ALIGN_STATE_INIT_CSYNC;
-			TRACE_DEV("EXT: DMTD locked.\n");
+				PPSG->ADJ_NSEC = 3;
+				PPSG->ESCR = PPSG_ESCR_SYNC;
+				s->align_state = ALIGN_STATE_INIT_CSYNC;
+				pll_verbose("EXT: DMTD locked.\n");
+				done_sth++;
 			}
 			break;
 
@@ -125,14 +143,16 @@ void external_align_fsm(volatile struct spll_external_state *s)
 			    PPSG->ESCR = PPSG_ESCR_PPS_VALID; // enable PPS output (even though it's not aligned yet)
 				s->align_timer = timer_get_tics() + 2 * TICS_PER_SECOND;
 				s->align_state = ALIGN_STATE_WAIT_CSYNC;
+				done_sth++;
 			}
 			break;
 
 		case ALIGN_STATE_WAIT_CSYNC:
-			if(timer_get_tics() >= s->align_timer) {
+			if(time_after_eq(timer_get_tics(), s->align_timer)) {
 				s->align_state = ALIGN_STATE_START_ALIGNMENT;
 				s->align_shift = 0;
-				TRACE_DEV("EXT: CSync complete.\n");
+				pll_verbose("EXT: CSync complete.\n");
+				done_sth++;
 			}
 			break;
 
@@ -147,8 +167,9 @@ void external_align_fsm(volatile struct spll_external_state *s)
 					s->align_step = 100;
 				}
 
-				TRACE_DEV("EXT: Align target %d, step %d.\n", s->align_target, s->align_step);
+				pll_verbose("EXT: Align target %d, step %d.\n", s->align_target, s->align_step);
 				s->align_state = ALIGN_STATE_WAIT_SAMPLE;
+				done_sth++;
 			}
 			break;
 
@@ -159,27 +180,31 @@ void external_align_fsm(volatile struct spll_external_state *s)
 					s->align_shift += s->align_step;
 					mpll_set_phase_shift(s->main, s->align_shift);
 				} else if (v == s->align_target) {
-					s->align_shift += EXT_PPS_LATENCY_PS;
+					s->align_shift += stats.ext_pps_latency_ps;
 				mpll_set_phase_shift(s->main, s->align_shift);
 					s->align_state = ALIGN_STATE_COMPENSATE_DELAY;
 				}
+				done_sth++;
 			}
 			break;
 
 		case ALIGN_STATE_COMPENSATE_DELAY:
 			if(!mpll_shifter_busy(s->main)) {
-				TRACE_DEV("EXT: Align done.\n");
+				pll_verbose("EXT: Align done.\n");
 				s->align_state = ALIGN_STATE_LOCKED;
+				done_sth++;
 			}
 			break;
 
 		case ALIGN_STATE_LOCKED:
 			if(!external_locked(s)) {
-				s->align_state = ALIGN_STATE_START;
+				s->align_state = ALIGN_STATE_WAIT_CLKIN;
+				done_sth++;
 			}
 			break;
 
 		default:
 			break;
 	}
+	return done_sth != 0;
 }

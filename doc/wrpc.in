@@ -35,9 +35,10 @@
 
 @setchapternewpage off
 
-@set update-month December 2013
+@set update-month December 2015
 @set release __RELEASE_GIT_ID__
-@set tagname wrpc-v2.1
+@set version 3.0
+@set tagname wrpc-v3.0
 @c WARNING: in @example I Can't use @value{tagname}, so please look for this
 @c string when updating the document.
 
@@ -60,8 +61,8 @@
 @node Top
 @top Introduction
 
-This is the user manual for the White Rabbit @sc{ptp} Core developed on
-@code{ohwr.org}. It describes the building and running process. If you don't
+This is the user manual for the White Rabbit PTP Core, part of the White
+Rabbit project. It describes the building and running process. If you don't
 want to get your hands dirty and prefer to use the binaries available at
 @uref{http://www.ohwr.org/projects/wr-cores/files} please skip
 @ref{Building the Core} and move forward directly to
@@ -75,12 +76,8 @@ want to get your hands dirty and prefer to use the binaries available at
 @node Repositories and Releases
 @section Repositories and Releases
 
-%This manual is not about an official release,
-%but a snapshot of the current master branch. The last release
-%we blessed is called @value{release}.
-
-This manual is about the official @value{release} stable
-release of White Rabbit PTP Core (@sc{WRPC}).
+This manual is about the official @value{release} stable release of the White
+Rabbit PTP Core (@sc{WRPC}).
 
 The code and documentation for the project is distributed in the
 following places:
@@ -89,67 +86,60 @@ following places:
 
 @item http://www.ohwr.org/projects/wr-cores/documents
 
-	This place hosts the pdf documentation for every official
-        release.
+	hosts the pdf documentation for every official release.
 
 @item http://www.ohwr.org/projects/wr-cores/files
 
-	Here we place the @i{.tar.gz} file for every release,
-        including the @i{git} tree and synthesized/compiled binaries
+	place where you can find a synthesized bitstream, ready to be downloaded to
+  SPEC, for every stable release
 
 @item git://ohwr.org/hdl-core-lib/wr-cores.git
 
-	Read-only repository with the complete HDL sources of @sc{wrpc}
+	read-only repository with complete HDL sources of the @sc{wrpc}
 
 @item git://ohwr.org/hdl-core-lib/wr-cores/wrpc-sw.git
 
-  Read-only repository with the @sc{wrpc} @sc{lm32} software (incl. @sc{wr ptp} daemon)
+  read-only repository with the @sc{wrpc} @sc{lm32} software
 
 @end table
 
-Other tools useful for building and running @sc{wrpc} can be downloaded from the
-following locations:
+Other tools useful for building and running the @sc{wrpc} can be downloaded from
+the following locations:
 
 @table @code
 
-@item http://www.ohwr.org/projects/hdl-make/files
+@item git://ohwr.org/misc/hdl-make.git
 
   @i{hdlmake} is used in the HDL synthesis process to create a Makefile based
 on the set of Manifest files.
 
 @item http://www.ohwr.org/attachments/download/1133/lm32.tar.xz
 
-  @sc{lm32} toolchain is used to compile the @sc{wrpc} firmware (software).
-  This specific file is linked from the @i{files} tab of the
-  @code{wrpc-sw} project.
+  @sc{lm32} toolchain used to compile the @sc{wrpc} software
 
 @end table
 
-The repositories containing the @sc{wrpc} gateware and software (@i{wr-cores},
+Repositories containing the @sc{wrpc} gateware and software (@i{wr-cores},
 @i{wrpc-sw}) are tagged with @code{@value{tagname}} tag. Other tools
 used to build the core and load it into @sc{spec} board should be used in their
-newest stable release.
-
-Any official hot fixes, if any, for this release will live in the branch called
-@code{@value{tagname}-fixes}, in each @sc{wrpc} repository.
+newest stable releases.
 
 @c ==========================================================================
-@node Hardware needed
-@section Hardware needed
+@node Required hardware
+@section Required hardware
 
-The absolutely minimum hardware you need to build and run the White
-Rabbit @sc{ptp} Core is a PC computer with Linux and one Simple PCIe @sc{fmc} Carrier
+The absolute minimum to run the @sc{wr ptp core} is a PC computer with
+Linux and a Simple PCIe @sc{fmc} Carrier
 (@sc{spec}) - @uref{http://www.ohwr.org/projects/spec}. However, it is highly
 recommended to use also the @sc{dio} @sc{fmc} card (@uref{http://www.ohwr.org/projects/fmc-dio-5chttla})
-for storing calibration values and configuration in @sc{eeprom}(described later)
-as well as feeding 1-PPS and 10MHz from external clock and outputting 1-PPS
-aligned to WR time. To test the White Rabbit synchronization, you will also need:
+to be able to feed 1-PPS and 10MHz from external clock and output 1-PPS aligned
+to the WR time. To test the White Rabbit synchronization, you will also need:
 @itemize
-@item second @sc{spec} board with @sc{dio} @sc{fmc} or a White Rabbit Switch;
+@item another @sc{spec} board with a @sc{dio} @sc{fmc} or a White Rabbit Switch;
 @item pair of @sc{wr}-supported @sc{sfp} transceivers (the list of supported
 @sc{sfp}s can be found on our wiki page @uref{http://www.ohwr.org/projects/white-rabbit/wiki/SFP})
-@item a roll of G652, single mode fiber to connect your @sc{spec}s or @sc{spec} with @sc{wr}
-Switch.
+@item a roll of G652, single mode fiber to connect your @sc{spec}s or @sc{spec}
+with a @sc{wr} Switch.
 @end itemize
 
 @c ##########################################################################
@@ -157,38 +147,35 @@ Switch.
 @chapter Building the Core
 
 @b{Note:} you can skip this chapter if you want to use the release binaries
-available for download from @i{ohwr.org}.
+available from @i{ohwr.org}.
 
 @sp 1
-Building the White Rabbit @sc{ptp} Core is a two step process. First you have to
-synthesize the @sc{fpga} firmware (gateware) and then compile the software which
-will be running on a softcore @sc{lm32} CPU instantiated inside the gateware.
-Optionally, you can skip the compilation of @sc{lm32} software, since the
-synthesized gateware contains default @sc{lm32} software.
-
-To perform the steps below you will need a computer running Linux.
+Building the core is a two step process. First you have to
+synthesize the FPGA firmware (gateware) and then compile the software which
+will be executed by the @sc{lm32} soft-core processor. If you don't need to
+modify the @sc{lm32} software, you can skip the compilation stage since
+synthesized gateware already embeds the default software for the release.
 
 @c ==========================================================================
 @node HDL synthesis
 @section HDL synthesis
 
-Before running the synthesis process you have to make sure that your
-environment is set up correctly. You need the Xilinx ISE software with at least
-free of charge WebPack license. @i{ISE} provides a set of scripts:
-@i{settings32.sh}, @i{settings32.csh}, @i{settings64.sh} and @i{settings64.csh}
-that configure all the system variables required by the Xilinx software.
-Depending on the shell you use and whether your Linux is 32 or 64-bits you
-should execute one of them before other tools are used. For 32-bit system and
-BASH shell you should call:
-
+Before running the synthesis process you have to make sure your environment is
+set up correctly. You need a Xilinx ISE software with at least a WebPack
+license. @i{ISE} provides a set of scripts: @i{settings32.sh},
+@i{settings32.csh}, @i{settings64.sh} and @i{settings64.csh} that configure all
+the system variables required by the Xilinx software. Depending on a shell you
+use and whether your Linux is 32 or 64-bits you should execute one of them
+before the other tools are used. For 64-bit system and BASH shell you should
+call:
 @example
-/opt/Xilinx/<version>/ISE_DS/settings32.sh
+/opt/Xilinx/<version>/ISE_DS/settings64.sh
 @end example
 
 The easiest way to ensure that @i{ISE}-related variables are always set in your
-shell is adding the execution of the script above to your @i{bash.rc} file. You
-can check if the shell is configured correctly by verifying if @i{$XILINX}
-variable contains the path to your @i{ISE} installation directory.
+shell is adding the execution of the script to your @i{bash.rc} file. You can
+check if the shell is configured correctly by verifying if the @i{$XILINX}
+variable contains path to your @i{ISE} installation directory.
 
 @b{Note:} current version of @i{hdlmake} tool developed at CERN requires
 modification of @i{$XILINX} variable after @i{settings} script execution.
@@ -201,41 +188,41 @@ $ export XILINX=/opt/Xilinx/<version>/ISE_DS
 
 @b{Note:} the Xilinx project file included in the @sc{wrpc} sources was created
 with Xilinx ISE 14.5. It is however recommended to use the newest available
-version of ISE software.
+version of the ISE software.
 
 @sp 1
-HDL sources for @sc{wr ptp} Core could be synthesized using Xilinx ISE without
+HDL sources for the @sc{wr ptp core} could be synthesized using Xilinx ISE without
 any additional tools, but using @i{hdlmake} is more convenient. It creates a
 synthesis Makefile and ISE project file based on a set of Manifest.py files
 deployed among the directories inside the @i{wr-cores} repository.
 
-First, please download the @i{hdlmake} binary from its location given in
-@ref{Repositories and Releases} and make it executable. At the time this
-document is written, the most recent stable version of @i{hdlmake} is 1.0:
-
+First, please clone the @i{hdlmake} repository from its location given in
+@ref{Repositories and Releases}:
 @example
 $ wget http://www.ohwr.org/attachments/download/2070/hdlmake-v1.0
-$ chmod a+x hdlmake-v1.0
+$ git clone git://ohwr.org/misc/hdl-make.git <your_location>/hdl-make
+$ cd <your_location>/hdl-make
+$ git checkout 9d303ee
 @end example
 
-It is recommended to add the @i{hdlmake} binary location to your @i{$PATH}
-environment variable to be able to call it from any directory:
+Then, using your favorite editor, you should create an @i{hdlmake} script in
+/usr/bin to be able to call it from any directory. The script should have the
+following content:
+@smallexample
+@noindent
+#!/usr/bin/env bash
+python2.7 /path_to_hdlmake_sources/hdl-make/hdlmake/__main__.py $@@
+@end smallexample
 
+After that, you should make your script executable:
 @example
-$ export PATH=<your_hdlmake_location>:$PATH
+chmod a+x /usr/bin/hdlmake
 @end example
-
-@b{Note:} the @i{hdlmake} usage instructions here are based on version 1.0.
-If you use more recent release or a development version, please be aware that
-its execution parameters may change. In that case please refer to @i{hdlmake}
-documentation.
 
 @sp 1
 Having Xilinx ISE software and @i{hdlmake} in place, you can clone the main
-@sc{wr ptp core} git repository and start building the @sc{fpga} bitstream.
-First, please create a local copy of the @i{wr-cores} in the preferred
-location in your system.
-
+@sc{wr ptp core} git repository and start building the FPGA bitstream.
+First, please create a local copy of the @i{wr-cores}:
 @example
 $ git clone git://ohwr.org/hdl-core-lib/wr-cores.git <your_location>/wr-cores
 $ cd <your_location>/wr-cores
@@ -245,7 +232,7 @@ To build the gateware using sources of a stable release @value{tagname}, you
 have to checkout the proper git tag:
 
 @example
-$ git checkout wrpc-v2.1
+$ git checkout wrpc-v3.0
 @end example
 
 If you use @i{wr-cores} within another project (like @i{wr-nic}), you may need
@@ -253,10 +240,8 @@ to check out another release tag for this repository. Please refer to the
 project's documentation to find out which version of this package you need to
 build.
 
-You also need to fetch other git repositories containing modules essential for
-@sc{wr ptp core}. They are configured as git submodules inside the @i{wr-cores}
-repository:
-
+You also need to fetch other git repositories containing modules instantiated
+inside the @sc{wr ptp core} HDL. They are configured as git submodules:
 @example
 $ git submodule init
 $ git submodule update
@@ -280,7 +265,7 @@ First, please call @i{hdlmake} to create synthesis Makefile for Xilinx
 ISE:
 
 @example
-$ hdlmake-v1.0 --make-ise --ise-proj
+$ hdlmake
 @end example
 
 After that, the actual synthesis is just the matter of executing:
@@ -290,9 +275,9 @@ $ make
 @end example
 
 This takes (depending on your computer speed) about 15 minutes and should create
-two files with @sc{fpga} firmware: @i{spec_top.bit} and @i{spec_top.bin}. The
-former can be downloaded to @sc{fpga} with Xilinx Platform Cable using e.g.
-@i{Xilinx Impact}. The latter can be used with the kernel drivers from
+two files with FPGA firmware: @i{spec_top.bit} and @i{spec_top.bin}. The
+former can be downloaded to FPGA with Xilinx Platform Cable using e.g.
+@i{Xilinx Impact}. The latter can be used with kernel drivers from the
 @i{spec-sw} repository (check example in @ref{Running and Configuring}).
 
 @sp 1
@@ -307,40 +292,38 @@ everything from scratch you can use the following commands:
 @node LM32 software compilation
 @section LM32 software compilation
 
-@b{Note:} By default, the release @sc{lm32} software is embedded inside the FPGA
-bitstream you've downloaded from @i{ohwr.org} or synthesized in the previous
-chapter. That means you don't have to do manual compilation of @sc{lm32}
-software unless you want to use a development version or you've made some
-changes required by your application.
+@b{Note:} By default, the @sc{lm32} software for a stable release is embedded
+inside the FPGA bitstream you've downloaded from @i{ohwr.org} or synthesized in
+the previous step. This means you don't have to do a manual compilation of the
+@sc{lm32} software unless you want to use a development version or you've made
+some changes required by your application.
 
 @sp 1
-To compile the @sc{lm32} software for White Rabbit @sc{ptp} Core you will need to
-download and unpack the @sc{lm32} toolchain from the location mentioned in
-@ref{Repositories and Releases}:
+To compile the @sc{lm32} software for the White Rabbit @sc{ptp} Core you will
+need to download and unpack the @sc{lm32} toolchain from the location mentioned
+in @ref{Repositories and Releases}:
 
 @example
 $ wget http://www.ohwr.org/attachments/download/1133/lm32.tar.xz
 $ tar xJf lm32.tar.xz -C <your_lm32_location>
 @end example
 
-Then you need to set the @t{CROSS_COMPILE} variable in order
-to compile the software for a @sc{lm32} processor:
+Then you need to set a @t{CROSS_COMPILE} variable in order
+to compile the software for the @sc{lm32} processor:
 
 @example
 $ export CROSS_COMPILE="<your_lm32_location>/lm32/bin/lm32-elf-"
 @end example
 
-To get the sources of @sc{wrpc} software please clone the @i{wrpc-sw} git
-repository tagged with @value{tagname} tag. If you use @i{wrpc}
-within another project, you may need to checkout a different tag or a specific
-commit; if this applies, please refer to the documentation of the other package
-to find the exact version you need to reproduce the released binaries before
-you make your changes.
+To get the sources of the @sc{wrpc} software please clone the @i{wrpc-sw} git
+repository tagged with @value{tagname} tag. If you use @sc{wrpc} within another
+project, you may need to checkout a different tag or a specific commit. If this
+applies, please refer to a documentation for this project.
 
 @smallexample
 $ git clone git://ohwr.org/hdl-core-lib/wr-cores/wrpc-sw.git <your_location>/wrpc-sw
 $ cd <your_location>/wrpc-sw
-$ git checkout wrpc-v2.1   # or "git checkout master"
+$ git checkout wrpc-v3.0   # or "git checkout master"
 @end smallexample
 
 Before you can compile @i{wrpc-sw} you need to make a few configuration choices.
@@ -391,18 +374,14 @@ Core (@ref{Running and Configuring}).
 @node Downloading firmware to SPEC
 @section Downloading firmware to SPEC
 
-There is a @sc{spec} board software support(@sc{spec-sw}) project in @i{ohwr.org}.
-It contains a set of Linux kernel drivers and user space tools, written by
-Alessandro Rubini and Tomasz Wlostowski, that interact with a @sc{spec} board
-plugged into a PCI-Express slot.
+For this step you will need a @sc{spec} board software support package
+(@sc{spec-sw}) from @i{ohwr.org}. It is a set of Linux kernel drivers and
+userspace tools, that interact with a @sc{spec} board plugged into PCI-Express
+slot.
 
-Instructions in this section are based on the release @i{2013-05} of @sc{spec-sw}
-and are limited to absolute minimum required to load @sc{wrpc} @sc{fpga}
-and @sc{lm32} firmware. Full manual for @sc{spec-sw} can be found at:
-
-@example
-http://www.ohwr.org/attachments/download/2134/spec-sw-2013-05-release.pdf
-@end example
+Instructions in this section are based on a development version of @sc{spec-sw}
+so if a stable release more recent than @i{2014-02} is available, you should
+use it instead. 
 
 If there is a more recent version of the @sc{spec} software support, the
 up-to-date documentation can always be found in @i{doc/} subdirectory of
@@ -414,125 +393,176 @@ First, please clone the git repository of @sc{spec-sw} package and build it:
 @smallexample
 $ git clone git://ohwr.org/fmc-projects/spec/spec-sw.git <your_specsw_location>
 $ cd <your_specsw_location>
-$ git checkout spec-sw-v2013-05
+$ git checkout c0e18a7
 $ make
 @end smallexample
 
-Then you have to copy your @i{spec_top.bin} generated in @ref{HDL synthesis} or
-downloaded from @i{ohwr.org} to /lib/firmware/fmc/. changing its
+Then you should copy your @i{spec_top.bin} generated in @ref{HDL synthesis} or
+downloaded from the @i{ohwr} to /lib/firmware/fmc/. changing its
 name:
 
 @b{Note:} the commands below have to be executed with superuser rights
 
 @example
 $ sudo cp <your_location>/wr-cores/syn/spec_1_1/wr_core_demo/spec_top.bin \
-     /lib/firmware/fmc/spec-demo.bin
+     /lib/firmware/fmc/spec-3.0.bin
 @end example
 
 You have to download also the "golden" firmware for @sc{spec} card. It is used by
 the drivers to recognize the hardware:
 
 @example
-$ wget http://www.ohwr.org/attachments/download/1756/spec-init.bin-2012-12-14
-$ sudo mv spec-init.bin-2012-12-14 /lib/firmware/fmc/spec-init.bin
+$ wget http://www.ohwr.org/attachments/download/4057/spec-init.bin-2015-09-18
+$ sudo mv spec-init.bin-2015-09-18 /lib/firmware/fmc/spec-init.bin
 @end example
 
-Now, you are ready to load necessary drivers that configure the
-Spartan 6 @sc{fpga} with the given bitstream (make sure you are in
-<your_specsw_location>):
-
+Now you can load the drivers necessary to access @sc{spec} board from your
+system:
 @example
 $ sudo insmod fmc-bus/kernel/fmc.ko
 $ sudo insmod kernel/spec.ko
-$ sudo insmod fmc-bus/kernel/fmc-trivial.ko gateware=fmc/spec-demo.bin
 @end example
 
-To check if the @sc{fpga} firmware file was found by the driver and correctly loaded
-to @sc{fpga} the @i{dmesg} Linux command can be called. Among plenty of messages
-you should be able to find something very similar to:
+By default, when loading the @i{spec.ko} driver FPGA gets programmed with
+the "golden" bitstream. Starting from version 3.0, @sc{wr ptp core} uses a flash
+memory chip on the carrier as a default place for storing the calibration
+parameters and the init script. Also the storage format of this information is
+now better organised in the files of the @sc{sdbfs} filesystem. Therefore,
+starting from v3.0 you have to write the @sc{sdbfs} filesystem image to the
+flash before running the @sc{wr ptp core}. You can download the image from our
+project page:
+@example
+$ wget http://www.ohwr.org/attachments/download/4060/sdbfs-flash.bin
+@end example
+It contains all the files required by the @sc{wr ptp core}. They are empty, but
+have to exist in the @sc{sdbfs} structure to be written later as described in
+@ref{Writing configuration}. To store the filesystem image in flash, please
+execute the following command:
+@example
+$ sudo tools/flash-write -b 0x20 -c 0x0 0 1507712 < \
+     <your_location>/sdbfs-flash.bin
+@end example
+
+@b{Note:} Please refer to @ref{Writing @sc{sdbfs} image in standalone configuration}
+for instructions on how to write the @sc{sdbfs} image to a standalone @sc{spec}
+or custom hardware.
+
+@sp 1
+Now, you are ready to load the last driver, which downloads the actual
+@sc{wr ptp core} bitstream to the Spartan 6 FPGA:
+@example
+$ sudo insmod fmc-bus/kernel/fmc-trivial.ko gateware=fmc/spec-3.0.bin
+@end example
+
+You can use the @i{dmesg} Linux command to verify if the FPGA firmware file was
+loaded into the FPGA. Among plenty of messages you should be able to find
+something very similar to:
 
 @smallexample
 @noindent
-[1639675.431979] spec 0000:0b:00.0:  probe for device 000b:0000
-[1639675.431992] spec 0000:0b:00.0: PCI INT A -> GSI 16 (level, low) -> IRQ 16
-[1639675.435246] spec 0000:0b:00.0: got file "fmc/spec-init.bin", 1484404 (0x16a674) bytes
-[1639675.625773] spec 0000:0b:00.0: FPGA programming successful
-[1639675.994110] spec 0000:0b:00.0: mezzanine 0
-[1639675.994111]       EEPROM has no FRU information
-[1639705.910703] fmc fmc-0b00: Driver has no ID: matches all
-[1639705.910731] spec 0000:0b:00.0: reprogramming with fmc/spec-demo.bin
-[1639706.104417] spec 0000:0b:00.0: FPGA programming successful
+[1275526.738895] spec 0000:20:00.0:  probe for device 0020:0000
+[1275526.738906] spec 0000:20:00.0: PCI INT A -> GSI 16 (level, low) -> IRQ 16
+[1275526.738913] spec 0000:20:00.0: setting latency timer to 64
+[1275526.743102] spec 0000:20:00.0: got file "fmc/spec-init.bin", 1485236 (0x16a9b4) bytes
+[1275526.934710] spec 0000:20:00.0: FPGA programming successful
+[1275527.296754] spec 0000:20:00.0: mezzanine 0
+[1275527.296756]       Manufacturer: CERN
+[1275527.296757]       Product name: FmcDio5cha
+
+[1275593.973147] fmc FmcDio5cha-2000: Driver has no ID: matches all
+[1275593.973177] spec 0000:20:00.0: reprogramming with fmc/spec-3.0.bin
+[1275594.168249] spec 0000:20:00.0: FPGA programming successful
 @end smallexample
 
-If everything went right up to this moment you have your board running the @sc{fpga}
-bitstream with default @sc{lm32} software. If you want to load your own @i{wrc.bin}
-built from @i{wrpc-sw} repository you can use the @i{spec-cl} tool. Programming
-is done with the simple command below:
+If everything went right up to this moment you have your board running the FPGA 
+bitstream with a default @sc{lm32} software. If you want to load your own
+@i{wrc.bin} built from the @i{wrpc-sw} repository you can use the @i{spec-cl}
+tool:
 
 @example
 $ sudo tools/spec-cl <your_location>/wrpc-sw/wrc.bin
 @end example
 
 @sp 1
-Now you should be able to start the Virtual-UART tool (also part of the
-@sc{spec-sw} package) that will be used to interact with the White Rabbit @sc{ptp}
-Core Shell:
+Now you should be able to start a Virtual-UART tool (also part of the
+@sc{spec-sw} package) that will be used to interact with the @sc{wr ptp core}
+shell:
 
 @example
 $ sudo tools/spec-vuart
 @end example
 
-If you are able to see the @sc{wrpc} Shell prompt @i{wrc#} that means the Core is up
-and running on your @sc{spec}. Congratulations !
+If you are able to see the @sc{wrpc} Shell prompt @i{wrc#} this means the Core
+is up and running on your @sc{spec}. Congratulations !
 
 
 @c ==========================================================================
-@node Writing EEPROM and calibration
-@section Writing EEPROM and calibration
+@node Writing configuration
+@section Writing configuration
 
-You should perform few configuration steps through the @sc{wrpc} shell before
-you start testing and using the firmware.
+First, you should perform a few configuration steps through the @sc{wrpc} shell
+before using the core.
 
-@b{Note:} the examples below describe only a subset of @sc{wrpc} Shell commands
-required to make a basic configuration and calibration. A full description of
-all supported commands can be found in @ref{WRPC Shell commands}.
+@b{Note:} the examples below describe only a subset of the @sc{wrpc} Shell
+commands. The full list of supported commands can be found in
+@ref{WRPC Shell commands}.
 
 @sp 1
 Before making the configuration changes, it is good to stop the @sc{ptp} daemon.
-Then, the debug messages from daemon would not show up to the console while you
-will interact with the shell.
+Then, debug messages from the daemon will not show up to the console while you
+interact with the shell.
 
 @example
 wrc# ptp stop
 @end example
 
-If your @sc{spec} has any Mezzanine board plugged into the @sc{fmc} connector
-(e.g. @sc{dio}, Fine Delay, @sc{tdc}...) then you can create a calibration
-database inside the @sc{fmc} @sc{eeprom}. The example below presents @sc{wrpc}
-Shell commands which create an empty @sc{sfp} database and add two Axcen
-transceivers with deltaTx, deltaRx and alpha parameters associated with them.
+@sp 1
+First you should make sure your board has a proper @sc{mac} address assigned:
+@example
+wrc# mac get
+@end example
+If the result of above command is @t{MAC-address: 22:33:ww:xx:yy:zz}, this means
+@sc{mac} was not yet configured and stored in the Flash/EEPROM. The value is
+based on thermometer serial number as is unique among SPEC devices,
+globally accepted as ``locally assigned'', but you might want to assign your own address. A value @t{22:33:44:55:66:77} is the final fallback if no
+thermometer is found (very unlikely). You should get
+the @sc{mac} for your board from its manufacturer. To configure the address and
+store it into the Flash/EEPROM (so that it's automatically loaded every time the
+@sc{wrpc} starts) you should type two commands in the @sc{wrpc} shell:
+@example
+wrc# mac set xx:xx:xx:xx:xx:xx
+wrc# mac setp xx:xx:xx:xx:xx:xx
+@end example
+where @t{xx:xx:xx:xx:xx:xx} is the @sc{mac} address of your board.
+
+@sp 1
+Next you should create a calibration database with fixed delays values and
+alpha parameters. The example below presents the @sc{wrpc} Shell commands that
+clear all previous entries and add two Axcen transceivers with deltaTx, deltaRx
+and alpha parameters associated with them.
 
 @example
 wrc# sfp erase
-wrc# sfp add AXGE-1254-0531 180707 148323 72169888
-wrc# sfp add AXGE-3454-0531 180707 148323 -73685416
+wrc# sfp add AXGE-1254-0531 180625 148451 72169888
+wrc# sfp add AXGE-3454-0531 180625 148451 -73685416
 @end example
 
 To check the content of the @sc{sfp} database you can execute the @i{sfp show} shell
 command.
 
-@b{Note:} The deltaTx and deltaRx parameters above are the default ones for
-@i{wrpc-2.1} release bitstream available on @i{ohwr.org} running on @sc{spec} v4 board
-and calibrated to the port 1 of @sc{wr} Switch v3.3. Those values as well as the parameters for the
-@sc{wr} Switch are available on the calibration wiki page
+@b{Note:} The deltaTx and deltaRx parameters above are the defaults for
+@value{tagname} release bitstream available on @i{ohwr.org}, running on
+@sc{spec} v4 board and calibrated to port 1 of a @sc{wr} Switch v3.3. These
+values as well as the parameters for the @sc{wr} Switch are available on the
+calibration wiki page
 (@i{http://www.ohwr.org/projects/white-rabbit/wiki/Calibration}). However, if
-you re-synthesize the firmware or want to have most accurate estimation of fixed
-delays and alpha of your fiber you should read and perform the @sc{wr}
-Calibration procedure (@i{http://www.ohwr.org/documents/213}).
+you re-synthesize the firmware or want to have the most accurate estimation of
+the fixed delays and alpha for your fiber, you should read and perform the
+@sc{wr} Calibration procedure (@i{http://www.ohwr.org/documents/213}).
 
 @sp 1
-The @sc{wr ptp} Core's mode of operation (GrandMaster/Master/Slave) can be set using the
-@i{mode} shell command:
+The @sc{wr ptp core} mode of operation (GrandMaster/Master/Slave) can be set
+using the @i{mode} command:
 
 @example
 wrc# mode gm       # for GrandMaster mode
@@ -540,100 +570,94 @@ wrc# mode master   # for Master mode
 wrc# mode slave    # for Slave mode
 @end example
 
-This stops the @sc{ptp} daemon, changes the mode of operation, but does not start it
-back automatically. Therefore after changing it you need to start the daemon
-manually:
+This stops the @sc{ptp} daemon, changes the mode of operation, but does not
+start it automatically. Therefore, after calling it, you need to restart the
+daemon manually:
 
 @example
 wrc# ptp start
 @end example
 
-@b{Note:} For running in GrandMaster mode, you need to provide 1-PPS and 10MHz
-signal from external source (e.g. GPS receiver or Cesium clock). Please connect
-then 1-PPS signal to LEMO No.4 and 10MHz to LEMO No.5 connector of @sc{fmc}
-@sc{dio} board.
+@b{Note:} For running the GrandMaster mode, you need to provide 1-PPS and 10MHz
+signal from an external source (e.g. GPS receiver or Cesium clock). Please
+connect 1-PPS signal to the LEMO connector No.4 and 10MHz to the LEMO connector
+No.5 on the @sc{fmc} @sc{dio} mezzanine board.
 
 @sp 1
-One option is to type all those commands to initialize the @sc{wrpc} software to the
-required state every time the Core starts. However, you can also write your own
-init script to the @sc{eeprom} and @sc{wrpc} software will execute it each time
-it starts (also when coming back from reset after programming the @sc{lm32}).
-A simple script that reads @sc{sfp} parameters from the @sc{eeprom}, configures
-the @sc{WR} mode to Slave and starts the @sc{ptp} daemon is presented below:
+One option is to type all the commands to initialize the @sc{wrpc} software to
+the required state every time the Core starts. However, you can also write your
+own initialization script to the Flash/EEPROM. It will be executed every time
+the @sc{wrpc} software starts. A simple script that loads the calibration
+parameters, configures the @sc{WR} mode to Slave and starts the @sc{ptp} daemon
+is presented below:
 
 @example
 wrc# init erase
 wrc# init add ptp stop
-wrc# init add sfp detect
 wrc# init add sfp match
 wrc# init add mode slave
-wrc# init add calibration
 wrc# init add ptp start
 @end example
 
-Almost exactly the same one can be used for running @sc{wrpc} in GrandMaster or
-Master mode. The only difference would be @i{init add mode slave} vs. @i{init
-add mode gm} or @i{init add mode master}.
+Almost exactly the same one can be used for running @sc{wrpc} in the GrandMaster
+or Master mode. The only difference would be changing the
+@i{init add mode slave} line to @i{init add mode gm} or
+@i{init add mode master}.
 
 @c ==========================================================================
 @node Running the Core
 @section Running the Core
 
-Having the @sc{sfp} database, and the init script created in @ref{Writing EEPROM and
-calibration} you can restart the @sc{wr ptp} Core by reprogramming the @sc{lm32} software
-(with @i{spec-cl} tool) or by typing the shell command:
+Having the @sc{sfp} database, and the init script created in @ref{Writing
+configuration} you can restart the @sc{wr ptp core} by reprogramming the
+@sc{lm32} software (with @i{spec-cl} tool) or by typing the shell command:
 
 @example
 wrc# init boot
 @end example
 
-You should see the log messages that confirm the init script
-execution:
+You should see log messages that confirm the execution of the initialization
+script:
 
 @example
-(...)
-WR Core: starting up...
-W1: f80000036c38ee28
-get_persistent_mac: Using W1 serial number
-ID: cafebabe
-t24p read from EEPROM: 6900 ps
-Loops per jiffy: 20820
-Locking PLL
 executing: ptp stop
-executing: sfp detect
-AXGE-1254-0531  
+PTP stop
 executing: sfp match
-SFP matched, dTx=180585, dRx=145855, alpha=72169888
+AXGE-3454-0531
+SFP matched, dTx=180707 dRx=148323 alpha=-73685416
 executing: mode slave
+PTP stop
 Locking PLL
-executing: calibration
-Found phase transition in EEPROM: 6900ps
 executing: ptp start
+PTP start
+Slave Only, clock class set to 255
 @end example
 
-Now you should have the White Rabbit @sc{ptp} Core running in @sc{wr} Slave
-mode. @sc{wrpc} needs to make a calibration of t24p phase transition value. It
-has to be done only once for a new bitstream and is performed automatically when
-@sc{wrpc} runs in Slave mode. That is why it is very important, even if
-@sc{wrpc} is meant to run in Master mode, to configure it to Slave for a moment
-and connect it to any @sc{wr} Master. That has to be repeated every time a new
-bitstream (gateware) is deployed. Measured value is automatically stored to
-EEPROM and used later in Master or GrandMaster mode.
+Now you should have the @sc{wr ptp core} running in @sc{wr} Slave mode.
+@sc{wrpc} needs to make a calibration of t24p phase transition value. It has to
+be done only once for a new bitstream and is performed automatically when
+@sc{wrpc} runs in the Slave mode. That is why it is very important, even if
+@sc{wrpc} is meant to run in the Master mode, to configure it to Slave for a
+moment and connect to any @sc{wr} Master. This has to be repeated every time
+a new bitstream (gateware) is deployed. The measured value is automatically
+stored to Flash/EEPROM and used later in the Master or GrandMaster mode.
 
-The Shell also contains the monitoring function which you can use to check the
+The Shell also contains a monitoring function which you can use to check the
 @sc{wr} synchronization status:
 
 @example
 wrc# gui
 @end example
 
-The information is presented in a clear, auto-refreshing screen. To exit
-from this console mode press <Esc>. Full
-description about information reported by gui is provided in @ref{WRPC GUI 
-elements}. 
+The information is presented in a clear, auto-refreshing screen. The
+information is refreshed at every WR iteration or periodically if
+nothing else happens (so you see an up-to-date timestamp). The period
+defaults to 1 second and can be changed using the @i{refresh} command. To exit from
+this console mode press <Esc>. A full description of the information reported
+by gui is provided in @ref{WRPC GUI elements}. 
 
 @b{Note:} the @i{Synchronization status} and @i{Timing parameters} in @i{gui}
-are available only in @sc{wr} Slave mode. When running as @sc{wr} Master, you
+are available only in the @sc{wr} Slave mode. When running as @sc{wr} Master, you
 would be able to see only the current date and time, link status, Tx and Rx
 packet counters, lock and calibration status.
 
@@ -641,9 +665,9 @@ packet counters, lock and calibration status.
 @center @image{wrpc_mon, 12cm,,wrpc sync monitor}
 @sp 1
 
-If you want to store the statistics from @sc{wrpc} operation, it's probably
-better to use the @i{stat} shell command. It reports the same information
-as GUI but in a form which is easier to parse and analyze:
+If you want to log statistics from the @sc{wrpc} operation, it's probably
+better to use the @i{stat} shell command. It reports the same information as GUI
+but in a single long line, a form which is easier to parse and analyze:
 
 @example
 wrc# stat
@@ -659,34 +683,448 @@ temp: 45.6875 C
 @end example
 
 @sp 1
-In addition, you can use the @i{refresh} command to change 
-update time period of the gui and the stat commands.
+Unlike @i{gui}, the @i{stat} command runs asynchronously: you can still
+issue shell commands while stats are running (this is different from
+earlier @t{wrpc-sw} releases).  You can stop statistics by running @i{stat} again.
+As an alternative to the toggling action of @i{stat} alone, you can
+use ``@i{stat 1}'' or ``@i{stat 0}''.
+
+Statistics are printed every time the WR servo runs; thus no statistics
+are reported when the node is running in master mode, nor when your node
+is running as slave and the master disappeared.
 
 @sp 1
-If you have a @sc{dio} Mezzanine board plugged to your @sc{spec}, you can check
+If you have a @sc{dio} mezzanine board plugged to your @sc{spec}, you can verify
 the synchronization performance by observing the offset between 1-PPS signals
-from the @sc{wr} Master and @sc{wr} Slave. White Rabbit @sc{ptp} Core generates
-1-PPS signal to the LEMO connector No. 1 on @sc{dio} Mezzanine. However, please
-remember to use oscilloscope cables having the same length and type (with the
-same delay), or take their delay difference into account in your measurements.
+from the @sc{wr} Master and @sc{wr} Slave. The @sc{wr ptp core} generates 1-PPS
+signal on the LEMO connector No. 1. Please remember to use oscilloscope cables
+of the same length and type (with the same delay), or take their delay
+difference into account in your measurements.
 
+
+@c ==========================================================================
+@node Diagnostics via SNMP
+@section Diagnostics via SNMP
+
+Up to the version 3.1 of @sc{wrpc} the only way to perform diagnostics
+of the @t{wrpc-sw} was to use serial console with tools like @i{gui}, @i{stat},
+etc. For some set-ups, like standalone node, it is very inconvenient to use
+external console for diagnostics.
+
+From the version 3.1 of @sc{wrpc} it is possible to include the @i{Mini
+SNMP responder}, which allows to perform remote diagnostics using @i{SNMP} via
+a port connected to the @i{Write Rabbit} network.
+
+The configuration file of @sc{wrpc} contains the following
+SNMP-related options:
+@itemize
+@item @t{CONFIG_SNMP} -- include the @i{Mini SNMP responder} into @sc{wrpc}
+@item @t{CONFIG_SNMP_SET} -- enable the support of SNMP @i{SET} packets
+@item @t{CONFIG_SNMP_VERBOSE} -- enable verbose output from the @i{Mini SNMP
+      responder} on the @sc{wrpc}'s console
+@end itemize
+
+The MIB file describing @sc{wrpc}'s OIDs can be found in the @t{lib} directory
+of the @t{wrpc-sw} repo.
+
+So far, the @i{Mini SNMP responder} supports version 1 and a subset of version
+2c of the SNMP protocol.
+
+The following types of requests are supported:
+@itemize @bullet
+   @item GET -- get value of a given OID
+   @item GETNEXT -- get value of a next OID after the given OID (this is used
+         for @t{snmpwalk}s)
+   @item SET -- change the value of a given OID (so far used only for adding
+         SFP's to the database and PTP restarts)
+@end itemize
+
+The @i{Mini SNMP responder} does not support:
+@itemize @bullet
+   @item bulk requests packets (GETBULK)
+   @item more than one OID in the request packet
+   @item @t{trap} and @t{inform} packets
+   @item encryption
+   @item authentication
+   @item SNMPv2c return error types; all returned error types follows SNMPv1
+@end itemize
+
+To make examples more readable, listings below use @t{SNMP_OPT} environment
+variable. Make sure you set it properly in your shell.
+@example
+ $ SNMP_OPT="-c public -v 2c -m WR-WRPC-MIB -M +/var/lib/mibs/ietf:lib \
+   192.168.1.20"
+@end example
+where:
+@itemize @bullet
+   @item @t{-c public} -- sets SNMP community as "@i{public}"
+   @item @t{-v 2c} -- specifies SNMP version
+   @item @t{-m WR-WRPC-MIB} -- specifies MIBs to be loaded
+   @item @t{-M +/var/lib/mibs/ietf:lib} -- contains path to MIBs in the host
+         system (@t{/var/lib/mibs/ietf}) and path to @t{WR-WRPC-MIB} (@t{lib});
+         on Debian-like systems default MIBs can be downloaded using
+         @t{download-mibs} command (package @t{snmp-mibs-downloader}); on
+         CentOS and RedHat MIBs are included in the @t{libsmi} package
+   @item @t{192.168.1.20} -- the IP address of the target board
+@end itemize
+
+For example, to get the system uptime please execute the @t{snmpget} command:
+@example
+ $ snmpget $SNMP_OPT wrpcTimeSystemUptime.0
+@end example
+
+To get dump of all available OIDs please execute the @t{snmpwalk} command:
+@example
+ $ snmpwalk $SNMP_OPT wrpcCore
+@end example
+Part of the @t{snmpwalk}'s output:
+@example
+ WR-WRPC-MIB::wrpcVersionHwType.0 = STRING: spec
+ WR-WRPC-MIB::wrpcVersionSwVersion.0 = STRING: wrpc-v3.0-251-g14e952e
+ WR-WRPC-MIB::wrpcVersionSwBuildBy.0 = STRING: Adam Wujek
+ WR-WRPC-MIB::wrpcVersionSwBuildDate.0 = STRING: Jun  7 2016 18:12:24
+ WR-WRPC-MIB::wrpcTimeTAI.0 = Counter64: 1465375022
+ WR-WRPC-MIB::wrpcTimeTAIString.0 = STRING: 2016-06-08-08:37:02
+ WR-WRPC-MIB::wrpcTimeSystemUptime.0 = Timeticks: (18186) 0:03:01.86
+ WR-WRPC-MIB::wrpcTemperatureName.1 = STRING: pcb
+ WR-WRPC-MIB::wrpcTemperatureValue.1 = STRING: 38.5625
+ WR-WRPC-MIB::wrpcSpllMode.0 = INTEGER: slave(3)
+ WR-WRPC-MIB::wrpcSpllIrqCnt.0 = Counter32: 1259605
+ [...]
+ WR-WRPC-MIB::wrpcPortSfpInDB.0 = INTEGER: inDataBase(2)
+ WR-WRPC-MIB::wrpcPortInternalTx.0 = Counter32: 452
+ WR-WRPC-MIB::wrpcPortInternalRx.0 = Counter32: 869
+ WR-WRPC-MIB::wrpcSfpPn.1 = STRING: AXGE-1254-0531
+ WR-WRPC-MIB::wrpcSfpDeltaTx.1 = INTEGER: 180625
+ WR-WRPC-MIB::wrpcSfpDeltaRx.1 = INTEGER: 148451
+ WR-WRPC-MIB::wrpcSfpAlpha.1 = INTEGER: 72169888
+ End of MIB
+@end example
+
+It is recommended to use SNMP v2c for communication with the @sc{wrpc}.
+Please note that when the version 1 of SNMP is used, 64 bit counters are not
+supported. This makes it impossible to read some @sc{wrpc}'s objects with
+SNMPv1.
+
+@c --------------------------------------------------------------------------
+@node Managing SFP database via SNMP
+@subsection Managing SFP database via SNMP
+
+The SFPs database can be displayed using the @t{sfp show} command from
+the @sc{wrpc}'s console:
+@example
+ wrc# sfp show
+ 1: PN:AXGE-1254-0531   dTx:   180625 dRx:   148451 alpha: 72169888
+ 2: PN:AXGE-3454-0531   dTx:   180625 dRx:   148451 alpha: -73685416
+@end example
+
+The same data is exported by the @i{Mini SNMP responder} via the table
+@t{wrpcSfpTable}:
+
+@example
+ $ snmpwalk $SNMP_OPT wrpcSfpTable
+ WR-WRPC-MIB::wrpcSfpPn.1 = STRING: AXGE-1254-0531
+ WR-WRPC-MIB::wrpcSfpPn.2 = STRING: AXGE-3454-0531
+ WR-WRPC-MIB::wrpcSfpDeltaTx.1 = INTEGER: 180625
+ WR-WRPC-MIB::wrpcSfpDeltaTx.2 = INTEGER: 180625
+ WR-WRPC-MIB::wrpcSfpDeltaRx.1 = INTEGER: 148451
+ WR-WRPC-MIB::wrpcSfpDeltaRx.2 = INTEGER: 148451
+ WR-WRPC-MIB::wrpcSfpAlpha.1 = INTEGER: 72169888
+ WR-WRPC-MIB::wrpcSfpAlpha.2 = INTEGER: -73685416
+ End of MIB
+@end example
+
+When the SET support is compiled into the @i{Mini SNMP responder}, it is
+possible to erase or add/replace SFP entires to the SFPs database via SNMP.
+
+Addition (or modification) of one SFP to the database can done by a row of
+SNMP SETs. Firstly, please set the delta Tx (@t{wrpcPtpConfigDeltaTx.0}), the
+delta Rx (@t{wrpcPtpConfigDeltaRx.0}) and the alpha (@t{wrpcPtpConfigAlpha.0})
+with new values.
+Then, to commit the change to the SFP database, perform the SNMP SET on
+the @t{wrpcPtpConfigApply.0} with the value @t{writeToFlashCurrentSfp}. It will
+add/update values for the currently plugged SFP.
+
+To add/update entries for different SFPs, please set deltas and alpha like
+above, then set PN of an SFP to the @t{wrpcPtpConfigSfpPn.0} and commit
+the change by setting @t{writeToFlashGivenSfp} to the @t{wrpcPtpConfigApply.0}.
+
+It is also possible to update values in the memory for the current SFP.
+For that, please set delta Tx, delta Rx and alpha as described above,
+then set @t{writeToMemoryCurrentSfp} to the @t{wrpcPtpConfigApply.0}
+
+Please be aware that these changes will be lost after a power cycle of a board,
+soft reset of @sc{wrpc} or unplug/plug of a fiber/SFP.
+
+Currently, after the update of SFP values in the memory, PTP is restarted.
+Such restart is necessary because PTP does not support on-the-fly changes of
+deltas nor alpha. It is expected that this behavior will change in the future.
+
+If a database entry of the SFP, which is currently used was updated, it is
+necessary to perform a restart of the PTP daemon
+(set @t{wrpcPtpConfigRestart.0} with the value @t{restartPtp}).
+
+Each SNMP SET of @t{wrpcPtpConfigApply.0} or @t{wrpcPtpConfigRestart.0} returns
+the status of a performed action. For details please check @t{WR-WRPC-MIB}
+file.
+
+Commands below add an SFP with PN as "@t{NEW-SFP}", delta Tx "@t{1111}",
+delta Rx "@t{2222}" and alpha "@t{3333}".
+@example
+ $ snmpset $SNMP_OPT wrpcPtpConfigDeltaTx.0 = 1111
+ WR-WRPC-MIB::wrpcPtpConfigDeltaTx.0 = INTEGER: 1111
+ $ snmpset $SNMP_OPT wrpcPtpConfigDeltaRx.0 = 2222
+ WR-WRPC-MIB::wrpcPtpConfigDeltaRx.0 = INTEGER: 2222
+ $ snmpset $SNMP_OPT wrpcPtpConfigAlpha.0 = 3333
+ WR-WRPC-MIB::wrpcPtpConfigAlpha.0 = INTEGER: 3333
+ $ snmpset $SNMP_OPT wrpcPtpConfigSfpPn.0 = NEW-SFP
+ WR-WRPC-MIB::wrpcPtpConfigSfpPn.0 = STRING: "NEW-SFP"
+ $ snmpset $SNMP_OPT wrpcPtpConfigApply.0 = writeToFlashGivenSfp
+ WR-WRPC-MIB::wrpcPtpConfigApply.0 = INTEGER: applySuccessful(100)
+@end example
+
+In case the SFP database does not contain the currently plugged SFP, the last
+@t{snmpset} command will return @t{applySuccessfulMatchFailed(101)}.
+
+Optionally restart the PTP:
+@example
+ $ snmpset $SNMP_OPT wrpcPtpConfigRestart.0 = restartPtp
+ WR-WRPC-MIB::wrpcPtpConfigRestart.0 = INTEGER: restartPtpSuccessful(100)
+@end example
+
+Simple verification of performed actions:
+@example
+ wrc# sfp show
+ 1: PN:AXGE-1254-0531   dTx:   180625 dRx:   148451 alpha: 72169888
+ 2: PN:AXGE-3454-0531   dTx:   180625 dRx:   148451 alpha: -73685416
+ 3: PN:NEW-SFP          dTx:     1111 dRx:     2222 alpha:     3333
+@end example
+
+The same add can also be achieved by performing @t{sfp add} command in
+the @sc{wrpc}'s console:
+@example
+ wrc# sfp add NEW-SFP 1111 2222 3333
+ Update existing SFP entry
+ 3 SFPs in DB
+@end example
+
+Verify the result via SNMP:
+@example
+ $ snmpwalk $SNMP_OPT wrpcSfpTable
+ WR-WRPC-MIB::wrpcSfpPn.1 = STRING: AXGE-1254-0531
+ WR-WRPC-MIB::wrpcSfpPn.2 = STRING: AXGE-3454-0531
+ WR-WRPC-MIB::wrpcSfpPn.3 = STRING: NEW-SFP
+ WR-WRPC-MIB::wrpcSfpDeltaTx.1 = INTEGER: 180625
+ WR-WRPC-MIB::wrpcSfpDeltaTx.2 = INTEGER: 180625
+ WR-WRPC-MIB::wrpcSfpDeltaTx.3 = INTEGER: 1111
+ WR-WRPC-MIB::wrpcSfpDeltaRx.1 = INTEGER: 148451
+ WR-WRPC-MIB::wrpcSfpDeltaRx.2 = INTEGER: 148451
+ WR-WRPC-MIB::wrpcSfpDeltaRx.3 = INTEGER: 2222
+ WR-WRPC-MIB::wrpcSfpAlpha.1 = INTEGER: 72169888
+ WR-WRPC-MIB::wrpcSfpAlpha.2 = INTEGER: -73685416
+ WR-WRPC-MIB::wrpcSfpAlpha.3 = INTEGER: 3333
+ End of MIB
+@end example
+
+It is also possible to erase the SFPs database via SNMP (equivalent of
+the @t{sfp erase} command):
+@example
+ $ snmpset $SNMP_OPT wrpcPtpConfigApply.0 = eraseFlash
+ WR-WRPC-MIB::wrpcPtpConfigApply.0 = INTEGER: applySuccessful(100)
+@end example
+
+To verify that database is empty:
+@example
+ wrc# sfp show
+ SFP database empty
+@end example
+
+@c --------------------------------------------------------------------------
+@node Adding new objects to the SNMP
+@subsection Adding new objects to the SNMP
+
+The @i{Mini SNMP responder} can be easily expanded to export new objects.
+Values of new objects can come from @sc{wrpc}'s variables or other HDL modules
+as long as there is a proper interface to the @sc{wrpc} to read these values.
+
+This section contains the instruction how to export new objects with
+the given variables' content.
+
+The @i{Mini SNMP responder} internally divides all OIDs into two parts.
+The first part is called @i{limb}. The @i{limb} part of the incoming OID is
+matched by a function @t{snmp_respond}, with the defined @i{limb} parts of OIDs
+in the structure @t{oid_limb_array}.
+When the @i{limb} part is matched then the corresponding function from
+the structure @t{oid_limb_array} is called to try to match the second part of
+OID (the @i{twig} part).
+
+The example below adds to the @i{Mini SNMP responder} an @t{int32_t} variable
+(@t{example_i32var}) with OID @t{1.3.6.1.4.1.96.102.1.1.0} and a string
+(@t{example_string}) with OID @t{1.3.6.1.4.1.96.102.1.2.0}.
+Before assigning new OIDs in your projects please contact the maintainer of
+@t{wrpc-sw} repo to avoid conflicts.
+
+@itemize
+@item First declare @t{example_i32var} and @t{example_string}:
+@smallexample
+ static int32_t example_i32var;
+ static char example_string[] = "test string";
+@end smallexample
+
+@item Define the @i{limb} part of the OID:
+@smallexample
+ static uint8_t oid_wrpcExampleGroup[] = {0x2B,6,1,4,1,96,101,99};
+@end smallexample
+
+@item Define the @i{twig} part of the OID:
+@smallexample
+ static uint8_t oid_wrpcExampleV1[] = {1,0};
+ static uint8_t oid_wrpcExampleV2[] = {2,0};
+@end smallexample
+
+@item Add a group definition to the @t{struct snmp_oid_limb oid_limb_array}.
+      Please note that this structure has to be sorted by ascending OIDs.
+@smallexample
+OID_LIMB_FIELD(oid_wrpcExampleGroup, func_group, oid_array_wrpcExampleGroup),
+@end smallexample
+The macro @t{OID_LIMB_FIELD} takes the following arguments:
+@itemize @bullet
+   @item @t{oid_wrpcExampleGroup} -- an array with the @i{limb} part of the
+         OID
+   @item @t{func_group} -- a function to be called when the @i{limb} part of
+         the OID is matched; this function will try to match the @i{twig} part
+         of the OID within a table or a group.
+   @item @t{oid_array_wrpcExampleGroup} -- an array of @i{twig} parts of OIDs
+@end itemize
+
+@item Declare a previously used @t{oid_wrpcExampleGroup}. Please note that
+      this structure has to be sorted by ascending @i{twig} part of OIDs.
+@smallexample
+ static struct snmp_oid oid_array_wrpcExampleGroup[] = {
+   OID_FIELD_VAR(oid_wrpcExampleV1, get_p, set_p, ASN_INTEGER,   &example_i32var),
+   OID_FIELD_VAR(oid_wrpcExampleV2, get_p, set_p, ASN_OCTET_STR, &example_string),
+   { 0, }
+ };
+@end smallexample
+
+The macro @t{OID_FIELD_VAR} takes the following arguments:
+@itemize @bullet
+   @item @t{oid_wrpcExampleV1} -- an array with @i{twig} part of the OID
+   @item @t{get_p} (or @t{get_pp)} -- a function to be called when @i{twig}
+         part of the OID is matched for SNMP GET requests;
+   @item @t{set_p} (or @t{set_pp)} -- a function to be called when a @i{twig}
+         part of the OID is matched for SNMP SET requests; if no SET
+         functionality is planned, please use NULL
+   @item @t{ASN_INTEGER, ASN_OCTET_STR} -- type of the OID; please
+         check the source for other possible types
+   @item @t{&example_i32var, &example_string} -- addresses to the data in
+         memory
+@end itemize
+
+In case the address of variables is not known at boot, it is possible to define
+a pointer to the variable which will be initialized (e.g. in the @t{snmp_init}
+the function) at the boot time. In that case function @t{get_pp} (@t{set_pp}) has
+to be used instead of @t{get_p} (@t{set_p}). For variables that are a part of
+a structure and have to be accessed via a pointer, a macro @t{OID_FIELD_STRUCT}
+is available.
+
+For more complex extraction of variables or run-time value corrections,
+it is possible to use a custom @i{get} function. It is possible to pass
+a constant number to the custom function instead of an address. For example:
+@smallexample
+ OID_FIELD_VAR(oid_wrpcPtpServoUpdateTime, get_servo, NO_SET, ASN_COUNTER64, \
+               SERVO_UPDATE_TIME),
+@end smallexample
+@end itemize
+Perform a @t{snmpwalk} to get new OIDs:
+@smallexample
+ $ snmpwalk -On $SNMP_OPT 1.3.6.1.4.1.96.102.1
+ .1.3.6.1.4.1.96.102.1.1.0 = INTEGER: 123432
+ .1.3.6.1.4.1.96.102.1.2.0 = STRING: "test string"
+ End of MIB
+@end smallexample
+
+Trying to set too long string into the @t{example_string} results in an error:
+@smallexample
+ $ snmpset -On $SNMP_OPT 1.3.6.1.4.1.96.102.1.2.0 s "new long string"
+ Error in packet.
+ Reason: (badValue) The value given has the wrong type or length.
+ Failed object: .1.3.6.1.4.1.96.102.1.2.0
+@end smallexample
+
+A short enough (not longer than defined @t{"test string"}) value succeeds:
+@smallexample
+ $ snmpset -On $SNMP_OPT 1.3.6.1.4.1.96.102.1.2.0 s "new value12"
+ .1.3.6.1.4.1.96.102.1.2.0 = STRING: "new value12"
+@end smallexample
+
+Set 999 to the @t{example_i32var}:
+@smallexample
+$ snmpset -On $SNMP_OPT 1.3.6.1.4.1.96.102.1.1.0 i 999
+.1.3.6.1.4.1.96.102.1.1.0 = INTEGER: 999
+@end smallexample
+
+Perform @t{snmpwalk} to verify changes:
+@smallexample
+$ snmpwalk -On $SNMP_OPT 1.3.6.1.4.1.96.102.1
+.1.3.6.1.4.1.96.102.1.1.0 = INTEGER: 999
+.1.3.6.1.4.1.96.102.1.2.0 = STRING: "new value12"
+End of MIB
+@end smallexample
+
+@c --------------------------------------------------------------------------
+@node Mini SNMP responder's tests
+@subsection Mini SNMP responder's tests
+
+In the @t{wrpc-sw} repo, automatic tests are available to validate the @i{Mini
+SNMP responder} implementation. These tests are placed in the @t{test/snmp}
+directory.
+They use the @t{bats} framework (@uref{https://github.com/sstephenson/bats}).
+
+To run these tests, please go to @t{test/snmp} directory, then set
+@t{TARGET_IP} environment varaible to the IP of your target board, then type
+@t{make}. For example:
+@example
+ $ TARGET_IP=192.168.1.20 make
+ bats/libexec/bats snmp_tests_*.bats
+   Host up 192.168.1.20
+   Check the presence of snmpget
+   Check the presence of snmpgetnext
+   Check the presence of snmpwalk
+   Check the presence of snmpset
+   snmpget existing oid 1.3.6.1.4.1.96.101.1.1.1.0
+ [...]
+   snmpwalk 1.3.6.1.4.1.95
+   snmpwalk 1.3.6 count all OIDs
+ 100 tests, 0 failures
+@end example
+On the left of each test there will be a tick symbol shown or an @t{x}
+depending of the test's result (not included in the example above).
+
+Be aware that it might be necessary to clone the @t{bats} repo first.
+@t{make} command will inform whether this is needed.
+
+In case the number of OIDs changes please correct variable @t{TOTAL_NUM_OIDS}
+in file @t{snmp_test_config.bash}.
+
+These tests have to be executed after any changes are made to the @i{Mini SNMP
+responder}.
 @c ##########################################################################
 @node Troubleshooting
 @chapter Troubleshooting
 
 @b{My computer hangs on loading spec.ko or fmc-trivial.ko driver.}
 
-This will occur when you try to load the @i{spec.ko} kernel driver while your
-@i{spec-vuart} is running and trying to get messages from Virtual-UART's
-registers inside @sc{wrpc}. Please remember to quit @i{spec-vuart} before reloading
-the driver.
+This will occur when you try to load the driver while your @i{spec-vuart} is
+running and trying to get messages from Virtual-UART's registers inside the
+@sc{wrpc}. Please remember to quit @i{spec-vuart} before reloading the driver.
 
 @sp 1
 @b{I want to synthesize @sc{wrpc} but hdlmake does nothing, just quits without any
 message.}
 
 Please check if you have the Xilinx ISE-related system variables set correctly
-(@i{settings32.sh} script provided by Xilinx sets them) and make sure you have
+(@i{settings64.sh} script provided by Xilinx sets them) and make sure you have
 overwritten the @i{$XILINX} variable to:
 
 @example
@@ -696,7 +1134,7 @@ $ export XILINX=/opt/Xilinx/<version>/ISE_DS
 or similar, if your installation folder differs from default.
 
 @sp 1
-@b{@sc{wr ptp} Core seems to work but I observe on my oscilloscope that the offset
+@b{@sc{wr ptp core} seems to work but I observe on my oscilloscope that the offset
 between 1-PPS signals from @sc{wr} Master and @sc{wr} Slave is more than 1 ns.}
 
 If you're trying to synchronize the @sc{spec} board to @sc{wr} Switch please remember to
@@ -710,7 +1148,7 @@ measurements).
 @node Questions, reporting bugs
 @chapter Questions, reporting bugs
 
-If you have found a bug, you have problems with White Rabbit @sc{ptp} Core or one
+If you have found a bug, you have problems with the @sc{wr ptp core} or one
 of the tools used to build and run it, you can write to our mailing list
 @code{white-rabbit-dev@@ohwr.org}
 
@@ -721,68 +1159,96 @@ of the tools used to build and run it, you can write to our mailing list
 @appendix WRPC Shell Commands
 
 @multitable @columnfractions .5 .5
-@item @code{help} reports the available commands in this instance of @sc{wrpc}
+@item @code{help} @tab lists available commands in this instance of the @sc{wrpc}
 
 @item @code{ver} @tab prints which version of wrpc is running
 
-@item @code{config} @tab prints the Kconfig file used to build this instance of @sc{wrpc}. It is an optional command, enabled at build time by @t{CONFIG_CMD_CONFIG}
+@item @code{config} @tab prints the Kconfig file used to build this instance of
+@sc{wrpc}. It is an optional command, enabled at build time by
+@t{CONFIG_CMD_CONFIG}
 
-@item @code{verbose <digits>} @tab Set PPSi verbosity. See the PPSi manual about the meaning of the digits (hint: @t{verbose 1111} is a good first bet too see how the @sc{ptp} system is working)
+@item @code{ps} @tab prints the list of running tasks (processes) in the CPU.
+For each task you get the number of iterations and the CPU time consumed
+since boot or last reset of values
+@item @code{ps reset} @tab zeroes the profiling information reported by
+the @code{ps} command
 
-@item @code{pll init <mode> <ref_channel> <align_pps>} @tab manually run spll_init()
-function to initialize SoftPll
-@item @code{pll cl <channel>} @tab check if SoftPLL is locked for the channel
-@item @code{pll sps <channel> <picoseconds>} @tab set phase shift for the channel
-@item @code{pll gps <channel>} @tab get current and target phase shift for the channel
-@item @code{pll start <channel>} @tab start SoftPLL for the channel
-@item @code{pll stop <channel>} @tab stop SoftPLL for the channel
-@item @code{pll sdac <index> <val>} @tab set the dac
-@item @code{pll gdac <index>} @tab get dac's value
+@item @code{verbose <digits>} @tab sets PPSi verbosity. See the PPSi manual
+about the meaning of the digits (hint: @t{verbose 1111} is a good first bet to
+see how the @sc{ptp} system is working)
+
+@item @code{pll init <mode> <ref_channel> <align_pps>} @tab manually runs
+spll_init() function to initialize SoftPll
+@item @code{pll cl <channel>} @tab checks if SoftPLL is locked for the channel
+@item @code{pll sps <channel> <picoseconds>} @tab sets phase shift for the channel
+@item @code{pll gps <channel>} @tab gets current and target phase shift for the channel
+@item @code{pll start <channel>} @tab starts SoftPLL for the channel
+@item @code{pll stop <channel>} @tab stops SoftPLL for the channel
+@item @code{pll sdac <index> <val>} @tab sets the dac
+@item @code{pll gdac <index>} @tab gets dac's value
 
 @item @code{gui} @tab starts GUI @sc{wrpc} monitor
 
-@item @code{stat} @tab prints the log message for each period (Esc to exit back to shell)
-@item @code{stat bts} @tab prints bitslide value for established @sc{wr} Link, needed by calibration procedure
+@item @code{stat} @tab toggles reporting of loggable statistics. You can pass
+@t{1} or @t{0} as argument as an alternative to toggling
 
-@item @code{refresh} @tab changes the update time period of the gui and the stat commands. Default period is 1 second. If you set the period to 0, the log message is only generated one time.
+@item @code{stat bts} @tab prints bitslide value for established @sc{wr} Link,
+needed by the calibration procedure
 
-@item @code{ptp start} @tab start @sc{wr ptp} daemon
+@item @code{refresh} @tab changes the update time period of the gui and stat
+commands. Default period is 1 second. If you set the period to 0, the log
+message is only generated one time.
+
+@item @code{ptp start} @tab starts @sc{wr ptp} daemon
 @item @code{ptp stop} @tab stops @sc{wr ptp} daemon
 
-@item @code{mode} @tab prints available @sc{wr ptp} modes
-@item @code{mode gm|master|slave} @tab sets @sc{wrpc} to operate as Grandmaster clock (requires external 10MHz and 1-PPS reference), @sc{ptp} Master or @sc{ptp} Slave. After setting the mode @t{ptp start} must be re-issued
+@item @code{mode} @tab prints the current @sc{wr ptp} mode
+@item @code{mode gm|master|slave} @tab sets @sc{wrpc} to operate as Grandmaster
+clock (requires external 10MHz and 1-PPS reference), Master or Slave. After
+setting the mode, @t{ptp start} must be re-issued
 
-@item @code{calibration} @tab tries to read t2/4 phase transition value from @sc{eeprom} (in @sc{WR} Master or GrandMaster mode), or executes the t24p calibration procedure and stores its result to EEPROM (in @sc{WR} Slave mode)
+@item @code{calibration} @tab tries to read t2/4 phase transition value from the
+Flash/EEPROM (in @sc{WR} Master or GrandMaster mode), or executes the t24p
+calibration procedure and stores its result to the Flash/EEPROM (in @sc{WR}
+Slave mode)
 
 @item @code{time} @tab prints current time from @sc{wrpc}
 @item @code{time raw} @tab  prints current time in a raw format (seconds, nanoseconds)
 @item @code{time set <sec> <nsec>} @tab sets @sc{wrpc} time
-@item @code{time setsec <sec>} @tab sets only seconds part of @sc{wrpc} time (useful for setting time in GrandMaster mode, when nanoseconds counter is aligned to external 1-PPS and 10 MHz)
-@item @code{time setnsec <nsec>} @tab sets only nanoseconds part of @sc{wrpc} time
+@item @code{time setsec <sec>} @tab sets only seconds of the @sc{wrpc} time
+(useful for setting time in GrandMaster mode, when nanoseconds counter is
+aligned to external 1-PPS and 10 MHz)
+@item @code{time setnsec <nsec>} @tab sets only nanoseconds of the @sc{wrpc} time
 
-@item @code{sfp detect} @tab prints the ID of currently used @sc{sfp} transceiver
-@item @code{sfp erase} @tab cleans the @sc{sfp} database stored in @sc{fmc} @sc{eeprom}
-@item @code{sfp add <ID> <deltaTx> <deltaRx> <alpha>} @tab stores calibration parameters for @sc{sfp} to the database in @sc{fmc} @sc{eeprom}
+@item @code{sfp erase} @tab erases the @sc{sfp} database stored in the Flash/EEPROM
+
+@item @code{sfp add <PN> <deltaTx> <deltaRx> <alpha>} @tab stores calibration
+parameters for @sc{sfp} to a file in Flash/EEPROM
+
 @item @code{sfp show} @tab prints all @sc{sfp} transceivers stored in database
-@item @code{sfp match} @tab tries to get calibration parameters from database for currently used @sc{sfp} transceiver (@t{sfp detect} must be executed before @t{match})
 
-@item @code{init erase} @tab cleans initialization script in @sc{fmc} @sc{eeprom}
-@item @code{init add <cmd>} @tab adds shell command at the end of initialization script
-@item @code{init show} @tab prints all commands from the script stored in @sc{eeprom}
-@item @code{init boot} @tab executes the script stored in @sc{fmc} @sc{eeprom} (the same action is done automatically when @sc{wrpc} starts after resetting @sc{lm32})
+@item @code{sfp match} @tab prints the ID of a currently used @sc{sfp}
+transceiver and tries to load the calibration parameters for it
+
+@item @code{init erase} @tab erases the initialization script in Flash/EEPROM
+@item @code{init add <cmd>} @tab adds shell command at the end of the
+initialization script
+
+@item @code{init show} @tab prints all commands from the script stored in Flash/EEPROM
+@item @code{init boot} @tab executes the script stored in Flash/EEPROM (the same action is done automatically when @sc{wrpc} starts after resetting @sc{lm32})
 
 @item @code{mac get} @tab prints @sc{wrpc}'s @sc{mac} address
-@item @code{mac getp} @tab re-generates @sc{mac} address from 1-wire digital thermometer or @sc{eeprom}
+@item @code{mac getp} @tab reads the @sc{mac} address stored in Flash/EEPROM
 @item @code{mac set <mac>} @tab sets the @sc{mac} address of @sc{wrpc}
-@item @code{mac setp <mac>} @tab sets @sc{mac} address to the 1-wire @sc{eeprom} (if available)
+@item @code{mac setp <mac>} @tab stores the @sc{mac} address in Flash/EEPROM
 
 @item @code{sdb} @tab prints devices connected to the Wishbone bus inside @sc{wrpc}
 
 @item @code{ip get}
-@item @code{ip set <ip>} @tab reports or sets the IPv4 address of the @sc{wrpc} (only available if @t{CONFIG_ETHERBONE} is set at build time
+@item @code{ip set <ip>} @tab reports or sets the IPv4 address of the @sc{wrpc} (only available if @t{CONFIG_IP} is set at build time
 
 @item @code{w1w <offset> <byte> [<byte> ...]}
-@item @code{w1r <offset> <len>} @tab If @t{CONFIG_W1} is set and a OneWire @sc{eeprom} esists, write and read data. For writing, @t{byte} values are decimal
+@item @code{w1r <offset> <len>} @tab If @t{CONFIG_W1} is set and a OneWire @sc{eeprom} exists, write and read data. For writing, @t{byte} values are decimal
 
 @end multitable
 
@@ -796,7 +1262,7 @@ function to initialize SoftPll
 @multitable @columnfractions .3 .7
 @item @code{TAI Time:} @tab current state of device's local clock
 @item @code{RX:} / @code{TX:} @tab Rx/Tx packets counters
-@item @code{mode:} @tab operation mode of White Rabbit @sc{ptp} Core - @code{<WR
+@item @code{mode:} @tab operation mode of the @sc{wr ptp core} - @code{<WR
 Master, WR Slave>}
 @item @code{< Locked, NoLock >} @tab SoftPLL lock state
 
@@ -837,6 +1303,131 @@ one-way link delay
 the @sc{wr} servo is updated
 
 @end multitable
+
+@c ##########################################################################
+@page
+@node Writing @sc{sdbfs} image in standalone configuration
+@appendix Writing @sc{sdbfs} image in standalone configuration
+
+If you use @sc{spec} board in a host-less environment, or you use custom
+hardware and @sc{spec} drivers and tools cannot be used, there is still a
+possibility of writing @sc{sdbfs} through Xilinx JTAG.
+
+@sp 1
+In case of @sc{spec} running a reference bitstream provided with a stable
+@sc{wrpc} release, you can simply program your Flash with @i{spec_top.mcs}
+provided with the release binaries using for example Xilinx ISE Impact tool.
+This @i{mcs} file already includes both @sc{sdbfs} image and FPGA bitstream.
+
+In case of a custom gateware or hardware, you can download a standalone
+@sc{sdbfs} image:
+@example
+$ wget http://www.ohwr.org/attachments/download/4144/sdbfs-standalone.bin
+@end example
+and generate a custom @i{*.mcs} file with your own FPGA bitstream. You should
+use the following layout:
+
+@multitable @columnfractions .1 .7
+@item @code{0x000000} @tab your FPGA bitstream
+@item @code{0x170000} @tab @sc{sdbfs} image
+@end multitable 
+
+@sp 1
+For example, to generate the @i{*.mcs} file for M25P32 Flash on @sc{spec}, the
+following @i{promgen} parameters should be used:
+@example
+promgen -w -spi -p mcs -c FF -s 32768 -u 0 <your_bitstream>.bit \
+-bd sdb-standalone.bin start 0x170000 -o output.mcs
+@end example
+
+After that, you can use the Xilinx JTAG cable and Xilinx ISE Impact tool to
+write your @i{output.mcs} file to the Flash memory.
+
+@c ##########################################################################
+@page
+@node wrpc-dump
+@appendix wrpc-dump
+
+In December 2015, we added @t{tools/wrpc-dump}. The program accesses
+a wrpc memory image (the 128k binary dump) and prints the internal
+status of the program.
+
+@c ==========================================================================
+@node wrpc-dump with Current Code
+@section wrpc-dump with Current Code
+
+
+@t{wrpc-dump} uses some information that we included at offset 0x80
+in the binary, to detect endianness conversions and to find the actual data.
+Thus, it only needs to receive the name of the file, either an on-disk file
+or the live PCI memory if available (for @i{spec} devices, it's resource 0 of
+the PCI space).
+
+@example
+   tools/wrpc-dump /tmp/logs/vetar-dump-42
+   tools/wrpc-dump /sys/bus/pci/devices/0000:02:00.0/resource0
+@end example
+
+If you built @i{wrpc-sw} with @t{CONFIG_SPLL_FIFO_LOG} (a
+``developer'' configuration option), the dump includes the last 16
+tags being accessed by @i{softpll}, in relation with interrupts and
+timing.  Please see @i{sofpll/softpll_ng::_irq_enter} for details.
+
+@c ==========================================================================
+@node wrpc-dump with Older WRPC Binaries
+@section wrpc-dump with Older WRPC Binaries
+
+The tool has another working mode, that you can use with older
+@i{wrpc} builds, where the special table is missing (but please be
+aware that the data structures may have changed slightly).  In this
+mode, you provide the address of the data structure and its name. It
+supports the names @i{pll}, @i{fifo} (the circular log described
+above), @i{ppg}, @i{ppi}, @i{servo_state}, and @i{ds}. The last name
+refers to the PTP data sets, and for this the pointer needed is
+@t{ppg} (ppsi global data).
+
+This is an example:
+
+@smallexample
+   $ ./tools/wrpc-dump dump-file 00015798 servo_state
+
+   servo_state at 0x15798
+           if_name:                   ""
+           flags:                     1
+           state:                     4
+           delta_tx_m:                10
+           delta_rx_m:                174410
+           delta_tx_s:                0
+           delta_rx_s:                3200
+           fiber_fix_alpha:           73622176
+           clock_period_ps:           8000
+           t1:                        correct 1: 1448628309.390213200:0000
+           t2:                        correct 1: 1448628309.390213520:2921
+           t3:                        correct 1: 1448628310.419072616:0000
+           t4:                        correct 1: 1448628310.419073104:6041
+   [...]
+@end smallexample
+
+The address is specified as a hex number, and can be retrieved running
+``@t{lm32-elf-nm  wrc.elf}''.
+
+Please note that the @i{spec} device has a strange memory mapping, and
+it needs a special endian conversion. With current @i{wrpc} it is
+autodetected, but if you dump an older binary you'll need to set the
+@t{WRPC_SPEC} environment variable (to any value you like) to properly
+access the PCI memory or a dump taken from PCI:
+
+@smallexample
+   $ export WRPC_SPEC=y
+@end smallexample
+
+or
+
+@smallexample
+   $ WRPC_SPEC=y ./tools/wrpc-dump dump-file 00015798 servo_state
+@end smallexample
+
+This is not needed if the dump is retrieved using Etherbone.
 
 @c ##########################################################################
 @bye

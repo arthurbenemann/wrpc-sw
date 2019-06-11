@@ -16,7 +16,7 @@
 /*
  * Delay function - limit SPI clock speed to 10 MHz
  */
-static void delay()
+static void delay(void)
 {
 	int i;
 	for (i = 0; i < (int)(CPU_CLOCK/10000000); i++)
@@ -79,6 +79,11 @@ int flash_write(uint32_t addr, uint8_t *buf, int count)
 		bbspi_transfer(0,buf[i]);
 	}
 	bbspi_transfer(1,0);
+
+	/* make sure the write is complete */
+	while (flash_rsr() & 0x01) {
+		/* do nothing */
+		}
 
 	return count;
 }

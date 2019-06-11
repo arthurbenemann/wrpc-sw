@@ -10,10 +10,11 @@
 #include "types.h"
 #include "board.h"
 #include "syscon.h"
+#include "i2c.h"
 
 #define I2C_DELAY 300
 
-void mi2c_delay()
+void mi2c_delay(void)
 {
 	int i;
 	for (i = 0; i < I2C_DELAY; i++)
@@ -122,9 +123,9 @@ uint8_t mi2c_devprobe(uint8_t i2cif, uint8_t i2c_addr)
 //    for(i=0x50;i<0x51;i++)
 //    {
 //     mi2c_start(i2cif);
-//     if(!mi2c_put_byte(i2cif, i<<1)) mprintf("found : %x\n", i);
+//     if(!mi2c_put_byte(i2cif, i<<1)) pp_printf("found : %x\n", i);
 //     mi2c_stop(i2cif);
 //
 //    }
-//    mprintf("Nothing more found...\n");
+//    pp_printf("Nothing more found...\n");
 //}

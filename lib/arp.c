@@ -16,7 +16,12 @@
 #define htons(x) x
 #endif
 
-static wr_socket_t *arp_socket;
+static uint8_t __arp_queue[128];
+static struct wrpc_socket __static_arp_socket = {
+	.queue.buff = __arp_queue,
+	.queue.size = sizeof(__arp_queue),
+};
+static struct wrpc_socket *arp_socket;
 
 #define ARP_HTYPE	0
 #define ARP_PTYPE	(ARP_HTYPE+2)
@@ -29,19 +34,17 @@ static wr_socket_t *arp_socket;
 #define ARP_TPA		(ARP_THA+6)
 #define ARP_END		(ARP_TPA+4)
 
-void arp_init(const char *if_name)
+static void arp_init(void)
 {
-	wr_sockaddr_t saddr;
+	struct wr_sockaddr saddr;
 
 	/* Configure socket filter */
 	memset(&saddr, 0, sizeof(saddr));
-	strcpy(saddr.if_name, if_name);
 	memset(&saddr.mac, 0xFF, 6);	/* Broadcast */
 	saddr.ethertype = htons(0x0806);	/* ARP */
-	saddr.family = PTPD_SOCK_RAW_ETHERNET;
 
-	arp_socket = ptpd_netif_create_socket(PTPD_SOCK_RAW_ETHERNET,
-					      0, &saddr);
+	arp_socket = ptpd_netif_create_socket(&__static_arp_socket, &saddr,
+					      PTPD_SOCK_RAW_ETHERNET, 0);
 }
 
 static int process_arp(uint8_t * buf, int len)
@@ -85,17 +88,27 @@ static int process_arp(uint8_t * buf, int len)
 	return ARP_END;
 }
 
-void arp_poll(void)
+static int arp_poll(void)
 {
 	uint8_t buf[ARP_END + 100];
-	wr_sockaddr_t addr;
+	struct wr_sockaddr addr;
 	int len;
 
-	if (needIP)
-		return;		/* can't do ARP w/o an address... */
+	if (ip_status == IP_TRAINING)
+		return 0;		/* can't do ARP w/o an address... */
 
 	if ((len = ptpd_netif_recvfrom(arp_socket,
-				       &addr, buf, sizeof(buf), 0)) > 0)
+				       &addr, buf, sizeof(buf), 0)) > 0) {
 		if ((len = process_arp(buf, len)) > 0)
 			ptpd_netif_sendto(arp_socket, &addr, buf, len, 0);
+		return 1;
+	}
+	return 0;
 }
+
+DEFINE_WRC_TASK(arp) = {
+	.name = "arp",
+	.enable = &link_status,
+	.init = arp_init,
+	.job = arp_poll,
+};

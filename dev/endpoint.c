@@ -1,12 +1,11 @@
 /*
-
-WR Endpoint (WR-compatible Ethernet MAC driver
-
-Tomasz Wlostowski/CERN 2011
-
-LGPL 2.1
-
-*/
+ * This work is part of the White Rabbit project
+ *
+ * Copyright (C) 2011 CERN (www.cern.ch)
+ * Author: Tomasz Wlostowski <tomasz.wlostowski@cern.ch>
+ *
+ * Released according to the GNU LGPL, version 2.1 or any later version.
+ */
 
 #include <stdio.h>
 #include <wrc.h>
@@ -74,6 +73,7 @@ void ep_init(uint8_t mac_addr[])
 {
 	EP = (volatile struct EP_WB *)BASE_EP;
 	set_mac_addr(mac_addr);
+	ep_sfp_enable(1);
 
 	*(unsigned int *)(0x62000) = 0x2;	// reset network stuff (cleanup required!)
 	*(unsigned int *)(0x62000) = 0;
@@ -101,7 +101,7 @@ int ep_enable(int enabled, int autoneg)
 /* Disable the endpoint */
 	EP->ECR = 0;
 
-	mprintf("ID: %x\n", EP->IDCODE);
+	pp_printf("ID: %x\n", EP->IDCODE);
 
 /* Load default packet classifier rules - see ep_pfilter.c for details */
 	pfilter_init_default();
@@ -192,4 +192,17 @@ int ep_timestamper_cal_pulse()
 	EP->TSCR |= EP_TSCR_RX_CAL_START;
 	timer_delay_ms(1);
 	return EP->TSCR & EP_TSCR_RX_CAL_RESULT ? 1 : 0;
+}
+
+int ep_sfp_enable(int ena)
+{
+	uint32_t val;
+	val = pcs_read(MDIO_REG_ECTRL);
+	if(ena)
+		val &= (~MDIO_ECTRL_SFP_TX_DISABLE);
+	else
+		val |= MDIO_ECTRL_SFP_TX_DISABLE;
+	pcs_write(MDIO_REG_ECTRL, val);
+
+	return 0;
 }

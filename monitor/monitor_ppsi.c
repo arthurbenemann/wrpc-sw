@@ -18,21 +18,21 @@
 #include <syscon.h>
 #include <pps_gen.h>
 #include <onewire.h>
-#include <util.h>
+#include <temperature.h>
 #include "wrc_ptp.h"
 #include "hal_exports.h"
 #include "lib/ipv4.h"
-
-extern int wrc_man_phase;
+#include "shell.h"
 
 extern struct pp_servo servo;
 extern struct pp_instance ppi_static;
 struct pp_instance *ppi = &ppi_static;
+const char *ptp_unknown_str= "unknown";
 
 static void wrc_mon_std_servo(void);
 
 #define PRINT64_FACTOR	1000000000LL
-char* print64(uint64_t x)
+static char* print64(uint64_t x)
 {
 	uint32_t h_half, l_half;
 	static char buf[2*10+1];	//2x 32-bit value + \0
@@ -47,18 +47,26 @@ char* print64(uint64_t x)
 
 }
 
-int wrc_mon_status()
+static const char* wrc_ptp_state(void)
 {
-	struct wr_servo_state *s =
-			&((struct wr_data *)ppi->ext_data)->servo_state;
 	struct pp_state_table_item *ip = NULL;
 	for (ip = pp_state_table; ip->state != PPS_END_OF_TABLE; ip++) {
 		if (ip->state == ppi->state)
 			break;
 	}
+	
+	if(!ip)
+		return ptp_unknown_str;
+	return ip->name;
+}
+
+static int wrc_mon_status(void)
+{
+	struct wr_servo_state *s =
+			&((struct wr_data *)ppi->ext_data)->servo_state;
 
 	cprintf(C_BLUE, "\n\nPTP status: ");
-	cprintf(C_WHITE, "%s", ip ? ip->name : "unknown");
+	cprintf(C_WHITE, "%s", wrc_ptp_state());
 
 	if ((!s->flags & WR_FLAG_VALID) || (ppi->state != PPS_SLAVE)) {
 		cprintf(C_RED,
@@ -72,27 +80,28 @@ int wrc_mon_status()
 	return 1;
 }
 
-void wrc_mon_gui(void)
+int wrc_mon_gui(void)
 {
-	static uint32_t last;
+	static uint32_t last_jiffies;
+	static uint32_t last_servo_count;
 	struct hal_port_state state;
 	int tx, rx;
 	int aux_stat;
 	uint64_t sec;
 	uint32_t nsec;
-#ifdef CONFIG_ETHERBONE
-	uint8_t ip[4];
-#endif
 	struct wr_servo_state *s =
 			&((struct wr_data *)ppi->ext_data)->servo_state;
 	int64_t crtt;
 	int64_t total_asymmetry;
-	if (!last)
-		last = timer_get_tics();
-	if (time_before(timer_get_tics(), last + wrc_ui_refperiod))
-		return;
+	char buf[20];
 
-	last = timer_get_tics();
+	if (!last_jiffies)
+		last_jiffies = timer_get_tics() - 1 -  wrc_ui_refperiod;
+	if (time_before(timer_get_tics(), last_jiffies + wrc_ui_refperiod)
+		&& last_servo_count == s->update_count)
+		return 0;
+	last_jiffies = timer_get_tics();
+	last_servo_count = s->update_count;
 
 	term_clear();
 
@@ -102,7 +111,7 @@ void wrc_mon_gui(void)
 	shw_pps_gen_get_time(&sec, &nsec);
 
 	cprintf(C_BLUE, "\n\nTAI Time:                  ");
-	cprintf(C_WHITE, "%s", format_time(sec));
+	cprintf(C_WHITE, "%s", format_time(sec, TIME_FORMAT_LEGACY));
 
 	/*show_ports */
 	wrpc_get_port_state(&state, NULL);
@@ -120,7 +129,7 @@ void wrc_mon_gui(void)
 
 		if (!WR_DSPOR(ppi)->wrModeOn) {
 			wrc_mon_std_servo();
-			return;
+			return 1;
 		}
 
 		switch (ptp_mode) {
@@ -143,17 +152,28 @@ void wrc_mon_gui(void)
 			cprintf(C_GREEN, "Calibrated  ");
 		else
 			cprintf(C_RED, "Uncalibrated  ");
-#ifdef CONFIG_ETHERBONE
-		cprintf(C_WHITE, "\nIPv4: ");
-		getIP(ip);
-		if (needIP)
-			cprintf(C_RED, "BOOTP running");
-		else
-			cprintf(C_GREEN, "%d.%d.%d.%d", ip[0], ip[1], ip[2], ip[3]);
-#endif
+
+		if (HAS_IP) {
+			uint8_t ip[4];
+
+			cprintf(C_WHITE, "\nIPv4: ");
+			getIP(ip);
+			format_ip(buf, ip);
+			switch (ip_status) {
+			case IP_TRAINING:
+				cprintf(C_RED, "BOOTP running");
+				break;
+			case IP_OK_BOOTP:
+				cprintf(C_GREEN, "%s (from bootp)", buf);
+				break;
+			case IP_OK_STATIC:
+				cprintf(C_GREEN, "%s (static assignment)", buf);
+				break;
+			}
+		}
 
 		if (wrc_mon_status() == 0)
-			return;
+			return 1;
 
 		cprintf(C_GREY, "Servo state:               ");
 		cprintf(C_WHITE, "%s\n", s->servo_state_name);
@@ -174,7 +194,7 @@ void wrc_mon_gui(void)
 
 		if (aux_stat & SPLL_AUX_LOCKED)
 			cprintf(C_GREEN, ", locked");
-		mprintf("\n");
+		pp_printf("\n");
 
 		cprintf(C_BLUE, "\nTiming parameters:\n\n");
 
@@ -214,9 +234,6 @@ void wrc_mon_gui(void)
 		cprintf(C_WHITE, "%9d ps\n",
 			(int32_t) (s->skew));
 
-		cprintf(C_GREY, "Manual phase adjustment: ");
-		cprintf(C_WHITE, "%9d ps\n", (int32_t) (wrc_man_phase));
-
 		cprintf(C_GREY, "Update counter:          ");
 		cprintf(C_WHITE, "%9d\n",
 			(int32_t) (s->update_count));
@@ -226,7 +243,7 @@ void wrc_mon_gui(void)
 
 	pp_printf("--");
 
-	return;
+	return 1;
 }
 
 static inline void cprintf_ti(int color, struct TimeInternal *ti)
@@ -266,67 +283,84 @@ static void wrc_mon_std_servo(void)
 }
 
 
-int wrc_log_stats(uint8_t onetime)
+/* internal "last", exported to shell command */
+uint32_t wrc_stats_last;
+
+static int wrc_log_stats(void)
 {
-	static uint32_t last;
 	struct hal_port_state state;
 	int tx, rx;
 	int aux_stat;
 	uint64_t sec;
 	uint32_t nsec;
-
-	if (!last)
-		last = timer_get_tics();
-	if (!onetime && time_before(timer_get_tics(), wrc_ui_refperiod + last))
-		return 0;
 	struct wr_servo_state *s =
 			&((struct wr_data *)ppi->ext_data)->servo_state;
-	last = timer_get_tics();
+	static uint32_t last_jiffies;
+
+	if (!wrc_stat_running)
+		return 0;
+
+	if (!last_jiffies)
+		last_jiffies = timer_get_tics() - 1 -  wrc_ui_refperiod;
+	/* stats update condition for Slave mode */
+	if (wrc_stats_last == s->update_count && ptp_mode==WRC_MODE_SLAVE)
+		return 0;
+	/* stats update condition for Master mode */
+	if (time_before(timer_get_tics(), last_jiffies + wrc_ui_refperiod) &&
+			ptp_mode != WRC_MODE_SLAVE)
+		return 0;
+	last_jiffies = timer_get_tics();
+	wrc_stats_last = s->update_count;
 
 	shw_pps_gen_get_time(&sec, &nsec);
 	wrpc_get_port_state(&state, NULL);
 	minic_get_stats(&tx, &rx);
 	pp_printf("lnk:%d rx:%d tx:%d ", state.state, rx, tx);
 	pp_printf("lock:%d ", state.locked ? 1 : 0);
-	pp_printf("sv:%d ", (s->flags & WR_FLAG_VALID) ? 1 : 0);
-	pp_printf("ss:'%s' ", s->servo_state_name);
+	pp_printf("ptp:%s ", wrc_ptp_state());
+	if(ptp_mode == WRC_MODE_SLAVE) {
+		pp_printf("sv:%d ", (s->flags & WR_FLAG_VALID) ? 1 : 0);
+		pp_printf("ss:'%s' ", s->servo_state_name);
+	}
 	aux_stat = spll_get_aux_status(0);
 	pp_printf("aux:%x ", aux_stat);
 	/* fixme: clock is not always 125 MHz */
 	pp_printf("sec:%d nsec:%d ", (uint32_t) sec, nsec);
-	pp_printf("mu:%s ", print64(s->picos_mu));
-	pp_printf("dms:%s ", print64(s->delta_ms));
-	pp_printf("dtxm:%d drxm:%d ", (int32_t) s->delta_tx_m,
-		(int32_t) s->delta_rx_m);
-	pp_printf("dtxs:%d drxs:%d ", (int32_t) s->delta_tx_s,
-		(int32_t) s->delta_rx_s);
-	int64_t total_asymmetry = s->picos_mu -
-			  2LL * s->delta_ms;
-	pp_printf("asym:%d ", (int32_t) (total_asymmetry));
-	pp_printf("crtt:%s ", print64(s->picos_mu -
-				s->delta_tx_m -
-				s->delta_rx_m -
-				s->delta_tx_s -
-				s->delta_rx_s));
-	pp_printf("cko:%d ", (int32_t) (s->offset));
-	pp_printf("setp:%d ", (int32_t) (s->cur_setpoint));
+	if(ptp_mode == WRC_MODE_SLAVE) {
+		pp_printf("mu:%s ", print64(s->picos_mu));
+		pp_printf("dms:%s ", print64(s->delta_ms));
+		pp_printf("dtxm:%d drxm:%d ", (int32_t) s->delta_tx_m,
+			(int32_t) s->delta_rx_m);
+		pp_printf("dtxs:%d drxs:%d ", (int32_t) s->delta_tx_s,
+			(int32_t) s->delta_rx_s);
+		int64_t total_asymmetry = s->picos_mu -
+				  2LL * s->delta_ms;
+		pp_printf("asym:%d ", (int32_t) (total_asymmetry));
+		pp_printf("crtt:%s ", print64(s->picos_mu -
+					s->delta_tx_m -
+					s->delta_rx_m -
+					s->delta_tx_s -
+					s->delta_rx_s));
+		pp_printf("cko:%d ", (int32_t) (s->offset));
+		pp_printf("setp:%d ", (int32_t) (s->cur_setpoint));
+		pp_printf("ucnt:%d ", (int32_t) s->update_count);
+	}
 	pp_printf("hd:%d md:%d ad:%d ", spll_get_dac(-1), spll_get_dac(0),
 		spll_get_dac(1));
-	pp_printf("ucnt:%d ", (int32_t) s->update_count);
 
 	if (1) {
 		int32_t temp;
 
-		//first read the value from previous measurement,
-		//first one will be random, I know
-		temp = w1_read_temp_bus(&wrpc_w1_bus, W1_FLAG_COLLECT);
-		//then initiate new conversion for next loop cycle
-		w1_read_temp_bus(&wrpc_w1_bus, W1_FLAG_NOWAIT);
+		temp = wrc_temp_get("pcb");
 		pp_printf("temp: %d.%04d C", temp >> 16,
 			  (int)((temp & 0xffff) * 10 * 1000 >> 16));
 	}
 
 	pp_printf("\n");
 
-	return 0;
+	return 1;
 }
+DEFINE_WRC_TASK(stats) = {
+	.name = "stats",
+	.job = wrc_log_stats,
+};

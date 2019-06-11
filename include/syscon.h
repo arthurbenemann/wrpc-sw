@@ -1,3 +1,11 @@
+/*
+ * This work is part of the White Rabbit project
+ *
+ * Copyright (C) 2012 - 2015 CERN (www.cern.ch)
+ * Author: Grzegorz Daniluk <grzegorz.daniluk@cern.ch>
+ *
+ * Released according to the GNU GPL, version 2 or any later version.
+ */
 #ifndef __SYSCON_H
 #define __SYSCON_H
 
@@ -23,6 +31,12 @@ static inline void timer_delay_ms(int ms)
 {
 	timer_delay(ms * TICS_PER_SECOND / 1000);
 }
+
+/* usleep.c */
+extern void usleep_init(void);
+#ifndef unix
+extern int usleep(useconds_t usec);
+#endif
 
 
 #ifdef CONFIG_WR_NODE
@@ -62,10 +76,6 @@ extern struct s_i2c_if i2c_if[2];
 
 void timer_init(uint32_t enable);
 
-/* usleep.c */
-extern void usleep_init(void);
-extern int usleep(useconds_t usec);
-
 
 
 extern volatile struct SYSCON_WB *syscon;
@@ -86,7 +96,7 @@ static inline int gpio_in(int pin)
 	return syscon->GPSR & pin ? 1 : 0;
 }
 
-static inline int sysc_get_memsize()
+static inline int sysc_get_memsize(void)
 {
 	return (SYSC_HWFR_MEMSIZE_R(syscon->HWFR) + 1) * 16;
 }

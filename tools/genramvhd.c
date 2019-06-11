@@ -54,7 +54,7 @@ static int my_isok(char c)
 
 int main(int argc, char **argv)
 {
-	int j, opt, error, i_width;
+	int j, opt, error = 0, i_width;
 	long i, elements, size, columns, entry_width;
 	char *value_end;
 	unsigned char x[16];	/* Up to 128 bit */
@@ -117,12 +117,18 @@ int main(int argc, char **argv)
 		}
 	}
 
+	if (error)
+		return 1;
+
 	if (optind + 1 != argc) {
 		fprintf(stderr,
 			"%s: expecting one non-optional argument: <filename>\n",
 			program);
-		return 1;
+		error = 1;
 	}
+
+	if (error)
+		return 1;
 
 	filename = argv[optind];
 

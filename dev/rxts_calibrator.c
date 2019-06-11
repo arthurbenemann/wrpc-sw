@@ -12,13 +12,13 @@
 #include <wrc.h>
 
 #include "board.h"
-#include "trace.h"
 #include "syscon.h"
 #include "endpoint.h"
 #include "softpll_ng.h"
 #include "wrc_ptp.h"
 #include "storage.h"
 #include "ptpd_netif.h"
+#include "rxts_calibrator.h"
 
 /* New calibrator for the transition phase value. A major pain in the ass for
    the folks who frequently rebuild their gatewares. The idea is described
@@ -117,7 +117,7 @@ static int cal_cur_phase;
    ptpnetif's check lock function when the PLL has already locked, to avoid
    complicating the API of ptp-noposix/ppsi. */
 
-void rxts_calibration_start()
+void rxts_calibration_start(void)
 {
 	cal_cur_phase = 0;
 	det_rising.prev_val = det_falling.prev_val = -1;
@@ -149,7 +149,7 @@ int rxts_calibration_update(uint32_t *t24p_value)
 	if (cal_cur_phase >= CAL_SCAN_RANGE) {
 		if (det_rising.state != TD_DONE || det_falling.state != TD_DONE) 
 		{
-			TRACE_DEV("RXTS calibration error.\n");
+			wrc_verbose("RXTS calibration error.\n");
 			return -1;
 		}
 
@@ -172,7 +172,7 @@ int rxts_calibration_update(uint32_t *t24p_value)
 		if(ttrans >= REF_CLOCK_PERIOD_PS) ttrans -= REF_CLOCK_PERIOD_PS;
 
 
-		TRACE_DEV("RXTS calibration: R@%dps, F@%dps, transition@%dps\n",
+		wrc_verbose("RXTS calibration: R@%dps, F@%dps, transition@%dps\n",
 			  det_rising.trans_phase, det_falling.trans_phase,
 			  ttrans);
 
@@ -215,10 +215,10 @@ static int calib_t24p_master(uint32_t *value)
 
 	rv = storage_phtrans(value, 0);
 	if(rv < 0) {
-		pp_printf("Error %d while reading EEPROM\n", rv);
+		pp_printf("Error %d while reading t24p from storage\n", rv);
 		return rv;
 	}
-	pp_printf("t24p read from EEPROM: %d ps\n", *value);
+	pp_printf("t24p read from storage: %d ps\n", *value);
 	return rv;
 }
 

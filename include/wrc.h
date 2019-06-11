@@ -1,3 +1,8 @@
+/*
+ * This work is part of the White Rabbit project
+ *
+ * Released according to the GNU GPL, version 2 or any later version.
+ */
 #ifndef __WRC_H__
 #define __WRC_H__
 
@@ -10,12 +15,21 @@
 #include <inttypes.h>
 #include <syscon.h>
 #include <pp-printf.h>
-#define mprintf pp_printf
+#include <util.h>
+#include <trace.h>
+#include <wrc-task.h>
 #define vprintf pp_vprintf
 #define sprintf pp_sprintf
 
+#ifndef min
+#define min(a, b) \
+	({ __typeof__ (a) _a = (a); \
+	  __typeof__ (b) _b = (b); \
+	  _a < _b ? _a : _b; })
+#endif
+
 #undef offsetof
-#define offsetof(TYPE, MEMBER) ((int) &((TYPE *)0)->MEMBER)
+#define offsetof(TYPE, MEMBER) ((long) &((TYPE *)0)->MEMBER)
 #undef ARRAY_SIZE
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
 
@@ -28,10 +42,10 @@
 #  define is_wr_node 1
 #endif
 
-void wrc_mon_gui(void);
+extern int wrc_vlan_number;
+
+int wrc_mon_gui(void);
 void shell_init(void);
-int wrc_log_stats(uint8_t onetime);
-void wrc_debug_printf(int subsys, const char *fmt, ...);
 
 /* This header is included by softpll: manage wrc/wrs difference */
 #ifdef CONFIG_WR_NODE
@@ -45,10 +59,6 @@ void wrc_debug_printf(int subsys, const char *fmt, ...);
 
 /* This is in the library, somewhere */
 extern int abs(int val);
-
-/* The following from ptp-noposix */
-extern void wr_servo_reset(void);
-void update_rx_queues(void);
 
 /* refresh period for _gui_ and _stat_ commands */
 extern int wrc_ui_refperiod;
