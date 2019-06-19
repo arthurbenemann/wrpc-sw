@@ -17,6 +17,7 @@ struct spll_ptracker_state {
 	int enabled, id;
 	int n_avg, acc, avg_count, preserve_sign;
 	int phase_val, ready;
+	int ref_count, tag_count;
 };
 
 void ptracker_init(struct spll_ptracker_state *s, int id, int num_avgs);

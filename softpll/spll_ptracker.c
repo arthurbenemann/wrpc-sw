@@ -31,7 +31,9 @@ void ptracker_start(struct spll_ptracker_state *s)
 	s->ready = 0;
 	s->acc = 0;
 	s->avg_count = 0;
-
+	s->ref_count = 0;
+	s->tag_count = 0;
+	
 	spll_enable_tagger(s->id, 1);
 	spll_enable_tagger(spll_n_chan_ref, 1);
 }
@@ -48,6 +50,7 @@ int ptrackers_update(struct spll_ptracker_state *ptrackers, int tag,
 	if(source == spll_n_chan_ref)
 	{
 		tag_ref = tag;
+		ptrackers[0].ref_count++;
 		return 0;
 	}
 
@@ -60,6 +63,7 @@ int ptrackers_update(struct spll_ptracker_state *ptrackers, int tag,
 	register int delta = (tag - tag_ref) & ((1 << HPLL_N) - 1);
 	register int index = delta >> (HPLL_N - 2);
 
+	s->tag_count++;
 
 	if (s->avg_count == 0) {
 		/* hack: two since PTRACK_WRAP_LO/HI are in 1/4 and 3/4 of the scale,
