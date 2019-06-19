@@ -16,6 +16,17 @@
 uint32_t timer_get_tics(void);
 void timer_delay(uint32_t tics);
 
+typedef struct
+{
+	uint32_t start_tics;
+	uint32_t timeout;
+} timeout_t;
+
+int tmo_init(timeout_t *tmo, uint32_t milliseconds);
+int tmo_restart(timeout_t *tmo);
+int tmo_expired(timeout_t *tmo);
+
+
 /* The following ones come from the kernel, but simplified */
 #ifndef time_after
 #define time_after(a,b)		\
