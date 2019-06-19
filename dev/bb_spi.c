@@ -33,8 +33,11 @@ void bb_spi_delay(struct spi_bus *bus)
 
 void bb_spi_cs(struct spi_bus *bus, int cs)
 {
-    bb_spi_delay(bus);
-    gen_gpio_out(bus->pin_cs, !cs);
+    if(bus->pin_cs)
+    {
+        bb_spi_delay(bus);
+        gen_gpio_out(bus->pin_cs, !cs);
+    }
 }
 
 uint32_t bb_spi_read(struct spi_bus *bus, int n_bits)
