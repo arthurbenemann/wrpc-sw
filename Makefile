@@ -12,6 +12,7 @@ export CONFIG_ABSCAL
 
 CC =		$(CROSS_COMPILE)gcc
 LD =		$(CROSS_COMPILE)ld
+AR =		$(CROSS_COMPILE)ar
 OBJDUMP =	$(CROSS_COMPILE)objdump
 OBJCOPY =	$(CROSS_COMPILE)objcopy
 SIZE =		$(CROSS_COMPILE)size
@@ -163,15 +164,15 @@ $(obj-ppsi): gitmodules
 sdb-lib/libsdbfs.a:
 	$(MAKE) -C sdb-lib
 
-$(OUTPUT).elf: $(LDS-y) $(AUTOCONF) gitmodules $(OUTPUT).o config.o pconfig.o
+$(OUTPUT).elf: $(LDS-y) $(AUTOCONF) gitmodules $(OUTPUT).a config.o pconfig.o sdb-lib/libsdbfs.a 
 	$(CC) $(CFLAGS) -D__GIT_VER__="\"$(GIT_VER)\"" -D__GIT_USR__="\"$(GIT_USR)\"" -c revision.c
-	${CC} -o $@ revision.o config.o pconfig.o $(OUTPUT).o $(LDFLAGS)
+	${CC} -o $@ revision.o config.o pconfig.o $(OUTPUT).a sdb-lib/libsdbfs.a $(LDFLAGS)
 	${OBJDUMP} -d $(OUTPUT).elf > $(OUTPUT)_disasm.S
 	$(SIZE) $@
 	./save_size.sh $(SIZE) $@
 
-$(OUTPUT).o: $(OBJS)
-	$(LD) $(WRC-O-FLAGS-y) -r $(OBJS) -T bigobj.lds -o $@
+$(OUTPUT).a: $(OBJS)
+	ar rc $@ $(OBJS) 
 
 OBJCOPY-TARGET-$(CONFIG_LM32) = -O elf32-lm32 -B lm32
 OBJCOPY-TARGET-$(CONFIG_HOST_PROCESS) = -O elf64-x86-64 -B i386
@@ -278,3 +279,7 @@ $(addprefix $(DEFCONFIG_NAME),$(MAKEALL_COPY_LIST)):
 	@cp -f $(OUTPUT)$(suffix $@) $@
 
 makeall_copy: $(addprefix $(DEFCONFIG_NAME),$(MAKEALL_COPY_LIST))
+
+load: all
+		- killall -9 usb-bootloader.py
+		- ./tools/uart-bootloader/usb-bootloader.py -p /dev/ttyUSB0 wrc.bin
