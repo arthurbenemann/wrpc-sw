@@ -15,7 +15,10 @@ obj-$(CONFIG_EMBEDDED_NODE) += \
 	dev/flash.o \
 	dev/bb_spi.o \
 	dev/gpio.o \
-	dev/ad951x.o
+	dev/ad951x.o \
+	dev/ad9910.o \
+	dev/ltc6950.o \
+	dev/phy_calibration.o
 	
 obj-$(CONFIG_WR_NODE) += \
 	dev/temperature.o \
