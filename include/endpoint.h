@@ -32,6 +32,9 @@ int ep_cal_pattern_disable(void);
 int ep_timestamper_cal_pulse(void);
 int ep_sfp_enable(int ena);
 
+uint16_t ep_pcs_read(int location);
+void ep_pcs_write(int location, int value);
+
 void pfilter_init_default(void);
 
 #endif
