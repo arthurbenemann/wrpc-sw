@@ -104,11 +104,11 @@ static int wrc_temp_refresh(void)
 	return (ret > 0);
 }
 
-DEFINE_WRC_TASK(temp) = {
+/*DEFINE_WRC_TASK(temp) = {
 	.name = "temperature",
 	.init = wrc_temp_init,
 	.job = wrc_temp_refresh,
-};
+};*/
 
 /*
  * The shell command
