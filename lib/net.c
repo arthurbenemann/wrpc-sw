@@ -397,8 +397,10 @@ static int update_rx_queues(void)
 		    q->avail, q->n, q_required);
 	return 1;
 }
+/*
 DEFINE_WRC_TASK(net_bh) = {
 	.name = "net-bh",
 	.enable = &link_status,
 	.job = update_rx_queues,
 };
+*/

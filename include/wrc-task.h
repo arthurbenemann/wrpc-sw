@@ -13,7 +13,8 @@
  */
 
 struct wrc_task {
-	char *name;
+	int used;
+	char name[16];
 	int *enable;		/* A global enable variable */
 	void (*init)(void);
 	int (*job)(void);
@@ -23,6 +24,10 @@ struct wrc_task {
 	unsigned long nanos;
 	unsigned long max_run_ticks; /* in ticks */
 };
+
+#define WRC_MAX_TASKS 8
+
+extern struct wrc_task tasks[WRC_MAX_TASKS];
 
 /* An helper for periodic tasks, relying on a static varible */
 static inline int __task_not_yet(uint32_t *lastt, unsigned period,
@@ -39,23 +44,5 @@ static inline int __task_not_yet(uint32_t *lastt, unsigned period,
 	return 0;
 }
 
-static inline int task_not_yet(uint32_t *lastt, unsigned period)
-{
-	return __task_not_yet(lastt, period, timer_get_tics());
-}
-
-
-/* Put the tasks in their own section */
-#define DEFINE_WRC_TASK(_name) \
-	static struct wrc_task  __task_ ## _name \
-	__attribute__((section(".task"), used, aligned(sizeof(unsigned long))))
-/* Task 0 must be first, sorry! */
-#define DEFINE_WRC_TASK0(_name) \
-	static struct wrc_task __task_ ## _name \
-	__attribute__((section(".task0"), used, aligned(sizeof(unsigned long))))
-
-extern struct wrc_task __task_begin[];
-extern struct wrc_task __task_end[];
-#define for_each_task(t) for ((t) = __task_begin; (t) < __task_end; (t)++)
 
 #endif /* __WRC_TASK_H__ */
