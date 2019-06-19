@@ -387,10 +387,12 @@ static int wrc_log_stats(void)
 	return 1;
 }
 
+/*
 DEFINE_WRC_TASK(stats) = {
 	.name = "stats",
 	.job = wrc_log_stats,
 };
+*/
 
 int wrc_wr_diags(void)
 {
@@ -497,9 +499,11 @@ int wrc_wr_diags(void)
 	return 1;
 }
 
+/*
 #ifdef CONFIG_WR_DIAG
 DEFINE_WRC_TASK(diags) = {
 	.name = "diags",
 	.job = wrc_wr_diags,
 };
 #endif
+*/
