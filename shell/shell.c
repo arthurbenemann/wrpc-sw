@@ -103,6 +103,7 @@ static int _shell_exec(void)
 	if (*tokptr[0] == '#')
 		return 0;
 
+	#if 0
 	for (p = __cmd_begin; p < __cmd_end; p++)
 		if (!strcasecmp(p->name, tokptr[0])) {
 			rv = p->exec((const char **)(tokptr + 1));
@@ -111,6 +112,7 @@ static int _shell_exec(void)
 					p->name, rv);
 			return rv;
 		}
+	#endif
 
 	pp_printf("Unrecognized command \"%s\".\n", tokptr[0]);
 	return -EINVAL;

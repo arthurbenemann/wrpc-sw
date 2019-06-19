@@ -67,7 +67,7 @@ static void wrc_initialize(void)
 	wrc_board_init();
 
 	if (HAS_GENSDBFS)
-		storage_read_hdl_cfg();
+	storage_read_hdl_cfg();
 
 	net_rst();
 	ep_init();
@@ -96,11 +96,6 @@ static void wrc_initialize(void)
 
 	wrc_board_create_tasks();
 }
-
-DEFINE_WRC_TASK0(idle) = {
-	.name = "idle",
-	.init = wrc_initialize,
-};
 
 int link_status;
 
@@ -133,10 +128,6 @@ static int wrc_check_link(void)
 
 	return rv;
 }
-DEFINE_WRC_TASK(link) = {
-	.name = "check-link",
-	.job = wrc_check_link,
-};
 
 static int ui_update(void)
 {
@@ -185,25 +176,6 @@ static int update_uptime(void)
 	}
 	return 0;
 }
-DEFINE_WRC_TASK(uptime) = {
-	.name = "uptime",
-	.init = init_uptime,
-	.job = update_uptime,
-};
-
-DEFINE_WRC_TASK(ptp) = {
-	.name = "ptp",
-	.job = wrc_ptp_update,
-};
-DEFINE_WRC_TASK(shell) = {
-	.name = "shell+gui",
-	.init = shell_boot_script,
-	.job = ui_update,
-};
-DEFINE_WRC_TASK(spll) = {
-	.name = "spll-bh",
-	.job = spll_update,
-};
 
 static void task_time_normalize(struct wrc_task *t)
 {
@@ -222,7 +194,7 @@ static void account_task(struct wrc_task *t, int done_sth)
 	signed int delta_ticks;
 
 	if (!done_sth)
-		t = __task_begin; /* task 0 is special */
+		t = &tasks[0]; /* task 0 is special */
 	shw_pps_gen_get_time(NULL, &nanos);
 	/* get monotonic number of ticks */
 	ticks = timer_get_tics();
@@ -270,6 +242,60 @@ static void wrc_run_task(struct wrc_task *t)
 	account_task(t, done_sth);
 }
 
+struct wrc_task tasks[WRC_MAX_TASKS];
+
+static struct wrc_task* task_create( const char *name, void (*init)(), int (*job)() )
+{
+	struct wrc_task *t = NULL;
+	int i;
+
+	for(i = 0; i < WRC_MAX_TASKS; i++)
+		if(!tasks[i].used)
+		{
+			t = &tasks[i];
+			break;
+		}
+	if(!t)
+		return NULL;
+
+	t->used = 1;
+	t->init = init;
+	t->job = job;
+	strncpy(t->name, name, 16);
+
+	return t;
+}
+
+static void wrc_init_all_tasks()
+{
+	int i = 0;
+	memset(&tasks, 0, sizeof(struct wrc_task) * WRC_MAX_TASKS);
+
+	task_create( "idle", wrc_initialize, NULL );
+	//task_create( "check-link", NULL, wrc_check_link );
+	task_create( "uptime", init_uptime, update_uptime );
+	//task_create( "ptp", NULL, wrc_ptp_update);
+	//task_create( "shell+gui", shell_boot_script, ui_update );
+	//task_create( "spll-bh", NULL, spll_update );
+
+	for( i = 0; i < WRC_MAX_TASKS; i++ )
+		if( tasks[i].used && tasks[i].init )
+		{
+			tasks[i].init();
+		}
+}
+
+static void wrc_run_all_tasks()
+{
+	int i;
+
+	for( i = 0; i < WRC_MAX_TASKS; i++ )
+		if( tasks[i].used )
+		{
+			wrc_run_task( &tasks[i] );
+		}
+}
+
 int main(void) __attribute__ ((weak));
 int main(void)
 {
@@ -278,13 +304,10 @@ int main(void)
 	check_reset();
 
 	/* initialization of individual tasks */
-	for_each_task(t)
-		if (t->init)
-			t->init();
+	wrc_init_all_tasks();
 
 	for (;;) {
-		for_each_task(t)
-			wrc_run_task(t);
+		wrc_run_all_tasks();
 
 		/* better safe than sorry */
 		check_stack();
