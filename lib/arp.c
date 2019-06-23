@@ -32,7 +32,7 @@ static struct wrpc_socket *arp_socket;
 #define ARP_TPA		(ARP_THA+6)
 #define ARP_END		(ARP_TPA+4)
 
-static void arp_init(void)
+void arp_init(void)
 {
 	struct wr_sockaddr saddr;
 
@@ -86,7 +86,7 @@ static int process_arp(uint8_t * buf, int len)
 	return ARP_END;
 }
 
-static int arp_poll(void)
+int arp_poll(void)
 {
 	uint8_t buf[ARP_END + 100];
 	struct wr_sockaddr addr;
@@ -104,9 +104,3 @@ static int arp_poll(void)
 	return 0;
 }
 
-DEFINE_WRC_TASK(arp) = {
-	.name = "arp",
-	.enable = &link_status,
-	.init = arp_init,
-	.job = arp_poll,
-};

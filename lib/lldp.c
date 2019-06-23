@@ -220,7 +220,7 @@ static void lldp_update(void)
 	lldp_add_tlv(END_LLDP);
 }
 
-static void lldp_init(void)
+void lldp_init(void)
 {
 	struct wr_sockaddr saddr;
 
@@ -237,7 +237,7 @@ static void lldp_init(void)
 	lldp_update();
 }
 
-static int lldp_poll(void)
+int lldp_poll(void)
 {
 	static int ticks;
 	unsigned char new_ipWR;
@@ -274,9 +274,3 @@ static int lldp_poll(void)
 		return 0;
 	}
 }
-
-DEFINE_WRC_TASK(lldp) = {
-	.name = "lldp",
-	.init = lldp_init,
-	.job = lldp_poll,
-};

@@ -34,6 +34,26 @@
 #include "wrc_ptp.h"
 #include "system_checks.h"
 
+#ifdef CONFIG_DAC_LOG
+#include "dev/dac_log.h"
+#endif
+
+#ifdef CONFIG_IP
+#include "lib/arp.h"
+#endif
+
+#ifdef CONFIG_LATENCY_PROBE
+#include "lib/latency.h"
+#endif
+
+#ifdef CONFIG_LLDP
+#include "lib/lldp.h"
+#endif
+
+#ifdef CONFIG_SNMP
+#include "lib/snmp.h"
+#endif
+
 #ifndef CONFIG_DEFAULT_PRINT_TASK_TIME_THRESHOLD
 #define CONFIG_DEFAULT_PRINT_TASK_TIME_THRESHOLD 0
 #endif
@@ -47,9 +67,6 @@ uint32_t cal_phase_transition = 2389;
 
 int wrc_vlan_number = CONFIG_VLAN_NR;
 
-static uint32_t prev_nanos_for_profile;
-static uint32_t prev_ticks_for_profile;
-uint32_t print_task_time_threshold = CONFIG_DEFAULT_PRINT_TASK_TIME_THRESHOLD;
 
 static void wrc_initialize(void)
 {
@@ -64,7 +81,6 @@ static void wrc_initialize(void)
 
 	pp_printf("Board low-level setup\n");
 	ertm14_init();
-	
 
 	get_hw_name(wrc_hw_name);
 	storage_read_hdl_cfg();
@@ -114,9 +130,9 @@ static void wrc_initialize(void)
 
 	//wrc_ptp_set_mode(WRC_MODE_SLAVE);
 	//wrc_ptp_start();
-	shw_pps_gen_get_time(NULL, &prev_nanos_for_profile);
+	//shw_pps_gen_get_time(NULL, &prev_nanos_for_profile);
 	/* get tics */
-	prev_ticks_for_profile = timer_get_tics();
+	//prev_ticks_for_profile = timer_get_tics();
 
 	phy_calibration_init();
 
@@ -125,6 +141,11 @@ static void wrc_initialize(void)
 }
 
 int link_status;
+
+static int is_link_up()
+{
+	return link_status == LINK_UP;
+}
 
 static int wrc_check_link(void)
 {
@@ -188,6 +209,7 @@ static void init_uptime(void)
 {
 	uptime_lastj = timer_get_tics();
 }
+
 static int update_uptime(void)
 {
 	extern uint32_t uptime_sec;
@@ -205,137 +227,68 @@ static int update_uptime(void)
 	return 0;
 }
 
-static void task_time_normalize(struct wrc_task *t)
+extern void wrc_log_stats(void);
+
+static void create_tasks()
 {
-	if (t->nanos > 1000 * 1000 * 1000) {
-		t->nanos -= 1000 * 1000 * 1000;
-		t->seconds++;
-	}
-}
+	struct wrc_task *t;
 
-/* Account the time to either this task or task 0 */
-static void account_task(struct wrc_task *t, int done_sth)
-{
-	uint32_t nanos;
-	signed int delta;
-	uint32_t ticks;
-	signed int delta_ticks;
+	wrc_tasks_init();
+	wrc_task_create( "idle", wrc_initialize, NULL );
+	//wrc_task_create( "check-link", NULL, wrc_check_link );
+	wrc_task_create( "uptime", init_uptime, update_uptime );
+	//wrc_task_create( "ptp", NULL, wrc_ptp_update);
+	//wrc_task_create( "shell+gui", shell_boot_script, ui_update );
+	//wrc_task_create( "spll-bh", NULL, spll_update );
+	//wrc_task_create( "temperature", wrc_temp_init, wrc_temp_refresh );
 
-	if (!done_sth)
-		t = &tasks[0]; /* task 0 is special */
-	shw_pps_gen_get_time(NULL, &nanos);
-	/* get monotonic number of ticks */
-	ticks = timer_get_tics();
+	//t = wrc_task_create( "net-bh", NULL, net_bh_poll );
+	//wrc_task_set_enable( t, is_link_up );
 
-	delta = nanos - prev_nanos_for_profile;
-	if (delta < 0)
-		delta += 1000 * 1000 * 1000;
+#ifdef CONFIG_DAC_LOG
+	wrc_task_create( "dac-logger", daclog_init, daclog_poll );
+#endif
 
-	t->nanos += delta;
-	task_time_normalize(t);
-	prev_nanos_for_profile = nanos;
+#ifdef CONFIG_IP
+	t = wrc_task_create( "arp", arp_init, arp_poll );
+	wrc_task_set_enable( t, is_link_up );
+	t = wrc_task_create( "ipv4", ipv4_init, ipv4_poll );
+	wrc_task_set_enable( t, is_link_up );
+#endif
 
-	delta_ticks = ticks - prev_ticks_for_profile;
-	if (delta_ticks < 0)
-		delta_ticks += TICS_PER_SECOND;
+#ifdef CONFIG_LATENCY_PROBE
+	extern void latency_init(void);
+	extern void latency_poll(void);
+	wrc_task_create( "latency-probe", latency_init, latency_poll );
+#endif
 
-	if (t->max_run_ticks < delta_ticks) {/* update max_run_ticks */
-		if (print_task_time_threshold) {
-			/* Print only if threshold is set */
-			pp_printf("New max run time for a task %s, old %ld, "
-				  "new %d\n",
-				  t->name, t->max_run_ticks, delta_ticks);
-		}
-		t->max_run_ticks = delta_ticks;
-	}
-	if (print_task_time_threshold
-            && delta_ticks > print_task_time_threshold)
-		pp_printf("task %s, run for %d ms\n", t->name, delta_ticks);
+#ifdef CONFIG_LLDP
+	wrc_task_create( "lldp", lldp_init, lldp_poll );
+#endif
 
-	prev_ticks_for_profile = ticks;
-}
+#ifdef CONFIG_SNMP
+	t = wrc_task_create( "snmp", snmp_init, snmp_poll );
+	wrc_task_set_enable( t, is_link_up );
+#endif
 
-/* Run a task with profiling */
-static void wrc_run_task(struct wrc_task *t)
-{
-	int done_sth = 0;
+	//wrc_task_create( "stats", NULL, wrc_log_stats );
 
-	if (!t->job) /* idle task, just count iterations */
-		t->nrun++;
-	else if (!t->enable || *t->enable) {
-		/* either enabled or without a check variable */
-		done_sth = t->job();
-		t->nrun += done_sth;
-	}
-	account_task(t, done_sth);
-}
-
-struct wrc_task tasks[WRC_MAX_TASKS];
-
-static struct wrc_task* task_create( const char *name, void (*init)(), int (*job)() )
-{
-	struct wrc_task *t = NULL;
-	int i;
-
-	for(i = 0; i < WRC_MAX_TASKS; i++)
-		if(!tasks[i].used)
-		{
-			t = &tasks[i];
-			break;
-		}
-	if(!t)
-		return NULL;
-
-	t->used = 1;
-	t->init = init;
-	t->job = job;
-	strncpy(t->name, name, 16);
-
-	return t;
-}
-
-static void wrc_init_all_tasks()
-{
-	int i = 0;
-	memset(&tasks, 0, sizeof(struct wrc_task) * WRC_MAX_TASKS);
-
-	task_create( "idle", wrc_initialize, NULL );
-	//task_create( "check-link", NULL, wrc_check_link );
-	task_create( "uptime", init_uptime, update_uptime );
-	//task_create( "ptp", NULL, wrc_ptp_update);
-	//task_create( "shell+gui", shell_boot_script, ui_update );
-	//task_create( "spll-bh", NULL, spll_update );
-
-	for( i = 0; i < WRC_MAX_TASKS; i++ )
-		if( tasks[i].used && tasks[i].init )
-		{
-			tasks[i].init();
-		}
-}
-
-static void wrc_run_all_tasks()
-{
-	int i;
-
-	for( i = 0; i < WRC_MAX_TASKS; i++ )
-		if( tasks[i].used )
-		{
-			wrc_run_task( &tasks[i] );
-		}
+#ifdef CONFIG_WR_DIAG
+	//wrc_task_create( "diags", NULL, wrc_wr_diags );
+#endif
 }
 
 int main(void) __attribute__ ((weak));
 int main(void)
 {
-	struct wrc_task *t;
-
 	check_reset();
+	create_tasks();
 
 	/* initialization of individual tasks */
-	wrc_init_all_tasks();
+	wrc_start_all_tasks();
 
 	for (;;) {
-		wrc_run_all_tasks();
+		wrc_poll_all_tasks();
 
 		/* better safe than sorry */
 		check_stack();

@@ -67,4 +67,15 @@ void syslog_init(void);
 int syslog_poll(void);
 void syslog_report(const char *buf);
 
+void arp_init(void);
+int arp_poll(void);
+
+void ipv4_init(void);
+int ipv4_poll(void);
+
+void snmp_init(void);
+int snmp_poll(void);
+
+int net_bh_poll(void);
+
 #endif

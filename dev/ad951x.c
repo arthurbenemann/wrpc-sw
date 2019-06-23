@@ -19,27 +19,7 @@
  */
 
 
-#include "ad951x.h"
-#if 0
-static struct spi_bus bus_ad951x[2] = {
-    {
-        &gpio_pin_div_spi_cs_n1,
-        &gpio_pin_div_spi_dio,
-        &gpio_pin_div_spi_dio,
-        &gpio_pin_div_spi_sclk,
-        AD951X_BIT_DELAY,
-        0
-    },
-    {
-        &gpio_pin_div_spi_cs_n2,
-        &gpio_pin_div_spi_dio,
-        &gpio_pin_div_spi_dio,
-        &gpio_pin_div_spi_sclk,
-        BIT_DELAY,
-        0
-    }
-};
-#endif
+#include "dev/ad951x.h"
 
 // Write to ad951x via SPI
 void ad951x_write(struct ad951x_device *dev, uint32_t reg, uint32_t value) {

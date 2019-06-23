@@ -468,7 +468,7 @@ static struct snmp_oid_limb oid_limb_array[] = {
 	{ 0, }
 };
 
-static void snmp_init(void)
+void snmp_init(void)
 {
 	uint32_t aux_diag_id;
 	uint32_t aux_diag_ver;
@@ -1647,7 +1647,7 @@ static int snmp_respond(uint8_t *buf)
 
 
 /* receive snmp through the UDP mechanism */
-static int snmp_poll(void)
+int snmp_poll(void)
 {
 	struct wr_sockaddr addr;
 	uint8_t buf[200];
@@ -1676,10 +1676,3 @@ static int snmp_poll(void)
 	ptpd_netif_sendto(snmp_socket, &addr, buf, len, 0);
 	return 1;
 }
-
-DEFINE_WRC_TASK(snmp) = {
-	.name = "snmp",
-	.enable = &link_status,
-	.init = snmp_init,
-	.job = snmp_poll,
-};
