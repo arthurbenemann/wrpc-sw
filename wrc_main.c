@@ -136,8 +136,6 @@ static void wrc_initialize(void)
 
 	phy_calibration_init();
 
-	for(;;)
-		phy_calibration_update();
 }
 
 int link_status;
@@ -153,15 +151,16 @@ static int wrc_check_link(void)
 	int state = ep_link_up(NULL);
 	int rv = 0;
 
+
 	if (!prev_state && state) {
-		wrc_verbose("Link up.\n");
+		pp_printf("Link up.\n");
 		gpio_out(GPIO_LED_LINK, 1);
 		sfp_match();
 		//wrc_ptp_start();
 		link_status = LINK_WENT_UP;
 		rv = 1;
 	} else if (prev_state && !state) {
-		wrc_verbose("Link down.\n");
+		pp_printf("Link down.\n");
 		gpio_out(GPIO_LED_LINK, 0);
 		link_status = LINK_WENT_DOWN;
 		//wrc_ptp_stop();
@@ -235,15 +234,15 @@ static void create_tasks()
 
 	wrc_tasks_init();
 	wrc_task_create( "idle", wrc_initialize, NULL );
-	//wrc_task_create( "check-link", NULL, wrc_check_link );
+	wrc_task_create( "check-link", NULL, wrc_check_link );
 	wrc_task_create( "uptime", init_uptime, update_uptime );
-	//wrc_task_create( "ptp", NULL, wrc_ptp_update);
-	//wrc_task_create( "shell+gui", shell_boot_script, ui_update );
-	//wrc_task_create( "spll-bh", NULL, spll_update );
+	wrc_task_create( "ptp", NULL, wrc_ptp_update);
+	wrc_task_create( "shell+gui", shell_boot_script, ui_update );
+	wrc_task_create( "spll-bh", NULL, spll_update );
 	//wrc_task_create( "temperature", wrc_temp_init, wrc_temp_refresh );
 
-	//t = wrc_task_create( "net-bh", NULL, net_bh_poll );
-	//wrc_task_set_enable( t, is_link_up );
+	t = wrc_task_create( "net-bh", NULL, net_bh_poll );
+	wrc_task_set_enable( t, is_link_up );
 
 #ifdef CONFIG_DAC_LOG
 	wrc_task_create( "dac-logger", daclog_init, daclog_poll );
@@ -271,10 +270,10 @@ static void create_tasks()
 	wrc_task_set_enable( t, is_link_up );
 #endif
 
-	//wrc_task_create( "stats", NULL, wrc_log_stats );
+	wrc_task_create( "stats", NULL, wrc_log_stats );
 
 #ifdef CONFIG_WR_DIAG
-	//wrc_task_create( "diags", NULL, wrc_wr_diags );
+	wrc_task_create( "diags", NULL, wrc_wr_diags );
 #endif
 }
 
