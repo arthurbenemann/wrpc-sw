@@ -4,23 +4,14 @@
 #include <softpll_ng.h>
 #include "storage.h"
 
+#include <wrc-task.h>
+
 #include <hw/endpoint_regs.h>
 #include <hw/endpoint_mdio.h>
-#include <hw/clock_monitor_regs.h>
 
+#include "dev/clock_monitor.h"
 
-#define CM_MAX_CHANNELS 16
-struct wb_clock_monitor_device
-{
-    uint32_t base;
-    int prescaler;
-    int gate_freq;
-    int ref_sel;
-    int n_channels;
-    uint32_t freqs[CM_MAX_CHANNELS];
-    uint32_t freq_valid_mask;
-};
-
+#define DEFAULT_COMMA_POS 0
 
 #define MDIO_DBG1_RESET_TX (1 << 0)
 #define MDIO_DBG1_TX_ENABLE (1 << 1)
@@ -28,7 +19,7 @@ struct wb_clock_monitor_device
 #define MDIO_DBG1_RESET_RX (1 << 3)
 #define MDIO_DBG1_GTX_QPLL_RESET (1 << 4)
 #define MDIO_DBG1_GTX_TXUSRPLL_RESET (1 << 5)
-
+#define MDIO_DBG1_COMMA_TARGET_POS(x) ( ((x) & 0x7f) << 6)
 
 #define MDIO_DBG1_DMTD_SOURCE_TXOUTCLK (1 << 14)
 #define MDIO_DBG1_DMTD_SOURCE_RXRECCLK (0 << 14)
@@ -62,88 +53,6 @@ struct wb_clock_monitor_device
 #define FSM_DMTD_TIMEOUT_MS 100
 
 
-static inline void writel ( uint32_t reg, uint32_t val)
-{
-	*(volatile uint32_t *)(reg) = val;
-}
-
-static inline uint32_t readl ( uint32_t reg )
-{
-	return *(volatile uint32_t *)(reg);
-}
-
-int wb_cm_init( struct wb_clock_monitor_device *dev, uint32_t base_addr, int n_channels )
-{
-    dev->base =base_addr;
-    dev->freq_valid_mask = 0;
-    dev->n_channels = n_channels;
-    return 0;
-}
-
-int wb_cm_restart( struct wb_clock_monitor_device *dev )
-{
-    uint32_t cr = readl( dev->base + CM_REG_CR );
-    cr |= CM_CR_CNT_RST;
-    dev->freq_valid_mask = 0;
-
-    writel( dev->base + CM_REG_CR, cr );
-    return 0;
-}
-
-int wb_cm_configure(  struct wb_clock_monitor_device *dev, int ref_sel, int prescaler, int gate_freq )
-{
-    dev->freq_valid_mask = 0;
-    dev->ref_sel = ref_sel;
-    dev->prescaler = prescaler;
-    dev->gate_freq = gate_freq;
-
-     writel( dev->base + CM_REG_CR, (dev->ref_sel << CM_CR_REFSEL_SHIFT)
-     | (dev->prescaler << CM_CR_PRESC_SHIFT) );
-     writel( dev->base + CM_REG_REFDR, dev->gate_freq );
-
-    return wb_cm_restart(dev);
-}
-
-int wb_cm_read(struct wb_clock_monitor_device *dev)
-{
-    int n_new = 0;
-    int i;
-    uint32_t rv;
-    pp_printf("CmRead\n");
-    for(i = 0; i < dev->n_channels; i++)
-    {
-        writel( dev->base + CM_REG_CNT_SEL, i );
-        rv = readl ( dev->base + CM_REG_CNT_VAL );
-        if( rv & CM_CNT_VAL_VALID )
-        {
-            pp_printf("f%d %d\n", i, rv & 0x7fffffff);
-            dev->freqs[i] = rv & 0x7fffffff;
-            dev->freq_valid_mask |= (1<<i);
-            n_new++;
-        }
-        writel( dev->base + CM_REG_CNT_VAL, CM_CNT_VAL_VALID );
-    }
-
-    pp_printf("Nn %d\n", n_new );
-    return n_new;
-}
-
-int wb_cm_show(struct wb_clock_monitor_device *dev)
-{
-    int i;
-    if( !wb_cm_read(dev) )
-        return 0;
-
-    for( i = 0; i < dev->n_channels; i++ )
-    {
-        if( dev->freq_valid_mask & (1<<i)) 
-        {
-            pp_printf("Chan %d: %d Hz\n", i, dev->freqs[i]);
-        }
-    }
-    return 0;
-}
-
 
 
 struct wrc_port_tx_setup_state
@@ -167,6 +76,7 @@ struct wrc_port_tx_setup_state
 struct wrc_port_rx_setup_state
 {
 //	timeout_t link_timeout;
+    int cpos_stat[20];
 	int state;
 	int attempts;
     timeout_t dmtd_timeout;
@@ -278,7 +188,7 @@ static int tx_fsm_update()
         {
             fsm->attempts++;
             fsm->state = TX_SETUP_STATE_MEASURE_PHASE;
-            usleep(1000);
+            usleep(10000);
             spll_set_ptracker_average_samples( 10 );
             spll_enable_ptracker(0, 1);
             tmo_init( &fsm->dmtd_timeout, FSM_DMTD_TIMEOUT_MS );
@@ -340,8 +250,8 @@ static int tx_fsm_update()
             fsm->expected_phase_valid = 1;
         }
 #endif
-        fsm->expected_phase = 950;
-        fsm->tollerance = 150;
+        fsm->expected_phase = 1000;
+        fsm->tollerance = 350;
 
         int phase_min = fsm->expected_phase - fsm->tollerance;
         int phase_max = fsm->expected_phase + fsm->tollerance;
@@ -353,7 +263,7 @@ static int tx_fsm_update()
             int i;
 
             fsm->measured_phase = phase;
-            pp_printf("[tx-cal] FIX phase %d\n", fsm->measured_phase );
+            //pp_printf("[tx-cal] FIX phase %d\n", fsm->measured_phase );
 
             spll_enable_ptracker(0, 0);
             spll_set_ptracker_average_samples( PTRACKER_AVERAGE_SAMPLES );
@@ -410,6 +320,7 @@ static void rx_fsm_init(  )
 
 	fsm->attempts = 0;
 	fsm->state = RX_SETUP_STATE_INIT;
+    memset(fsm->cpos_stat, 0, sizeof(fsm->cpos_stat ));
 }
 
 static int rx_fsm_update(  )
@@ -430,12 +341,12 @@ static int rx_fsm_update(  )
 	{
 		case RX_SETUP_STATE_INIT:
 		{
-			ep_pcs_write( MDIO_DBG1, MDIO_DBG1_TX_ENABLE | MDIO_DBG1_DMTD_SOURCE_RXRECCLK );
+			ep_pcs_write( MDIO_DBG1, MDIO_DBG1_TX_ENABLE | MDIO_DBG1_DMTD_SOURCE_RXRECCLK | MDIO_DBG1_COMMA_TARGET_POS(DEFAULT_COMMA_POS) );
 			
 			if (early_link_up) {
 				if ( fsm_tx->state == TX_SETUP_DONE )
 				{
-					pp_printf("Rx-cal: calibrating port %d.\n", 1);
+					pp_printf("[rx-cal]: calibration started.\n");
 	
 					fsm->state = RX_SETUP_STATE_RESET_PCS;
 					spll_enable_ptracker( 0, 0 );
@@ -455,10 +366,10 @@ static int rx_fsm_update(  )
             {
 				fsm->state = RX_SETUP_STATE_WAIT_LOCK;
 
-				ep_pcs_write( MDIO_DBG1, MDIO_DBG1_RESET_RX | MDIO_DBG1_TX_ENABLE | MDIO_DBG1_DMTD_SOURCE_RXRECCLK );
+				ep_pcs_write( MDIO_DBG1, MDIO_DBG1_RESET_RX | MDIO_DBG1_TX_ENABLE | MDIO_DBG1_DMTD_SOURCE_RXRECCLK | MDIO_DBG1_COMMA_TARGET_POS(DEFAULT_COMMA_POS)  );
 				usleep(1);
-				ep_pcs_write( MDIO_DBG1, MDIO_DBG1_TX_ENABLE | MDIO_DBG1_DMTD_SOURCE_RXRECCLK );
-
+				ep_pcs_write( MDIO_DBG1, MDIO_DBG1_TX_ENABLE | MDIO_DBG1_DMTD_SOURCE_RXRECCLK | MDIO_DBG1_COMMA_TARGET_POS(DEFAULT_COMMA_POS)  );
+                usleep(10000);
 				fsm->attempts++;
 			}
 
@@ -474,8 +385,9 @@ static int rx_fsm_update(  )
             
    			int rx_comma_pos = (dbg0 >> 7) & 0x7f;
             int rx_comma_valid = (dbg0 >> 7) & 0x80 ? 1 : 0;
+            int i;
 
-            pp_printf("Dbg0 %x up %d algn %d cpos %d cvalid %d\n", dbg0, rx_up, rx_aligned, rx_comma_pos, rx_comma_valid );
+            
 
 			/*if (libwr_tmo_expired(&fsm->link_timeout) && !rx_up) {
 				fsm->state = RX_SETUP_STATE_INIT;
@@ -484,13 +396,42 @@ static int rx_fsm_update(  )
 				if ( !rx_up )
 					return 0;
 
-				if( rx_aligned )
+                fsm->cpos_stat[rx_comma_pos]++;
+                
+                //for(i=0;i<20;i++) pp_printf("%-02d: %-03d ", i, fsm->cpos_stat[i]);
+                //pp_printf("\n");
+				//if( rx_comma_pos == DEFAULT_COMMA_POS )
+                  //  pp_printf("Dbg0 %x up %d algn %d cpos %d cvalid %d\n", dbg0, rx_up, rx_aligned, rx_comma_pos, rx_comma_valid );
+
+                if( rx_aligned )
 				{
+                    
+                    # if 0
+                       int i;
+
+                    for(i=0;i<20;i++)
+                    {
+                        	dbg0 = ep_pcs_read( MDIO_DBG0);
+
+			                rx_up = dbg0 & MDIO_DBG0_LINK_UP;
+			                rx_aligned = dbg0 & MDIO_DBG0_LINK_ALIGNED;
+            
+   			rx_comma_pos = (dbg0 >> 7) & 0x7f;
+            rx_comma_valid = (dbg0 >> 7) & 0x80 ? 1 : 0;
+                        pp_printf("Dbg0 %x up %d algn %d cpos %d cvalid %d\n", dbg0, rx_up, rx_aligned, rx_comma_pos, rx_comma_valid );
+          				usleep(100000);
+
+                    }
+                    #endif
+                    usleep(100000);
+
 
 					spll_enable_ptracker( 0, 0 );
                     spll_set_ptracker_average_samples( PTRACKER_AVERAGE_SAMPLES );
 					spll_enable_ptracker( 0, 1 );
-                    pp_printf("Hit, validating\n");
+                    usleep(1000000);
+
+              //      pp_printf("Hit, validating\n");
 					//tx_fsm_pll_state.channels[p->hw_index].flags = 0;
 					fsm->state = RX_SETUP_VALIDATE;
 
@@ -507,21 +448,19 @@ static int rx_fsm_update(  )
 		{
         	int phase, enabled;
             int rv = spll_read_ptracker(0, &phase, &enabled);
-            spll_show_stats();
-            wb_cm_read(&cmon);
-            wb_cm_show(&cmon);
+            //spll_show_stats();
 
 			if ( rv )
 			{
     			uint16_t dbg0 = ep_pcs_read( MDIO_DBG0);
        			int rx_comma_pos = (dbg0 >> 7) & 0x7f;
-    			fsm->state = RX_SETUP_STATE_RESET_PCS;
-				ep_pcs_write( MDIO_DBG1, MDIO_DBG1_RX_ENABLE | MDIO_DBG1_TX_ENABLE | MDIO_DBG1_DMTD_SOURCE_RXRECCLK );
-				ep_pcs_write( MDIO_REG_MCR, MDIO_MCR_ANENABLE | MDIO_MCR_ANRESTART  );
-				pp_printf("Port %d: RX calibration complete at phase %d ps (after %d attempts) comma = %d.\n", 1, phase, fsm->attempts, rx_comma_pos );
+				ep_pcs_write( MDIO_DBG1, MDIO_DBG1_RX_ENABLE | MDIO_DBG1_TX_ENABLE | MDIO_DBG1_DMTD_SOURCE_RXRECCLK | MDIO_DBG1_COMMA_TARGET_POS(DEFAULT_COMMA_POS) );
+				ep_pcs_write( MDIO_REG_MCR, MDIO_MCR_SPEED1000_MASK | MDIO_MCR_FULLDPLX_MASK | MDIO_MCR_ANENABLE | MDIO_MCR_ANRESTART  );
+				pp_printf("[rx-cal] RX calibration complete at phase %d ps (after %d attempts) comma @ %d taps.\n", phase, fsm->attempts, rx_comma_pos );
 				spll_enable_ptracker( 0, 0 );
-
 				usleep(100000);
+       			fsm->state = RX_SETUP_DONE;
+
 			}/* else if (tmo_expired(&fsm->dmtd_timeout))
             {
                 fsm->state = RX_SETUP_STATE_RESET_PCS;
@@ -543,13 +482,11 @@ static int rx_fsm_update(  )
 			
 			if( ! (dbg0 & MDIO_DBG0_LINK_UP ) )
 			{
-				pp_printf("rxcal: port %d went down\n", 0 + 1);
+				pp_printf("[rx-cal]: port went down, need recalibration.\n");
 				fsm->state = RX_SETUP_STATE_INIT;
 
 				return 0;
 			}
-
-			//printf("dbg1 %04x\n", pcs_readl( p,  MDIO_DBG1 ) );
 
 			return 1;
 			break;
@@ -560,12 +497,33 @@ static int rx_fsm_update(  )
 	return 0;
 }
 
+timeout_t cmon_tmo;
+
+int phy_calibration_poll()
+{
+    #if 0
+    if( tmo_expired( &cmon_tmo) )
+    {
+        tmo_restart( &cmon_tmo );
+        wb_cm_read( &cmon );
+        wb_cm_show( &cmon );
+
+    }
+    #endif
+    tx_fsm_update();
+    rx_fsm_update();
+    return 0;
+}
+
+
 
 void phy_calibration_init()
 {
     wb_cm_init(&cmon, 0x28100, 5);
-    wb_cm_configure(&cmon, 0, 2, 1000000 );
+    wb_cm_configure(&cmon, 0, 2, 6250000 );
     wb_cm_restart(&cmon);
+
+    tmo_init( &cmon_tmo, 2000 );
 
     pp_printf("reset phy\n");
     ep_pcs_write(MDIO_REG_MCR, MDIO_MCR_PDOWN);	/* reset the PHY */
@@ -578,22 +536,16 @@ void phy_calibration_init()
     pp_printf("PLL lock: ");
  	spll_init( SPLL_MODE_FREE_RUNNING_MASTER, 0, 0 );
 	while ( !spll_check_lock( 0 ))
-    {   
+    {
         pp_printf(".");
         usleep(100000);
     }
 
     spll_set_ptracker_average_samples( 10 );
 
-
     pp_printf("\n");
     tx_fsm_init(&tx_state);
     rx_fsm_init(&rx_state);
-}
 
-int phy_calibration_update()
-{
-    tx_fsm_update();
-    rx_fsm_update();
-    return 0;
+    wrc_task_create( "phy-cal", NULL, phy_calibration_poll );
 }
