@@ -95,3 +95,16 @@ int gen_gpio_in(const struct gpio_pin *pin)
     return 0;
     return pin->device->read_pin(pin);
 }
+
+void gen_gpio_bang(const struct gpio_pin *pin, int count)
+{
+  int i = 0 ;
+  gen_gpio_out(pin, 0);
+  for(i =0;i<count;i++)
+  {
+    gen_gpio_out(pin, 1);
+    gen_gpio_out(pin, 0);
+  }
+}
+
+
