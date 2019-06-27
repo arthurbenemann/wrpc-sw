@@ -175,6 +175,7 @@ static void init_uptime(void)
 {
 	uptime_lastj = timer_get_tics();
 }
+
 static int update_uptime(void)
 {
 	extern uint32_t uptime_sec;
@@ -200,15 +201,15 @@ static void create_tasks()
 
 	wrc_tasks_init();
 	wrc_task_create( "idle", wrc_initialize, NULL );
-	//wrc_task_create( "check-link", NULL, wrc_check_link );
+	wrc_task_create( "check-link", NULL, wrc_check_link );
 	wrc_task_create( "uptime", init_uptime, update_uptime );
-	//wrc_task_create( "ptp", NULL, wrc_ptp_update);
-	//wrc_task_create( "shell+gui", shell_boot_script, ui_update );
-	//wrc_task_create( "spll-bh", NULL, spll_update );
+	wrc_task_create( "ptp", NULL, wrc_ptp_update);
+	wrc_task_create( "shell+gui", shell_boot_script, ui_update );
+	wrc_task_create( "spll-bh", NULL, spll_update );
 	//wrc_task_create( "temperature", wrc_temp_init, wrc_temp_refresh );
 
-	//t = wrc_task_create( "net-bh", NULL, net_bh_poll );
-	//wrc_task_set_enable( t, is_link_up );
+	t = wrc_task_create( "net-bh", NULL, net_bh_poll );
+	wrc_task_set_enable( t, is_link_up );
 
 #ifdef CONFIG_DAC_LOG
 	wrc_task_create( "dac-logger", daclog_init, daclog_poll );
@@ -236,18 +237,16 @@ static void create_tasks()
 	wrc_task_set_enable( t, is_link_up );
 #endif
 
-	//wrc_task_create( "stats", NULL, wrc_log_stats );
+	wrc_task_create( "stats", NULL, wrc_log_stats );
 
 #ifdef CONFIG_WR_DIAG
-	//wrc_task_create( "diags", NULL, wrc_wr_diags );
+	wrc_task_create( "diags", NULL, wrc_wr_diags );
 #endif
 }
 
 int main(void) __attribute__ ((weak));
 int main(void)
 {
-	struct wrc_task *t;
-
 	check_reset();
 	create_tasks();
 
