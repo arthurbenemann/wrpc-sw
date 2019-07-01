@@ -20,6 +20,7 @@
 
 #undef WITH_SEQUENCING
 
+
 void mpll_init(struct spll_main_state *s, int id_ref,
 		      int id_out)
 {
@@ -29,8 +30,8 @@ void mpll_init(struct spll_main_state *s, int id_ref,
 	s->pi.anti_windup = 1;
 	s->pi.bias = 30000;
 #if defined(CONFIG_WR_SWITCH)
-	s->pi.kp = 2000;		// / 2;
-	s->pi.ki = 15;			// / 2;
+	s->pi.kp = 1000;		// / 2;
+	s->pi.ki = 5;			// / 2;
 #elif defined(CONFIG_WR_NODE)
 	s->pi.kp = -1100;		// / 2;
 	s->pi.ki = -30;			// / 2;
@@ -52,6 +53,7 @@ void mpll_init(struct spll_main_state *s, int id_ref,
 
 	pi_init((spll_pi_t *)&s->pi);
 	ld_init((spll_lock_det_t *)&s->ld);
+
 }
 
 void mpll_start(struct spll_main_state *s)
@@ -73,6 +75,7 @@ void mpll_start(struct spll_main_state *s)
 	s->enabled = 1;
 	pi_init((spll_pi_t *)&s->pi);
 	ld_init((spll_lock_det_t *)&s->ld);
+
 
 	spll_enable_tagger(s->id_ref, 1);
 	spll_enable_tagger(s->id_out, 1);
@@ -99,8 +102,10 @@ int mpll_update(struct spll_main_state *s, int tag, int source)
 		s->tag_out = tag;
 
 	if (s->tag_ref >= 0) {
-		if(s->tag_ref_d >= 0 && s->tag_ref_d > s->tag_ref)
-			s->adder_ref += (1 << TAG_BITS);
+		if(s->tag_ref_d >= 0 && s->tag_ref_d > s->tag_ref){
+			 s->adder_ref += (1 << TAG_BITS);
+		}
+
 
 		s->tag_ref_d = s->tag_ref;
 	}
@@ -108,13 +113,18 @@ int mpll_update(struct spll_main_state *s, int tag, int source)
 
 	if (s->tag_out >= 0) {
 		if(s->tag_out_d >= 0 && s->tag_out_d > s->tag_out)
-			s->adder_out += (1 << TAG_BITS);
+			 s->adder_out += (1 << TAG_BITS);
 
 		s->tag_out_d = s->tag_out;
 	}
 
 	if (s->tag_ref >= 0 && s->tag_out >= 0) {
 		err = s->adder_ref + s->tag_ref - s->adder_out - s->tag_out;
+//	if (!(count++ % 1000))
+//	{
+//		pll_verbose("%d %d %d %d %d %d\n",count,s->tag_ref,s->tag_out,s->adder_ref,s->adder_out,err);
+//	}
+	
 
 #ifndef WITH_SEQUENCING
 
@@ -135,12 +145,17 @@ int mpll_update(struct spll_main_state *s, int tag, int source)
 
 #endif
 
+		if (err > ((1 << TAG_BITS) - (1 << HPLL_N)))
+		{
+			err -= (1 << TAG_BITS);
+		}
+
 		y = pi_update((spll_pi_t *)&s->pi, err);
 		SPLL->DAC_MAIN = SPLL_DAC_MAIN_VALUE_W(y)
 			| SPLL_DAC_MAIN_DAC_SEL_W(s->dac_index);
 
-		spll_debug(DBG_MAIN | DBG_REF, s->tag_ref + s->adder_ref, 0);
-		spll_debug(DBG_MAIN | DBG_TAG, s->tag_out + s->adder_out, 0);
+		spll_debug(DBG_MAIN | DBG_REF, s->tag_ref, 0); // + s->adder_ref, 0);
+		spll_debug(DBG_MAIN | DBG_TAG, s->tag_out, 0); // + s->adder_out, 0);
 		spll_debug(DBG_MAIN | DBG_ERR, err, 0);
 		spll_debug(DBG_MAIN | DBG_SAMPLE_ID, s->sample_n++, 0);
 		spll_debug(DBG_MAIN | DBG_Y, y, 1);

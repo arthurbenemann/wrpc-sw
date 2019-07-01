@@ -243,8 +243,8 @@ int ext_ad9516_locked (void)
 
 int ad9516_init(int scb_version)
 {
-	pp_printf("Initializing AD9516 PLL...\n");
 
+	pp_printf("Initializing AD9516 PLL...\n");
 	oc_spi_init((void *)BASE_SPI);
 	
 	void *spi_base = (void *)BASE_SPI;
@@ -266,23 +266,29 @@ int ad9516_init(int scb_version)
 		return -1;
 	}
 
-	if( scb_version >= 34)	//New SCB v3.4. 10MHz Output.
+	pp_printf("PLL Responding\n");
+
+	if( scb_version >= 34){	//New SCB v3.4. 10MHz Output.
 		ad9516_load_regset(spi_base, ad9516_base_config_34, ARRAY_SIZE(ad9516_base_config_34), 0);
-	else 				//Old one
+		pp_printf("loaded for 34\n");
+	}
+	else{ 				//Old one
 		ad9516_load_regset(spi_base, ad9516_base_config_33, ARRAY_SIZE(ad9516_base_config_33), 0);
+		pp_printf("loaded for 33\n");
+	}
 
 	ad9516_load_regset(spi_base, ad9516_ref_tcxo, ARRAY_SIZE(ad9516_ref_tcxo), 1);
+	pp_printf("Did the weird rewrite\n");
 	ad9516_wait_lock(spi_base);
 
 	ad9516_sync_outputs(spi_base);
-
 	if( scb_version >= 34) {	//New SCB v3.4. 10MHz Output.
 
-		ad9516_set_output_divider(spi_base, 2, 4, 0);  	// OUT2. 187.5 MHz. - not anymore
-		ad9516_set_output_divider(spi_base, 3, 4, 0);  	// OUT3. 187.5 MHz. - not anymore
+		// ad9516_set_output_divider(spi_base, 2, 4, 0);  	// OUT2. 187.5 MHz. - not anymore
+		// ad9516_set_output_divider(spi_base, 3, 4, 0);  	// OUT3. 187.5 MHz. - not anymore
 
-		ad9516_set_output_divider(spi_base, 4, 1, 0);  	// OUT4. 500 MHz.
-		ad9516_set_output_divider(spi_base, 9, 20,0);
+		// ad9516_set_output_divider(spi_base, 4, 1, 0);  	// OUT4. 500 MHz.
+		// ad9516_set_output_divider(spi_base, 9, 20,0);
 
 		/*The following PLL outputs have been configured through the ad9516_base_config_34 register,
 		 * so it doesn't need to replicate the configuration:
@@ -301,8 +307,9 @@ int ad9516_init(int scb_version)
 	}
 
 	ad9516_sync_outputs(spi_base);
-	ad9516_set_vco_divider(spi_base, 3); 
-	
+	ad9516_set_vco_divider(spi_base, 6); 
+
+	pp_printf("Reg for clk8 has value %d\n",ad9516_read_reg(spi_base,0x142));	
 	pp_printf("AD9516 locked.\n");
 
 	gpio_out(GPIO_SYS_CLK_SEL, 1); /* switch the system clock to the PLL reference */
