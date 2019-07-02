@@ -32,10 +32,13 @@ struct spi_bus
   int rd_falling_edge;
 };
 
+#if 0
 void spi_cs(struct spi_bus *bus, int cs);
 void spi_delay(struct spi_bus *bus);
 uint32_t spi_read(struct spi_bus *bus, int n_bits);
 void spi_write(struct spi_bus *bus, uint32_t d, int n_bits);
+#endif
+
 
 int bb_spi_create( struct spi_bus *bus, 
                     struct gpio_pin *pin_cs,
@@ -44,5 +47,11 @@ int bb_spi_create( struct spi_bus *bus,
                     struct gpio_pin *pin_sck,
                     int bit_delay
                     );
+
+
+void bb_spi_delay(struct spi_bus *bus);
+void bb_spi_cs(struct spi_bus *bus, int cs);
+uint64_t bb_spi_read(struct spi_bus *bus, int n_bits);
+void bb_spi_write(struct spi_bus *bus, uint64_t d, int n_bits);
 
 #endif
