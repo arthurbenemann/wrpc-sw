@@ -58,4 +58,7 @@ int board_update(void);
 #define HAS_IP 0
 #endif
 
+#define BASE_SOFTPLL 0x20200
+#define BASE_PPS_GEN 0x20300
+
 #endif /* __BOARD_WRC_H */
