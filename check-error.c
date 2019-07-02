@@ -35,7 +35,7 @@ int mprintf(const char *fmt, ...)
 	__please_call_pp_printf_not_mprintf();
 	return 0;
 }
-
+#if 0
 #ifdef CONFIG_PPSI /* with ppsi we can avoid libgcc code for division */
 /* was used twice in picos_to_ts  */
 long long __moddi3 (long long A, long long B)
@@ -58,3 +58,4 @@ long long __divdi3 (long long A, long long B)
 	return 0;
 }
 #endif /* config_ppsi */
+#endif
