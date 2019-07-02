@@ -250,7 +250,7 @@ static int tx_fsm_update()
             fsm->expected_phase_valid = 1;
         }
 #endif
-        fsm->expected_phase = 1000;
+        fsm->expected_phase = 10;
         fsm->tollerance = 350;
 
         int phase_min = fsm->expected_phase - fsm->tollerance;
@@ -310,8 +310,6 @@ static int tx_fsm_update()
 
     return 0;
 }
-
-static struct wb_clock_monitor_device cmon;
 
 
 static void rx_fsm_init(  )
@@ -519,10 +517,6 @@ int phy_calibration_poll()
 
 void phy_calibration_init()
 {
-    wb_cm_init(&cmon, 0x28100, 5);
-    wb_cm_configure(&cmon, 0, 2, 6250000 );
-    wb_cm_restart(&cmon);
-
     tmo_init( &cmon_tmo, 2000 );
 
     pp_printf("reset phy\n");
