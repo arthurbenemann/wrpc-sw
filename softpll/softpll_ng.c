@@ -28,8 +28,8 @@
   extern struct spll_fifo_log *fifo_log;
 #endif
 
-volatile struct SPLL_WB *SPLL;
-volatile struct PPSG_WB *PPSG;
+volatile struct SPLL_WB *SPLL = (volatile struct SPLL_WB*) ( BASE_SOFTPLL );
+volatile struct PPSG_WB *PPSG = (volatile struct PPSG_WB*) ( BASE_PPS_GEN );
 
 int spll_n_chan_ref, spll_n_chan_out;
 
@@ -296,9 +296,7 @@ void spll_init(int mode, int slave_ref_channel, int align_pps)
 
 	disable_irq();
 
-	SPLL = (volatile struct SPLL_WB *)BASE_SOFTPLL;
-	PPSG = (volatile struct PPSG_WB *)BASE_PPS_GEN;
-
+	
 	uint32_t csr = SPLL->CSR;
 
 	spll_n_chan_ref = SPLL_CSR_N_REF_R(csr);
