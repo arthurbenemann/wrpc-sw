@@ -79,7 +79,6 @@ static void wrc_initialize(void)
 
 	timer_init(1);
 
-	pp_printf("Board low-level setup\n");
 	ertm14_init();
 
 	get_hw_name(wrc_hw_name);
@@ -118,7 +117,7 @@ static void wrc_initialize(void)
 
 	minic_init();
 	shw_pps_gen_init();
-	//wrc_ptp_init();
+	wrc_ptp_init();
 	/* try reading t24 phase transition from EEPROM */
 	calib_t24p(WRC_MODE_MASTER, &cal_phase_transition);
 	spll_very_init();
@@ -128,8 +127,8 @@ static void wrc_initialize(void)
 	wrc_ui_mode = UI_SHELL_MODE;
 	_endram = ENDRAM_MAGIC;
 
-	//wrc_ptp_set_mode(WRC_MODE_SLAVE);
-	//wrc_ptp_start();
+	wrc_ptp_set_mode(WRC_MODE_SLAVE);
+	wrc_ptp_start();
 	//shw_pps_gen_get_time(NULL, &prev_nanos_for_profile);
 	/* get tics */
 	//prev_ticks_for_profile = timer_get_tics();
