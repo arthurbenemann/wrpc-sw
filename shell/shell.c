@@ -24,6 +24,8 @@
 
 /* interactive shell state definitions */
 
+#define SHELL_MAX_COMMANDS 32
+
 #define SH_PROMPT 0
 #define SH_INPUT 1
 #define SH_EXEC 2
@@ -41,6 +43,9 @@ static char cmd_buf[SH_MAX_LINE_LEN + 1];
 static int cmd_pos = 0, cmd_len = 0;
 static int state = SH_PROMPT;
 static int current_key = 0;
+
+static struct wrc_shell_cmd *cmds[ SHELL_MAX_COMMANDS ];
+static int n_cmds = 0;
 
 int shell_is_interacting;
 
@@ -103,8 +108,9 @@ static int _shell_exec(void)
 	if (*tokptr[0] == '#')
 		return 0;
 
-	#if 0
-	for (p = __cmd_begin; p < __cmd_end; p++)
+	for (i = 0; i < n_cmds; i++)
+	{
+		p = cmds[i];
 		if (!strcasecmp(p->name, tokptr[0])) {
 			rv = p->exec((const char **)(tokptr + 1));
 			if (rv < 0)
@@ -112,7 +118,7 @@ static int _shell_exec(void)
 					p->name, rv);
 			return rv;
 		}
-	#endif
+	}
 
 	pp_printf("Unrecognized command \"%s\".\n", tokptr[0]);
 	return -EINVAL;
@@ -131,10 +137,13 @@ int shell_exec(const char *cmd)
 	return i;
 }
 
+static void shell_register_commands();
+
 void shell_init()
 {
 	cmd_len = cmd_pos = 0;
 	state = SH_PROMPT;
+	shell_register_commands();
 }
 
 int shell_interactive()
@@ -349,4 +358,31 @@ void shell_show_build_init(void)
 	}
 	if (!i)
 		pp_printf("(empty)\n");
+}
+
+
+static void shell_register_command( struct wrc_shell_cmd* cmd )
+{
+	if( n_cmds >= SHELL_MAX_COMMANDS )
+	{
+		pp_printf("can't register shell command '%s', increase SHELL_MAX_COMMANDS\n", cmd->name );
+		return;
+	}
+	cmds[ n_cmds ] = cmd;
+	n_cmds++;
+}
+
+#define REGISTER_WRC_COMMAND(_name) \
+	{ extern struct wrc_shell_cmd __wrc_cmd_ ## _name; shell_register_command( &__wrc_cmd_ ## _name ); }
+
+static void shell_register_commands()
+{
+	REGISTER_WRC_COMMAND(gui);
+	REGISTER_WRC_COMMAND(ps);
+	REGISTER_WRC_COMMAND(pll);
+	REGISTER_WRC_COMMAND(ptp);
+	REGISTER_WRC_COMMAND(verbose);
+	REGISTER_WRC_COMMAND(mode);
+	REGISTER_WRC_COMMAND(mac);
+	REGISTER_WRC_COMMAND(ertm);
 }
