@@ -102,7 +102,7 @@ struct wrc_task* wrc_task_create( const char *name, void (*init)(), int (*job)()
 
 struct wrc_task *wrc_task_get(int tid)
 {
-    return NULL;
+    return &tasks[tid];
 }
 
 void wrc_task_set_enable( struct wrc_task* task, int (*enabled)() )
