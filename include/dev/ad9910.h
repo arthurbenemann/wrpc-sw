@@ -14,12 +14,14 @@ struct ad9910_device {
 };
 
 struct ad9910_config_reg {
-    uint16_t addr;
-    uint8_t value;
+    int addr;
+    uint64_t value;
+    int nbits;
 };
 
-uint32_t ad9910_read(struct ad9910_device *dev, uint32_t reg, int nbits);
-void ad9910_write(struct ad9910_device *dev, uint32_t reg, uint32_t value);
+
+uint64_t ad9910_read(struct ad9910_device *dev, uint32_t reg, int nbits);
+void ad9910_write(struct ad9910_device *dev, uint32_t reg, uint64_t value, int nbits);
 int ad9910_probe( struct ad9910_device *dev, struct spi_bus *bus );
 void ad9910_trigger_update(struct ad9910_device *dev);
 
