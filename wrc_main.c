@@ -78,6 +78,7 @@ static void wrc_initialize(void)
 	pp_printf("WR Core: starting up...\n");
 
 	timer_init(1);
+	usleep_init();
 
 	ertm14_init();
 
@@ -121,7 +122,6 @@ static void wrc_initialize(void)
 	/* try reading t24 phase transition from EEPROM */
 	calib_t24p(WRC_MODE_MASTER, &cal_phase_transition);
 	spll_very_init();
-	usleep_init();
 	shell_init();
 
 	wrc_ui_mode = UI_SHELL_MODE;

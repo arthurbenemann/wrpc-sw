@@ -179,6 +179,7 @@ bb_spi_create( &spi_ad9910_lo,
     usleep(1000000);
     ad9910_program(&dds_ad9910_ref, 0, 0, 0);
 
+    ertm15_rf_switches_init();
     #if 0
     for(;;)
     {

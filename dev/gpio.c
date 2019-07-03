@@ -77,23 +77,31 @@ int wb_gpio_create( struct gpio_device *device, uint32_t base_addr )
 
 void gen_gpio_set_dir(const struct gpio_pin *pin, int dir)
 {
-  if(!pin)
+  if (!pin)
     return;
-    pin->device->set_dir(pin, dir);
+  if (!pin->device->set_dir)
+    return;
+  pin->device->set_dir(pin, dir);
 }
 
 void gen_gpio_out(const struct gpio_pin *pin, int value)
 {
-  if(!pin)
+  if (!pin)
     return;
-    pin->device->set_out(pin, value);
+  if (!pin->device->set_out)
+    return;
+
+  pin->device->set_out(pin, value);
 }
 
 int gen_gpio_in(const struct gpio_pin *pin)
 {
-  if(!pin)
+  if (!pin)
     return 0;
-    return pin->device->read_pin(pin);
+  if (!pin->device->read_pin)
+    return 0;
+
+  return pin->device->read_pin(pin);
 }
 
 void gen_gpio_bang(const struct gpio_pin *pin, int count)

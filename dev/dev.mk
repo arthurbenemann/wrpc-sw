@@ -19,7 +19,10 @@ obj-$(CONFIG_EMBEDDED_NODE) += \
 	dev/ad9910.o \
 	dev/ltc6950.o \
 	dev/phy_calibration.o \
-	dev/clock_monitor.o
+	dev/clock_monitor.o \
+	dev/74x595.o \
+	dev/ertm15_rf_switches.o
+
 	
 obj-$(CONFIG_WR_NODE) += \
 	dev/temperature.o \
