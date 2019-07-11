@@ -316,7 +316,7 @@ int get_persistent_mac(uint8_t portnum, uint8_t *mac)
 
 	if (IS_HOST_PROCESS) {
 		/* we don't have sdb working, so get the real eth address */
-		get_mac_addr(mac);
+		ep_get_mac_addr(mac);
 		return 0;
 	}
 

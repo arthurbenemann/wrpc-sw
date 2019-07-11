@@ -61,7 +61,7 @@ int wrpc_get_port_state(struct hal_port_state *port, const char *port_name)
 	port->clock_period  = REF_CLOCK_PERIOD_PS;
 	port->t2_phase_transition = cal_phase_transition;
 	port->t4_phase_transition = cal_phase_transition;
-	get_mac_addr(port->hw_addr);
+	ep_get_mac_addr(port->hw_addr);
 	port->hw_index      = 0;
 
 	return 0;

@@ -46,19 +46,8 @@ void ep_pcs_write(int location, int value)
 	while ((EP->MDIO_ASR & EP_MDIO_ASR_READY) == 0) ;
 }
 
-/* MAC address setting */
-void set_mac_addr(uint8_t dev_addr[])
-{
-	EP->MACL = ((uint32_t) dev_addr[2] << 24)
-	    | ((uint32_t) dev_addr[3] << 16)
-	    | ((uint32_t) dev_addr[4] << 8)
-	    | ((uint32_t) dev_addr[5]);
 
-	EP->MACH = ((uint32_t) dev_addr[0] << 8)
-	    | ((uint32_t) dev_addr[1]);
-}
-
-void get_mac_addr(uint8_t dev_addr[])
+void ep_get_mac_addr(uint8_t *dev_addr)
 {
 	dev_addr[5] = (EP->MACL & 0x000000ff);
 	dev_addr[4] = (EP->MACL & 0x0000ff00) >> 8;
@@ -68,11 +57,44 @@ void get_mac_addr(uint8_t dev_addr[])
 	dev_addr[0] = (EP->MACH & 0x0000ff00) >> 8;
 }
 
-/* Initializes the endpoint and sets its local MAC address */
-void ep_init(uint8_t mac_addr[])
+static uint8_t ep_mac_addr[6];
+static int is_mac_addr_set = 0;
+
+void ep_set_mac_addr(uint8_t *addr)
 {
 	EP = (volatile struct EP_WB *)BASE_EP;
-	set_mac_addr(mac_addr);
+
+	memcpy(ep_mac_addr, addr, 6);
+
+	EP->MACL = ((uint32_t) ep_mac_addr[2] << 24)
+	    | ((uint32_t) ep_mac_addr[3] << 16)
+	    | ((uint32_t) ep_mac_addr[4] << 8)
+	    | ((uint32_t) ep_mac_addr[5]);
+
+	EP->MACH = ((uint32_t) ep_mac_addr[0] << 8)
+	    | ((uint32_t) ep_mac_addr[1]);
+
+	is_mac_addr_set = 1;
+}
+
+int ep_is_mac_addr_set()
+{
+	return is_mac_addr_set;
+}
+
+/* Initializes the endpoint and sets its local MAC address */
+void ep_init()
+{
+	EP = (volatile struct EP_WB *)BASE_EP;
+
+	EP->MACL = ((uint32_t) ep_mac_addr[2] << 24)
+	    | ((uint32_t) ep_mac_addr[3] << 16)
+	    | ((uint32_t) ep_mac_addr[4] << 8)
+	    | ((uint32_t) ep_mac_addr[5]);
+
+	EP->MACH = ((uint32_t) ep_mac_addr[0] << 8)
+	    | ((uint32_t) ep_mac_addr[1]);
+
 	ep_sfp_enable(1);
 
 	if (!IS_WR_NODE_SIM){

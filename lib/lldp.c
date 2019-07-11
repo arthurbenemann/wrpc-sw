@@ -48,7 +48,7 @@ static void fill_mac(uint8_t *tlv, uint8_t type)
 {
 	*tlv = type;
 	/* write MAC after subtype byte */
-	get_mac_addr(tlv + LLDP_SUBTYPE);
+	ep_get_mac_addr(tlv + LLDP_SUBTYPE);
 }
 
 static void lldp_add_tlv(int tlv_type) {
@@ -74,7 +74,7 @@ static void lldp_add_tlv(int tlv_type) {
 		break;
 	case PORT_ID:
 		tlv_len = PORT_ID_TLV_LEN;
-		/* header */
+		/* hepeader */
 		lldp_header_tlv(tlv_type, tlv_len);
 
 		/* TLV portID */
@@ -119,7 +119,7 @@ static void lldp_add_tlv(int tlv_type) {
 			       (char *)buf);
 		} else {
 			/* NOTE: no subtype */
-			get_mac_addr(mac);
+			ep_get_mac_addr(mac);
 			pp_sprintf(buf,
 				   "%02x:%02x:%02x:%02x:%02x:%02x",
 				   mac[0], mac[1], mac[2], mac[3],
@@ -247,7 +247,7 @@ int lldp_poll(void)
 
 	/* periodic tasks */
 	if (ticks > LLDP_TX_TICK_INTERVAL) {
-		get_mac_addr(new_mac);
+		ep_get_mac_addr(new_mac);
 		if (HAS_IP) {
 			getIP(&new_ipWR);
 		}

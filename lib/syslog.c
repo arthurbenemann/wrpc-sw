@@ -130,7 +130,7 @@ int syslog_poll(void)
 	if (!tics) {
 		/* first time ever, or new syslog server */
 		tics = now - 1;
-		get_mac_addr(mac);
+		ep_get_mac_addr(mac);
 		len = syslog_header(buf, SYSLOG_DEFAULT_LEVEL, ip);
 		len += pp_sprintf(buf + len, "(%s) Node up "
 				 "since %i seconds", format_mac(b, mac),

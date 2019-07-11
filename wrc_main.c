@@ -95,16 +95,25 @@ static void wrc_initialize(void)
 	/*init storage (Flash / W1 EEPROM / I2C EEPROM*/
 	storage_init(WRPC_FMC_I2C, FMC_EEPROM_ADR);
 
-	if (get_persistent_mac(ONEWIRE_PORT, mac_addr) == -1) {
-		pp_printf("Unable to determine MAC address\n");
-		mac_addr[0] = 0x22;	/*
-		mac_addr[1] = 0x33;	*
-		mac_addr[2] = 0x44;	* fallback MAC if get_persistent_mac fails
-		mac_addr[3] = 0x55;	*
-		mac_addr[4] = 0x66;	*
-		mac_addr[5] = 0x77;	*/
+
+	if( !ep_is_mac_addr_set() )
+	{
+		if (get_persistent_mac(ONEWIRE_PORT, mac_addr) == -1) {
+			pp_printf("Unable to determine MAC address, using default...\n");
+			/* fallback MAC if get_persistent_mac fails */
+			mac_addr[0] = 0x22;
+			mac_addr[1] = 0x33;
+			mac_addr[2] = 0x44;
+			mac_addr[3] = 0x55;
+			mac_addr[4] = 0x66;
+			mac_addr[5] = 0x77;
+			ep_set_mac_addr( mac_addr );
+
+			
+		}
 	}
 
+	ep_get_mac_addr( mac_addr );
 	pp_printf("Local MAC address: %02x:%02x:%02x:%02x:%02x:%02x\n",
 		mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3],
 		mac_addr[4], mac_addr[5]);
