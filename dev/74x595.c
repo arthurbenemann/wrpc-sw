@@ -23,6 +23,8 @@
 #include "board.h"
 #include "dev/gpio.h"
 
+#define X595_GPIO_MAX 2
+
 struct x595_gpio_priv_data
 {
     struct gpio_pin *pin_rclk;
@@ -33,6 +35,8 @@ struct x595_gpio_priv_data
     uint32_t cur_data;
 };
 
+static int  x595_gpio_priv_count;
+static struct x595_gpio_priv_data x595_gpio_priv[2];
 
 static int x595_gpio_in(const struct gpio_pin *pin)
 {
@@ -59,8 +63,6 @@ static void x595_gpio_sync_out(const struct x595_gpio_priv_data *priv)
     gen_gpio_out(priv->pin_rclk, 0);
 }
 
-static struct x595_gpio_priv_data x595_gpio_priv;
-
 
 static void x595_gpio_out(const struct gpio_pin *pin, int value)
 {
@@ -76,20 +78,26 @@ static void x595_gpio_out(const struct gpio_pin *pin, int value)
 
 int x595_gpio_create(struct gpio_device *device, int n_regs, struct gpio_pin *pin_rclk, struct gpio_pin *pin_srclk, struct gpio_pin *pin_srclr_n, struct gpio_pin *pin_ser)
 {
-    device->priv = (void *) &x595_gpio_priv;
-    x595_gpio_priv.pin_rclk = pin_rclk;
-    x595_gpio_priv.pin_srclk = pin_srclk;
-    x595_gpio_priv.pin_srclr_n = pin_srclr_n;
-    x595_gpio_priv.pin_ser = pin_ser;
-    x595_gpio_priv.cur_data = 0;
-    x595_gpio_priv.n_regs = n_regs;
+    struct x595_gpio_priv_data *priv;
+    if( x595_gpio_priv_count >= X595_GPIO_MAX )
+        return -1;
 
-    gen_gpio_out(x595_gpio_priv.pin_rclk, 0);  // reset the shift register
-    gen_gpio_out(x595_gpio_priv.pin_srclk, 0); // reset the shift register
+    device->priv = priv = &x595_gpio_priv[x595_gpio_priv_count];
+    x595_gpio_priv_count++;
 
-    gen_gpio_out(x595_gpio_priv.pin_srclr_n, 0); // reset the shift register
+    priv->pin_rclk = pin_rclk;
+    priv->pin_srclk = pin_srclk;
+    priv->pin_srclr_n = pin_srclr_n;
+    priv->pin_ser = pin_ser;
+    priv->cur_data = 0;
+    priv->n_regs = n_regs;
+
+    gen_gpio_out(priv->pin_rclk, 0);  // reset the shift register
+    gen_gpio_out(priv->pin_srclk, 0); // reset the shift register
+
+    gen_gpio_out(priv->pin_srclr_n, 0); // reset the shift register
     usleep(1);
-    gen_gpio_out(x595_gpio_priv.pin_srclr_n, 1);
+    gen_gpio_out(priv->pin_srclr_n, 1);
 
     x595_gpio_sync_out(&x595_gpio_priv);
 
@@ -97,5 +105,5 @@ int x595_gpio_create(struct gpio_device *device, int n_regs, struct gpio_pin *pi
     device->set_out = x595_gpio_out;
     device->read_pin = x595_gpio_in;
 
-    return device;
+    return 0;
 };
