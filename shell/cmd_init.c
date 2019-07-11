@@ -12,7 +12,7 @@
 #include "shell.h"
 #include "storage.h"
 #include "syscon.h"
-#include "i2c.h"
+#include "dev/i2c.h"
 
 static int cmd_init(const char *args[])
 {

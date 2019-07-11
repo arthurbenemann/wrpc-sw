@@ -14,7 +14,7 @@
 #include <errno.h>
 
 #include "syscon.h"
-#include "i2c.h"
+#include "dev/i2c.h"
 #include "sfp.h"
 #include "storage.h"
 

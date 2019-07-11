@@ -10,7 +10,7 @@
 #include "types.h"
 #include "board.h"
 #include "syscon.h"
-#include "i2c.h"
+#include "dev/i2c.h"
 #include "dev/gpio.h"
 
 void mi2c_delay(uint32_t delay)

@@ -21,7 +21,7 @@
 #include "minic.h"
 #include "pps_gen.h"
 #include "ptpd_netif.h"
-#include "i2c.h"
+#include "dev/i2c.h"
 #include "storage.h"
 #include "softpll_ng.h"
 #include "onewire.h"

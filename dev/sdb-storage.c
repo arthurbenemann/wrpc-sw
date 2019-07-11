@@ -13,7 +13,7 @@
 #include <storage.h>
 
 #include "types.h"
-#include "i2c.h"
+#include "dev/i2c.h"
 #include "onewire.h"
 #include "endpoint.h"
 #include "syscon.h"
