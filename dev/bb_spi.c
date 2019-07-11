@@ -92,6 +92,7 @@ void bb_spi_write(struct spi_bus *bus, uint64_t d, int n_bits)
 
     for(i=0;i<n_bits;i++)
     {
+        
     	gen_gpio_out(bus->pin_mosi, d & (1ULL<<(n_bits-1-i)) ? 1 : 0);
     	bb_spi_delay(bus);
     	gen_gpio_out(bus->pin_sck, 1);
@@ -99,6 +100,48 @@ void bb_spi_write(struct spi_bus *bus, uint64_t d, int n_bits)
     	gen_gpio_out(bus->pin_sck, 0);
     	bb_spi_delay(bus);
     }
+
+}
+
+
+void bb_spi_xfer(struct spi_bus *bus, uint64_t din, uint64_t *d_out, int n_bits)
+{
+    int i;
+    uint64_t rv = 0;
+    bb_spi_delay(bus);
+
+    gen_gpio_out(bus->pin_mosi, 0);
+    gen_gpio_set_dir(bus->pin_mosi, 1);
+    gen_gpio_out(bus->pin_sck, 0);
+    bb_spi_delay(bus);
+
+    for(i=0;i<n_bits;i++)
+    {
+        rv<<=1;
+
+        if( bus->rd_falling_edge )
+        {
+            if(gen_gpio_in(bus->pin_miso))
+               rv |= 1ULL;
+        }
+
+        gen_gpio_out(bus->pin_mosi, din & (1ULL<<(n_bits-1-i)) ? 1 : 0);
+    	bb_spi_delay(bus);
+    	gen_gpio_out(bus->pin_sck, 1);
+    	bb_spi_delay(bus);
+
+        if( !bus->rd_falling_edge )
+        {
+            if(gen_gpio_in(bus->pin_miso))
+               rv |= 1ULL;
+        }
+
+    	gen_gpio_out(bus->pin_sck, 0);
+    	bb_spi_delay(bus);
+    }
+
+    if(d_out)
+        *d_out = rv;
 
 }
 
