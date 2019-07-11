@@ -20,10 +20,13 @@
 
 #include <stdio.h>
 #include <stdint.h>
+#include <math.h>
 
 #include "board.h"
 #include "dev/gpio.h"
 #include "dev/74x595.h"
+#include "dev/ad7888.h"
+#include "dev/ertm15_rf_distr.h"
 
 extern struct gpio_device gpio_aux;
 
@@ -36,15 +39,8 @@ static const struct gpio_pin pin_ref_ctrl_updtclk = { &gpio_aux, 43 };
 static const struct gpio_pin pin_ref_ctrl_shftclk = { &gpio_aux, 44 };
 
 static struct gpio_device gpio_rfsw_ref;
-// fixme: more than one GPIO chain using '595 register requires dynamic allocator for private data
-//static struct gpio_device gpio_rfsw_lo;
+static struct gpio_device gpio_rfsw_lo;
 
-#define ERTM15_RF_OUT_ON 0
-#define ERTM15_RF_OUT_MONITOR 1
-#define ERTM15_RF_OUT_OFF 2
-
-#define ERTM15_RF_LO 0
-#define ERTM15_RF_REF 1
 
 // mapping between x595 shift reg (IC26..28 on eRTM15 and the RF switch control pins)
 // fixme: pin definitions for LO path
@@ -66,7 +62,7 @@ static const struct pin_mapping
     {ERTM15_RF_REF, 12,10, 0, 1},           // RF10
     {ERTM15_RF_REF, 0,   0, 0, 0}};
 
-static struct pin_mapping* find_pins_for_channel ( int path, int channel )
+static const struct pin_mapping* find_pins_for_channel ( int path, int channel )
 {
     int i;
     for(i=0; rf_switch_sreg_pin_mapping[i].channel !=0; i++ )
@@ -79,10 +75,10 @@ static struct pin_mapping* find_pins_for_channel ( int path, int channel )
     return NULL;
 }
 
-int ertm15_rf_switch_set( int path, int channel, int state)
+static int rf_switch_set( int path, int channel, int state)
 {
-    struct gpio_device *gpio = ( path == ERTM15_RF_REF ? &gpio_rfsw_ref : &gpio_rfsw_ref); // fixme
-    struct pin_mapping *pins = find_pins_for_channel( path, channel );
+    struct gpio_device *gpio = ( path == ERTM15_RF_REF ? &gpio_rfsw_ref : &gpio_rfsw_lo);
+    const struct pin_mapping *pins = find_pins_for_channel( path, channel );
     struct gpio_pin ctrl1, ctrl2;
 
     ctrl1.device = gpio;
@@ -119,24 +115,102 @@ int ertm15_rf_switch_set( int path, int channel, int state)
     return 0;
 }
 
-int ertm15_rf_switch_get( int path, int channel )
-{
 
-}
-
-
-void ertm15_rf_switches_init()
+static void update_rf_switches( struct ertm15_rf_distribution_device *dev )
 {
     int i;
-    x595_gpio_create ( &gpio_rfsw_ref, 3, &pin_ref_ctrl_updtclk, &pin_ref_ctrl_shftclk, NULL, &pin_ref_ctrl_ser );
 
-// disable all RF outputs to the backplane
     for( i = 0; rf_switch_sreg_pin_mapping[i].channel != 0; i++ )
     {
         struct pin_mapping* p = &rf_switch_sreg_pin_mapping[i];
 
-        ertm15_rf_switch_set( p->path, p->channel, ERTM15_RF_OUT_OFF );
+        int enabled = ( p->path == ERTM15_RF_LO ? dev->lo_enabled : dev->ref_enabled ) & (1 << p->channel );
+
+        pp_printf("rf_distr: switch %s ch %d -> %s\n", p->path == ERTM15_RF_LO ? "LO" : "REF", p->channel, enabled ? "ON" : "OFF" );
+        rf_switch_set( p->path, p->channel, enabled ? ERTM15_RF_OUT_ON : ERTM15_RF_OUT_OFF );
     }
 }
 
+void ertm15_rf_distr_init( struct ertm15_rf_distribution_device *dev, struct ad7888_device *pwr_mon_adc )
+{
+    int i;
+
+    x595_gpio_create ( &gpio_rfsw_ref, 3, &pin_ref_ctrl_updtclk, &pin_ref_ctrl_shftclk, NULL, &pin_ref_ctrl_ser );
+    x595_gpio_create ( &gpio_rfsw_lo, 3, &pin_lo_ctrl_updtclk, &pin_lo_ctrl_shftclk, NULL, &pin_lo_ctrl_ser );
+
+    dev->pwr_ref_valid = 0;
+    dev->pwr_lo_valid = 0;
+    dev->ref_enabled = 0;
+    dev->lo_enabled = 0;
+    dev->pwr_ref_valid = 0;
+    dev->pwr_mon_adc = pwr_mon_adc;
+
+    update_rf_switches( dev );
+// disable all RF outputs to the backplane
+   
+}
+
+int convert_power( int adc_value )
+{
+    //pp_printf("ADCV %d\n", adc_value );
+
+    float adc_voltage = (float) adc_value / 4096.0 * 2.5;
+    float rf_power = 10.0 * log( adc_voltage / 2.0 ) / log( 10.0 ) + 15.0; // 2V = 0 dBm, compensate for 15 dB attenuator
+
+    return (int) (rf_power * 100.0);
+}
+
+#define ADC_CH_REF_DDS_PA 2
+#define ADC_CH_LO_DDS_PA 0
+#define ADC_CH_REF_DDS_DISTR 3
+#define ADC_CH_LO_DDS_DISTR 1
+
+int ertm15_rf_distr_measure_power ( struct ertm15_rf_distribution_device *dev )
+{
+    ad7888_start_conversion( dev->pwr_mon_adc, 0x0f );
+    while( dev->pwr_mon_adc->channel_valid != 0x0f )
+    {
+        ad7888_poll( dev->pwr_mon_adc );
+        usleep(1000);
+    }
+
+    dev->pwr_ref_in = convert_power( dev->pwr_mon_adc->channel[ADC_CH_REF_DDS_PA] );
+    dev->pwr_lo_in = convert_power( dev->pwr_mon_adc->channel[ADC_CH_LO_DDS_PA] );
+
+
+    int i;
+    for( i = 4; i <= 12; i ++ )
+    {
+        dev->pwr_ref_valid &= ~(1<<i);
+        if( ! (dev->ref_enabled & (1<<i) ) )
+        {
+            rf_switch_set( ERTM15_RF_REF, i, ERTM15_RF_OUT_MONITOR );
+            usleep(10000);
+
+            ad7888_start_conversion( dev->pwr_mon_adc, 0xff );
+            do {
+                ad7888_poll( dev->pwr_mon_adc );
+            } while ( ! (dev->pwr_mon_adc->channel_valid & ( 1<< ADC_CH_REF_DDS_DISTR ))); 
+            dev->pwr_ref_ch[ i ] = convert_power( dev->pwr_mon_adc->channel[ADC_CH_REF_DDS_DISTR] );
+            
+            pp_printf("Ch REF %d: pwr %d v %d\n", i, dev->pwr_ref_ch[i], dev->pwr_mon_adc->channel_valid );
+            dev->pwr_ref_valid |= (1<<i);
+            rf_switch_set( ERTM15_RF_REF, i, ERTM15_RF_OUT_OFF );
+        }
+    }
+
+    return 0;
+}
+
+void ertm15_rf_distr_output_enable( struct ertm15_rf_distribution_device *dev, int path, int channel, int enabled )
+{
+    uint16_t* mask = (path == ERTM15_RF_LO ? &dev->lo_enabled : &dev->ref_enabled );
+    
+    if( enabled )
+        *mask |= ( 1 << channel );
+    else
+        *mask &= ~( 1 << channel );
+
+    update_rf_switches( dev );
+}
 
