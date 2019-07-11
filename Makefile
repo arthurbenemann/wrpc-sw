@@ -105,14 +105,14 @@ obj-$(CONFIG_WR_NODE) += sdb-lib/libsdbfs.a
 cflags-$(CONFIG_WR_NODE) += -Isdb-lib
 
 CFLAGS = $(cflags-y) -Wall -Wstrict-prototypes \
-	-ffunction-sections -fdata-sections -Os -Wmissing-prototypes \
+	-ffunction-sections -fdata-sections -Os -Wmissing-prototypes  \
 	-include include/wrc.h -ggdb
 
 # Assembler Flags
 ASFLAGS = -I.
 
 LDFLAGS = $(ldflags-y) \
-	-Wl,--gc-sections -Os -lgcc -lc
+	-Wl,--gc-sections -Os -lgcc -lc -lm -lgcc -lc
 
 WRC-O-FLAGS-$(CONFIG_LM32) = --gc-sections -e _start
 

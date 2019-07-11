@@ -21,7 +21,9 @@ obj-$(CONFIG_EMBEDDED_NODE) += \
 	dev/phy_calibration.o \
 	dev/clock_monitor.o \
 	dev/74x595.o \
-	dev/ertm15_rf_switches.o
+	dev/ertm15_rf_switches.o \
+	dev/24aa025.o \
+	dev/ad7888.o
 
 	
 obj-$(CONFIG_WR_NODE) += \
