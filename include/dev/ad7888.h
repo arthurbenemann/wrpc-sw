@@ -37,5 +37,6 @@ struct ad7888_device {
 int ad7888_create( struct ad7888_device *dev, struct spi_bus *bus );
 void ad7888_start_conversion( struct ad7888_device *dev, uint16_t channel_mask );
 int ad7888_poll( struct ad7888_device *dev );
+int ad7888_meas_channel( struct ad7888_device *dev, int ch );
 
 #endif

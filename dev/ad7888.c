@@ -103,5 +103,12 @@ int ad7888_poll( struct ad7888_device *dev )
     dev->channel_valid |= (1 << dev->current_ch);
 
     dev->current_ch = next_ch;
-    return 1;
+    return dev->channel_valid;
+}
+
+int ad7888_meas_channel( struct ad7888_device *dev, int ch )
+{
+    ad7888_start_conversion( dev, (1<<ch));
+    while( (ad7888_poll(dev) & (1<<ch)) == 0 );
+    return dev->channel[ch];
 }
