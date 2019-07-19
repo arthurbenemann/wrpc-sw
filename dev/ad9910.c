@@ -6,6 +6,8 @@
 #include "dev/spi.h"
 #include "dev/ad9910.h"
 
+#define AD9910_REF_FREQ ( 1000000000ULL ) // 1 GHz
+
 static struct ad9910_config_reg ad9910_default_config[] = {
     {0, 0x02000002, 32},              // CFR1, unidir mode for SDIO
     {1, 0x00000820, 32},              // CFR2
@@ -62,15 +64,31 @@ int ad9910_probe( struct ad9910_device *dev, struct spi_bus *bus )
     return (id == AD9910_DEFAULT_CFR1) ? 0 : -1;
 }
 
-int ad9910_program( struct ad9910_device *dev, uint64_t freq_hz, int phase, int asf )
+
+int ad9910_program( struct ad9910_device *dev, uint64_t freq_hz, int phase, int fs_current )
 {
     int i;
 
-    pp_printf("ad9910_program!\n");
-    
+    // formula (2) from AD9910 datasheet, page 22
+
+    uint64_t ftw = (1ULL << 32) * freq_hz / AD9910_REF_FREQ;
+    uint64_t prof0_cr = ftw | (0x8b5ULL << 48);
+
+//    pp_printf("ad9910_program [%08x%08x] asf %d!\n", (uint32_t)(prof0_cr >> 32), (uint32_t)prof0_cr, asf );
+
     for(i = 0; ad9910_default_config[i].addr >= 0; i++)
     {
         struct ad9910_config_reg r = ad9910_default_config[i];
+
+        if(r.addr == 3)
+        {
+            r.value &= 0xffffff00;
+            r.value |= fs_current;     // Aux DAC control: DAC Full scale current
+  //          pp_printf("auxdac %08x\n", (uint32_t) r.value );
+        } else
+        if( r.addr == 0xe ) // profile 0
+            r.value = prof0_cr;
+
         ad9910_write( dev, r.addr, r.value, r.nbits );
     }
 
