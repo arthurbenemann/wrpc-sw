@@ -44,13 +44,56 @@ static int x595_gpio_in(const struct gpio_pin *pin)
     return priv->cur_data & (1 << pin->pin) ? 1 : 0;
 }
 
+#if 1
+static void x595_gpio_out(const struct gpio_pin *pin, int value);
+
+void x595_test(struct gpio_device *device)
+{
+    struct x595_gpio_priv_data *priv = (struct x595_gpio_priv_data *)device->priv;
+    int i = 0, j = 0;
+    struct gpio_pin p;
+    p.device = device;
+    
+    for(;;)
+    {
+    /*    i++;
+        gen_gpio_out(priv->pin_ser, 0);  // shift out the bit
+
+        gen_gpio_out(priv->pin_ser, i % 2);  // shift out the bit
+
+        for(j = 0; j < 24; j++)
+        {
+            gen_gpio_out(priv->pin_srclk, 0); // pulse the serial clock
+            gen_gpio_out(priv->pin_srclk, 1);
+            gen_gpio_out(priv->pin_srclk, 0);
+
+            gen_gpio_out(priv->pin_ser, 0);  // shift out the bit
+        }
+
+        gen_gpio_out(priv->pin_rclk, 0);
+        gen_gpio_out(priv->pin_rclk, 1); // pass the shift reg contents to the output latch
+        gen_gpio_out(priv->pin_rclk, 0);*/
+        i++;
+        pp_printf("T %d\n", i % 2);
+        p.pin = 8;
+        x595_gpio_out( &p, 0 );
+        x595_gpio_out( &p, 1 );
+        x595_gpio_out( &p, 0 );
+        p.pin = 9;
+        x595_gpio_out( &p, 0 );
+        x595_gpio_out( &p, 1 );
+        x595_gpio_out( &p, 0 );
+    }
+}
+#endif
+
 static void x595_gpio_sync_out(const struct x595_gpio_priv_data *priv)
 {
     int i, nbits = priv->n_regs * 8;
 
     gen_gpio_out(priv->pin_srclr_n, 0); // reset the shift register
     gen_gpio_out(priv->pin_srclr_n, 1);
-    
+
     for(i = 0; i < nbits; i++)
     {
         gen_gpio_out(priv->pin_ser, (priv->cur_data & (1 << (nbits - 1 - i))) ? 1 : 0);  // shift out the bit
