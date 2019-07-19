@@ -32,7 +32,7 @@
 #include "dev/ad7888.h"
 #include "dev/ertm15_rf_distr.h"
 #include "dev/i2c.h"
-
+#include "softpll_ng.h"
 
 
 #define BASE_AUXWB 0x28000
@@ -118,6 +118,8 @@ static struct ad951x_config pll_main_ocxo_config =
 
 static struct ltc6950_config pll_ertm15_config =
 #include "ertm_15_ltc6950_config.h"
+
+static spll_gain_schedule_t spll_main_ocxo_gain_sched;
 
 
 void ertm14_init()
@@ -218,8 +220,6 @@ bb_spi_create( &spi_ad9910_lo,
     ad9910_probe( &dds_ad9910_ref, &spi_ad9910_ref );
     ad9910_probe( &dds_ad9910_lo, &spi_ad9910_lo );
 
-    usleep(1000000);
-    ad9910_program(&dds_ad9910_ref, 0, 0, 0);
 
     
     bb_i2c_init( &i2c_mac_addr, &pin_mac_addr_scl, &pin_mac_addr_sda );
@@ -242,14 +242,58 @@ bb_spi_create( &spi_ad9910_lo,
     
     ertm15_rf_distr_init( &rf_distr, &pwrmon_adc );
 
+
+    usleep(1000000);
+    ad9910_program(&dds_ad9910_ref, 205000000ULL, 0, 0x0 );
+
+#if 0
+    pp_printf("DONE\n");
+
+    for(;;)
+    {
+        int v_on, v_off;
+        pp_printf(".");
+        int i;
+        for(i=6;i<=6;i++)
+        {
+        usleep(100000);
+        rf_switch_set( ERTM15_RF_REF, i, ERTM15_RF_OUT_OFF );
+        usleep(100000);
+        v_off = ad7888_meas_channel( &pwrmon_adc, 3 );
+        rf_switch_set( ERTM15_RF_REF, i, ERTM15_RF_OUT_ON );
+        usleep(100000);
+        rf_switch_set( ERTM15_RF_REF, i, ERTM15_RF_OUT_MONITOR );
+        usleep(100000);
+        v_on = ad7888_meas_channel( &pwrmon_adc, 3 );
+        rf_switch_set( ERTM15_RF_REF, i, ERTM15_RF_OUT_OFF );
+        pp_printf("Ch%d on %d off %d\n", i, v_on, v_off );
+        }
+    }
+#endif
+#if 0
     for(;;)
     {
         ertm15_rf_distr_measure_power( &rf_distr );
         //ad7888_poll( &pwrmon_adc );
 
     }
-
+#endif
     
+    
+    spll_gain_schedule_t* gs=  &spll_main_ocxo_gain_sched;
+    gs->n_stages = 2;
+
+    gs->stages[0].kp = -1100;
+    gs->stages[0].ki = -30;
+    gs->stages[0].lock_samples = 10000;
+    gs->stages[0].shift = PI_FRACBITS;
+
+    gs->stages[1].kp = -5000;
+    gs->stages[1].ki = -8;
+    gs->stages[1].lock_samples = 10000;
+    gs->stages[1].shift = PI_FRACBITS;
+    
+	spll_set_gain_schedule( gs );
 
 }
 
