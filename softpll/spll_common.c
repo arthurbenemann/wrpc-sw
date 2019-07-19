@@ -20,7 +20,7 @@ int pi_update(spll_pi_t *pi, int x)
 	pi->x = x;
 	i_new = pi->integrator + x;
 
-	y = ((i_new * pi->ki + x * pi->kp) >> PI_FRACBITS) + pi->bias;
+	y = ((i_new * pi->ki + x * pi->kp) >> pi->shift) + pi->bias;
 
 	/* clamping (output has to be in <y_min, y_max>) and
 	   anti-windup: stop the integrator if the output is already

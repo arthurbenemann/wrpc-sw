@@ -187,10 +187,11 @@ static inline void sequencing_fsm(struct softpll_state *s, int tag_value, int ta
 
 		case SEQ_WAIT_MAIN:
 		{
-			if (s->mpll.ld.locked)
+			if (s->mpll.locked)
 			{
 				start_ptrackers(s);
 				s->seq_state = SEQ_READY;
+				pll_verbose("[spll] main locked\n");
 				set_channel_status(s->mpll.id_ref, 1);
 			}
 			break;
@@ -206,7 +207,7 @@ static inline void sequencing_fsm(struct softpll_state *s, int tag_value, int ta
 				s->delock_count++;
 				s->seq_state = SEQ_CLEAR_DACS;
 				set_channel_status(s->mpll.id_ref, 0);
-			} else if (s->mode == SPLL_MODE_SLAVE && !s->mpll.ld.locked) {
+			} else if (s->mode == SPLL_MODE_SLAVE && !s->mpll.locked) {
 				s->delock_count++;
 				s->seq_state = SEQ_CLEAR_DACS;
 				set_channel_status(s->mpll.id_ref, 0);
@@ -284,6 +285,8 @@ void spll_very_init()
 {
 	PPSG = (volatile struct PPSG_WB *)BASE_PPS_GEN;
 	PPSG->CR = PPSG_CR_CNT_EN | PPSG_CR_CNT_RST | PPSG_CR_PWIDTH_W(PPS_WIDTH);
+
+	memset( &softpll, 0, sizeof(struct softpll_state ));
 }
 
 void spll_init(int mode, int slave_ref_channel, int align_pps)
@@ -498,7 +501,7 @@ void spll_show_stats()
 		     "alignment_state %d HL%d ML%d HY=%d MY=%d DelCnt=%d ptm=%x avgc=%d pv=%d rdy=%d refc=%d tagc=%d\n",
 		      s->irq_count, statename,
 			      s->mode, s->ext.align_state,
-			      s->helper.ld.locked, s->mpll.ld.locked,
+			      s->helper.ld.locked, s->mpll.locked,
 			      s->helper.pi.y, s->mpll.pi.y,
 			      s->delock_count,
 				  ptracker_mask, s->ptrackers[0].avg_count, s->ptrackers[0].phase_val, s->ptrackers[0].ready, s->ptrackers[0].ref_count, s->ptrackers[0].tag_count);
@@ -554,7 +557,7 @@ static int spll_update_aux_clocks(void)
 
 		switch (s->seq_state) {
 			case AUX_DISABLED:
-				if (softpll.mpll.ld.locked && aux_locking_enabled(ch)) {
+				if (softpll.mpll.locked && aux_locking_enabled(ch)) {
 					pll_verbose("softpll: enabled aux channel %d\n", ch);
 					spll_start_channel(ch);
 					s->seq_state = AUX_LOCK_PLL;
@@ -581,7 +584,7 @@ static int spll_update_aux_clocks(void)
 				break;
 
 			case AUX_READY:
-				if (!softpll.mpll.ld.locked || !s->pll.dmtd.ld.locked) {
+				if (!softpll.mpll.locked || !s->pll.dmtd.ld.locked) {
 					pll_verbose("softpll: aux channel %d or mpll lost lock\n", ch);
 					set_channel_status(ch, 0); 
 					s->seq_state = AUX_DISABLED;
@@ -651,7 +654,7 @@ int spll_update()
 	stats.seq_state = softpll.seq_state;
 	stats.align_state = softpll.ext.align_state;
 	stats.H_lock = softpll.helper.ld.locked;
-	stats.M_lock = softpll.mpll.ld.locked;
+	stats.M_lock = softpll.mpll.locked;
 	stats.H_y = softpll.helper.pi.y;
 	stats.M_y = softpll.mpll.pi.y;
 	stats.del_cnt = softpll.delock_count;
@@ -729,4 +732,11 @@ void check_vco_frequencies()
 
 	f_min = spll_measure_frequency(SPLL_OSC_EXT);
 	pp_printf("EXT clock: Freq=%d Hz\n", f_min);
+}
+
+void spll_set_gain_schedule( spll_gain_schedule_t* sch )
+{
+	disable_irq();
+	softpll.mpll.gain_sched = sch;
+	enable_irq();
 }
