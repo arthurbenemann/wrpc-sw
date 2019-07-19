@@ -43,24 +43,35 @@ static struct gpio_device gpio_rfsw_lo;
 
 
 // mapping between x595 shift reg (IC26..28 on eRTM15 and the RF switch control pins)
-// fixme: pin definitions for LO path
 static const struct pin_mapping
 {
-    uint8_t path;
-    uint8_t channel;
-    uint8_t distr_channel;
-    uint8_t ctrl1, ctrl2;
+    uint8_t path;           // RF path (REF/LO)
+    uint8_t channel;        // MTCA.4 channel
+    uint8_t ctrl1, ctrl2;   // RF switch pin indices (CTRL1/CTRL2)
 } rf_switch_sreg_pin_mapping[] = {
-    {ERTM15_RF_REF, 5, 4, 8 + 6, 8 + 7},    // RF5
-    {ERTM15_RF_REF, 4, 5, 8 + 5, 8 + 4},    // RF4
-    {ERTM15_RF_REF, 7, 7, 8 + 3, 8 + 2},    // RF5
-    {ERTM15_RF_REF, 6, 6, 8 + 1, 8 + 0},    // RF5
-    {ERTM15_RF_REF, 10,12, 16 + 7, 16 + 6}, // RF12
-    {ERTM15_RF_REF, 9, 9, 6, 7},            // RF9
-    {ERTM15_RF_REF, 8, 8, 4, 5},            // RF8
-    {ERTM15_RF_REF, 11,11, 2, 3},           // RF11
-    {ERTM15_RF_REF, 12,10, 0, 1},           // RF10
-    {ERTM15_RF_REF, 0,   0, 0, 0}};
+    // REF outputs
+    {ERTM15_RF_REF, 4, 8 + 5, 8 + 4},
+    {ERTM15_RF_REF, 5, 8 + 6, 8 + 7},
+    {ERTM15_RF_REF, 6, 8 + 1, 8 + 0},
+    {ERTM15_RF_REF, 7, 8 + 3, 8 + 2},
+    {ERTM15_RF_REF, 8, 4, 5},
+    {ERTM15_RF_REF, 9, 6, 7},
+    {ERTM15_RF_REF, 10, 16 + 7, 16 + 6},
+    {ERTM15_RF_REF, 11, 2, 3},
+    {ERTM15_RF_REF, 12, 0, 1},
+    
+    // LO outputs
+    {ERTM15_RF_LO, 4,  16 + 7, 16 + 6}, // ic28 7, 6
+    {ERTM15_RF_LO, 5,  0  + 6, 0  + 7}, // ic26 6, 7
+    {ERTM15_RF_LO, 6,  0  + 4, 0  + 5}, // ic26 4, 5
+    {ERTM15_RF_LO, 7,  0  + 0, 0  + 1}, // ic26 15, 1
+    {ERTM15_RF_LO, 8,  0  + 2, 0  + 3}, // ic26 2, 3
+    {ERTM15_RF_LO, 9,  8  + 6, 8  + 7}, // ic27 6, 7
+    {ERTM15_RF_LO, 10, 8  + 5, 8  + 4}, // ic27 5, 4
+    {ERTM15_RF_LO, 11, 8  + 1, 8  + 0}, // ic27 1, 15
+    {ERTM15_RF_LO, 12, 8  + 3, 8  + 2}, // ic27 3, 2
+
+    {ERTM15_RF_REF, 0, 0, 0}};
 
 static const struct pin_mapping* find_pins_for_channel ( int path, int channel )
 {
@@ -75,7 +86,7 @@ static const struct pin_mapping* find_pins_for_channel ( int path, int channel )
     return NULL;
 }
 
-static int rf_switch_set( int path, int channel, int state)
+int rf_switch_set( int path, int channel, int state)
 {
     struct gpio_device *gpio = ( path == ERTM15_RF_REF ? &gpio_rfsw_ref : &gpio_rfsw_lo);
     const struct pin_mapping *pins = find_pins_for_channel( path, channel );
@@ -122,7 +133,7 @@ static void update_rf_switches( struct ertm15_rf_distribution_device *dev )
 
     for( i = 0; rf_switch_sreg_pin_mapping[i].channel != 0; i++ )
     {
-        struct pin_mapping* p = &rf_switch_sreg_pin_mapping[i];
+        const struct pin_mapping* p = &rf_switch_sreg_pin_mapping[i];
 
         int enabled = ( p->path == ERTM15_RF_LO ? dev->lo_enabled : dev->ref_enabled ) & (1 << p->channel );
 
@@ -137,6 +148,8 @@ void ertm15_rf_distr_init( struct ertm15_rf_distribution_device *dev, struct ad7
 
     x595_gpio_create ( &gpio_rfsw_ref, 3, &pin_ref_ctrl_updtclk, &pin_ref_ctrl_shftclk, NULL, &pin_ref_ctrl_ser );
     x595_gpio_create ( &gpio_rfsw_lo, 3, &pin_lo_ctrl_updtclk, &pin_lo_ctrl_shftclk, NULL, &pin_lo_ctrl_ser );
+
+    //x595_test( &gpio_rfsw_ref );
 
     dev->pwr_ref_valid = 0;
     dev->pwr_lo_valid = 0;
@@ -167,6 +180,7 @@ int convert_power( int adc_value )
 
 int ertm15_rf_distr_measure_power ( struct ertm15_rf_distribution_device *dev )
 {
+
     ad7888_start_conversion( dev->pwr_mon_adc, 0x0f );
     while( dev->pwr_mon_adc->channel_valid != 0x0f )
     {
@@ -177,7 +191,6 @@ int ertm15_rf_distr_measure_power ( struct ertm15_rf_distribution_device *dev )
     dev->pwr_ref_in = convert_power( dev->pwr_mon_adc->channel[ADC_CH_REF_DDS_PA] );
     dev->pwr_lo_in = convert_power( dev->pwr_mon_adc->channel[ADC_CH_LO_DDS_PA] );
 
-
     int i;
     for( i = 4; i <= 12; i ++ )
     {
@@ -186,13 +199,8 @@ int ertm15_rf_distr_measure_power ( struct ertm15_rf_distribution_device *dev )
         {
             rf_switch_set( ERTM15_RF_REF, i, ERTM15_RF_OUT_MONITOR );
             usleep(10000);
-
-            ad7888_start_conversion( dev->pwr_mon_adc, 0xff );
-            do {
-                ad7888_poll( dev->pwr_mon_adc );
-            } while ( ! (dev->pwr_mon_adc->channel_valid & ( 1<< ADC_CH_REF_DDS_DISTR ))); 
+            int raw_pwr = ad7888_meas_channel( dev->pwr_mon_adc, ADC_CH_REF_DDS_DISTR );
             dev->pwr_ref_ch[ i ] = convert_power( dev->pwr_mon_adc->channel[ADC_CH_REF_DDS_DISTR] );
-            
             pp_printf("Ch REF %d: pwr %d v %d\n", i, dev->pwr_ref_ch[i], dev->pwr_mon_adc->channel_valid );
             dev->pwr_ref_valid |= (1<<i);
             rf_switch_set( ERTM15_RF_REF, i, ERTM15_RF_OUT_OFF );
@@ -205,7 +213,7 @@ int ertm15_rf_distr_measure_power ( struct ertm15_rf_distribution_device *dev )
 void ertm15_rf_distr_output_enable( struct ertm15_rf_distribution_device *dev, int path, int channel, int enabled )
 {
     uint16_t* mask = (path == ERTM15_RF_LO ? &dev->lo_enabled : &dev->ref_enabled );
-    
+
     if( enabled )
         *mask |= ( 1 << channel );
     else
