@@ -3,16 +3,6 @@
 
 #include <hw/clock_monitor_regs.h>
 
-static inline void writel ( uint32_t reg, uint32_t val)
-{
-	*(volatile uint32_t *)(reg) = val;
-}
-
-static inline uint32_t readl ( uint32_t reg )
-{
-	return *(volatile uint32_t *)(reg);
-}
-
 int wb_cm_init( struct wb_clock_monitor_device *dev, uint32_t base_addr, int n_channels )
 {
     dev->base =base_addr;
