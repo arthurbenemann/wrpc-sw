@@ -14,7 +14,6 @@
 #include <errno.h>
 
 #include <wrc.h>
-#include "uart.h"
 #include "syscon.h"
 #include "shell.h"
 #include "storage.h"
@@ -159,7 +158,7 @@ int shell_interactive()
 		return 1;
 
 	case SH_INPUT:
-		c = uart_read_byte();
+		c = console_getc();
 
 		if (c < 0)
 			return 0;
@@ -385,4 +384,5 @@ static void shell_register_commands()
 	REGISTER_WRC_COMMAND(mode);
 	REGISTER_WRC_COMMAND(mac);
 	REGISTER_WRC_COMMAND(ertm);
+	REGISTER_WRC_COMMAND(sfp);
 }

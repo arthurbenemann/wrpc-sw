@@ -6,7 +6,8 @@
  *
  * Released according to the GNU GPL, version 2 or any later version.
  */
-#include <inttypes.h>
+
+#include <stdint.h>
 
 #include "board.h"
 #include "uart.h"
@@ -17,43 +18,42 @@
     ( ((( (unsigned long long)baudrate * 8ULL) << (16 - 7)) + \
       (CPU_CLOCK >> 8)) / (CPU_CLOCK >> 7) )
 
-volatile struct UART_WB *uart;
-
-void uart_init_hw()
+void suart_init(struct simple_uart_device *dev, uint32_t base_addr, int baudrate)
 {
-	uart = (volatile struct UART_WB *)BASE_UART;
-	uart->BCR = CALC_BAUD(UART_BAUDRATE);
+	dev->base = (void*) base_addr;
+	dev->crlf_mode = 0;
+	writel( CALC_BAUD(baudrate), dev->base + UART_REG_BCR );
 }
 
-void uart_write_byte(int b)
+void suart_write_byte(struct simple_uart_device *dev, int b)
 {
-	if (b == '\n')
-		uart_write_byte('\r');
-	while (uart->SR & UART_SR_TX_BUSY)
+	if (b == '\n' && dev->crlf_mode)
+		suart_write_byte(dev, '\r');
+
+	while (readl(dev->base + UART_REG_SR) & UART_SR_TX_BUSY)
 		;
-	uart->TDR = b;
+
+	writel( b, dev->base + UART_REG_TDR );
 }
 
-int uart_write_string(const char *s)
+int suart_write_string(struct simple_uart_device *dev, const char *s)
 {
 	const char *t = s;
 	while (*s)
-		uart_write_byte(*(s++));
+		suart_write_byte(dev, *(s++));
 	return s - t;
 }
 
-static int uart_poll(void)
+static int uart_poll(struct simple_uart_device *dev)
 {
-	return uart->SR & UART_SR_RX_RDY;
+	return readl( dev->base + UART_REG_SR) & UART_SR_RX_RDY;
 }
 
-int uart_read_byte(void)
+int suart_read_byte(struct simple_uart_device *dev)
 {
-	if (!uart_poll())
+	if (!uart_poll(dev))
 		return -1;
 
-	return uart->RDR & 0xff;
+	return readl(dev->base + UART_REG_RDR) & 0xff;
 }
 
-int puts(const char *s)
-	__attribute__((weak,alias("uart_write_string")));

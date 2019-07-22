@@ -21,6 +21,7 @@
 #include "minic.h"
 #include "pps_gen.h"
 #include "ptpd_netif.h"
+#include "dev/console.h"
 #include "dev/i2c.h"
 #include "storage.h"
 #include "softpll_ng.h"
@@ -67,18 +68,18 @@ uint32_t cal_phase_transition = 2389;
 
 int wrc_vlan_number = CONFIG_VLAN_NR;
 
-
 static void wrc_initialize(void)
 {
 	uint8_t mac_addr[6];
 
 	sdb_find_devices();
-	uart_init_hw();
+	console_init();
 
 	pp_printf("WR Core: starting up...\n");
 
 	timer_init(1);
 	usleep_init();
+	spll_very_init();
 
 	ertm14_init();
 
@@ -130,7 +131,6 @@ static void wrc_initialize(void)
 	wrc_ptp_init();
 	/* try reading t24 phase transition from EEPROM */
 	calib_t24p(WRC_MODE_MASTER, &cal_phase_transition);
-	spll_very_init();
 	shell_init();
 
 	wrc_ui_mode = UI_SHELL_MODE;
@@ -190,7 +190,7 @@ static int ui_update(void)
 
 	if (wrc_ui_mode == UI_GUI_MODE) {
 		ret = wrc_mon_gui();
-		if (uart_read_byte() == 27 || wrc_ui_refperiod == 0) {
+		if ( console_getc() == 27 || wrc_ui_refperiod == 0) {
 			shell_init();
 			wrc_ui_mode = UI_SHELL_MODE;
 		}

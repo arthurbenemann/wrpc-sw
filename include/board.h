@@ -7,6 +7,9 @@
  * Same appplies to ./tools/, where we can avoid a Makefile
  * patch for add "-include ../include/generated/autoconf.h"
  */
+
+#include <hw/rawmem.h> // for readl()/writel()
+
 #if defined(CONFIG_WR_SWITCH)
 #  include "board-wrs.h"
 #else

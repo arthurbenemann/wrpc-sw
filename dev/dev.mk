@@ -5,6 +5,7 @@ obj-$(CONFIG_LM32) += dev/uart.o
 
 obj-$(CONFIG_EMBEDDED_NODE) += \
 	dev/endpoint.o \
+	dev/console.o \
 	dev/ep_pfilter.o \
 	dev/i2c.o \
 	dev/minic.o \
