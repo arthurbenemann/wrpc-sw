@@ -24,7 +24,8 @@ obj-$(CONFIG_EMBEDDED_NODE) += \
 	dev/74x595.o \
 	dev/ertm15_rf_distr.o \
 	dev/24aa025.o \
-	dev/ad7888.o
+	dev/ad7888.o \
+	dev/spi_flash.o
 
 	
 obj-$(CONFIG_WR_NODE) += \
