@@ -28,7 +28,7 @@
 #endif
 
 /* Baud rate of the builtin UART (does not apply to the VUART) */
-#define CONSOLE_UART_BAUDRATE 115200ULL
+#define CONSOLE_UART_BAUDRATE 921600ULL
 
 /* Maximum number of simultaneously created sockets */
 #define NET_MAX_SOCKETS 12
@@ -58,7 +58,7 @@ int board_update(void);
 #define HAS_IP 0
 #endif
 
-#define BASE_SOFTPLL 0x20200
-#define BASE_PPS_GEN 0x20300
+#define BASE_SOFTPLL 0x40200
+#define BASE_PPS_GEN 0x40300
 
 #endif /* __BOARD_WRC_H */
