@@ -31,12 +31,13 @@
 #include "dev/24aa025.h"
 #include "dev/ad7888.h"
 #include "dev/ertm15_rf_distr.h"
+#include "dev/spi_flash.h"
 #include "dev/i2c.h"
 #include "softpll_ng.h"
 
 
-#define BASE_AUXWB 0x28000
-#define BASE_CLOCK_MONITOR  0x28100
+#define BASE_AUXWB 0x48000
+#define BASE_CLOCK_MONITOR  0x48100
 
 struct gpio_device gpio_aux;
 
@@ -89,6 +90,11 @@ static const struct gpio_pin pin_pwrmon_adc_dout = {  &gpio_aux, 46 };
 static const struct gpio_pin pin_pwrmon_adc_din = {  &gpio_aux, 47 };
 static const struct gpio_pin pin_pwrmon_adc_sclk = {  &gpio_aux, 45 };
 
+static const struct gpio_pin pin_flash_cs_n = {  &gpio_aux, 55 };
+static const struct gpio_pin pin_flash_miso = {  &gpio_aux, 53 };
+static const struct gpio_pin pin_flash_mosi = {  &gpio_aux, 54 };
+static const struct gpio_pin pin_flash_sck = {  &gpio_aux, 56 };
+
 
 struct spi_bus spi_pll_main;
 struct spi_bus spi_pll_ext;
@@ -97,6 +103,7 @@ struct spi_bus spi_ad9910_ref;
 struct spi_bus spi_ad9910_lo;
 struct spi_bus spi_ocxo_dac;
 struct spi_bus spi_ad7888;
+struct spi_bus spi_flash;
 
 struct ad951x_device ad9516_main;
 struct ad951x_device ad9516_ext;
@@ -105,6 +112,7 @@ struct ad9910_device dds_ad9910_ref;
 struct ad9910_device dds_ad9910_lo;
 struct ad7888_device pwrmon_adc;
 struct ertm15_rf_distribution_device rf_distr;
+struct spi_flash_device dev_flash;
 
 struct i2c_bus i2c_mac_addr;
 
@@ -120,6 +128,28 @@ static struct ltc6950_config pll_ertm15_config =
 #include "ertm_15_ltc6950_config.h"
 
 static spll_gain_schedule_t spll_main_ocxo_gain_sched;
+
+static void ertm14_spll_setup()
+{
+/* configure a suitable PI gain schedule for the SoftPLL: */
+    spll_gain_schedule_t* gs=  &spll_main_ocxo_gain_sched;
+
+    gs->n_stages = 2;
+
+/* we start with ~100 Hz bandwidth to make it lock reasonably fast */
+    gs->stages[0].kp = -1100;
+    gs->stages[0].ki = -30;
+    gs->stages[0].lock_samples = 10000;
+    gs->stages[0].shift = PI_FRACBITS;
+
+/* once it's locked, the loop bandwidth is switched to ~0.1 Hz to filter out WR link added phase noise */
+    gs->stages[1].kp = -5000;
+    gs->stages[1].ki = -8;
+    gs->stages[1].lock_samples = 10000;
+    gs->stages[1].shift = PI_FRACBITS;
+    
+	spll_set_gain_schedule( gs );
+}
 
 
 void ertm14_init()
@@ -167,7 +197,7 @@ void ertm14_init()
         100 );
 
 
-bb_spi_create( &spi_ad9910_lo,
+    bb_spi_create( &spi_ad9910_lo,
         NULL,
         &pin_ad9910_lo_sdio,
         &pin_ad9910_lo_sdio,
@@ -190,7 +220,7 @@ bb_spi_create( &spi_ad9910_lo,
 
     //ad951x_configure(&ad9516_main, &pll_main_dot050_config);
     ad951x_configure(&ad9516_main, &pll_main_ocxo_config);
- 
+
     ltc6950_configure(&ltc6950_pll, &pll_ertm15_config);
 
     wb_cm_init(&ertm14_cmon, BASE_CLOCK_MONITOR, 5);
@@ -220,8 +250,8 @@ bb_spi_create( &spi_ad9910_lo,
     ad9910_probe( &dds_ad9910_ref, &spi_ad9910_ref );
     ad9910_probe( &dds_ad9910_lo, &spi_ad9910_lo );
 
+/* Unique MAC address storage chips (eRTM14 - IC7 and IC8) */
 
-    
     bb_i2c_init( &i2c_mac_addr, &pin_mac_addr_scl, &pin_mac_addr_sda );
     m24aa025_init( &m24_mac_ids[0], &i2c_mac_addr, 0x50 );
     m24aa025_init( &m24_mac_ids[1], &i2c_mac_addr, 0x51 );
@@ -231,69 +261,47 @@ bb_spi_create( &spi_ad9910_lo,
     m24aa025_read_mac( &m24_mac_ids[0], mac );
     ep_set_mac_addr( mac );
 
+/* RF Power Monitor ADC (eRTM15 - IC43) */
     bb_spi_create( &spi_ad7888,
         &pin_pwrmon_adc_cs_n,
         &pin_pwrmon_adc_din,
         &pin_pwrmon_adc_dout,
         &pin_pwrmon_adc_sclk,
         100 );
-    
+
     ad7888_create( &pwrmon_adc, &spi_ad7888 );
-    
+
+/* RF distribution switches and shift registers controlling these (eRTM15 - IC26..28) */
     ertm15_rf_distr_init( &rf_distr, &pwrmon_adc );
 
-
-    usleep(1000000);
     ad9910_program(&dds_ad9910_ref, 205000000ULL, 0, 0x0 );
 
-#if 0
-    pp_printf("DONE\n");
+    ertm14_spll_setup();
 
+
+    gen_gpio_set_dir( &pin_flash_mosi, 1 );
+    gen_gpio_set_dir( &pin_flash_cs_n, 1 );
+    gen_gpio_set_dir( &pin_flash_sck, 1 );
+
+    /*pp_printf("FlashTest\n");
     for(;;)
     {
-        int v_on, v_off;
-        pp_printf(".");
-        int i;
-        for(i=6;i<=6;i++)
-        {
-        usleep(100000);
-        rf_switch_set( ERTM15_RF_REF, i, ERTM15_RF_OUT_OFF );
-        usleep(100000);
-        v_off = ad7888_meas_channel( &pwrmon_adc, 3 );
-        rf_switch_set( ERTM15_RF_REF, i, ERTM15_RF_OUT_ON );
-        usleep(100000);
-        rf_switch_set( ERTM15_RF_REF, i, ERTM15_RF_OUT_MONITOR );
-        usleep(100000);
-        v_on = ad7888_meas_channel( &pwrmon_adc, 3 );
-        rf_switch_set( ERTM15_RF_REF, i, ERTM15_RF_OUT_OFF );
-        pp_printf("Ch%d on %d off %d\n", i, v_on, v_off );
-        }
+        gen_gpio_bang( &pin_flash_mosi, 1 );
+        gen_gpio_bang( &pin_flash_cs_n, 2 );
+        gen_gpio_bang( &pin_flash_sck, 3 );
     }
-#endif
-#if 0
-    for(;;)
-    {
-        ertm15_rf_distr_measure_power( &rf_distr );
-        //ad7888_poll( &pwrmon_adc );
+*/
 
-    }
-#endif
-    
-    
-    spll_gain_schedule_t* gs=  &spll_main_ocxo_gain_sched;
-    gs->n_stages = 2;
+    bb_spi_create( &spi_flash,
+        &pin_flash_cs_n,
+        &pin_flash_mosi,
+        &pin_flash_miso,
+        &pin_flash_sck,
+        10 );
 
-    gs->stages[0].kp = -1100;
-    gs->stages[0].ki = -30;
-    gs->stages[0].lock_samples = 10000;
-    gs->stages[0].shift = PI_FRACBITS;
+    spi_flash_create( &dev_flash, &spi_flash );
 
-    gs->stages[1].kp = -5000;
-    gs->stages[1].ki = -8;
-    gs->stages[1].lock_samples = 10000;
-    gs->stages[1].shift = PI_FRACBITS;
-    
-	spll_set_gain_schedule( gs );
+    pp_printf("SPI Flash RDID = %x\n", spi_flash_read_id( &dev_flash ) );
 
 }
 
