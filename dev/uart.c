@@ -44,14 +44,14 @@ int suart_write_string(struct simple_uart_device *dev, const char *s)
 	return s - t;
 }
 
-static int uart_poll(struct simple_uart_device *dev)
+int suart_poll(struct simple_uart_device *dev)
 {
 	return readl( dev->base + UART_REG_SR) & UART_SR_RX_RDY;
 }
 
 int suart_read_byte(struct simple_uart_device *dev)
 {
-	if (!uart_poll(dev))
+	if (!suart_poll(dev))
 		return -1;
 
 	return readl(dev->base + UART_REG_RDR) & 0xff;
