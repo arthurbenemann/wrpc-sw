@@ -44,9 +44,9 @@ static int x595_gpio_in(const struct gpio_pin *pin)
     return priv->cur_data & (1 << pin->pin) ? 1 : 0;
 }
 
-#if 1
 static void x595_gpio_out(const struct gpio_pin *pin, int value);
 
+#if 0
 void x595_test(struct gpio_device *device)
 {
     struct x595_gpio_priv_data *priv = (struct x595_gpio_priv_data *)device->priv;
@@ -119,7 +119,7 @@ static void x595_gpio_out(const struct gpio_pin *pin, int value)
     x595_gpio_sync_out( priv );
 }
 
-int x595_gpio_create(struct gpio_device *device, int n_regs, struct gpio_pin *pin_rclk, struct gpio_pin *pin_srclk, struct gpio_pin *pin_srclr_n, struct gpio_pin *pin_ser)
+int x595_gpio_create(struct gpio_device *device, int n_regs, const struct gpio_pin *pin_rclk, const struct gpio_pin *pin_srclk, struct gpio_pin *pin_srclr_n, struct gpio_pin *pin_ser)
 {
     struct x595_gpio_priv_data *priv;
     if( x595_gpio_priv_count >= X595_GPIO_MAX )
@@ -128,10 +128,10 @@ int x595_gpio_create(struct gpio_device *device, int n_regs, struct gpio_pin *pi
     device->priv = priv = &x595_gpio_priv[x595_gpio_priv_count];
     x595_gpio_priv_count++;
 
-    priv->pin_rclk = pin_rclk;
-    priv->pin_srclk = pin_srclk;
-    priv->pin_srclr_n = pin_srclr_n;
-    priv->pin_ser = pin_ser;
+    priv->pin_rclk = (struct gpio_pin *) pin_rclk;
+    priv->pin_srclk = (struct gpio_pin *) pin_srclk;
+    priv->pin_srclr_n = (struct gpio_pin *) pin_srclr_n;
+    priv->pin_ser = (struct gpio_pin *) pin_ser;
     priv->cur_data = 0;
     priv->n_regs = n_regs;
 
@@ -142,7 +142,7 @@ int x595_gpio_create(struct gpio_device *device, int n_regs, struct gpio_pin *pi
     usleep(1);
     gen_gpio_out(priv->pin_srclr_n, 1);
 
-    x595_gpio_sync_out(&x595_gpio_priv);
+    x595_gpio_sync_out(device->priv);
 
     device->set_dir = NULL;
     device->set_out = x595_gpio_out;
