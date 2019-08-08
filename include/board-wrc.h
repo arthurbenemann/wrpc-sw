@@ -60,5 +60,6 @@ int board_update(void);
 
 #define BASE_SOFTPLL 0x40200
 #define BASE_PPS_GEN 0x40300
+#define BASE_ERTM14_DDS_SYNC_UNIT  0x48300
 
 #endif /* __BOARD_WRC_H */
