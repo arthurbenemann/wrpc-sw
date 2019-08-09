@@ -86,7 +86,7 @@ static const struct pin_mapping* find_pins_for_channel ( int path, int channel )
     return NULL;
 }
 
-int rf_switch_set( int path, int channel, int state)
+static int rf_switch_set( int path, int channel, int state)
 {
     struct gpio_device *gpio = ( path == ERTM15_RF_REF ? &gpio_rfsw_ref : &gpio_rfsw_lo);
     const struct pin_mapping *pins = find_pins_for_channel( path, channel );
@@ -144,8 +144,6 @@ static void update_rf_switches( struct ertm15_rf_distribution_device *dev )
 
 void ertm15_rf_distr_init( struct ertm15_rf_distribution_device *dev, struct ad7888_device *pwr_mon_adc )
 {
-    int i;
-
     x595_gpio_create ( &gpio_rfsw_ref, 3, &pin_ref_ctrl_updtclk, &pin_ref_ctrl_shftclk, NULL, &pin_ref_ctrl_ser );
     x595_gpio_create ( &gpio_rfsw_lo, 3, &pin_lo_ctrl_updtclk, &pin_lo_ctrl_shftclk, NULL, &pin_lo_ctrl_ser );
 
@@ -158,12 +156,11 @@ void ertm15_rf_distr_init( struct ertm15_rf_distribution_device *dev, struct ad7
     dev->pwr_ref_valid = 0;
     dev->pwr_mon_adc = pwr_mon_adc;
 
+    // disable all RF outputs to the backplane
     update_rf_switches( dev );
-// disable all RF outputs to the backplane
-   
 }
 
-int convert_power( int adc_value )
+static int convert_power( int adc_value )
 {
     //pp_printf("ADCV %d\n", adc_value );
 
@@ -200,7 +197,7 @@ int ertm15_rf_distr_measure_power ( struct ertm15_rf_distribution_device *dev )
             rf_switch_set( ERTM15_RF_REF, i, ERTM15_RF_OUT_MONITOR );
             usleep(10000);
             int raw_pwr = ad7888_meas_channel( dev->pwr_mon_adc, ADC_CH_REF_DDS_DISTR );
-            dev->pwr_ref_ch[ i ] = convert_power( dev->pwr_mon_adc->channel[ADC_CH_REF_DDS_DISTR] );
+            dev->pwr_ref_ch[ i ] = convert_power( raw_pwr );
             pp_printf("Ch REF %d: pwr %d v %d\n", i, dev->pwr_ref_ch[i], dev->pwr_mon_adc->channel_valid );
             dev->pwr_ref_valid |= (1<<i);
             rf_switch_set( ERTM15_RF_REF, i, ERTM15_RF_OUT_OFF );
