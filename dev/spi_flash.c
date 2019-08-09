@@ -90,6 +90,9 @@ void spi_flash_erase_sector(struct spi_flash_device *dev, uint32_t addr)
 	bb_spi_write(dev->bus, (addr & 0xFF00) >> 8, 8);
 	bb_spi_write(dev->bus, (addr & 0xFF), 8);
 	bb_spi_cs( dev->bus, 0 );
+
+	while (spi_flash_rsr(dev) & 0x01)
+			;
 }
 
 int spi_flash_erase(struct spi_flash_device *dev, uint32_t addr, int count)
