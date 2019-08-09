@@ -23,6 +23,12 @@
 
 #include "dev/ltc6950.h"
 
+int ltc6950_init( struct ltc6950_device *dev, struct spi_bus *bus )
+{
+    dev->bus = bus;
+    return 0;
+}
+
 // Read from LTC6950 via SPI
 uint8_t ltc6950_read(struct ltc6950_device *dev, uint32_t reg) {
     uint8_t rv;
