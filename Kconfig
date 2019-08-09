@@ -10,6 +10,10 @@ config WR_NODE
 	bool
 	default !WR_SWITCH
 
+config ERTM14
+	bool "Build WR Core firmware for the ERTM14"
+	default !WR_SWITCH
+
 # most options with no prompt here are prompted-for in the "advanced" section
 
 config PPSI_FORCE_CONFIG

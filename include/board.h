@@ -10,8 +10,12 @@
 
 #include <hw/rawmem.h> // for readl()/writel()
 
+
+
 #if defined(CONFIG_WR_SWITCH)
 #  include "board-wrs.h"
+#elif defined(CONFIG_ERTM14)
+#  include "board-ertm14.h"
 #else
 #  include "board-wrc.h"
 #endif
