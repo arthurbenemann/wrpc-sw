@@ -10,7 +10,7 @@
 
 static struct ad9910_config_reg ad9910_default_config[] = {
     {0, 0x02000002, 32},              // CFR1, unidir mode for SDIO
-    {1, 0x00000820, 32},              // CFR2
+    {1, 0x00000800, 32},              // CFR2, TW - enabled sync pulse timing validation
     {2, 0x1f3fc000, 32},              // CFR3: no PLL
     {3, 0x00007f64, 32},              // Aux DAC control: DAC Full scale current
     {4, 0xffffffff, 32},              // IO update rate
@@ -41,19 +41,18 @@ void ad9910_write(struct ad9910_device *dev, uint32_t reg, uint64_t value, int n
 
 void ad9910_trigger_update(struct ad9910_device *dev)
 {
-    gen_gpio_out(dev->pin_ioupdate, 1); // acknowledge
-    gen_gpio_out(dev->pin_ioupdate, 0); 
+    dev->trigger_io_update(dev);
 }
 
 #define AD9910_REG_CFR1 1
 #define AD9910_DEFAULT_CFR1  0x400820
 
-int ad9910_probe( struct ad9910_device *dev, struct spi_bus *bus )
+int ad9910_probe( struct ad9910_device *dev, struct spi_bus *bus, void (*trigger_io_update)(struct ad9910_device *dev) )
 {
     dev->bus = bus;
-    bb_spi_cs(dev->bus, 0);
+    dev->trigger_io_update = trigger_io_update;
 
-    gen_gpio_out(dev->pin_ioupdate, 0);
+    bb_spi_cs(dev->bus, 0);
 
     ad9910_write( dev, 0, 0x02000002, 32); // unidir mode for SDIO
     ad9910_trigger_update( dev );
@@ -94,4 +93,23 @@ int ad9910_program( struct ad9910_device *dev, uint64_t freq_hz, int phase, int 
 
     ad9910_trigger_update( dev );
     return 0;
+}
+
+#define AD9910_SYNC_VERIF_DELAY_TAPS 4
+
+void ad9910_configure_sync( struct ad9910_device *dev, int enable, int fine_delay_taps )
+{
+    uint32_t r10 = ((fine_delay_taps & 0x1f) << 3)
+                    | (enable ? ( 1<<27) : 0)
+                    | (AD9910_SYNC_VERIF_DELAY_TAPS << 28);
+
+    ad9910_write( dev, 0x1, 0x00000820, 32);              // CFR2, TW - disabled sync pulse timing validation
+    ad9910_write( dev, 0xa, 0 , 32 );
+    ad9910_trigger_update( dev );
+
+    ad9910_write( dev, 0x1, 0x00000800, 32);              // CFR2, TW - enabled sync pulse timing validation
+    ad9910_trigger_update( dev );
+
+    ad9910_write( dev, 0xa, r10 , 32 );
+    ad9910_trigger_update( dev );
 }
