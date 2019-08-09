@@ -19,9 +19,10 @@ typedef enum {
 	NOT = 7
 } pfilter_op_t;
 
-void ep_init();
+void ep_init(void);
 void ep_set_mac_addr(uint8_t *addr);
 void ep_get_mac_addr(uint8_t *addr);
+int ep_is_mac_addr_set(void);
 int ep_enable(int enabled, int autoneg);
 int ep_link_up(uint16_t * lpa);
 int ep_get_bitslide(void);
