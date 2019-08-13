@@ -22,23 +22,29 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#define CONFIG_ERTM14_FLASH
+
 #include "board.h"
 
-#ifdef CONFIG_FLASH
-    #include "flash.h"
+#ifdef CONFIG_ERTM14_FLASH
+    #include "dev/spi.h"
+    #include "dev/gpio.h"
+    #include "dev/spi_flash.h"
 #endif
 
 #ifndef CONFIG_USER_START
     #define CONFIG_USER_START 0x0
 #endif
 
-#include "uart.h"
+#include "dev/uart.h"
 
 #define CMD_INIT 1
 #define CMD_ERASE_SECTOR 2
 #define CMD_WRITE_PAGE 3
 #define CMD_WRITE_RAM 4
 #define CMD_GO 5
+#define CMD_GET_FLASH_ID 6
+
 
 #define RSP_OK 1
 #define RSP_HELLO 5
@@ -59,6 +65,40 @@ int     boot_wait;
 static uint32_t orig_reset_vector = 0x4;
 
 typedef void (*voidfunc_t)();
+
+#ifdef CONFIG_ERTM14_FLASH
+
+#define BASE_AUXWB 0x48000
+
+
+struct simple_uart_device dev_uart;
+struct gpio_device gpio_aux;
+struct spi_bus spi_flash;
+struct spi_flash_device dev_flash;
+
+static const struct gpio_pin pin_flash_cs_n = {  &gpio_aux, 55 };
+static const struct gpio_pin pin_flash_miso = {  &gpio_aux, 53 };
+static const struct gpio_pin pin_flash_mosi = {  &gpio_aux, 54 };
+static const struct gpio_pin pin_flash_sck = {  &gpio_aux, 56 };
+
+void  boot_flash_init()
+{
+    wb_gpio_create( &gpio_aux, BASE_AUXWB );
+    bb_spi_create( &spi_flash,
+        &pin_flash_cs_n,
+        &pin_flash_mosi,
+        &pin_flash_miso,
+        &pin_flash_sck,
+        10 );
+
+    gen_gpio_set_dir( &pin_flash_mosi, 1 );
+    gen_gpio_set_dir( &pin_flash_cs_n, 1 );
+    gen_gpio_set_dir( &pin_flash_sck, 1 );
+
+    spi_flash_create( &dev_flash, &spi_flash );
+}
+
+#endif
 
 uint16_t crc_xmodem_update(uint16_t crc, uint8_t data)
 {
@@ -95,13 +135,13 @@ crc16(unsigned char *buf, int len)
 int timeout_hit = 0;
 
 
-uint8_t uart_read_blocking()
+uint8_t suart_read_blocking()
 {
-    uint32_t t_end = get_ms_ticks() + UART_TIMEOUT;
+    uint32_t t_end = timer_get_tics() + UART_TIMEOUT;
 
-    while (get_ms_ticks() < t_end)
-        if (uart_poll())
-            return uart_read_byte();
+    while (timer_get_tics() < t_end)
+        if (suart_poll(&dev_uart))
+            return suart_read_byte(&dev_uart);
 
     timeout_hit = 1;
 
@@ -114,37 +154,40 @@ void uart_readm_blocking(uint8_t *buf, int count)
 
     for (i = 0; i < count; i++)
     {
-        buf[i] = uart_read_blocking();
+        buf[i] = suart_read_blocking();
 
         if (timeout_hit)
             return;
     }
 }
 
-void send_reply(uint8_t code)
+void send_reply(uint8_t code, int length, uint8_t *data)
 {
-    uint8_t  buf[16];
+    uint8_t  buf[32];
     uint16_t crc, i;
 
     buf[0] = 0x55;
     buf[1] = 0xaa;
     buf[2] = code;
-    buf[3] = 0;
-    buf[4] = 0;
+    buf[3] = (length >> 8) & 0xff;
+    buf[4] = (length & 0xff);
 
-    crc = crc16(buf, 5);
+    if(length > 0)
+        memcpy(buf+5, data, length);
 
-    buf[5] = (crc >> 8);
-    buf[6] = (crc & 0xff);
+    crc = crc16(buf, length+5);
 
-    for (i = 0; i < 7; i++)
-        uart_write_byte(buf[i]);
+    buf[length+5] = (crc >> 8);
+    buf[length+6] = (crc & 0xff);
+
+    for (i = 0; i < length+7; i++)
+        suart_write_byte(&dev_uart, buf[i]);
 }
 
 void on_cmd_init()
 {
     boot_wait = 0;
-    send_reply(RSP_OK);
+    send_reply(RSP_OK, 0, NULL);
 }
 
 uint32_t unpack_be32(uint8_t *p)
@@ -158,26 +201,32 @@ uint32_t unpack_be32(uint8_t *p)
     return rv;
 }
 
-#ifdef CONFIG_FLASH
+#ifdef CONFIG_ERTM14_FLASH
 void on_cmd_erase_sector(uint8_t *payload, int len)
 {
     uint32_t base = unpack_be32(payload);
 
-    flash_write_enable();
-    flash_erase_sector(base);
+    spi_flash_erase_sector(&dev_flash, base);
 
-    send_reply(RSP_OK);
+    send_reply(RSP_OK, 0, NULL);
 }
 
 void on_cmd_write_page(uint8_t *payload, int len)
 {
     uint32_t base = unpack_be32(payload);
 
-    flash_write_enable();
-    flash_program_page(base, payload + 4, len - 4);
+    spi_flash_write(&dev_flash, base, payload + 4, len - 4);
 
-    send_reply(RSP_OK);
+    send_reply(RSP_OK, 0, NULL);
 }
+
+void on_cmd_get_flash_id(uint8_t *payload, int len)
+{
+    uint32_t id = spi_flash_read_id(&dev_flash);
+
+    send_reply(RSP_OK, 4, &id);
+}
+
 #endif
 
 void on_cmd_write_ram(uint8_t *payload, int len)
@@ -204,7 +253,7 @@ void on_cmd_write_ram(uint8_t *payload, int len)
         }
     }
 
-    send_reply(RSP_OK);
+    send_reply(RSP_OK, 0, NULL);
 }
 
 void on_cmd_go(uint8_t *payload, int len)
@@ -213,30 +262,30 @@ void on_cmd_go(uint8_t *payload, int len)
 
     voidfunc_t f = (voidfunc_t)base;
 
-    send_reply(RSP_OK);
+    send_reply(RSP_OK, 0, NULL);
 
     f();
 }
 
 void boot_fsm()
 {
-    uint32_t t_exit = get_ms_ticks() + BOOT_TIMEOUT;
+    uint32_t t_exit = timer_get_tics() + BOOT_TIMEOUT;
 
     boot_wait = 1;
 
-    send_reply(RSP_HELLO);
+    send_reply(RSP_HELLO, 0, NULL);
 
     for (;;)
     {
         int pos = 0, i;
         uint16_t crc;
 
-        if (boot_wait && (get_ms_ticks() > t_exit))
+        if (boot_wait && (timer_get_tics() > t_exit))
             return;
 
         timeout_hit = 0;
 
-        int c = uart_read_blocking();
+        int c = suart_read_blocking();
 
         if ((c != 0x55) || timeout_hit)
         {
@@ -244,18 +293,18 @@ void boot_fsm()
         }
         rxbuf[pos++] = c;
 
-        c = uart_read_blocking();
+        c = suart_read_blocking();
 
         if ((c != 0xaa) || timeout_hit)
             continue;
 
         rxbuf[pos++] = c;
 
-        uint8_t command = uart_read_blocking();
+        uint8_t command = suart_read_blocking();
 
         rxbuf[pos++] = command;
-        rxbuf[pos++] = uart_read_blocking();
-        rxbuf[pos++] = uart_read_blocking();
+        rxbuf[pos++] = suart_read_blocking();
+        rxbuf[pos++] = suart_read_blocking();
 
         uint16_t len = (uint16_t)rxbuf[3] << 8 | rxbuf[4];
 
@@ -263,17 +312,17 @@ void boot_fsm()
             continue;
 
         for (i = 0; i < len; i++)
-            rxbuf[pos++] = uart_read_blocking();
+            rxbuf[pos++] = suart_read_blocking();
 
-        crc  = (uint16_t)uart_read_blocking() << 8;
-        crc |= (uint16_t)uart_read_blocking();
+        crc  = (uint16_t)suart_read_blocking() << 8;
+        crc |= (uint16_t)suart_read_blocking();
 
         if (timeout_hit)
             continue;
 
         if (crc != crc16(rxbuf, len + 5))
         {
-            send_reply(RSP_BAD_CRC);
+            send_reply(RSP_BAD_CRC, 0, NULL);
         }
 
 
@@ -284,13 +333,13 @@ void boot_fsm()
             break;
 
         case CMD_ERASE_SECTOR:
-        #ifdef CONFIG_FLASH
+        #ifdef CONFIG_ERTM14_FLASH
             on_cmd_erase_sector(rxbuf + 5, len);
         #endif
             break;
 
         case CMD_WRITE_PAGE:
-        #ifdef CONFIG_FLASH
+        #ifdef CONFIG_ERTM14_FLASH
             on_cmd_write_page(rxbuf + 5, len);
         #endif
             break;
@@ -303,11 +352,17 @@ void boot_fsm()
             on_cmd_go(rxbuf + 5, len);
             break;
 
+        case CMD_GET_FLASH_ID:
+            on_cmd_get_flash_id(rxbuf + 5, len);
+            break;
+
         default:
             break;
         }
     }
 }
+
+
 
 void start_user()
 {
@@ -318,9 +373,11 @@ void start_user()
 
 int main()
 {
-    uart_init_hw();
-    #ifdef CONFIG_FLASH
-        flash_init();
+    suart_init( &dev_uart, BASE_UART, CONSOLE_UART_BAUDRATE );
+
+    timer_init();
+    #ifdef CONFIG_ERTM14_FLASH
+        boot_flash_init();
     #endif
     boot_fsm();
     start_user();

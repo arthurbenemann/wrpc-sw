@@ -23,12 +23,21 @@ import time
 import serial
 import struct
 import getopt
+import signal
+import sys
 
+kill_usb = False
+
+def signal_handler(sig, frame):
+        global kill_usb
+        print('You pressed Ctrl+C!')
+        kill_usb = True
+        sys.exit(0)
 
 class SerialIF:
     def __init__(self, device="/dev/ttyUSB0"):
         self.ser = serial.Serial(
-            port=device, baudrate=115200, timeout=0, rtscts=False)
+            port=device, baudrate=921600, timeout=0, rtscts=False)
 
     def reset_board(self):
         self.ser.setRTS(True)
@@ -45,18 +54,20 @@ class SerialIF:
             self.ser.write(x)
 
     def recv(self):
+        global kill_usb
         while True:
+            if kill_usb:
+                return None
             try:
                 #print("State")
                 state = self.ser.read(1)
-                #print("2", state)
                 if state == None or len(state) == 0:
                     continue
                 #print ("************************ ST", state)
                 return state
             except:
                 #print("Sleep")
-                time.sleep(0.01)
+                time.sleep(1)
                 pass
 
     def recv_nonblock(self):
@@ -164,6 +175,12 @@ class DSIBootloader:
 
     def cmd_boot_enter(self):
         return self.command(self.CMD_BOOT_INIT, [])
+
+    def cmd_read_flash_id(self):
+        data = [(addr >> 24) & 0xff, (addr >> 16) & 0xff, (addr >> 8) & 0xff,
+                addr & 0xff]
+        return self.command(self.CMD_FLASH_ERASE_SECTOR, data)
+
 
     def cmd_erase_sector(self, addr):
         data = [(addr >> 24) & 0xff, (addr >> 16) & 0xff, (addr >> 8) & 0xff,
@@ -301,6 +318,8 @@ def run_terminal(ser):
 
 
 def main(argv):
+    signal.signal(signal.SIGINT, signal_handler)
+
     our_port = "/dev/ttyUSB0"
     do_flash = False
     try:
