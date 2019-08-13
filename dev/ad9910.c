@@ -9,7 +9,7 @@
 #define AD9910_REF_FREQ ( 1000000000ULL ) // 1 GHz
 
 static struct ad9910_config_reg ad9910_default_config[] = {
-    {0, 0x02000002, 32},              // CFR1, unidir mode for SDIO
+    {0, 0x02000002 | (1<<13), 32},              // CFR1, unidir mode for SDIO, autoclear phase accumulator on IOUPDATE
     {1, 0x00000800, 32},              // CFR2, TW - enabled sync pulse timing validation
     {2, 0x1f3fc000, 32},              // CFR3: no PLL
     {3, 0x00007f64, 32},              // Aux DAC control: DAC Full scale current
@@ -95,21 +95,19 @@ int ad9910_program( struct ad9910_device *dev, uint64_t freq_hz, int phase, int 
     return 0;
 }
 
-#define AD9910_SYNC_VERIF_DELAY_TAPS 4
+#define AD9910_SYNC_VERIF_DELAY_TAPS 1
 
 void ad9910_configure_sync( struct ad9910_device *dev, int enable, int fine_delay_taps )
 {
     uint32_t r10 = ((fine_delay_taps & 0x1f) << 3)
                     | (enable ? ( 1<<27) : 0)
-                    | (AD9910_SYNC_VERIF_DELAY_TAPS << 28);
+                    | (AD9910_SYNC_VERIF_DELAY_TAPS << 28) | (1<<26);
 
-    ad9910_write( dev, 0x1, 0x00000820, 32);              // CFR2, TW - disabled sync pulse timing validation
     ad9910_write( dev, 0xa, 0 , 32 );
+    ad9910_write( dev, 0x1, 0x00000820, 32);              // CFR2, TW - enabled sync pulse timing validation
     ad9910_trigger_update( dev );
 
     ad9910_write( dev, 0x1, 0x00000800, 32);              // CFR2, TW - enabled sync pulse timing validation
-    ad9910_trigger_update( dev );
-
     ad9910_write( dev, 0xa, r10 , 32 );
     ad9910_trigger_update( dev );
 }
