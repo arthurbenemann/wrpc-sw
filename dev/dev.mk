@@ -23,9 +23,11 @@ obj-$(CONFIG_EMBEDDED_NODE) += \
 	dev/clock_monitor.o \
 	dev/74x595.o \
 	dev/ertm15_rf_distr.o \
+	dev/ertm14_dds_sync.o \
 	dev/24aa025.o \
 	dev/ad7888.o \
-	dev/spi_flash.o
+	dev/spi_flash.o \
+	dev/ad9520.o
 
 	
 obj-$(CONFIG_WR_NODE) += \
