@@ -3,14 +3,9 @@
  *
  * Released according to the GNU GPL, version 2 or any later version.
  */
+
 #ifndef __BOARD_ERTM14_H
 #define __BOARD_ERTM14_H
-
-/*
- * This is meant to be automatically included by the Makefile,
- * when wrpc-sw is build for ERTM14 (MTCA.4 WR node) -- as opposed to wrs (switch)
- * or vanilla WR core
- */
 
 #include "dev/gpio.h"
 #include "dev/spi.h"
@@ -68,14 +63,24 @@ int board_update(void);
 #define HAS_IP 0
 #endif
 
+#define ERTM14_MAX_CONFIGS 8
 
 #define BASE_AUXWB 0x48000
 #define BASE_CLOCK_MONITOR  0x48100
 #define BASE_SOFTPLL 0x40200
 #define BASE_PPS_GEN 0x40300
 #define BASE_ERTM14_DDS_SYNC_UNIT  0x48300
+#define BASE_UART 0x40500
+#define BASE_SYSCON 0x40400
 
-struct ertm14_board 
+#define ERTM14_RF_OUT_MIN_ID 4
+#define ERTM14_RF_OUT_MAX_ID 12
+
+#define ERTM14_CLKAB_OUT_MIN_ID 0
+#define ERTM14_CLKAB_OUT_MAX_ID 11
+
+
+struct ertm14_board
 {
     struct gpio_device gpio_aux;
     struct wb_clock_monitor_device ertm14_cmon;
@@ -106,6 +111,34 @@ struct ertm14_board
     struct dds_sync_unit_device dds_sync_dev;
 };
 
+struct ertm14_dds_config
+{
+    uint32_t freq_hz;
+    uint8_t out_state[ERTM14_RF_OUT_MAX_ID + 1];
+    int out_power[ERTM14_RF_OUT_MAX_ID + 1];
+    int amp_power;
+    int ampl_factor;
+};
+
+struct ertm14_board_config
+{
+    int valid;
+    struct ertm14_dds_config ref;
+    struct ertm14_dds_config lo;
+    uint32_t clka_freq_hz[ERTM14_CLKAB_OUT_MAX_ID + 1];
+    uint32_t clkb_freq_hz[ERTM14_CLKAB_OUT_MAX_ID + 1];
+    uint32_t clka_enable_mask;
+    uint32_t clkb_enable_mask;
+};
+
+
+
 extern struct ertm14_board board;
+
+struct ertm14_board_config *ertm14_get_config(int config_id);
+int ertm14_apply_config(int config_id);
+int ertm14_get_current_config_id(void);
+int ertm14_is_config_ready(void);
+int ertm14_get_clkab_divider( int freq );
 
 #endif /* __BOARD_WRC_H */

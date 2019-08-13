@@ -38,6 +38,8 @@
 #include "endpoint.h"
 
 struct ertm14_board board;
+static struct ertm14_board_config ertm14_configs[ ERTM14_MAX_CONFIGS ];
+static struct ertm14_board_config *ertm14_current_config;
 
 static struct gpio_pin pin_pll_main_cs_n = { &board.gpio_aux, 0 };
 static struct gpio_pin pin_pll_main_sdi = { &board.gpio_aux, 1 };
@@ -69,6 +71,7 @@ static struct gpio_pin pin_ad9910_lo_sdio = { &board.gpio_aux, 4+21 };
 static struct gpio_pin pin_ad9910_lo_sclk = { &board.gpio_aux, 5+21 };
 static struct gpio_pin pin_ad9910_lo_reset = { &board.gpio_aux, 6+21 };
 static struct gpio_pin pin_ad9910_lo_io_update = { &board.gpio_aux, 3+21 };
+const struct gpio_pin pin_ad9910_lo_sync_smp_err = { &board.gpio_aux, 5+21 };
 
 static struct gpio_pin pin_ad9910_ref_sdio = { &board.gpio_aux, 4+28 };
 static struct gpio_pin pin_ad9910_ref_sclk = { &board.gpio_aux, 5+28 };
@@ -97,43 +100,17 @@ static struct gpio_pin pin_ad9520_clkb_scl = {  &board.gpio_aux, 59 };
 static struct gpio_pin pin_ad9520_clkb_sda = {  &board.gpio_aux, 60 };
 
 
-#if 0
-struct spi_bus spi_pll_main;
-struct spi_bus spi_pll_ext;
-struct spi_bus spi_ltc6950;
-struct spi_bus spi_ad9910_ref;
-struct spi_bus spi_ad9910_lo;
-struct spi_bus spi_ocxo_dac;
-struct spi_bus spi_ad7888;
-struct spi_bus spi_flash;
-struct i2c_bus i2c_clka_distr;
-struct i2c_bus i2c_clkb_distr;
-
-struct ad951x_device ad9516_main;
-struct ad951x_device ad9516_ext;
-struct ltc6950_device ltc6950_pll;
-struct ad9910_device dds_ad9910_ref;
-struct ad9910_device dds_ad9910_lo;
-struct ad7888_device pwrmon_adc;
-struct ertm15_rf_distribution_device rf_distr;
-struct spi_flash_device dev_flash;
-struct ad9520_device dev_clka_distr;
-struct ad9520_device dev_clkb_distr;
-
-struct i2c_bus i2c_mac_addr;
-
-struct m24aa025_device m24_mac_ids[2];
-#endif
-
-
-static struct ad951x_config pll_main_dot050_config =
+static struct ad95xx_config pll_main_dot050_config =
 #include "ertm_14_pll_main_dot050_config.h"
 
-static struct ad951x_config pll_main_ocxo_config =
+static struct ad95xx_config pll_main_ocxo_config =
 #include "ertm_14_pll_ocxo_config.h"
 
 static struct ltc6950_config pll_ertm15_config =
 #include "ertm_15_ltc6950_config.h"
+
+static struct ad95xx_config clk_dist_ertm15_default_config =
+#include "ertm_15_ad9520_default_config.h"
 
 static spll_gain_schedule_t spll_main_ocxo_gain_sched;
 
@@ -160,16 +137,26 @@ static void ertm14_spll_setup(void)
 }
 
 
-static void ad9910_set_fine_delay( struct dds_sync_unit_channel *ch, int n_taps )
+static int ad9910_set_fine_delay( struct dds_sync_unit_channel *ch, int n_taps )
 {
-    pp_printf("SetFD ch %d taps %d\n", ch->index, n_taps );
+    struct ad9910_device *dev;
+
+    if(ch->index == ERTM14_DDS_SYNC_REF)
+        dev = &board.dds_ad9910_ref;
+    else
+        dev = &board.dds_ad9910_lo;
+
+    ad9910_configure_sync( dev, 1, n_taps );
+    
+    //pp_printf("SetFD ch %d dev %p taps %d\n", ch->index, dev, n_taps );
+    return 0;
 }
 
 static void ertm14_dds_trigger_ioupdate( struct ad9910_device *dev )
 {
     int channel = (dev == &board.dds_ad9910_ref ? ERTM14_DDS_IOUPDATE_REF : ERTM14_DDS_IOUPDATE_LO);
     
-    pp_printf("TrigIOUpdate channel %d\n", channel );
+    //pp_printf("TrigIOUpdate dev %p channel %d\n", dev, channel );
     dds_sync_force_pulse( &board.dds_sync_dev, channel );
 }
 
@@ -179,20 +166,76 @@ static int ertm14_dds_sync_init()
 
     dds_sync_unit_create( &board.dds_sync_dev, BASE_ERTM14_DDS_SYNC_UNIT );
 
-    dds_sync_unit_setup_channel ( &board.dds_sync_dev, ERTM14_DDS_SYNC_REF, 1, ch_delays[0], 0, 0 );
+// Sync_in: continuous waveform, use external delay line (inside AD9910)
+    dds_sync_unit_setup_channel ( &board.dds_sync_dev, ERTM14_DDS_SYNC_LO, 1, ch_delays[ERTM14_DDS_SYNC_LO], 0, 1 );
+    dds_sync_unit_setup_channel ( &board.dds_sync_dev, ERTM14_DDS_SYNC_REF, 1, ch_delays[ERTM14_DDS_SYNC_REF], 0, 1 );
+    dds_sync_unit_set_external_fine_delay( &board.dds_sync_dev, ERTM14_DDS_SYNC_REF, 75, ad9910_set_fine_delay );
+    dds_sync_unit_set_external_fine_delay( &board.dds_sync_dev, ERTM14_DDS_SYNC_LO, 75, ad9910_set_fine_delay );
 
+// IOupdate: internal delay line, single-shot mode
     dds_sync_unit_setup_channel ( &board.dds_sync_dev, ERTM14_DDS_IOUPDATE_LO, 1, ch_delays[ERTM14_DDS_IOUPDATE_LO], 0, 0 );
     dds_sync_unit_setup_channel ( &board.dds_sync_dev, ERTM14_DDS_IOUPDATE_REF, 1, ch_delays[ERTM14_DDS_IOUPDATE_REF], 0, 0 );
 
 
-/*    dds_sync_unit_setup_channel ( &dds_sync_dev, ERTM14_DDS_SYNC_DDS_LO, 1, ch_delays[1], 0 );
+/*  dds_sync_unit_setup_channel ( &dds_sync_dev, ERTM14_DDS_SYNC_DDS_LO, 1, ch_delays[1], 0 );
     dds_sync_unit_setup_channel ( &dds_sync_dev, ERTM14_DDS_SYNC_CLKA, 1, ch_delays[2], 1 );
     dds_sync_unit_setup_channel ( &dds_sync_dev, ERTM14_DDS_SYNC_CLKB, 1, ch_delays[3], 1 );*/
 
-    dds_sync_unit_set_external_fine_delay( &board.dds_sync_dev, ERTM14_DDS_SYNC_REF, 75, ad9910_set_fine_delay );
-    dds_sync_unit_set_external_fine_delay( &board.dds_sync_dev, ERTM14_DDS_SYNC_LO, 75, ad9910_set_fine_delay );
+    
     return 0;
 }
+
+void ertm14_dds_sync_test()
+{
+    shw_pps_gen_init();
+
+    shw_pps_gen_enable_output(1);
+    shw_pps_gen_unmask_output(1);
+
+    int i = 0;
+    int dly_taps = 0;
+
+    uint32_t channel_mask = ( 1 << ERTM14_DDS_SYNC_LO ) | ( 1<< ERTM14_DDS_SYNC_REF );
+
+    int fine = 0;
+
+#if 0
+    for(;;)
+    {
+        pp_printf("Sync [fine %d]! ", fine);
+
+        dds_sync_unit_setup_channel ( &board.dds_sync_dev, ERTM14_DDS_SYNC_LO, 1, 100000 + fine, 0, 1 );
+        dds_sync_unit_setup_channel ( &board.dds_sync_dev, ERTM14_DDS_SYNC_REF, 1, 100000 + fine, 0, 1 );
+        dds_sync_unit_set_external_fine_delay( &board.dds_sync_dev, ERTM14_DDS_SYNC_REF, 75, ad9910_set_fine_delay );
+        dds_sync_unit_set_external_fine_delay( &board.dds_sync_dev, ERTM14_DDS_SYNC_LO, 75, ad9910_set_fine_delay );
+
+        dds_sync_unit_trigger( &board.dds_sync_dev, channel_mask );
+        while ( !dds_sync_unit_poll( &board.dds_sync_dev, channel_mask ) );
+
+        pp_printf("SmpERR LO %d REF %d\n",!!gen_gpio_in( &pin_ad9910_lo_sync_smp_err ), !!gen_gpio_in( &pin_ad9910_ref_sync_smp_err));
+
+        fine += 75;
+    }
+#endif
+
+    for(;;)
+    {
+        dds_sync_force_pulse( &board.dds_sync_dev, ERTM14_DDS_IOUPDATE_REF );
+        usleep(10000);
+    }
+
+    for(;;)
+    {
+
+        dds_sync_force_pulse( &board.dds_sync_dev, ERTM14_DDS_IOUPDATE_REF );
+        
+        usleep(100000);
+        pp_printf("Pulse %d\n", i++);
+
+    }
+}
+
+
 
 void ertm14_init(void)
 {
@@ -287,9 +330,6 @@ void ertm14_init(void)
 
     ertm14_dds_sync_init();
 
-//    board.dds_ad9910_ref.pin_ioupdate = &pin_ad9910_ref_io_update;
-//    board.dds_ad9910_lo.pin_ioupdate = &pin_ad9910_lo_io_update;
-
     ad9910_probe( &board.dds_ad9910_ref, &board.spi_ad9910_ref, ertm14_dds_trigger_ioupdate );
     ad9910_probe( &board.dds_ad9910_lo, &board.spi_ad9910_lo, ertm14_dds_trigger_ioupdate );
 
@@ -335,6 +375,8 @@ void ertm14_init(void)
 
     spi_flash_create( &board.dev_flash, &board.spi_flash );
 
+
+
     pp_printf("SPI Flash RDID = %x\n", spi_flash_read_id( &board.dev_flash ) );
 
     bb_i2c_init( &board.i2c_clka_distr, &pin_ad9520_clka_scl, &pin_ad9520_clka_sda );
@@ -343,10 +385,51 @@ void ertm14_init(void)
     ad9520_init( &board.dev_clka_distr, &board.i2c_clka_distr, 0x5c );
     ad9520_init( &board.dev_clkb_distr, &board.i2c_clkb_distr, 0x5c );
     
-    ertm14_dds_sync_test();
-
+//    ertm14_dds_sync_test();
 }
 
 
+struct ertm14_board_config *ertm14_get_config(int config_id)
+{
+    return &ertm14_configs[config_id];
+}
 
+int ertm14_apply_config(int config_id)
+{
+    ertm14_current_config = &ertm14_configs[config_id];
+}
 
+int ertm14_get_current_config_id()
+{
+    int i;
+
+    for(i = 0; i < ERTM14_MAX_CONFIGS; i++)
+        if( &ertm14_configs[i] == ertm14_current_config )
+            return i;
+
+    return -1;
+}
+
+int ertm14_is_config_ready()
+{
+
+}
+
+static int ertm14_update_config_task(void)
+{
+
+}
+
+int ertm14_get_clkab_divider( int freq )
+{
+    switch( freq )
+    {
+        case 1000000000: return 1;
+        case 500000000: return 2;
+        case 250000000: return 4;
+        case 125000000: return 8;
+        case 62500000: return 16;
+        default:
+            return -1;
+    }
+}
