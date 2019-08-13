@@ -18,8 +18,13 @@ static uint8_t spi_flash_rsr(struct spi_flash_device *dev);
  */
 void spi_flash_create(struct spi_flash_device *dev, struct spi_bus *bus)
 {
+	int i;
+
 	dev->bus = bus;
 	dev->sector_size = 4096;
+
+	for(i=0;i < 10; i++)
+		(void) spi_flash_rsr( dev ); // make sure SPI bus is in known state
 }
 
 /*
