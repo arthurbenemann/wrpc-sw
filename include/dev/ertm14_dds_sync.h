@@ -58,8 +58,8 @@ struct dds_sync_unit_device {
 void dds_sync_unit_create( struct dds_sync_unit_device *dev, uint32_t base );
 void dds_sync_unit_setup_channel ( struct dds_sync_unit_device* dev, int ch, int enable, int pps_offset_ps, int polarity, int continuous );
 void dds_sync_unit_set_external_fine_delay ( struct dds_sync_unit_device* dev, int ch, int tap_size,  int (*set_external_delay)( struct dds_sync_unit_channel* ch, int ) );
-void dds_sync_unit_trigger( struct dds_sync_unit_device* dev );
+void dds_sync_unit_trigger( struct dds_sync_unit_device* dev, uint32_t mask );
 void dds_sync_force_pulse( struct dds_sync_unit_device* dev, int ch );
-int dds_sync_unit_poll( struct dds_sync_unit_device* dev );
+int dds_sync_unit_poll( struct dds_sync_unit_device* dev, uint32_t mask );
 
 #endif

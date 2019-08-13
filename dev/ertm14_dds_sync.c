@@ -71,13 +71,18 @@ void dds_sync_force_pulse( struct dds_sync_unit_device* dev, int channel )
 
     uint32_t trig_mask = ( 1 << ( channel + DS_CSR_FORCE0_OFFSET) );
 
-    pp_printf("ForceSync ch %x ocr %x mask %x\n", channel, ocr, trig_mask);
+    //pp_printf("ForceSync ch %x ocr %x mask %x\n", channel, ocr, trig_mask);
     
 
     writel( trig_mask, dev->base + DS_REG_CSR ); // configure
 }
 
-void dds_sync_unit_trigger( struct dds_sync_unit_device* dev )
+static uint8_t rotr( uint8_t x, int n )
+{
+    return (x >> n) | (x << (8-n) );
+}
+
+void dds_sync_unit_trigger( struct dds_sync_unit_device* dev, uint32_t mask )
 {
     int i;
     uint32_t trig_mask = 0;
@@ -86,7 +91,7 @@ void dds_sync_unit_trigger( struct dds_sync_unit_device* dev )
     {
         struct dds_sync_unit_channel* ch = &dev->channels[i];
 
-        if(ch->flags & DDS_SYNC_ENABLED)
+        if(ch->flags & DDS_SYNC_ENABLED && ( mask & (1<<i)))
         {
             uint32_t ocr;
             int polarity = ch->flags & DDS_SYNC_NEGATIVE;
@@ -94,8 +99,15 @@ void dds_sync_unit_trigger( struct dds_sync_unit_device* dev )
             uint32_t coarse_par = ch->pps_offset_ps / 16000; // refclk period = 16 ns = 16000 ps
             uint32_t coarse_ser = ch->pps_offset_ps / 2000 - coarse_par * 8;
             uint32_t fine = (ch->pps_offset_ps % 2000) / ch->delay_tap_size;
-            uint32_t mask = 0xff; //(1 << (7-coarse_ser));
             
+            
+            uint32_t mask;
+            
+            if( continuous )
+                mask = 0xf0; //rotr(0xf0, 7-coarse_ser );
+            else
+                mask = (1 << (7-coarse_ser+1)) - 1;
+
             ocr = (coarse_par << DS_OCR0_PPS_OFFS_SHIFT)
 	                | (mask << DS_OCR0_MASK_SHIFT)
                     | (fine << DS_OCR0_FINE_SHIFT)
@@ -121,13 +133,16 @@ void dds_sync_unit_trigger( struct dds_sync_unit_device* dev )
     writel( trig_mask, dev->base + DS_REG_CSR); // arm trigger
 }
 
-int dds_sync_unit_poll( struct dds_sync_unit_device* dev )
+int dds_sync_unit_poll( struct dds_sync_unit_device* dev, uint32_t mask )
 {
     uint32_t rv = readl( dev->base + DS_REG_CSR);
     int i;
 
     for(i = 0 ; i < DDS_SYNC_N_CHANNELS; i++ )
     {
+        if( (mask & (1<<i)) == 0 )
+            continue;
+
         struct dds_sync_unit_channel* ch = &dev->channels[i];
 
         uint32_t mask = 1 << ( DS_CSR_READY_SHIFT + i);
@@ -174,26 +189,3 @@ void ertm14_dds_sync_test()
     }
 }
 #endif
-
-
-void ertm14_dds_sync_test()
-{
-    shw_pps_gen_init();
-
-    shw_pps_gen_enable_output(1);
-    shw_pps_gen_unmask_output(1);
-
-    int i = 0;
-    int dly_taps = 0;
-
-    for(;;)
-    {
-
-        dds_sync_force_pulse( &board.dds_sync_dev, ERTM14_DDS_IOUPDATE_REF );
-        
-        usleep(100000);
-        pp_printf("Pulse %d\n", i++);
-
-    }
-}
-
