@@ -1,7 +1,7 @@
 #ifndef __GPIO_H
 #define __GPIO_H
 
-#include "board.h"
+#include <stdint.h>
 
 struct gpio_pin;
 
