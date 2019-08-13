@@ -110,6 +110,8 @@ void spll_set_gain_schedule( spll_gain_schedule_t* sch );
 
 void check_vco_frequencies(void);
 
+void spll_set_ptracker_average_samples( int samp );
+
 /*
  * Aux and main state:
  * used to be in .c file, but we need it here for memory dumping
