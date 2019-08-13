@@ -8,9 +8,10 @@
  * patch for add "-include ../include/generated/autoconf.h"
  */
 
+#ifndef __BOARD_H
+#define __BOARD_H
+
 #include <hw/rawmem.h> // for readl()/writel()
-
-
 
 #if defined(CONFIG_WR_SWITCH)
 #  include "board-wrs.h"
@@ -18,4 +19,6 @@
 #  include "board-ertm14.h"
 #else
 #  include "board-wrc.h"
+#endif
+
 #endif
