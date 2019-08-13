@@ -74,7 +74,7 @@ static void wrc_initialize(void)
 
 	sdb_find_devices();
 	console_init();
-
+	
 	pp_printf("WR Core: starting up...\n");
 
 	timer_init(1);
@@ -82,7 +82,7 @@ static void wrc_initialize(void)
 	spll_very_init();
 
 	ertm14_init();
-
+	
 	get_hw_name(wrc_hw_name);
 	storage_read_hdl_cfg();
 	wrpc_w1_init();
@@ -120,7 +120,7 @@ static void wrc_initialize(void)
 		mac_addr[4], mac_addr[5]);
 
 	net_rst();
-	ep_init(mac_addr);
+	ep_init();
 	/* Sleep for 1s to make sure WRS v4.2 always realizes that
 	 * the link is down */
 	timer_delay_ms(200);
