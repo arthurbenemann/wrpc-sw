@@ -13,8 +13,6 @@
 /* The following pointers are exported */
 unsigned char *BASE_MINIC;
 unsigned char *BASE_EP;
-unsigned char *BASE_SYSCON;
-unsigned char *BASE_UART;
 unsigned char *BASE_ONEWIRE;
 unsigned char *BASE_ETHERBONE_CFG;
 
@@ -63,8 +61,6 @@ struct wrc_device {
 struct wrc_device devs[] = {
 	{&BASE_MINIC,         VID_CERN,	0xab28633a},
 	{&BASE_EP,            VID_CERN,	0x650c2d4f},
-	{&BASE_SYSCON,        VID_CERN,	0xff07fc47},
-	{&BASE_UART,          VID_CERN,	0xe2d13d04},
 	{&BASE_ONEWIRE,       VID_CERN,	0x779c5443},
 	{&BASE_ETHERBONE_CFG, VID_GSI,	0x68202b22},
 };
