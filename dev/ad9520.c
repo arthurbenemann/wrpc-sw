@@ -22,18 +22,9 @@
 #include "dev/i2c.h"
 
 
-// Write to AD9510 via SPI
+// Write to AD9510 via I2C
 void ad9520_write(struct ad9520_device *dev, uint32_t reg, uint8_t value)
 {
-    #if 0
-    if ( reg == 0x0 && !( value == 0x90 || value == 0xb0 ) )
-    {
-        pp_printf("Warning, some nasty programmer trying to disable AD9520's bidirectional SPI mode!\n");
-        // prevent from chaging the SPI config (SDIO is bidirectional, changing this will cause the chip to stop responding!)
-        value |= 0x80;
-    }
-    #endif
-
     bb_i2c_start( dev->bus );
     bb_i2c_put_byte( dev->bus, dev->addr << 1 );
     bb_i2c_put_byte( dev->bus, reg >> 8);
@@ -42,7 +33,7 @@ void ad9520_write(struct ad9520_device *dev, uint32_t reg, uint8_t value)
     bb_i2c_stop( dev->bus );
 }
 
-// Read from AD9510 via SPI
+// Read from AD9510 via I2C
 uint8_t ad9520_read(struct ad9520_device *dev, uint32_t reg) {
     uint8_t rv;
     bb_i2c_start( dev->bus );
@@ -62,15 +53,52 @@ int ad9520_init(struct ad9520_device *dev, struct i2c_bus *bus, uint8_t addr)
     dev->bus = bus;
     dev->addr = addr;
 
-    pp_printf("AD9520 init!\n");
-
     ad9520_write( dev, 0x00, 0x81);  // unidir mode
    	ad9520_write( dev, 0x232, 0x01);  // commit
 
     int id = ad9520_read( dev, 0x3 );
-    
-   
+    return (id == 0x61 ? 0 : -1);
+}
 
+int ad9520_configure(struct ad9520_device *dev, struct ad95xx_config *cfg) 
+{
+    int i;
+    for(i = 0; i < cfg->n_regs; i++) {
+        ad9520_write(dev, cfg->regs[i].addr, cfg->regs[i].value);
+    }
+
+    ad9520_write(dev, 0x232, 0x01);  // commit
+
+    return 0;
+};
+
+int ad9520_enable_output(struct ad9520_device *dev, int channel, int enabled )
+{
+    uint32_t val = enabled ? 0x64 : 0x65; // LVPECL
+    ad9520_write(dev, 0xf0 + channel, val);
+    ad9520_write(dev, 0x232, 0x01);  // commit
+    return 0;
+}
+
+int ad9520_set_output_divider( struct ad9520_device *dev, int channel, int divider)
+{
+    if( divider == 1 ) // undivided output
+    {
+        ad9520_write(dev, 0x190 + 3*channel, 0);
+        ad9520_write(dev, 0x191 + 3*channel, 0x80); // bypass divider
+        ad9520_write(dev, 0x192 + 3*channel, 0);
+    } else {
+        int cyc = (divider / 2) - 1;
+
+        if( cyc >= 8)
+            return -1;
+
+        ad9520_write(dev, 0x190 + 3*channel, cyc | (cyc<<4));
+        ad9520_write(dev, 0x191 + 3*channel, 0); // enable divider
+        ad9520_write(dev, 0x192 + 3*channel, 0);
+    }
+
+    ad9520_write(dev, 0x232, 0x01);  // commit
     return 0;
 }
 

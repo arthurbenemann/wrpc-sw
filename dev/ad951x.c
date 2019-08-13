@@ -40,7 +40,7 @@ uint32_t ad951x_read(struct ad951x_device *dev, uint32_t reg) {
 }
 
 // Configure ad951x
-int ad951x_configure(struct ad951x_device *dev, struct ad951x_config *cfg) {
+int ad951x_configure(struct ad951x_device *dev, struct ad95xx_config *cfg) {
     int i;
     for(i = 0; i < cfg->n_regs; i++) {
         ad951x_write(dev, cfg->regs[i].addr, cfg->regs[i].value);
