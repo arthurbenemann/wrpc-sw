@@ -326,7 +326,10 @@ const char * const dev_mapping_help()
 {
 	static char help_msg[] =
 		"Device mapping options: \n"
-		"\t-f <file resource path> -o 0x<address offset> \n"
+		"\t-f <file resource path> -o 0x<address offset>\n"
+		"Arguments:\n"
+		"\t-t resource file to mmap\n"
+		"\t-o memory offset from within the resource\n"
 #ifdef SUPPORT_CERN_VMEBRIDGE
 		"Device mapping options for CERN vmebus driver: \n"
 		"\t--cern-vmebridge -a 0x<VME base address> \n"
