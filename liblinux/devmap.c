@@ -121,12 +121,11 @@ struct mapping_desc *dev_map(struct mapping_args *map_args, uint32_t map_length)
 
 	desc->base = desc->mmap + map_args->offset - pa_offset;
  	/*
-	 * @todo for future VME devices handled via a resource file,
-	 * exposed in standard place (/sys/bus/vme/device/xxx/resource-file)
-	 * the bus type (pci or vme) should be checked to set properly
-	 * the endianess (could be get from the path's resource)
+	 * @todo when WhiteRabbit will use a Byte-Order-Mask, use it to
+	 * detect endianess automatically
 	 */
-	desc->is_be = 0; /* default set to little endian */
+	desc->is_be = map_args->is_be;
+
 	return desc;
 
 out_mmap:
@@ -284,7 +283,7 @@ struct mapping_args *dev_parse_mapping_args(int argc, char *argv[])
 		return map_args;
 	}
 #endif
-	while ((c = getopt (argc, argv, "o:f:")) != -1)
+	while ((c = getopt (argc, argv, "o:f:b")) != -1)
 	{
 		switch (c)
 		{
@@ -299,6 +298,9 @@ struct mapping_args *dev_parse_mapping_args(int argc, char *argv[])
 		case 'f':
 			map_args->resource_file = optarg;
 			++arg_count;
+			break;
+		case 'b':
+			map_args->is_be = 1;
 			break;
 		case '?':
 			/* ignore unknown arguments */
@@ -326,10 +328,11 @@ const char * const dev_mapping_help()
 {
 	static char help_msg[] =
 		"Device mapping options: \n"
-		"\t-f <file resource path> -o 0x<address offset>\n"
+		"\t-f <file resource path> -o 0x<address offset> [-b]\n"
 		"Arguments:\n"
 		"\t-t resource file to mmap\n"
 		"\t-o memory offset from within the resource\n"
+		"\t-b big endian access\n"
 #ifdef SUPPORT_CERN_VMEBRIDGE
 		"Device mapping options for CERN vmebus driver: \n"
 		"\t--cern-vmebridge -a 0x<VME base address> \n"

@@ -14,6 +14,7 @@
 struct mapping_args {
 	char *resource_file;
 	uint64_t offset;
+	int is_be;
 	void *vme_extra_args;
 };
 
