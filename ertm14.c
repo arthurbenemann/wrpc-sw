@@ -36,6 +36,17 @@
 #include "dev/i2c.h"
 #include "softpll_ng.h"
 #include "endpoint.h"
+#include "console.h"
+
+#include "wrc-task.h"
+
+#define ERTM14_IUART_MAX_PAYLOAD 100
+
+#define ERTM14_IUART_MSG_MMC_UPDATE 0
+#define ERTM14_IUART_MSG_IPMI_CONSOLE_REQ 2
+#define ERTM14_IUART_MSG_IPMI_SNMP_REQ 3
+#define ERTM14_IUART_MSG_IPMI_CONSOLE_RESP 4
+#define ERTM14_IUART_MSG_IPMI_SNMP_RESP 5
 
 struct ertm14_board board;
 static struct ertm14_board_config ertm14_configs[ ERTM14_MAX_CONFIGS ];
@@ -235,12 +246,64 @@ void ertm14_dds_sync_test()
     }
 }
 
+extern struct console_device console_ipmi_dev;
 
+static void handle_iuart_request( uint8_t *buf, int size )
+{
+    uint8_t tx_buf[ERTM14_IUART_MAX_PAYLOAD];
+    int n_tx;
+    int type = buf[0];
+
+    if( size <= 0 )
+        return;
+
+    switch( type )
+    {
+        case ERTM14_IUART_MSG_IPMI_CONSOLE_REQ:
+            n_tx = console_ipmi_process_request( &console_ipmi_dev, buf + 1, size - 1, tx_buf + 1, sizeof(tx_buf) - 1 );
+
+            tx_buf[0] = ERTM14_IUART_MSG_IPMI_CONSOLE_RESP;
+            iuart_send_message(&board.iuart_14, tx_buf, n_tx + 1);
+
+            break;
+
+        case ERTM14_IUART_MSG_IPMI_SNMP_REQ:
+            //snmp_respond(uint8_t *buf);
+
+            break;
+
+
+        default:
+            return;
+    }
+}
+
+static void iuart_14_poll()
+{
+    int n = 0;
+    
+    
+    int msg = iuart_recv_message(&board.iuart_14);
+
+    if (msg <= 0)
+        return;
+
+
+    if( msg == START_INSN_CHAR_VAL )
+    {
+        //pp_printf("req %d %d %d\n",board.iuart_14.rx_buf, board.iuart_14.rx_csize, board.iuart_14.rx_csize );
+        handle_iuart_request( board.iuart_14.rx_buf, board.iuart_14.rx_csize );
+    }
+
+
+}
 
 void ertm14_init(void)
 {
     int i;
     uint32_t id;
+
+    ertm14_config_init();
 
     wb_gpio_create( &board.gpio_aux, BASE_AUXWB );
 
@@ -386,8 +449,46 @@ void ertm14_init(void)
     ad9520_init( &board.dev_clkb_distr, &board.i2c_clkb_distr, 0x5c );
     
 //    ertm14_dds_sync_test();
+
+    pp_printf("Init IUART14\n");
+    iuart_init_bare( &board.iuart_14, BASE_IUART_14, 115200 );
+
+    pp_printf("Task!\n");
+    wrc_task_create( "iuart14", NULL, iuart_14_poll );
 }
 
+
+
+void ertm14_config_init()
+{
+    int i, j;
+
+    for(i = 0; i < ERTM14_MAX_CONFIGS; i++)
+    {
+        struct ertm14_board_config *cfg = &ertm14_configs[i];
+
+        cfg->valid = 1;
+        cfg->lo.freq_hz = 100000000;
+        cfg->ref.freq_hz = 100000000;
+        cfg->lo.ampl_factor = 50;
+        cfg->ref.ampl_factor = 50;
+
+        for( j = 0; j <= ERTM14_RF_OUT_MAX_ID; j++)
+        {
+            cfg->ref.out_state [j] = ERTM15_RF_OUT_MONITOR;
+            cfg->lo.out_state [j] = ERTM15_RF_OUT_MONITOR;
+        }
+    
+        for(j = 0; j < ERTM14_CLKAB_OUT_MAX_ID; j++)
+        {
+            cfg->clka_freq_hz[j] = 100000000;
+            cfg->clkb_freq_hz[j] = 100000000;
+        }
+
+        cfg->clka_enable_mask = 0;
+        cfg->clkb_enable_mask = 0;
+    }
+};
 
 struct ertm14_board_config *ertm14_get_config(int config_id)
 {
