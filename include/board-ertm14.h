@@ -7,6 +7,8 @@
 #ifndef __BOARD_ERTM14_H
 #define __BOARD_ERTM14_H
 
+#define IUART_PLATFORM_BARE_METAL 1
+
 #include "dev/gpio.h"
 #include "dev/spi.h"
 #include "dev/ad951x.h"
@@ -20,7 +22,11 @@
 #include "dev/ertm14_dds_sync.h"
 #include "dev/spi_flash.h"
 #include "dev/i2c.h"
+#include "dev/iuart.h"
 #include <hw/memlayout.h>
+
+
+#define BOARD_MAX_CONSOLE_DEVICES 2
 
 /* Board-specific parameters */
 #define TICS_PER_SECOND 1000
@@ -72,6 +78,7 @@ int board_update(void);
 #define BASE_ERTM14_DDS_SYNC_UNIT  0x48300
 #define BASE_UART 0x40500
 #define BASE_SYSCON 0x40400
+#define BASE_IUART_14 (BASE_AUXWB + 0x200)
 
 #define ERTM14_RF_OUT_MIN_ID 4
 #define ERTM14_RF_OUT_MAX_ID 12
@@ -109,6 +116,7 @@ struct ertm14_board
     struct i2c_bus i2c_mac_addr;
     struct m24aa025_device m24_mac_ids[2];
     struct dds_sync_unit_device dds_sync_dev;
+    struct iuart_device iuart_14;
 };
 
 struct ertm14_dds_config
@@ -135,6 +143,7 @@ struct ertm14_board_config
 
 extern struct ertm14_board board;
 
+void ertm14_config_init(void);
 struct ertm14_board_config *ertm14_get_config(int config_id);
 int ertm14_apply_config(int config_id);
 int ertm14_get_current_config_id(void);
