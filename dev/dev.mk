@@ -27,7 +27,8 @@ obj-$(CONFIG_EMBEDDED_NODE) += \
 	dev/24aa025.o \
 	dev/ad7888.o \
 	dev/spi_flash.o \
-	dev/ad9520.o
+	dev/ad9520.o \
+	dev/iuart.o
 
 	
 obj-$(CONFIG_WR_NODE) += \
