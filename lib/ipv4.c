@@ -106,7 +106,7 @@ static int bootp_poll(void)
 	if (len > 0)
 		ret = process_bootp(buf, len);
 
-	if (task_not_yet(&bootp_tics, TICS_PER_SECOND))
+	if (wrc_task_not_yet(&bootp_tics, TICS_PER_SECOND))
 		return ret;
 
 	len = prepare_bootp(&addr, buf, ++bootp_retry);

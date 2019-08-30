@@ -78,4 +78,6 @@ int snmp_poll(void);
 
 int net_bh_poll(void);
 
+int snmp_respond(uint8_t *buf);
+
 #endif

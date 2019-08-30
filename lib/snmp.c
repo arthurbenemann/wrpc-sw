@@ -1482,7 +1482,7 @@ static uint8_t snmp_prepare_error(uint8_t *buf, uint8_t error)
 }
 
 /* And, now, work out your generic frame responder... */
-static int snmp_respond(uint8_t *buf)
+int snmp_respond(uint8_t *buf)
 {
 	struct snmp_oid_limb *oid_limb = NULL;
 	uint8_t *newbuf = NULL;
@@ -1658,6 +1658,7 @@ int snmp_poll(void)
 				  buf, sizeof(buf), NULL);
 	if (len <= UDP_END + sizeof(match_array))
 		return 0;
+
 
 	/* Check the destination IP of SNMP packets. IP version, protocol and
 	 * port are checked in the function update_rx_queues, so no need to
