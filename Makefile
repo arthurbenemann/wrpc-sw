@@ -1,6 +1,7 @@
 # Tomasz Wlostowski for CERN, 2011,2012
 -include $(CURDIR)/.config
 
+PORT?=/dev/ttyUSB1
 CROSS_COMPILE ?= lm32-elf-
 
 ifdef CONFIG_HOST_PROCESS
@@ -43,7 +44,7 @@ obj-y += dump-info.o
 
 
 cflags-y =	-ffreestanding -include $(AUTOCONF) -Iinclude \
-			-I. -Isoftpll -Iipc -Iertm14
+			-I. -Isoftpll -Iipc -Iertm14 -Iinclude/dev
 cflags-y +=	-I$(CURDIR)/pp_printf
 cflags-$(CONFIG_LM32) +=  -Iinclude/std
 
@@ -282,4 +283,4 @@ makeall_copy: $(addprefix $(DEFCONFIG_NAME),$(MAKEALL_COPY_LIST))
 
 load: all
 		- killall -9 usb-bootloader.py
-		- ./tools/uart-bootloader/usb-bootloader.py -p /dev/ttyUSB0 wrc.bin
+		- ./tools/uart-bootloader/usb-bootloader.py -p $(PORT) wrc.bin
