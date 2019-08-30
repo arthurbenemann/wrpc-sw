@@ -8,6 +8,7 @@
 
 #define WRC_MAX_TASKS 16
 
+#include "dev/syscon.h"
 /*
  * A task is a data structure, but currently suboptimal.
  * FIXME: init must return int, and both should get a pointer to data
@@ -26,6 +27,27 @@ struct wrc_task {
 	unsigned long nanos;
 	unsigned long max_run_ticks; /* in ticks */
 };
+
+/* An helper for periodic tasks, relying on a static varible */
+static inline int __wrc_task_not_yet(uint32_t *lastt, unsigned period,
+	uint32_t now)
+{
+	if (!*lastt) {
+		*lastt = now;
+		return 0;
+	}
+	if (time_before(now, *lastt + period))
+		return 1; /* not yet */
+
+	*lastt += period;
+	return 0;
+}
+
+static inline int wrc_task_not_yet(uint32_t *lastt, unsigned period)
+{
+	return __wrc_task_not_yet(lastt, period, timer_get_tics());
+}
+
 
 void wrc_tasks_init(void);
 struct wrc_task* wrc_task_create( const char *name, void (*init)(void), int (*job)(void) );
