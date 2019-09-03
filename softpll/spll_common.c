@@ -31,12 +31,12 @@ int pi_update(spll_pi_t *pi, int x)
 	   out of range and the output is going further away from
 	   y_min/y_max. */
 	if (y < pi->y_min) {
-		// y = pi->y_min;
+		y = pi->y_min;
 		if ((pi->anti_windup && (i_new > pi->integrator))
 		    || !pi->anti_windup)
 			pi->integrator = i_new;
 	} else if (y > pi->y_max) {
-		// y = pi->y_max;
+		y = pi->y_max;
 		if ((pi->anti_windup && (i_new < pi->integrator))
 		    || !pi->anti_windup)
 			pi->integrator = i_new;

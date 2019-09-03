@@ -314,10 +314,10 @@ void spll_init(int mode, int slave_ref_channel, int align_pps)
 
 	helper_init(&s->helper, helper_ref);
 	if (mode != SPLL_MODE_GRAND_MASTER)
-		mpll_init(&s->mpll, slave_ref_channel, spll_n_chan_ref);
+		mpll_init(&s->mpll, slave_ref_channel, spll_n_chan_ref, mode);
 
 	for (i = 0; i < spll_n_chan_out - 1; i++) {
-		mpll_init(&s->aux[i].pll.dmtd, slave_ref_channel, spll_n_chan_ref + i + 1);
+		mpll_init(&s->aux[i].pll.dmtd, slave_ref_channel, spll_n_chan_ref + i + 1, mode);
 		s->aux[i].seq_state = AUX_DISABLED;
 	}
 	
@@ -465,12 +465,12 @@ void spll_show_stats()
 
 	if (softpll.mode > 0)
 		    pp_printf("softpll: irqs %d seq %s mode %d "
-		     "alignment_state %d HL%d ML%d HY=%d MY=%d EM=%d setpoint:%d\n",
+		     "alignment_state %d HL%d ML%d HY=%d MY=%d EH=%d EM=%d sp:%d tar=%d\n",
 		      s->irq_count, stringlist_lookup(seq_states, s->seq_state),
 			      s->mode, s->ext.align_state,
 			      s->helper.ld.locked, s->mpll.ld.locked,
 			      s->helper.pi.y, s->mpll.pi.y,
-			      s->mpll.pi.x, s->mpll.phase_shift_current);
+			      s->helper.pi.x, s->mpll.pi.x ,s->mpll.phase_shift_current, s->mpll.phase_shift_target);
 }
 
 int spll_shifter_busy(int channel)

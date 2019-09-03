@@ -28,8 +28,8 @@ void helper_init(struct spll_helper_state *s, int ref_channel)
 	s->pi.kp = -150;//(int)(0.3 * 32.0 * 16.0);	// / 2;
 	s->pi.ki = -2;//(int)(0.03 * 32.0 * 3.0);	// / 2;
 #else
-	s->pi.kp = 150;
-	s->pi.ki = 2;
+	s->pi.kp = 150; // default 150;
+	s->pi.ki = 2; // default 2
 #endif
 	s->pi.anti_windup = 1;
 
@@ -62,12 +62,12 @@ int helper_update(struct spll_helper_state *s, int tag,
 
 		err = (tag + s->p_adder) - s->p_setpoint;
 
-		if (HELPER_ERROR_CLAMP) {
-			if (err < -HELPER_ERROR_CLAMP)
-				err = -HELPER_ERROR_CLAMP;
-			if (err > HELPER_ERROR_CLAMP)
-				err = HELPER_ERROR_CLAMP;
-		}
+	    if (HELPER_ERROR_CLAMP) {
+	    	if (err < -HELPER_ERROR_CLAMP)
+	    		err = -HELPER_ERROR_CLAMP;
+	    	if (err > HELPER_ERROR_CLAMP)
+	    		err = HELPER_ERROR_CLAMP;
+	    }
 
 
 		if ((tag + s->p_adder) > HELPER_TAG_WRAPAROUND

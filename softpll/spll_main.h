@@ -37,7 +37,7 @@ struct spll_main_state {
 };
 
 void mpll_init(struct spll_main_state *s, int id_ref,
-		      int id_out);
+		      int id_out, int mode);
 
 void mpll_stop(struct spll_main_state *s);
 

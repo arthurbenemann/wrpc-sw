@@ -42,9 +42,6 @@ int main(void)
 	      build_revision, build_date, build_time);
 	pp_printf("SCB version: %d. %s\n", scb_ver,(scb_ver>=34)?"10 MHz SMC Output.":"" );
 	pp_printf("Start counter %d\n", stats.start_cnt);
-	//if (gpio_in(GPIO_EXT_BOARD_DETECT))
-	//  pp_printf("\n--- WRS Low jitter board detected. ---\nAllow 1 hour of warming up before starting measurements\n");
-	//pp_printf("--\n");
 
 	if (stats.start_cnt > 1) {
 		pp_printf("!!spll does not work after restart!!\n");
@@ -65,11 +62,6 @@ int main(void)
 			start_tics = tics;
 		}
 
-/*		if (time_after(tics, start_tics + TICS_PER_SECOND*10)){
-			if
-
-		}
-*/
 		rts_update();
 		rtipc_action();
 		spll_update();

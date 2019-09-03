@@ -22,22 +22,36 @@
 
 
 void mpll_init(struct spll_main_state *s, int id_ref,
-		      int id_out)
+		      int id_out, int mode)
 {
 	/* Frequency branch PI controller */
 	s->pi.y_min = 5;
 	s->pi.y_max = 65530;
 	s->pi.anti_windup = 1;
 	s->pi.bias = 30000;
-#if defined(CONFIG_WR_SWITCH)
-	s->pi.kp = 1000;		// / 2;
-	s->pi.ki = 5;			// / 2;
-#elif defined(CONFIG_WR_NODE)
-	s->pi.kp = -1100;		// / 2;
-	s->pi.ki = -30;			// / 2;
-#else
-#error "Please set CONFIG for wr switch or wr node"
-#endif
+
+	if(mode == SPLL_MODE_GRAND_MASTER)
+	{
+		#if defined(CONFIG_WR_SWITCH)
+			s->pi.kp = 1100;
+			s->pi.ki = 30;
+		#elif defined(CONFIG_WR_NODE)
+			s->pi.kp = -1100;
+			s->pi.ki = -30;
+		#else
+		#error "Please set CONFIG wr wr switch or wr node"
+		#endif
+	}else{
+		#if defined(CONFIG_WR_SWITCH)
+			s->pi.kp = 600;
+			s->pi.ki = 2;
+		#elif defined(CONFIG_WR_NODE)
+			s->pi.kp = -600;
+			s->pi.ki = -2;
+		#else
+		#error "Please set CONFIG wr wr switch or wr node"
+		#endif
+	}
 	s->delock_count = 0;
 	s->enabled = 0;
 
@@ -49,7 +63,7 @@ void mpll_init(struct spll_main_state *s, int id_ref,
 	s->id_out = id_out;
 	s->dac_index = id_out - spll_n_chan_ref;
 
-	pll_verbose("ref %d out %d idx %x \n", s->id_ref, s->id_out, s->dac_index);
+	pll_verbose("mpll_init: ref %d out %d idx %x \n", s->id_ref, s->id_out, s->dac_index);
 
 	pi_init((spll_pi_t *)&s->pi);
 	ld_init((spll_lock_det_t *)&s->ld);
@@ -120,10 +134,6 @@ int mpll_update(struct spll_main_state *s, int tag, int source)
 
 	if (s->tag_ref >= 0 && s->tag_out >= 0) {
 		err = s->adder_ref + s->tag_ref - s->adder_out - s->tag_out;
-//	if (!(count++ % 1000))
-//	{
-//		pll_verbose("%d %d %d %d %d %d\n",count,s->tag_ref,s->tag_out,s->adder_ref,s->adder_out,err);
-//	}
 	
 
 #ifndef WITH_SEQUENCING

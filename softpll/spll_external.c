@@ -21,7 +21,7 @@
 
 #define EXT_PERIOD_NS 100
 #define EXT_FREQ_HZ 10000000
-#define EXT_PPS_LATENCY_PS 63000 // fixme: make configurable
+#define EXT_PPS_LATENCY_PS 16000 // def 30000 please verify
 
 
 void external_init(volatile struct spll_external_state *s, int ext_ref,
@@ -29,11 +29,13 @@ void external_init(volatile struct spll_external_state *s, int ext_ref,
 {
     int idx = spll_n_chan_ref + spll_n_chan_out;
 
-    if (gpio_in(GPIO_EXT_BOARD_DETECT))
-      idx++;
+    
+	/* Legacy from LJD */
+	// if (gpio_in(GPIO_EXT_BOARD_DETECT))
+    //  idx++;
 
     helper_init(s->helper, idx);
-    mpll_init(s->main, idx, spll_n_chan_ref);
+    mpll_init(s->main, idx, spll_n_chan_ref, SPLL_MODE_GRAND_MASTER);
 
     s->align_state = ALIGN_STATE_EXT_OFF;
     s->enabled = 0;
@@ -55,17 +57,10 @@ int external_locked(volatile struct spll_external_state *s)
 	if (!s->helper->ld.locked || !s->main->ld.locked)
 	  return 0;
 	
-	if (!gpio_in(GPIO_EXT_BOARD_DETECT) &&	(!(SPLL->ECCR & SPLL_ECCR_EXT_REF_LOCKED) ||  // ext PLL became unlocked
+	if (( !(SPLL->ECCR & SPLL_ECCR_EXT_REF_LOCKED) ||  // ext PLL became unlocked
 		 (SPLL->ECCR & SPLL_ECCR_EXT_REF_STOPPED)))   // 10MHz unplugged (only SPEC)
 		return 0;
 
-	if (!(gpio_in(GPIO_EXT_BOARD_DETECT) && (SPLL->ECCR & SPLL_ECCR_EXT_REF_PLLLOCK)))
-		return 0;
-//FIXME A bug prevents the correct locking if the external lock check is executed
-//	Correct way to solve it: export the LOCK signal from the gateware and check it
-//	if (gpio_in(GPIO_EXT_BOARD_DETECT) && ext_ad9516_locked())
-//		return 1;
-	
 	switch(s->align_state) {
 		case ALIGN_STATE_EXT_OFF:
 		case ALIGN_STATE_WAIT_CLKIN:
@@ -99,34 +94,46 @@ int external_align_fsm(volatile struct spll_external_state *s)
 {
 	int v, done_sth = 0;
 	uint32_t f_ext = 0;
+	uint32_t f_vco = 0;
 
 	switch(s->align_state) {
 		case ALIGN_STATE_EXT_OFF:
 			break;
 
 		case ALIGN_STATE_WAIT_CLKIN:
-			if(!gpio_in(GPIO_EXT_BOARD_DETECT) && !(SPLL->ECCR & SPLL_ECCR_EXT_REF_STOPPED) ) {
+			if(!(SPLL->ECCR & SPLL_ECCR_EXT_REF_STOPPED)) {
 				SPLL->ECCR |= SPLL_ECCR_EXT_REF_PLLRST;
 				s->align_state = ALIGN_STATE_WAIT_PLOCK;
 				done_sth++;
 			}
+
 			f_ext = spll_measure_frequency(SPLL_OSC_EXT);
-			if (gpio_in(GPIO_EXT_BOARD_DETECT) && (f_ext > 9999000) && (f_ext < 10001000)) 		
-			       if (!ext_ad9516_init()) {
-				  s->align_state = ALIGN_STATE_WAIT_PLOCK;
-			          pp_printf("External AD9516 locked\n");
-			       }
+			pp_printf("Meas ext freq: %d\n",f_ext);
+			f_vco = spll_measure_frequency(SPLL_OSC_REF);
+			pp_printf("Meas vco freq: %d\n",f_vco);
+
+			if ((f_ext > 9999000) && (f_ext < 10001000))
+			{
+				if (!ext_ad9516_init()) {
+					s->align_state = ALIGN_STATE_WAIT_PLOCK;
+					pp_printf("External AD9516 programmed\n");
+				}else{
+					pp_printf("Something went wrong programming the GM PLL\n");
+				}
+			}
 			
 			break;
 
 		case ALIGN_STATE_WAIT_PLOCK:
 			SPLL->ECCR &= (~SPLL_ECCR_EXT_REF_PLLRST);
-			if(!gpio_in(GPIO_EXT_BOARD_DETECT) && SPLL->ECCR & SPLL_ECCR_EXT_REF_STOPPED )
+			if(/* !gpio_in(GPIO_EXT_BOARD_DETECT) && */ SPLL->ECCR & SPLL_ECCR_EXT_REF_STOPPED )
 				s->align_state = ALIGN_STATE_WAIT_CLKIN;
-			else if((!gpio_in(GPIO_EXT_BOARD_DETECT) && SPLL->ECCR & SPLL_ECCR_EXT_REF_LOCKED ) || 
-			  gpio_in(GPIO_EXT_BOARD_DETECT) && SPLL->ECCR & SPLL_ECCR_EXT_REF_PLLLOCK)		
-				s->align_state = ALIGN_STATE_START;
-			done_sth++;
+			else if(ext_ad9516_locked())
+				{
+					pp_printf("External AD9516 locked.\n");	
+					s->align_state = ALIGN_STATE_START;
+				}
+				done_sth++;
 			break;
 
 		case ALIGN_STATE_START:
@@ -143,7 +150,7 @@ int external_align_fsm(volatile struct spll_external_state *s)
 			SPLL->AL_CR = 2;
 			if(s->helper->ld.locked && s->main->ld.locked) {
 				PPSG->CR = PPSG_CR_CNT_EN | PPSG_CR_PWIDTH_W(10);
-				PPSG->ADJ_NSEC = 3;
+				PPSG->ADJ_NSEC = 5;
 				PPSG->ESCR = PPSG_ESCR_SYNC;
 				s->align_state = ALIGN_STATE_INIT_CSYNC;
 				pll_verbose("EXT: DMTD locked.\n");
@@ -166,20 +173,18 @@ int external_align_fsm(volatile struct spll_external_state *s)
 				s->align_shift = 0;
 				pll_verbose("EXT: CSync complete.\n");
 				done_sth++;
-				//REMOVE
-				//mpll_set_phase_shift(s->main, +9000);
-				//s->align_state = ALIGN_STATE_COMPENSATE_DELAY;
 			}
 			break;
 
 		case ALIGN_STATE_START_ALIGNMENT:
 			if(align_sample(1, &v)) {
 				v %= ALIGN_SAMPLE_PERIOD;
+				pp_printf("1st v: %d\n",v);
 				if(v == 0 || v >= ALIGN_SAMPLE_PERIOD / 2) {
-					s->align_target = EXT_PERIOD_NS;
+					s->align_target = 0;
 					s->align_step = -100;
 				} else if (s > 0) {
-					s->align_target = 0;
+					s->align_target = ALIGN_SAMPLE_PERIOD-EXT_PERIOD_NS;
 					s->align_step = 100;
 				}
 
