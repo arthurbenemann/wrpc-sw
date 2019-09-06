@@ -49,11 +49,11 @@
 #define RX_SETUP_VALIDATE 5
 
 #define FSM_DEBUG_REFRESH_PERIOD_MS 1000
-#define FSM_LOCK_TIMEOUT_MS 1000
+#define FSM_PHY_LOCK_TIMEOUT_MS 1000
+#define FSM_SPLL_LOCK_TIMEOUT_MS 10000
 #define FSM_DMTD_TIMEOUT_MS 100
-
-
-
+#define FSM_EARLY_LINK_UP_TIMEOUT_MS 100
+#define FSM_STABILIZE_TIMEOUT_MS 100
 
 struct wrc_port_tx_setup_state
 {
@@ -69,17 +69,19 @@ struct wrc_port_tx_setup_state
     int update_cnt;
     int expected_phase_valid;
     timeout_t refresh_timeout;
-    timeout_t lock_timeout;
+    timeout_t phy_lock_timeout;
+    timeout_t spll_lock_timeout;
     timeout_t dmtd_timeout;
 };
 
 struct wrc_port_rx_setup_state
 {
-//	timeout_t link_timeout;
-    int cpos_stat[20];
+	int cpos_stat[20];
 	int state;
 	int attempts;
-    timeout_t dmtd_timeout;
+    int prev_link_up;
+    timeout_t link_timeout;
+    timeout_t stabilize_timeout;
 };
 
 static struct wrc_port_tx_setup_state tx_state;
@@ -97,6 +99,8 @@ static void tx_fsm_init(struct wrc_port_tx_setup_state *fsm)
     fsm->cal_saved_phase = 0;
     fsm->cal_file_updated = 0;
     fsm->cnt = 0;
+
+    tmo_init(&fsm->spll_lock_timeout, FSM_SPLL_LOCK_TIMEOUT_MS);
 }
 
 static int within_range(int x, int minval, int maxval, int wrap)
@@ -141,11 +145,21 @@ static int tx_fsm_update()
     {
     case TX_SETUP_STATE_START:
     {
-        spll_enable_ptracker(0, 0);
-        ep_pcs_write(MDIO_DBG1, MDIO_DBG1_RESET_RX | MDIO_DBG1_DMTD_SOURCE_TXOUTCLK);
-        fsm->state = TX_SETUP_STATE_RESET_PCS;
-        
-        tmo_init( &fsm->refresh_timeout, FSM_DEBUG_REFRESH_PERIOD_MS );
+
+        if( tmo_expired( &fsm->spll_lock_timeout ) )
+        {
+            pp_printf("[tx-cal] Can't lock the SoftPLL. This is necessary for PHY calibratoin to continue. Retrying...\n");
+            tmo_restart( &fsm->spll_lock_timeout );
+        }
+
+        if( spll_check_lock( 0 ) )
+        {
+            spll_enable_ptracker(0, 0);
+            ep_pcs_write(MDIO_DBG1, MDIO_DBG1_RESET_RX | MDIO_DBG1_DMTD_SOURCE_TXOUTCLK);
+            fsm->state = TX_SETUP_STATE_RESET_PCS;
+
+            tmo_init( &fsm->refresh_timeout, FSM_DEBUG_REFRESH_PERIOD_MS );
+        }
         break;
     }
 
@@ -176,7 +190,7 @@ static int tx_fsm_update()
         ep_pcs_write(MDIO_DBG1, dbg1 );
 
         fsm->state = TX_SETUP_STATE_WAIT_LOCK;
-        tmo_init( &fsm->lock_timeout, FSM_LOCK_TIMEOUT_MS );
+        tmo_init( &fsm->phy_lock_timeout, FSM_PHY_LOCK_TIMEOUT_MS );
 
         break;
     }
@@ -193,17 +207,17 @@ static int tx_fsm_update()
             spll_enable_ptracker(0, 1);
             tmo_init( &fsm->dmtd_timeout, FSM_DMTD_TIMEOUT_MS );
         }
-        else if( tmo_expired(&fsm->lock_timeout) )
+        else if( tmo_expired(&fsm->phy_lock_timeout) )
         {
             fsm->state = TX_SETUP_STATE_RESET_PCS;
-            pp_printf("[tx-cal] PLL lock timeout, retrying...[ dbg0 %04x]\n", dbg0 );
+            pp_printf("[tx-cal] PHY PLL lock timeout, retrying...[ dbg0 %04x]\n", dbg0 );
         }
         break;
     }
 
     case TX_SETUP_STATE_MEASURE_PHASE:
     {
-        int phase, enabled, p2;
+        int phase, enabled; //, p2;
         int rv = spll_read_ptracker(0, &phase, &enabled);
 
 
@@ -219,7 +233,7 @@ static int tx_fsm_update()
             return 0;
         }
 
-        p2 = fsm->measured_phase = phase;
+//        p2 = fsm->measured_phase = phase;
 
         if(tmo_expired(&fsm->refresh_timeout))
         {
@@ -227,6 +241,7 @@ static int tx_fsm_update()
             tmo_restart(&fsm->refresh_timeout);
         }
 
+        // fixme: store calibration phase in eeprom just like in the tx_phase_cal.conf file on the switch
         //pp_printf("Phase: %d\n", phase);
         #if 0
         if (!fsm->expected_phase_valid)
@@ -302,7 +317,6 @@ static int tx_fsm_update()
     {
     	int early_link_up = ep_pcs_read(MDIO_DBG0) & MDIO_DBG0_LINK_UP;
 
-        //pp_printf("Early: %d dbg1 0x%04x\n", early_link_up, ep_pcs_read(MDIO_DBG1));
         return 1;
         break;
     }
@@ -318,6 +332,7 @@ static void rx_fsm_init(  )
 
 	fsm->attempts = 0;
 	fsm->state = RX_SETUP_STATE_INIT;
+    fsm->prev_link_up = 0;
     memset(fsm->cpos_stat, 0, sizeof(fsm->cpos_stat ));
 }
 
@@ -347,9 +362,6 @@ static int rx_fsm_update(  )
 					pp_printf("[rx-cal]: calibration started.\n");
 	
 					fsm->state = RX_SETUP_STATE_RESET_PCS;
-					spll_enable_ptracker( 0, 0 );
-                    spll_set_ptracker_average_samples( 10 );
-
 				}
 			}
 
@@ -369,6 +381,8 @@ static int rx_fsm_update(  )
 				ep_pcs_write( MDIO_DBG1, MDIO_DBG1_TX_ENABLE | MDIO_DBG1_DMTD_SOURCE_RXRECCLK | MDIO_DBG1_COMMA_TARGET_POS(DEFAULT_COMMA_POS)  );
                 usleep(10000);
 				fsm->attempts++;
+
+                tmo_init(&fsm->link_timeout, FSM_EARLY_LINK_UP_TIMEOUT_MS);
 			}
 
 			break;
@@ -380,34 +394,26 @@ static int rx_fsm_update(  )
 
 			int rx_up = dbg0 & MDIO_DBG0_LINK_UP;
 			int rx_aligned = dbg0 & MDIO_DBG0_LINK_ALIGNED;
-            
    			int rx_comma_pos = (dbg0 >> 7) & 0x7f;
             int rx_comma_valid = (dbg0 >> 7) & 0x80 ? 1 : 0;
-            int i;
 
-            
 
-			/*if (libwr_tmo_expired(&fsm->link_timeout) && !rx_up) {
+			if ( tmo_expired(&fsm->link_timeout) && !rx_up) {
 				fsm->state = RX_SETUP_STATE_INIT;
-			} else {*/
+            }
+            else 
             {
 				if ( !rx_up )
 					return 0;
 
-                fsm->cpos_stat[rx_comma_pos]++;
+//                fsm->cpos_stat[rx_comma_pos]++;
                 
-                //for(i=0;i<20;i++) pp_printf("%-02d: %-03d ", i, fsm->cpos_stat[i]);
-                //pp_printf("\n");
-				//if( rx_comma_pos == DEFAULT_COMMA_POS )
-                  //  pp_printf("Dbg0 %x up %d algn %d cpos %d cvalid %d\n", dbg0, rx_up, rx_aligned, rx_comma_pos, rx_comma_valid );
-
                 if( rx_aligned )
 				{
                     
                     # if 0
                        int i;
 
-                    for(i=0;i<20;i++)
                     {
                         	dbg0 = ep_pcs_read( MDIO_DBG0);
 
@@ -420,54 +426,48 @@ static int rx_fsm_update(  )
           				usleep(100000);
 
                     }
-                    #endif
                     usleep(100000);
 
+                    #endif
 
-					spll_enable_ptracker( 0, 0 );
-                    spll_set_ptracker_average_samples( PTRACKER_AVERAGE_SAMPLES );
-					spll_enable_ptracker( 0, 1 );
-                    usleep(1000000);
-
-              //      pp_printf("Hit, validating\n");
-					//tx_fsm_pll_state.channels[p->hw_index].flags = 0;
-					fsm->state = RX_SETUP_VALIDATE;
-
-                    tmo_init( &fsm->dmtd_timeout, 500 );
+     				fsm->state = RX_SETUP_VALIDATE;
+                    tmo_init( &fsm->stabilize_timeout, FSM_STABILIZE_TIMEOUT_MS );
 				} else {
 					fsm->state = RX_SETUP_STATE_RESET_PCS;
 				}
 			}
-			
 			break;
 		}
 
 		case RX_SETUP_VALIDATE:
 		{
-        	int phase, enabled;
-            int rv = spll_read_ptracker(0, &phase, &enabled);
-            //spll_show_stats();
+            if( !tmo_expired( &fsm->stabilize_timeout ))
+                return 0;
+                
+			uint16_t dbg0 = ep_pcs_read( MDIO_DBG0);
 
-			if ( rv )
+
+            int rx_up = dbg0 & MDIO_DBG0_LINK_UP;
+			int rx_aligned = dbg0 & MDIO_DBG0_LINK_ALIGNED;
+   			int rx_comma_pos = (dbg0 >> 7) & 0x7f;
+            int rx_comma_valid = (dbg0 >> 7) & 0x80 ? 1 : 0;
+
+			if ( rx_up && rx_aligned && rx_comma_valid && (rx_comma_pos == DEFAULT_COMMA_POS) )
 			{
     			uint16_t dbg0 = ep_pcs_read( MDIO_DBG0);
        			int rx_comma_pos = (dbg0 >> 7) & 0x7f;
 				ep_pcs_write( MDIO_DBG1, MDIO_DBG1_RX_ENABLE | MDIO_DBG1_TX_ENABLE | MDIO_DBG1_DMTD_SOURCE_RXRECCLK | MDIO_DBG1_COMMA_TARGET_POS(DEFAULT_COMMA_POS) );
 				ep_pcs_write( MDIO_REG_MCR, MDIO_MCR_SPEED1000_MASK | MDIO_MCR_FULLDPLX_MASK | MDIO_MCR_ANENABLE | MDIO_MCR_ANRESTART  );
-				pp_printf("[rx-cal] RX calibration complete at phase %d ps (after %d attempts) comma @ %d taps.\n", phase, fsm->attempts, rx_comma_pos );
+				pp_printf("[rx-cal] RX calibration complete (after %d attempts) comma @ %d taps.\n", fsm->attempts, rx_comma_pos );
 				spll_enable_ptracker( 0, 0 );
-				usleep(100000);
+                spll_set_ptracker_average_samples( PTRACKER_AVERAGE_SAMPLES );
+
        			fsm->state = RX_SETUP_DONE;
 
-			}/* else if (tmo_expired(&fsm->dmtd_timeout))
-            {
+			} else {
+                pp_printf("[rx-cal] weird, can't stabilize link. Retrying [%d %d %d %d]\n", rx_up, rx_aligned, rx_comma_valid, rx_comma_pos );
                 fsm->state = RX_SETUP_STATE_RESET_PCS;
-                pp_printf("Tm hit\n");
-                return 0;
-            }*/
-
-
-
+            }
 
 			break;
 		}
@@ -477,15 +477,18 @@ static int rx_fsm_update(  )
 		case RX_SETUP_DONE:
 		{
 			uint16_t dbg0 = ep_pcs_read( MDIO_DBG0);
-			
-			if( ! (dbg0 & MDIO_DBG0_LINK_UP ) )
+            int link_up = ep_link_up(NULL);
+
+
+			if( ! (dbg0 & MDIO_DBG0_LINK_UP ) /*|| ( ( fsm->prev_link_up && !link_up ) )*/ )
 			{
 				pp_printf("[rx-cal]: port went down, need recalibration.\n");
 				fsm->state = RX_SETUP_STATE_INIT;
-
+                fsm->prev_link_up = link_up;
 				return 0;
 			}
 
+            fsm->prev_link_up = link_up;
 			return 1;
 			break;
 		}
@@ -495,19 +498,8 @@ static int rx_fsm_update(  )
 	return 0;
 }
 
-timeout_t cmon_tmo;
-
 int phy_calibration_poll()
 {
-    #if 0
-    if( tmo_expired( &cmon_tmo) )
-    {
-        tmo_restart( &cmon_tmo );
-        wb_cm_read( &cmon );
-        wb_cm_show( &cmon );
-
-    }
-    #endif
     tx_fsm_update();
     rx_fsm_update();
     return 0;
@@ -517,27 +509,15 @@ int phy_calibration_poll()
 
 void phy_calibration_init()
 {
-    tmo_init( &cmon_tmo, 2000 );
-
-    pp_printf("reset phy\n");
+    pp_printf("Initializing PHY calibrator...\n");
     ep_pcs_write(MDIO_REG_MCR, MDIO_MCR_PDOWN);	/* reset the PHY */
 	timer_delay_ms(200);
 	ep_pcs_write(MDIO_REG_MCR, MDIO_MCR_RESET);	/* reset the PHY */
 	ep_pcs_write(MDIO_REG_MCR, 0);	/* reset the PHY */
 
-    ep_pcs_write(MDIO_DBG1, 0xcafe);
-
-    pp_printf("PLL lock: ");
  	spll_init( SPLL_MODE_FREE_RUNNING_MASTER, 0, 0 );
-	while ( !spll_check_lock( 0 ))
-    {
-        pp_printf(".");
-        usleep(100000);
-    }
-
     spll_set_ptracker_average_samples( 10 );
 
-    pp_printf("\n");
     tx_fsm_init(&tx_state);
     rx_fsm_init(&rx_state);
 
