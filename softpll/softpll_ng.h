@@ -108,6 +108,7 @@ int spll_get_dac(int out_channel);
 
 void check_vco_frequencies(void);
 int spll_measure_frequency(int osc);
+void spll_set_ptracker_average_samples(int channel, int nsamples);
 
 /*
  * Aux and main state:

@@ -467,6 +467,21 @@ int spll_read_ptracker(int channel, int32_t *phase_ps, int *enabled)
 	return st->ready;
 }
 
+void spll_set_ptracker_average_samples(int channel, int nsamples)
+{
+	struct softpll_state *s = (struct softpll_state *) &softpll;
+	struct spll_ptracker_state *pt = &s->ptrackers[channel];
+
+	disable_irq();
+	pt->preserve_sign = 0;
+	pt->ready = 0;
+	pt->acc = 0;
+	pt->avg_count = 0;
+	pt->n_avg = nsamples;
+	enable_irq();
+}
+
+
 void spll_get_num_channels(int *n_ref, int *n_out)
 {
 	if (n_ref)
