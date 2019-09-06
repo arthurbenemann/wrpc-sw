@@ -3,6 +3,7 @@
 #include <endpoint.h>
 #include <softpll_ng.h>
 #include "storage.h"
+#include "util.h"
 
 #include <wrc-task.h>
 
@@ -101,38 +102,6 @@ static void tx_fsm_init(struct wrc_port_tx_setup_state *fsm)
     fsm->cnt = 0;
 
     tmo_init(&fsm->spll_lock_timeout, FSM_SPLL_LOCK_TIMEOUT_MS);
-}
-
-static int within_range(int x, int minval, int maxval, int wrap)
-{
-    int rv;
-
-    //printf("min %d max %d x %d ", minval, maxval, x);
-
-    while (maxval >= wrap)
-        maxval -= wrap;
-
-    while (maxval < 0)
-        maxval += wrap;
-
-    while (minval >= wrap)
-        minval -= wrap;
-
-    while (minval < 0)
-        minval += wrap;
-
-    while (x < 0)
-        x += wrap;
-
-    while (x >= wrap)
-        x -= wrap;
-
-    if (maxval > minval)
-        rv = (x >= minval && x <= maxval) ? 1 : 0;
-    else
-        rv = (x >= minval || x <= maxval) ? 1 : 0;
-
-    return rv;
 }
 
 static int tx_fsm_update()
