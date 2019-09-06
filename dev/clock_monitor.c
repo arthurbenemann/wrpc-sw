@@ -12,6 +12,13 @@ int wb_cm_init( struct wb_clock_monitor_device *dev, uint32_t base_addr, int n_c
     return 0;
 }
 
+void wb_cm_set_ref_frequency( struct wb_clock_monitor_device *dev, int ref_freq )
+{
+    dev->ref_freq = ref_freq;
+    dev->freq_valid_mask = 0;
+}
+
+
 int wb_cm_restart( struct wb_clock_monitor_device *dev )
 {
     uint32_t cr = readl( dev->base + CM_REG_CR );

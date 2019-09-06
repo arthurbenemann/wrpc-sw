@@ -71,14 +71,14 @@ int board_update(void);
 
 #define ERTM14_MAX_CONFIGS 8
 
-#define BASE_AUXWB 0x48000
-#define BASE_CLOCK_MONITOR  0x48100
-#define BASE_SOFTPLL 0x40200
-#define BASE_PPS_GEN 0x40300
-#define BASE_ERTM14_DDS_SYNC_UNIT  0x48300
-#define BASE_UART 0x40500
-#define BASE_SYSCON 0x40400
-#define BASE_IUART_14 (BASE_AUXWB + 0x200)
+#define BASE_AUXWB                  0x48000
+#define BASE_SOFTPLL                0x40200
+#define BASE_PPS_GEN                0x40300
+#define BASE_UART                   0x40500
+#define BASE_SYSCON                 0x40400
+#define BASE_IUART_14               (BASE_AUXWB + 0x200)
+#define BASE_ERTM14_DDS_SYNC_UNIT   (BASE_AUXWB + 0x300)
+#define BASE_CLOCK_MONITOR          (BASE_AUXWB + 0x100)
 
 #define ERTM14_RF_OUT_MIN_ID 4
 #define ERTM14_RF_OUT_MAX_ID 12
@@ -86,6 +86,10 @@ int board_update(void);
 #define ERTM14_CLKAB_OUT_MIN_ID 0
 #define ERTM14_CLKAB_OUT_MAX_ID 11
 
+// clock monitor core channels (see ertm14_top.vhd for assignment to the clock monitor core)
+#define ERTM14_CMON_CLK_SYS 0
+#define ERTM14_CMON_CLK_DMTD 1
+#define ERTM14_CMON_CLK_PLL_FB 2
 
 struct ertm14_board
 {
