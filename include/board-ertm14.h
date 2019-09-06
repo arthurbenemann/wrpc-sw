@@ -38,6 +38,9 @@
 #define REF_CLOCK_PERIOD_PS 16000
 #define REF_CLOCK_FREQ_HZ 62500000
 
+/* Center DMTD frequency (Hz) */
+#define DMTD_CLOCK_FREQ_HZ 62500000
+
 /* Baud rate of the builtin UART (does not apply to the VUART) */
 #define CONSOLE_UART_BAUDRATE 921600ULL
 
@@ -89,7 +92,7 @@ int board_update(void);
 // clock monitor core channels (see ertm14_top.vhd for assignment to the clock monitor core)
 #define ERTM14_CMON_CLK_SYS 0
 #define ERTM14_CMON_CLK_DMTD 1
-#define ERTM14_CMON_CLK_PLL_FB 2
+#define ERTM14_CMON_CLK_PLL_FB 0
 
 struct ertm14_board
 {

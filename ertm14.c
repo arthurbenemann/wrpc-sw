@@ -117,7 +117,7 @@ static struct ad95xx_config pll_main_dot050_config =
 static struct ad95xx_config pll_main_ocxo_config =
 #include "ertm_14_pll_ocxo_config.h"
 
-static struct ltc6950_config pll_ertm15_config =
+static struct ltc6950_config pll_ertm15_bootstrap_config =
 #include "ertm_15_ltc6950_config.h"
 
 static struct ad95xx_config clk_dist_ertm15_default_config =
@@ -298,6 +298,51 @@ static void iuart_14_poll()
 
 }
 
+void ertm14_clock_monitor_init()
+{
+    wb_cm_init(&board.ertm14_cmon, BASE_CLOCK_MONITOR, 5);
+    wb_cm_set_ref_frequency( &board.ertm14_cmon, DMTD_CLOCK_FREQ_HZ );
+    wb_cm_configure(&board.ertm14_cmon, ERTM14_CMON_CLK_DMTD, 2, 6250000 );
+}
+
+// initializes the LTC6950 PLL & OCXO
+void ertm14_pll_init(void)
+{
+    ltc6950_init(&board.ltc6950_pll, &board.spi_ltc6950);
+
+    int id = ltc6950_read( &board.ltc6950_pll, 0x16 );
+    
+    if( id != 0x65 )
+    {
+        pp_printf("Error initializing LTC6950 (read RevID: 0x%x, expected: 0x%x)\n", id, 0x65 );
+    }
+
+    // load default 'bootstrap' config and check what is the OCXO frequency
+    ltc6950_configure(&board.ltc6950_pll, &pll_ertm15_bootstrap_config);
+
+    pp_printf("Probing OCXO frequency");
+
+    // measure the OCXO freq
+    wb_cm_restart(&board.ertm14_cmon);
+    while( ( wb_cm_read( &board.ertm14_cmon ) & ( 1 << ERTM14_CMON_CLK_PLL_FB) ) == 0 )
+    {
+        pp_printf(".");
+        usleep(200000);
+    }
+
+    int ocxo_freq = board.ertm14_cmon.freqs[ERTM14_CMON_CLK_PLL_FB];
+    
+    pp_printf("%d MHz measured.\n", ocxo_freq);
+
+    int ocxo_10mhz = ocxo_freq > ( 10000000 - 20000 ) && ocxo_freq <  ( 10000000 + 20000 );
+    int ocxo_100mhz = ocxo_freq > ( 100000000 - 20000 ) && ocxo_freq <  ( 100000000 + 20000 );
+    
+    if( ! (ocxo_100mhz || ocxo_10mhz) )
+    {
+        pp_printf("Error: the OCXO has neither 10 nor 100 MHz center frequency. WTF?\n");
+    }
+}
+
 void ertm14_init(void)
 {
     int i;
@@ -353,14 +398,8 @@ void ertm14_init(void)
         100 );
 
 
-    ltc6950_init(&board.ltc6950_pll, &board.spi_ltc6950);
-
-    id = ltc6950_read( &board.ltc6950_pll, 0x16 );
-    
-    if( id != 0x65 )
-    {
-        pp_printf("Error initializing LTC6950 (read RevID: 0x%x, expected: 0x%x)\n", id, 0x65 );
-    }
+    ertm14_clock_monitor_init();
+    ertm14_pll_init();
 
     ad951x_init(&board.ad9516_main, &board.spi_pll_main, &pin_pll_main_reset, &pin_pll_main_lock );
     ad951x_init(&board.ad9516_ext, &board.spi_pll_ext, &pin_pll_ext_reset, &pin_pll_ext_lock );
@@ -368,11 +407,7 @@ void ertm14_init(void)
     //ad951x_configure(&ad9516_main, &pll_main_dot050_config);
     ad951x_configure(&board.ad9516_main, &pll_main_ocxo_config);
 
-    ltc6950_configure(&board.ltc6950_pll, &pll_ertm15_config);
-
-    wb_cm_init(&board.ertm14_cmon, BASE_CLOCK_MONITOR, 5);
-    wb_cm_configure(&board.ertm14_cmon, 0, 2, 6250000 );
-    wb_cm_restart(&board.ertm14_cmon);
+    
 
     gen_gpio_out(&pin_ocxo_override, 0);
 

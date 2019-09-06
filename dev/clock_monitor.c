@@ -64,7 +64,7 @@ int wb_cm_read(struct wb_clock_monitor_device *dev)
     }
 
     //pp_printf("Nn %d\n", n_new );
-    return n_new;
+    return dev->freq_valid_mask;
 }
 
 int wb_cm_show(struct wb_clock_monitor_device *dev)
