@@ -82,6 +82,7 @@ int board_update(void);
 #define BASE_IUART_14               (BASE_AUXWB + 0x200)
 #define BASE_ERTM14_DDS_SYNC_UNIT   (BASE_AUXWB + 0x300)
 #define BASE_CLOCK_MONITOR          (BASE_AUXWB + 0x100)
+#define BASE_ERTM14_10MHZ_ALIGN_UNIT       (BASE_AUXWB + 0x400)
 
 #define ERTM14_RF_OUT_MIN_ID 4
 #define ERTM14_RF_OUT_MAX_ID 12
@@ -92,7 +93,7 @@ int board_update(void);
 // clock monitor core channels (see ertm14_top.vhd for assignment to the clock monitor core)
 #define ERTM14_CMON_CLK_SYS 0
 #define ERTM14_CMON_CLK_DMTD 1
-#define ERTM14_CMON_CLK_PLL_FB 0
+#define ERTM14_CMON_CLK_PLL_FB 2
 
 struct ertm14_board
 {
@@ -106,7 +107,7 @@ struct ertm14_board
     struct spi_bus spi_ad9910_lo;
     struct spi_bus spi_ocxo_dac;
     struct spi_bus spi_ad7888;
-    struct spi_bus spi_flash;
+    //struct spi_bus spi_flash;
     struct i2c_bus i2c_clka_distr;
     struct i2c_bus i2c_clkb_distr;
 
@@ -117,7 +118,7 @@ struct ertm14_board
     struct ad9910_device dds_ad9910_lo;
     struct ad7888_device pwrmon_adc;
     struct ertm15_rf_distribution_device rf_distr;
-    struct spi_flash_device dev_flash;
+    //struct spi_flash_device dev_flash;
     struct ad9520_device dev_clka_distr;
     struct ad9520_device dev_clkb_distr;
     struct i2c_bus i2c_mac_addr;

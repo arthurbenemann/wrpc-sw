@@ -100,11 +100,6 @@ static struct gpio_pin pin_pwrmon_adc_dout = {  &board.gpio_aux, 46 };
 static struct gpio_pin pin_pwrmon_adc_din = {  &board.gpio_aux, 47 };
 static struct gpio_pin pin_pwrmon_adc_sclk = {  &board.gpio_aux, 45 };
 
-static struct gpio_pin pin_flash_cs_n = {  &board.gpio_aux, 55 };
-static struct gpio_pin pin_flash_miso = {  &board.gpio_aux, 53 };
-static struct gpio_pin pin_flash_mosi = {  &board.gpio_aux, 54 };
-static struct gpio_pin pin_flash_sck = {  &board.gpio_aux, 56 };
-
 static struct gpio_pin pin_ad9520_clka_scl = {  &board.gpio_aux, 57 };
 static struct gpio_pin pin_ad9520_clka_sda = {  &board.gpio_aux, 58 };
 static struct gpio_pin pin_ad9520_clkb_scl = {  &board.gpio_aux, 59 };
@@ -433,7 +428,9 @@ void ertm14_init(void)
 
 /* Unique MAC address storage chips (eRTM14 - IC7 and IC8) */
 
-    bb_i2c_init( &board.i2c_mac_addr, &pin_mac_addr_scl, &pin_mac_addr_sda );
+    bb_i2c_create( &board.i2c_mac_addr, &pin_mac_addr_scl, &pin_mac_addr_sda );
+    bb_i2c_init( &board.i2c_mac_addr );
+
     m24aa025_init( &board.m24_mac_ids[0], &board.i2c_mac_addr, 0x50 );
     m24aa025_init( &board.m24_mac_ids[1], &board.i2c_mac_addr, 0x51 );
 
@@ -460,25 +457,10 @@ void ertm14_init(void)
 
     ertm14_spll_setup();
 
-    gen_gpio_set_dir( &pin_flash_mosi, 1 );
-    gen_gpio_set_dir( &pin_flash_cs_n, 1 );
-    gen_gpio_set_dir( &pin_flash_sck, 1 );
-
-    bb_spi_create( &board.spi_flash,
-        &pin_flash_cs_n,
-        &pin_flash_mosi,
-        &pin_flash_miso,
-        &pin_flash_sck,
-        10 );
-
-    spi_flash_create( &board.dev_flash, &board.spi_flash );
-
-
-
-    pp_printf("SPI Flash RDID = %x\n", spi_flash_read_id( &board.dev_flash ) );
-
-    bb_i2c_init( &board.i2c_clka_distr, &pin_ad9520_clka_scl, &pin_ad9520_clka_sda );
-    bb_i2c_init( &board.i2c_clkb_distr, &pin_ad9520_clkb_scl, &pin_ad9520_clkb_sda );
+    bb_i2c_create( &board.i2c_clka_distr, &pin_ad9520_clka_scl, &pin_ad9520_clka_sda );
+    bb_i2c_create( &board.i2c_clkb_distr, &pin_ad9520_clkb_scl, &pin_ad9520_clkb_sda );
+    bb_i2c_init( &board.i2c_clka_distr );
+    bb_i2c_init( &board.i2c_clkb_distr );
 
     ad9520_init( &board.dev_clka_distr, &board.i2c_clka_distr, 0x5c );
     ad9520_init( &board.dev_clkb_distr, &board.i2c_clkb_distr, 0x5c );
@@ -487,9 +469,9 @@ void ertm14_init(void)
 
     pp_printf("Init IUART14\n");
     iuart_init_bare( &board.iuart_14, BASE_IUART_14, 115200 );
-
-    pp_printf("Task!\n");
     wrc_task_create( "iuart14", NULL, iuart_14_poll );
+
+    pp_printf("Ertm init done\n");
 }
 
 
