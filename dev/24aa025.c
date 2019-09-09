@@ -48,20 +48,3 @@ int m24aa025_read_mac(struct m24aa025_device *dev, uint8_t *mac)
 }
 
 
-#if 0
-void ad951x_init() {
-    int i;
-
-    // Configure SPI bus to ad951x
-    gpio_set_dir(&gpio_pin_div_function, 1);
-    gpio_out(&gpio_pin_div_function, 0);
-    spi_delay(&bus_ad951x[0]);
-    gpio_out(&gpio_pin_div_function, 1);
-    spi_delay(&bus_ad951x[0]);
-
-    
-    // Configure ad951x
-    ad951x_configure(&bus_ad951x[0], &default_config);
-    ad951x_configure(&bus_ad951x[1], &default_config);
-}
-#endif
