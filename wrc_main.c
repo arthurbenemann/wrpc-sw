@@ -31,6 +31,7 @@
 #include "lib/ipv4.h"
 #include "rxts_calibrator.h"
 #include "flash.h"
+#include "syscon.h"
 
 #include "wrc_ptp.h"
 #include "system_checks.h"
@@ -40,7 +41,7 @@
 #endif
 
 #ifdef CONFIG_IP
-#include "lib/arp.h"
+#include "lib/ipv4.h"
 #endif
 
 #ifdef CONFIG_LATENCY_PROBE
@@ -52,7 +53,7 @@
 #endif
 
 #ifdef CONFIG_SNMP
-#include "lib/snmp.h"
+//#include "lib/snmp.h"
 #endif
 
 #ifndef CONFIG_DEFAULT_PRINT_TASK_TIME_THRESHOLD
@@ -92,10 +93,10 @@ static void wrc_initialize(void)
 	/*initialize flash*/
 	flash_init();
 	/*initialize I2C bus*/
-	mi2c_init(WRPC_FMC_I2C);
+	bb_i2c_init( &dev_i2c_fmc );
+	
 	/*init storage (Flash / W1 EEPROM / I2C EEPROM*/
-	storage_init(WRPC_FMC_I2C, FMC_EEPROM_ADR);
-
+	storage_init( &dev_i2c_fmc, FMC_EEPROM_ADR);
 
 	if( !ep_is_mac_addr_set() )
 	{
@@ -162,14 +163,14 @@ static int wrc_check_link(void)
 
 	if (!prev_state && state) {
 		pp_printf("Link up.\n");
-		gpio_out(GPIO_LED_LINK, 1);
+		gen_gpio_out(&pin_sysc_led_link, 1);
 		sfp_match();
 		//wrc_ptp_start();
 		link_status = LINK_WENT_UP;
 		rv = 1;
 	} else if (prev_state && !state) {
 		pp_printf("Link down.\n");
-		gpio_out(GPIO_LED_LINK, 0);
+		gen_gpio_out(&pin_sysc_led_link, 0);
 		link_status = LINK_WENT_DOWN;
 		//wrc_ptp_stop();
 		rv = 1;

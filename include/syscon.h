@@ -90,18 +90,8 @@ struct SYSCON_WB {
 	uint32_t WDIAG_TEMP;
 };
 
-#define WRPC_FMC_I2C  0
-#define WRPC_SFP_I2C  1
-#define FMC_I2C_DELAY 15
-#define SFP_I2C_DELAY 300
-
-struct s_i2c_if {
-	struct gpio_pin *scl;
-	struct gpio_pin *sda;
-	uint32_t loop_delay;
-};
-
-extern struct s_i2c_if i2c_if[2];
+extern struct i2c_bus dev_i2c_fmc;
+extern struct i2c_bus dev_i2c_sfp;
 
 void timer_init(uint32_t enable);
 

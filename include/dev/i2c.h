@@ -15,20 +15,9 @@ struct i2c_bus
     int loop_delay;
 };
 
-uint8_t mi2c_devprobe(uint8_t i2cif, uint8_t i2c_addr);
-void mi2c_init(uint8_t i2cif);
-void mi2c_start(uint8_t i2cif);
-void mi2c_repeat_start(uint8_t i2cif);
-void mi2c_stop(uint8_t i2cif);
-void mi2c_get_byte(uint8_t i2cif, unsigned char *data, uint8_t last);
-unsigned char mi2c_put_byte(uint8_t i2cif, unsigned char data);
-
-void mi2c_delay(uint32_t delay);
-//void mi2c_scan(uint8_t i2cif);
-
-
 uint8_t bb_i2c_devprobe(struct i2c_bus *bus, uint8_t i2c_addr);
-void bb_i2c_init(struct i2c_bus *bus, struct gpio_pin *pin_scl, struct gpio_pin *pin_sda );
+void bb_i2c_create(struct i2c_bus *bus, struct gpio_pin *pin_scl, struct gpio_pin *pin_sda );
+void bb_i2c_init(struct i2c_bus *bus);
 void bb_i2c_start(struct i2c_bus *bus);
 void bb_i2c_repeat_start(struct i2c_bus *bus);
 void bb_i2c_stop(struct i2c_bus *bus);

@@ -11,6 +11,7 @@
 
 #include "syscon.h"
 #include "dev/gpio.h"
+#include "dev/i2c.h"
 
 
 static void sysc_gpio_set_dir(const struct gpio_pin *pin, int dir)
@@ -37,6 +38,7 @@ static const struct gpio_device syscon_gpio = {
 	sysc_gpio_read_pin
 };
 
+volatile struct SYSCON_WB *syscon;
 
 // fixme: use indices for GPIO pins in the WB file, not masks
 const struct gpio_pin pin_sysc_led_link = { &syscon_gpio, 1 };
@@ -54,12 +56,14 @@ const struct gpio_pin pin_sysc_sfp_scl = { &syscon_gpio, 8 };
 const struct gpio_pin pin_sysc_sfp_sda = { &syscon_gpio, 9 };
 const struct gpio_pin pin_sysc_net_rst = { &syscon_gpio, 4 };
 
-struct s_i2c_if i2c_if[2] = {
-	{ &pin_sysc_fmc_scl, &pin_sysc_fmc_sda, FMC_I2C_DELAY},
-	{ &pin_sysc_sfp_scl, &pin_sysc_sfp_sda, SFP_I2C_DELAY}
-};
+#define FMC_I2C_DELAY 15
+#define SFP_I2C_DELAY 300
 
-volatile struct SYSCON_WB *syscon;
+struct i2c_bus dev_i2c_fmc = 
+	{ &pin_sysc_fmc_scl, &pin_sysc_fmc_sda, FMC_I2C_DELAY };
+
+struct i2c_bus dev_i2c_sfp = 
+	{ &pin_sysc_sfp_scl, &pin_sysc_sfp_sda, SFP_I2C_DELAY };
 
 /****************************
  *       BOARD NAME

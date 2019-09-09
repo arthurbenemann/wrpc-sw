@@ -13,6 +13,8 @@
 #include "dev/i2c.h"
 #include "dev/gpio.h"
 
+#if 0
+
 void mi2c_delay(uint32_t delay)
 {
 	int i;
@@ -117,6 +119,8 @@ uint8_t mi2c_devprobe(uint8_t i2cif, uint8_t i2c_addr)
 
 //
 
+#endif
+
 #undef M_SDA_OUT
 #undef M_SCL_OUT
 #undef M_SDA_IN
@@ -206,11 +210,16 @@ void bb_i2c_get_byte(struct i2c_bus *bus, uint8_t *data, uint8_t last)
 	*data = indata;
 }
 
-void bb_i2c_init(struct i2c_bus *bus,  struct gpio_pin *pin_scl, struct gpio_pin *pin_sda )
+void bb_i2c_create(struct i2c_bus *bus,  struct gpio_pin *pin_scl, struct gpio_pin *pin_sda )
 {
 	bus->pin_scl = pin_scl;
 	bus->pin_sda = pin_sda;
 	bus->loop_delay = 100;
+	
+}
+
+void bb_i2c_init(struct i2c_bus *bus)
+{
 	M_SCL_OUT(1);
 	M_SDA_OUT(1);
 }
