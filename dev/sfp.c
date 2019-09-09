@@ -28,7 +28,7 @@ char sfp_pn[SFP_PN_LEN];
 
 static int sfp_present(void)
 {
-	return !gpio_in(GPIO_SFP_DET);
+	return !gen_gpio_in(&pin_sysc_sfp_det);
 }
 
 static int sfp_read_part_id(char *part_id)

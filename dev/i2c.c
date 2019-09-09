@@ -20,9 +20,9 @@ void mi2c_delay(uint32_t delay)
 		asm volatile ("nop");
 }
 
-#define M_SDA_OUT(i, x) { gpio_out(i2c_if[i].sda, x); mi2c_delay(i2c_if[i].loop_delay); }
-#define M_SCL_OUT(i, x) { gpio_out(i2c_if[i].scl, x); mi2c_delay(i2c_if[i].loop_delay); }
-#define M_SDA_IN(i) gpio_in(i2c_if[i].sda)
+#define M_SDA_OUT(i, x) { gen_gpio_out(i2c_if[i].sda, x); mi2c_delay(i2c_if[i].loop_delay); }
+#define M_SCL_OUT(i, x) { gen_gpio_out(i2c_if[i].scl, x); mi2c_delay(i2c_if[i].loop_delay); }
+#define M_SDA_IN(i) gen_gpio_in(i2c_if[i].sda)
 
 void mi2c_start(uint8_t i2cif)
 {

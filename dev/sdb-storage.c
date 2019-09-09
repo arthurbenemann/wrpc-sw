@@ -23,6 +23,8 @@
 #include <libsdbfs.h>
 #include <flash.h>
 
+
+
 /*
  * This source file is a drop-in replacement of the legacy one: it manages
  * both i2c and w1 devices even if the interface is the old i2c-based one
@@ -42,17 +44,17 @@ struct storage_config storage_cfg;
 /* Functions for Flash access */
 static int sdb_flash_read(struct sdbfs *fs, int offset, void *buf, int count)
 {
-	return flash_read(offset, buf, count);
+	return spi_flash_read( &wrc_flash_dev,offset, buf, count);
 }
 
 static int sdb_flash_write(struct sdbfs *fs, int offset, void *buf, int count)
 {
-	return flash_write(offset, buf, count);
+	return spi_flash_write( &wrc_flash_dev,offset, buf, count);
 }
 
 static int sdb_flash_erase(struct sdbfs *fs, int offset, int count)
 {
-	return flash_erase(offset, count);
+	return spi_flash_erase( &wrc_flash_dev, offset, count);
 }
 
 /* The methods for W1 access */
@@ -217,7 +219,7 @@ void storage_init(int chosen_i2cif, int chosen_i2c_addr)
 	 * 1. Check if there is SDBFS in the Flash.
 	 */
 	for (i = 0; i < ARRAY_SIZE(entry_points_flash); i++) {
-		flash_read(entry_points_flash[i], (void *)&magic, sizeof(magic));
+		spi_flash_read(&wrc_flash_dev, entry_points_flash[i], (void *)&magic, sizeof(magic));
 		if (magic == SDB_MAGIC)
 			break;
 	}

@@ -12,6 +12,7 @@
 #include <inttypes.h>
 #include <sys/types.h>
 #include "board.h"
+#include "dev/gpio.h"
 
 uint32_t timer_get_tics(void);
 void timer_delay(uint32_t tics);
@@ -89,25 +90,14 @@ struct SYSCON_WB {
 	uint32_t WDIAG_TEMP;
 };
 
-/*GPIO pins*/
-#define GPIO_LED_LINK SYSC_GPSR_LED_LINK
-#define GPIO_LED_STAT SYSC_GPSR_LED_STAT
-#define GPIO_BTN1     SYSC_GPSR_BTN1
-#define GPIO_BTN2     SYSC_GPSR_BTN2
-#define GPIO_SFP_DET  SYSC_GPSR_SFP_DET
-#define GPIO_SPI_SCLK SYSC_GPSR_SPI_SCLK
-#define GPIO_SPI_NCS  SYSC_GPSR_SPI_NCS
-#define GPIO_SPI_MOSI SYSC_GPSR_SPI_MOSI
-#define GPIO_SPI_MISO SYSC_GPSR_SPI_MISO
-
 #define WRPC_FMC_I2C  0
 #define WRPC_SFP_I2C  1
 #define FMC_I2C_DELAY 15
 #define SFP_I2C_DELAY 300
 
 struct s_i2c_if {
-	uint32_t scl;
-	uint32_t sda;
+	struct gpio_pin *scl;
+	struct gpio_pin *sda;
 	uint32_t loop_delay;
 };
 
@@ -122,18 +112,16 @@ extern volatile struct SYSCON_WB *syscon;
 /****************************
  *        GPIO
  ***************************/
-static inline void gpio_out(int pin, int val)
-{
-	if (val)
-		syscon->GPSR = pin;
-	else
-		syscon->GPCR = pin;
-}
+extern const struct gpio_pin pin_sysc_led_link;
+extern const struct gpio_pin pin_sysc_led_stat;
+extern const struct gpio_pin pin_sysc_btn1;
+extern const struct gpio_pin pin_sysc_btn2;
+extern const struct gpio_pin pin_sysc_sfp_det;
+extern const struct gpio_pin pin_sysc_spi_sclk;
+extern const struct gpio_pin pin_sysc_spi_ncs;
+extern const struct gpio_pin pin_sysc_spi_mosi;
+extern const struct gpio_pin pin_sysc_spi_miso;
 
-static inline int gpio_in(int pin)
-{
-	return syscon->GPSR & pin ? 1 : 0;
-}
 
 static inline int sysc_get_memsize(void)
 {

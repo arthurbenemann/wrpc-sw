@@ -95,8 +95,8 @@ struct SYSCON_WB {
 #define SFP_I2C_DELAY 300
 
 struct s_i2c_if {
-	uint32_t scl;
-	uint32_t sda;
+	struct gpio_pin *scl;
+	struct gpio_pin *sda;
 	uint32_t loop_delay;
 };
 
@@ -105,12 +105,10 @@ extern struct s_i2c_if i2c_if[2];
 void timer_init(uint32_t enable);
 
 
-
-extern volatile struct SYSCON_WB *syscon;
-
 /****************************
  *        GPIO
  ***************************/
+#if 0
 static inline void gpio_out(int pin, int val)
 {
 	if (val)
@@ -123,6 +121,7 @@ static inline int gpio_in(int pin)
 {
 	return syscon->GPSR & pin ? 1 : 0;
 }
+#endif
 
 static inline int sysc_get_memsize(void)
 {

@@ -25,6 +25,11 @@ void spi_flash_create(struct spi_flash_device *dev, struct spi_bus *bus)
 
 	for(i=0;i < 10; i++)
 		(void) spi_flash_rsr( dev ); // make sure SPI bus is in known state
+
+	uint32_t id = spi_flash_read_id( dev );
+
+	pp_printf("Flash ID = 0x%08x\n", id );
+
 }
 
 /*

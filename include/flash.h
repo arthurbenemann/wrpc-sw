@@ -10,8 +10,11 @@
 #define __FLASH_H_
 
 #include "types.h"
+#include "dev/spi_flash.h"
 
 #define FLASH_BLOCKSIZE 65536
+
+extern struct spi_flash_device wrc_flash_dev;
 
 /* Flash interface functions */
 void	flash_init(void);
