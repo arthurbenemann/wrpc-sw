@@ -41,6 +41,7 @@
 #define TX_SETUP_STATE_MEASURE_PHASE 3
 #define TX_SETUP_DONE 4
 #define TX_SETUP_VALIDATE 5
+#define TX_SETUP_STATE_DISABLED 6
 
 #define RX_SETUP_STATE_INIT 0
 #define RX_SETUP_STATE_RESET_PCS 1
@@ -48,6 +49,7 @@
 #define RX_SETUP_STATE_MEASURE_PHASE 3
 #define RX_SETUP_DONE 4
 #define RX_SETUP_VALIDATE 5
+#define RX_SETUP_STATE_DISABLED 6
 
 #define FSM_DEBUG_REFRESH_PERIOD_MS 1000
 #define FSM_PHY_LOCK_TIMEOUT_MS 1000
@@ -195,8 +197,8 @@ static int tx_fsm_update()
             if( tmo_expired( &fsm->dmtd_timeout ) )
             {
                 pp_printf("[tx-cal] Phase measurement timeout, retrying...\n");
-                for(;;)
-                    spll_show_stats();
+                //for(;;)
+                  //  spll_show_stats();
                 fsm->state = TX_SETUP_STATE_RESET_PCS;
             }
             return 0;
@@ -491,4 +493,10 @@ void phy_calibration_init()
     rx_fsm_init(&rx_state);
 
     wrc_task_create( "phy-cal", NULL, phy_calibration_poll );
+}
+
+void phy_calibration_disable()
+{
+    tx_state.state = TX_SETUP_STATE_DISABLED;
+    rx_state.state = RX_SETUP_STATE_DISABLED;
 }
