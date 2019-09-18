@@ -36,6 +36,19 @@ static int con_uart_getc(struct console_device* dev)
     return suart_read_byte(&priv->uart_dev);
 }
 
+void console_uart_write_bytes( uint8_t *buf, int count )
+{
+    int i;
+    for(i=0;i<count;i++)
+        suart_write_byte( &console_uart_priv.uart_dev, buf[i] );
+
+}
+
+void console_uart_set_crlf_mode(int on)
+{
+    console_uart_priv.uart_dev.crlf_mode = on;
+}
+
 #define IPMI_CON_TX_BUF_SIZE 1024
 #define IPMI_CON_RX_BUF_SIZE 128
 #define IPMI_CON_RX_TIMEOUT 1000
