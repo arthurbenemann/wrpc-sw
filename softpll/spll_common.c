@@ -20,7 +20,9 @@ int pi_update(spll_pi_t *pi, int x)
 	pi->x = x;
 	i_new = pi->integrator + x;
 
-	y = ((i_new * pi->ki + x * pi->kp) >> pi->shift) + pi->bias;
+	int y_preround = (i_new * pi->ki + x * pi->kp) + ( 1 << (pi->shift - 1) );
+
+	y = (y_preround >> pi->shift) + pi->bias;
 
 	/* clamping (output has to be in <y_min, y_max>) and
 	   anti-windup: stop the integrator if the output is already
@@ -68,7 +70,7 @@ int ld_update(spll_lock_det_t *ld, int y)
 			ld->lock_cnt++;
 
 		if (ld->lock_cnt == ld->lock_samples) {
-			ld->lock_changed = 1;
+			ld->lock_changed = !ld->locked;
 			ld->locked = 1;
 			return 1;
 		}
@@ -76,9 +78,9 @@ int ld_update(spll_lock_det_t *ld, int y)
 		if (ld->lock_cnt > ld->delock_samples)
 			ld->lock_cnt--;
 
-		if (ld->lock_cnt == ld->delock_samples) {
+		if (ld->lock_cnt == ld->delock_samples && ld->locked) {
 			ld->lock_cnt = 0;
-			ld->lock_changed = 1;
+			ld->lock_changed = ld->locked;
 			ld->locked = 0;
 			return -1;
 		}
