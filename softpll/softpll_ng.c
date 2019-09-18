@@ -308,6 +308,11 @@ void spll_init(int mode, int slave_ref_channel, int align_pps)
 	s->mode = mode;
 	s->delock_count = 0;
 
+	SPLL->OCER = 0;
+	SPLL->RCER = 0;
+	SPLL->ECCR = 0;
+	SPLL->EIC_IDR = 1;
+
 	SPLL->DAC_HPLL = 0;
 	SPLL->DAC_MAIN = 0;
 
@@ -364,11 +369,31 @@ void spll_init(int mode, int slave_ref_channel, int align_pps)
 
 	/* Purge tag buffer */
 	while (!(SPLL->TRR_CSR & SPLL_TRR_CSR_EMPTY))
+	{
 		dummy = SPLL->TRR_R0;
+		(void) dummy;
+	}
 	
+
+	/* Purge debug queue */
+	//if ( SPLL->CSR & SPLL_CSR_DBG_SUPPORTED )
+	{
+		pp_printf("Purge dbgq\n");
+		while (!(SPLL->DFR_HOST_CSR & SPLL_DFR_HOST_CSR_EMPTY))
+		{
+			dummy = SPLL->DFR_HOST_R0;
+			(void) dummy;
+		}
+
+	}
+
+	if(mode == SPLL_MODE_DISABLED)
+		return;
+
+
 	SPLL->EIC_IER = 1;
 	SPLL->OCER |= 1;
-	
+
 	enable_irq();
 }
 
@@ -739,4 +764,44 @@ void spll_set_gain_schedule( spll_gain_schedule_t* sch )
 	disable_irq();
 	softpll.mpll.gain_sched = sch;
 	enable_irq();
+}
+
+int spll_get_debug_queue_samples( uint32_t *buf, int count, int undersample )
+{
+	int cnt = count;
+	int pass = 1;
+	int und_cnt = 0;
+	int n_ents = 0;
+
+	if ( SPLL->DFR_HOST_CSR & SPLL_DFR_HOST_CSR_EMPTY )
+		return 0;
+
+	while(cnt > 0)
+	{
+		uint32_t v = SPLL->DFR_HOST_R0;
+
+		int tag = (v & DBG_TAG_MASK) >> DBG_TAG_SHIFT;
+
+		if(pass || tag == DBG_EVENT)
+		{
+			*buf++ = v;
+			n_ents ++;
+		}
+
+		if( v & 0x80000000 ) // last entry in the record
+		{
+			und_cnt++;
+			if (und_cnt == undersample)
+			{
+				und_cnt = 0;
+				pass = 1;
+				cnt--;
+			} else {
+				pass = 0;
+			}
+		}
+
+	}
+
+	return n_ents;
 }
