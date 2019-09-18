@@ -139,6 +139,17 @@ void rts_update(void)
     }
 }
 
+int rts_spll_set_constants(int loop, int param, int value)
+{
+	return spll_set_pi(loop,param,value);
+}
+
+int rts_spll_get_constants(int loop, int param, int *value)
+{
+	int ret = spll_get_pi(loop, param, &value); // tbd: &value is not used at the moment.
+	return ret;
+}
+
 
 /* fixme: this assumes the host is BE */
 static int htonl(int i)
@@ -211,7 +222,19 @@ static int rts_debug_command_func(const struct minipc_pd *pd, uint32_t *args, vo
     return 0;
 }
 
+static int rts_spll_set_constants_func( const struct minipc_pd *pd, uint32_t *args, void *ret)
+{
+	pstate.ipc_count++;
+	*(int *) ret = rts_spll_set_constants((int)args[0], (int)args[1], (int)args[2]);
+	return 0;
+}
 
+static int rts_spll_get_constants_func( const struct minipc_pd *pd, uint32_t *args, void *ret)
+{
+	pstate.ipc_count++;
+	*(int *) ret = rts_spll_get_constants((int)args[0],(int)args[1], (int)args[2]);
+	return ret;
+}
 
 static struct minipc_ch *server;
 
@@ -228,13 +251,17 @@ int rtipc_init(void)
 	rtipc_rts_adjust_phase_struct.f = rts_adjust_phase_func;
 	rtipc_rts_enable_ptracker_struct.f = rts_enable_ptracker_func;
 	rtipc_rts_debug_command_struct.f = rts_debug_command_func;
+	rtipc_rts_spll_set_constants_struct.f = rts_spll_set_constants_func;
+	rtipc_rts_spll_get_constants_struct.f = rts_spll_get_constants_func;
 	
 	minipc_export(server, &rtipc_rts_set_mode_struct);
 	minipc_export(server, &rtipc_rts_get_state_struct);
 	minipc_export(server, &rtipc_rts_lock_channel_struct);
-  minipc_export(server, &rtipc_rts_adjust_phase_struct);
-  minipc_export(server, &rtipc_rts_enable_ptracker_struct);
-  minipc_export(server, &rtipc_rts_debug_command_struct);
+	minipc_export(server, &rtipc_rts_adjust_phase_struct);
+	minipc_export(server, &rtipc_rts_enable_ptracker_struct);
+	minipc_export(server, &rtipc_rts_debug_command_struct);
+	minipc_export(server, &rtipc_rts_spll_set_constants_struct);
+	minipc_export(server, &rtipc_rts_spll_get_constants_struct);
 
 
 	return 0;

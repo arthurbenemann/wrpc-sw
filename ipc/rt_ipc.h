@@ -128,6 +128,10 @@ int rts_enable_ptracker(int channel, int enable);
 /* Enabled/disables phase tracking on a particular port */
 int rts_debug_command(int param, int value);
 
+int rts_spll_get_constants(int loop, int param, int *value);
+
+int rts_spll_set_constants(int loop, int param, int value);
+
 #ifdef RTIPC_EXPORT_STRUCTURES
 
 static struct minipc_pd rtipc_rts_get_state_struct = {
@@ -185,6 +189,29 @@ static struct minipc_pd rtipc_rts_debug_command_struct = {
 	    MINIPC_ARG_ENCODE(MINIPC_ATYPE_INT, int ),
 	    MINIPC_ARG_END
 	},
+};
+
+static struct minipc_pd rtipc_rts_spll_set_constants_struct = {
+	.name = "gggg",
+	.retval = MINIPC_ARG_ENCODE(MINIPC_ATYPE_INT, int ),
+	.args = {
+		MINIPC_ARG_ENCODE(MINIPC_ATYPE_INT, int ),
+		MINIPC_ARG_ENCODE(MINIPC_ATYPE_INT, int ),
+		MINIPC_ARG_ENCODE(MINIPC_ATYPE_INT, int ),
+		MINIPC_ARG_END
+	},
+
+};
+
+static struct minipc_pd rtipc_rts_spll_get_constants_struct = {
+	.name = "hhhh",
+	.retval = MINIPC_ARG_ENCODE(MINIPC_ATYPE_INT, int ),
+	.args = {
+		MINIPC_ARG_ENCODE(MINIPC_ATYPE_INT, int ),
+		MINIPC_ARG_ENCODE(MINIPC_ATYPE_INT, int ),
+		MINIPC_ARG_END
+	},
+
 };
 
 #endif

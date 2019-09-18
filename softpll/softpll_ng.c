@@ -716,3 +716,86 @@ void check_vco_frequencies()
 	pll_verbose("EXT clock: Freq=%d Hz\n", f_min);
 	
 }
+
+int spll_set_pi(int loop, int param, int value)
+{
+	struct softpll_state *s = (struct softpll_state *) &softpll;
+	switch (loop)
+	{
+	case SPLL_MAIN_LOOP :
+		if( param == SPLL_KP )
+		{
+			s->mpll.pi.kp = value;
+			return 0;
+		}
+		else if( param == SPLL_KI )
+		{
+			s->mpll.pi.ki = value;
+			return 0;
+		}
+		else
+			return -1;
+	
+	case SPLL_HELPER_LOOP :
+		if( param == SPLL_KP )
+		{
+			s->helper.pi.kp = value;
+			return 0;
+		}
+		else if( param == SPLL_KI )
+		{
+			s->helper.pi.ki = value;
+			return 0;
+		}
+		else
+			return -1;
+	
+	default:
+		return -1;
+		break;
+	}
+}
+
+int spll_get_pi(int loop, int param, int *value)
+{
+	struct softpll_state *s = (struct softpll_state *) &softpll;
+
+	switch (loop)
+	{
+	case SPLL_MAIN_LOOP :
+		if( param == SPLL_KP )
+		{
+			pp_printf("Main kp: %d\n", s->mpll.pi.kp);
+			*value = s->mpll.pi.kp;
+			return s->mpll.pi.kp;
+		}else if( param == SPLL_KI )
+		{
+			pp_printf("Main ki: %d\n", s->mpll.pi.ki);
+			*value = s->mpll.pi.ki;
+			return s->mpll.pi.ki;
+		}
+		else return -1;
+		break;
+	
+	case SPLL_HELPER_LOOP :
+		if( param == SPLL_KP )
+		{
+			pp_printf("Helper kp: %d\n", s->helper.pi.kp);
+			*value = s->helper.pi.kp;
+			return s->helper.pi.kp;
+		}
+		else if( param == SPLL_KI )
+		{
+			pp_printf("Helper ki: %d\n", s->helper.pi.ki);
+			*value = s->helper.pi.ki;
+			return s->helper.pi.ki;
+		}
+		else return -1;
+		break;
+	
+	default:
+		return -1;
+		break;
+	}
+	
+}

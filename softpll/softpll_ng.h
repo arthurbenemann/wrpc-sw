@@ -40,6 +40,12 @@
 #define SPLL_OSC_DMTD 1
 #define SPLL_OSC_EXT 2
 
+/* Change spll PI loop in real time */
+#define SPLL_MAIN_LOOP 0
+#define SPLL_HELPER_LOOP 1
+#define SPLL_KP 0
+#define SPLL_KI 1
+
 /* Note on channel naming:
  - ref_channel means a PHY recovered clock input. There can be one (as in WR core) or more (WR switch).
  - out_channel means an output channel, which represents PLL feedback signal from a local, tunable oscillator. Every SPLL implementation
@@ -111,6 +117,12 @@ void spll_set_dac(int out_channel, int value);
 int spll_get_dac(int out_channel);
 
 void check_vco_frequencies(void);
+
+/* Returns the values of kp/ki of the PI loops */
+int spll_get_pi(int loop, int param, int *value);
+
+/* Changes the value of the kp/ki constants of the PI loops during runtime */
+int spll_set_pi(int loop, int param, int value);
 
 /*
  * Aux and main state:

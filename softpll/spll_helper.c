@@ -126,3 +126,28 @@ void helper_switch_reference(struct spll_helper_state *s, int new_ref)
 	spll_enable_tagger(s->ref_src, 1);
 #endif
 }
+
+int helper_get_pi(struct spll_helper_state *s, int param)
+{
+	if( param == SPLL_KP )
+		return s->pi.kp;
+	else if( param == SPLL_KI )
+		return s->pi.ki;
+	else
+		return -1;
+}
+
+int helper_set_pi(struct spll_helper_state *s, int param, int value )
+{
+	if(param == SPLL_KP)
+	{
+		s->pi.kp = value;
+		return 0;
+	}
+	if(param == SPLL_KI)
+	{
+		s->pi.ki = value;
+		return 0;
+	}
+	return -1;
+}
