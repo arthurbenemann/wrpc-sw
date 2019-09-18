@@ -35,8 +35,8 @@ int helper_update(struct spll_helper_state *s, int tag,
 	int err, y;
 
 	if (source == s->ref_src) {
-		spll_debug(DBG_TAG | DBG_HELPER, tag, 0);
-		spll_debug(DBG_REF | DBG_HELPER, s->p_setpoint, 0);
+		//spll_debug(DBG_TAG | DBG_HELPER, tag, 0);
+		//spll_debug(DBG_REF | DBG_HELPER, s->p_setpoint, 0);
 
 		if (s->tag_d0 < 0) {
 			s->p_setpoint = tag;
@@ -70,12 +70,19 @@ int helper_update(struct spll_helper_state *s, int tag,
 		y = pi_update((spll_pi_t *)&s->pi, err);
 		SPLL->DAC_HPLL = y;
 
-		spll_debug(DBG_SAMPLE_ID | DBG_HELPER, s->sample_n++, 0);
+		if (s->ld.lock_changed)
+		{
+			spll_debug(DBG_EVENT | DBG_HELPER, DBG_EVT_LOCKED, 0);
+			s->ld.lock_changed = 0;
+		}
+
+		//spll_debug(DBG_SAMPLE_ID | DBG_HELPER, s->sample_n++, 0);
 		spll_debug(DBG_Y | DBG_HELPER, y, 0);
 		spll_debug(DBG_ERR | DBG_HELPER, err, 1);
 
 		if (ld_update((spll_lock_det_t *)&s->ld, err))
 			return SPLL_LOCKED;
+
 	}
 	return SPLL_LOCKING;
 }

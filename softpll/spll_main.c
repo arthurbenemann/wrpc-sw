@@ -80,7 +80,7 @@ static inline void mpll_handle_gain_schedule( struct spll_main_state *s )
 	}
 	else if ( !s->gain_sched->locked_d && s->ld.locked ) // PLL lock acquired? advance stage
 	{
-		
+		spll_debug(DBG_EVENT | DBG_MAIN, DBG_EVT_GAIN_SWITCH, 0);
 		if ( s->gain_sched->current_stage == s->gain_sched->n_stages - 1 )
 		{
 			if (!s->locked) pll_verbose("MPLL final locked [%d %d %d]\n", s->sample_n, s->ld.lock_cnt, s->ld.lock_samples );
@@ -214,7 +214,7 @@ int mpll_update(struct spll_main_state *s, int tag, int source)
 		spll_debug(DBG_MAIN | DBG_REF, s->tag_ref + s->adder_ref, 0);
 		spll_debug(DBG_MAIN | DBG_TAG, s->tag_out + s->adder_out, 0);
 		spll_debug(DBG_MAIN | DBG_ERR, err, 0);
-		spll_debug(DBG_MAIN | DBG_SAMPLE_ID, s->sample_n++, 0);
+		//spll_debug(DBG_MAIN | DBG_SAMPLE_ID, s->sample_n++, 0);
 		spll_debug(DBG_MAIN | DBG_Y, y, 1);
 
 		s->tag_out = -1;
@@ -238,6 +238,9 @@ int mpll_update(struct spll_main_state *s, int tag, int source)
 		}
 
 		ld_update((spll_lock_det_t *)&s->ld, err);
+		if( s->ld.lock_changed) 
+			spll_debug(DBG_EVENT | DBG_MAIN, DBG_EVT_LOCKED, 1);
+
 		mpll_handle_gain_schedule(s);
 
 		if(s->locked)

@@ -23,15 +23,19 @@ integral/proportional gains on the response of the system.
 #define DBG_TAG 2
 #define DBG_REF 5
 #define DBG_PERIOD 3
-#define DBG_EVENT 4
 #define DBG_SAMPLE_ID 6
 
+#define DBG_TAG_MASK 0xf0
+#define DBG_TAG_SHIFT 4
+
+#define DBG_EVENT 0x40
 #define DBG_HELPER 0x20		/* Sample source: Helper PLL */
-#define DBG_EXT 0x40		/* Sample source: External Reference PLL */
-#define DBG_MAIN 0x0		/* ...          : Main PLL */
+#define DBG_EXT 0x10		/* Sample source: External Reference PLL */
+#define DBG_MAIN 0x00		/* ...          : Main PLL */
 
 #define DBG_EVT_START 1		/* PLL has just started */
 #define DBG_EVT_LOCKED 2	/* PLL has just become locked */
+#define DBG_EVT_GAIN_SWITCH 3	/* PLL has just become locked */
 
 /* Writes a parameter to the debug FIFO.
 
@@ -45,6 +49,5 @@ last: when non-zero, indicates the last parameter in a sample.
 
 static inline void spll_debug(int what, int value, int last)
 {
-	SPLL->DFR_SPLL =
-	    (last ? 0x80000000 : 0) | (value & 0xffffff) | (what << 24);
+	SPLL->DFR_SPLL = (last ? 0x80000000 : 0) | (value & 0xffffff) | (what << 24);
 }
