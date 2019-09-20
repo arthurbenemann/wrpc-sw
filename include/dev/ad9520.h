@@ -37,5 +37,6 @@ void ad9520_write(struct ad9520_device *dev, uint32_t reg, uint8_t value);
 uint8_t ad9520_read(struct ad9520_device *dev, uint32_t reg);
 void ad9520_soft_reset(struct ad9520_device *dev);
 int ad9520_init(struct ad9520_device *dev, struct i2c_bus *bus, uint8_t addr);
+int ad9520_configure(struct ad9520_device *dev, struct ad95xx_config *cfg);
 
 #endif

@@ -25,6 +25,7 @@
 // Write to AD9510 via I2C
 void ad9520_write(struct ad9520_device *dev, uint32_t reg, uint8_t value)
 {
+//    pp_printf("ad9520_write reg %x value %x\n", reg, value);
     bb_i2c_start( dev->bus );
     bb_i2c_put_byte( dev->bus, dev->addr << 1 );
     bb_i2c_put_byte( dev->bus, reg >> 8);
@@ -53,10 +54,11 @@ int ad9520_init(struct ad9520_device *dev, struct i2c_bus *bus, uint8_t addr)
     dev->bus = bus;
     dev->addr = addr;
 
-    ad9520_write( dev, 0x00, 0x81);  // unidir mode
-   	ad9520_write( dev, 0x232, 0x01);  // commit
+    ad9520_write( dev, 0x00, (1<<5) | (1<<2) );  // soft reset
+    ad9520_write( dev, 0x232, 0x01);  // commit
 
     int id = ad9520_read( dev, 0x3 );
+    pp_printf("Init AD9520: ID = %x\n", id);
     return (id == 0x61 ? 0 : -1);
 }
 
@@ -68,6 +70,12 @@ int ad9520_configure(struct ad9520_device *dev, struct ad95xx_config *cfg)
     }
 
     ad9520_write(dev, 0x232, 0x01);  // commit
+/*
+    for(i = 0; i < cfg->n_regs; i++) {
+       uint32_t r = ad9520_read(dev, cfg->regs[i].addr);
+       pp_printf("readback %x %x %x\n" , cfg->regs[i].addr , cfg->regs[i].value, r);
+    }
+*/
 
     return 0;
 };
@@ -82,20 +90,21 @@ int ad9520_enable_output(struct ad9520_device *dev, int channel, int enabled )
 
 int ad9520_set_output_divider( struct ad9520_device *dev, int channel, int divider)
 {
+    int index = channel / 3;
     if( divider == 1 ) // undivided output
     {
-        ad9520_write(dev, 0x190 + 3*channel, 0);
-        ad9520_write(dev, 0x191 + 3*channel, 0x80); // bypass divider
-        ad9520_write(dev, 0x192 + 3*channel, 0);
+        ad9520_write(dev, 0x190 + 3*index, 0);
+        ad9520_write(dev, 0x191 + 3*index, 0x80); // bypass divider
+        ad9520_write(dev, 0x192 + 3*index, 0);
     } else {
         int cyc = (divider / 2) - 1;
 
         if( cyc >= 8)
             return -1;
 
-        ad9520_write(dev, 0x190 + 3*channel, cyc | (cyc<<4));
-        ad9520_write(dev, 0x191 + 3*channel, 0); // enable divider
-        ad9520_write(dev, 0x192 + 3*channel, 0);
+        ad9520_write(dev, 0x190 + 3*index, cyc | (cyc<<4));
+        ad9520_write(dev, 0x191 + 3*index, 0); // enable divider
+        ad9520_write(dev, 0x192 + 3*index, 0);
     }
 
     ad9520_write(dev, 0x232, 0x01);  // commit
