@@ -13,6 +13,7 @@
 
 #include "board.h"
 #include "dev/clock_monitor.h"
+#include "softpll_ng.h"
 #include "shell.h"
 
 #include "dev/ertm15_rf_distr.h"
@@ -101,24 +102,75 @@ static void set_clock_param(int param, const char *name, const char *value)
     }
 }
 
+static int measure_clock( int id, int ref_channel, int ref_frequency )
+{
+    struct wb_clock_monitor_device* cm = &board.ertm14_cmon;
+
+    wb_cm_set_ref_frequency( cm, ref_frequency );
+    wb_cm_configure(cm, ref_channel, 2, 6250000 );
+    wb_cm_restart( cm );
+    
+    while( ! ( cm->freq_valid_mask & (1<<id ) ) )
+        wb_cm_read( cm );
+    
+    return cm->freqs[id];
+}
+
 static int cmd_ertm(const char *args[])
 {
 	int i;
     
 	if (!strcasecmp(args[0], "test-clocks")) {
-        struct wb_clock_monitor_device* cm = &board.ertm14_cmon;
 		pp_printf("eRTM14/15 clock frequency test:\n");
-        wb_cm_restart( cm );
-        usleep(3000000);
-        wb_cm_read( cm );
 
-        for( i = 0; i < cm->n_channels; i++ )
+        phy_calibration_disable();
+        spll_init( SPLL_MODE_DISABLED, 0, 0);
+
+      /*  for(;;)
         {
-            if( cm->freq_valid_mask & (1<<i))
-            {
-                pp_printf("%d [%s] : %d Hz\n", i, clock_names[i], cm->freqs[i]);
-            }
-         }
+        spll_set_dac(-1, 0); // dmtd -> min
+        usleep(500000);
+        spll_set_dac(-1, 65530); // dmtd -> max
+        usleep(500000);
+        pp_printf(".");
+        
+        }*/
+      
+
+        pp_printf("Main Ref clock: ");
+        
+        spll_set_dac(0, 0); // main -> min
+        usleep(500000);
+        int main_min = measure_clock( ERTM14_CMON_CLK_REF, ERTM14_CMON_CLK_DMTD, DMTD_CLOCK_FREQ_HZ );
+
+        spll_set_dac(0, 65530); // main -> max
+        usleep(500000);
+        int main_max = measure_clock( ERTM14_CMON_CLK_REF, ERTM14_CMON_CLK_DMTD, DMTD_CLOCK_FREQ_HZ );
+        
+        spll_set_dac(0, 32768); // main -> midrange
+        usleep(500000);
+        int main_mid = measure_clock( ERTM14_CMON_CLK_REF, ERTM14_CMON_CLK_DMTD, DMTD_CLOCK_FREQ_HZ );
+
+        pp_printf("min=%d, max=%d, mid=%d Hz\n", main_min, main_max, main_mid);
+        
+        pp_printf("DMTD clock: ");
+
+        spll_set_dac(-1, 0); // dmtd -> min
+        usleep(500000);
+        int dmtd_min = measure_clock( ERTM14_CMON_CLK_DMTD, ERTM14_CMON_CLK_REF, 20000000 );
+
+        spll_set_dac(-1, 65530); // dmtd -> max
+        usleep(500000);
+        int dmtd_max = measure_clock( ERTM14_CMON_CLK_DMTD, ERTM14_CMON_CLK_REF, 20000000 );
+        
+        spll_set_dac(-1, 32768); // dmtd -> midrange
+        usleep(500000);
+        int dmtd_mid = measure_clock( ERTM14_CMON_CLK_DMTD, ERTM14_CMON_CLK_REF, 20000000 );
+
+        pp_printf("min=%d, max=%d, mid=%d Hz\n", dmtd_min, dmtd_max, dmtd_mid);
+        
+
+
     } else if (!strcasecmp(args[0], "show-config") ) {
         for(i = 0; i < ERTM14_MAX_CONFIGS; i++)
             dump_config( i, ertm14_get_config(i) );
