@@ -94,6 +94,8 @@ int board_update(void);
 #define ERTM14_CMON_CLK_SYS 0
 #define ERTM14_CMON_CLK_DMTD 1
 #define ERTM14_CMON_CLK_PLL_FB 2
+#define ERTM14_CMON_CLK_REF 3
+#define ERTM14_CMON_CLK_RX 4
 
 struct ertm14_board
 {
