@@ -30,14 +30,15 @@ void mpll_init(struct spll_main_state *s, int id_ref,
 	s->pi.y_min = 5;
 	s->pi.y_max = 65530;
 	s->pi.anti_windup = 1;
-	s->pi.bias = 30000;
+	s->pi.bias = 0;
 	s->pi.shift = PI_FRACBITS;
 #if defined(CONFIG_WR_SWITCH)
 	s->pi.kp = 1100;		// / 2;
 	s->pi.ki = 30;			// / 2;
 #elif defined(CONFIG_WR_NODE)
-	s->pi.kp = -1100;		// / 2;
-	s->pi.ki = -30;			// / 2;
+	s->pi.kp = -3000 / 10;		// / 2;
+	s->pi.ki = -1;			// / 2;
+	s->pi.shift = 14;
 #else
 #error "Please set CONFIG for wr switch or wr node"
 #endif
@@ -143,6 +144,8 @@ void mpll_start(struct spll_main_state *s)
 
 	pi_init((spll_pi_t *)&s->pi);
 	ld_init((spll_lock_det_t *)&s->ld);
+
+//	pp_printf("MPLL pi gain : kp = %d ki = %d shift = %d\n", s->pi.kp, s->pi.ki, s->pi.shift);
 
 	spll_enable_tagger(s->id_ref, 1);
 	spll_enable_tagger(s->id_out, 1);

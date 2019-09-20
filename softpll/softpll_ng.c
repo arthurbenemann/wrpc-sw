@@ -523,13 +523,19 @@ void spll_show_stats()
 
 	if (softpll.mode > 0)
 		    pp_printf("softpll: irqs %d seq %s mode %d "
-		     "alignment_state %d HL%d ML%d HY=%d MY=%d DelCnt=%d ptm=%x avgc=%d pv=%d rdy=%d refc=%d tagc=%d\n",
+		     "alignment_state %d HL%d ML%d HY=%d MY=%d DelCnt=%d ptm=%x avgc=%d pv=%d rdy=%d refc=%d tagc=%d kp %d ki %d shift %d\n",
 		      s->irq_count, statename,
 			      s->mode, s->ext.align_state,
 			      s->helper.ld.locked, s->mpll.locked,
 			      s->helper.pi.y, s->mpll.pi.y,
 			      s->delock_count,
-				  ptracker_mask, s->ptrackers[0].avg_count, s->ptrackers[0].phase_val, s->ptrackers[0].ready, s->ptrackers[0].ref_count, s->ptrackers[0].tag_count);
+				  ptracker_mask, s->ptrackers[0].avg_count, s->ptrackers[0].phase_val, s->ptrackers[0].ready, s->ptrackers[0].ref_count, s->ptrackers[0].tag_count,
+				  
+				  s->mpll.pi.kp,
+				  s->mpll.pi.ki,
+				  s->mpll.pi.shift
+			);
+		
 }
 
 int spll_shifter_busy(int channel)
