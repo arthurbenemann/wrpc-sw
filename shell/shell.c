@@ -138,11 +138,16 @@ int shell_exec(const char *cmd)
 
 static void shell_register_commands();
 
-void shell_init()
+void shell_restart()
 {
 	cmd_len = cmd_pos = 0;
 	state = SH_PROMPT;
+}
+
+void shell_init()
+{
 	shell_register_commands();
+	shell_restart();
 }
 
 int shell_interactive()

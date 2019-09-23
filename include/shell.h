@@ -34,6 +34,9 @@ char *env_get(const char *var);
 int env_set(const char *var, const char *value);
 void env_init(void);
 
+void shell_restart();
+void shell_init();
+
 int shell_exec(const char *buf);
 int shell_interactive(void);
 extern int shell_is_interacting;
