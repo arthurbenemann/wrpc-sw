@@ -579,34 +579,130 @@ int storage_match_sfp(struct s_sfpinfo *sfp)
 	return 0;
 }
 
-/*
- * Phase transition ("calibration" file)
- */
-#define VALIDITY_BIT 0x80000000
-int storage_phtrans(uint32_t *valp, uint8_t write)
+static wrc_cal_data_t cal_data;
+
+
+static int calc_checksum( wrc_cal_data_t* cal )
 {
-	int ret = -1;
-	uint32_t value;
+	int i;
+	uint32_t cksum;
+	cksum += cal->magic;
+	cksum += cal->param_count;
+	for(i = 0; i < cal->param_count; i++)
+	{
+		cksum += cal->params[i].id;
+		cksum += cal->params[i].value;
+	}
+
+	return cksum;
+}
+
+
+int storage_load_calibration(void)
+{
+	int ret = 0;
+	cal_data.param_count = 0;
 
 	if (sdbfs_open_id(&wrc_sdb, SDB_VENDOR, SDB_DEV_CALIB) < 0)
+	{
+		pp_printf("%s: can't open cal file\n", __FUNCTION__);
 		return -1;
-	if (write) {
-		sdbfs_ferase(&wrc_sdb, 0, wrc_sdb.f_len);
-		value = *valp | VALIDITY_BIT;
-		if (sdbfs_fwrite(&wrc_sdb, 0, &value, sizeof(value))
-		    != sizeof(value))
-			goto out;
-		ret = 1;
-	} else {
-		if (sdbfs_fread(&wrc_sdb, 0, &value, sizeof(value))
-		    != sizeof(value))
-			goto out;
-		*valp = value & ~VALIDITY_BIT;
-		ret = (value & VALIDITY_BIT) != 0;
 	}
-out:
+
+	if (sdbfs_fread(&wrc_sdb, 0, &cal_data, sizeof(cal_data))
+		    != sizeof(cal_data))
+	{
+		ret = -1;
+		cal_data.param_count = 0;
+		goto out_close;
+	}
+
+	if( cal_data.magic != CAL_FILE_MAGIC )
+	{
+		pp_printf("%s: invalid magic\n", __FUNCTION__);
+		cal_data.param_count = 0;
+		ret = -1;
+		goto out_close;
+	}
+
+	if( cal_data.checksum != calc_checksum( &cal_data ))
+	{
+		pp_printf("%s: invalid checksum\n", __FUNCTION__);
+		cal_data.param_count = 0;
+		ret = -1;
+		goto out_close;
+	}
+
+out_close:
 	sdbfs_close(&wrc_sdb);
 	return ret;
+}
+
+int storage_save_calibration(void)
+{
+	int ret = 0;
+
+	cal_data.magic = CAL_FILE_MAGIC;
+
+	if (sdbfs_open_id(&wrc_sdb, SDB_VENDOR, SDB_DEV_CALIB) < 0)
+	{
+		pp_printf("%s: can't open cal file\n", __FUNCTION__);
+		return -1;
+	}
+
+	cal_data.checksum = calc_checksum( &cal_data );
+
+	sdbfs_ferase(&wrc_sdb, 0, wrc_sdb.f_len);
+	
+	if (sdbfs_fwrite(&wrc_sdb, 0, &cal_data, sizeof(cal_data))
+	    != sizeof(cal_data))
+			goto out_close;
+
+out_close:
+	sdbfs_close(&wrc_sdb);
+	return ret;
+}
+
+int storage_get_calibration_parameter( int id, uint32_t *valp )
+{
+	int i;
+
+	for(i = 0; i < cal_data.param_count; i++)
+	{
+		if ( id == cal_data.params[i].id )
+		{
+			*valp = cal_data.params[i].value;
+			return 0;
+		}
+	}
+
+	return -1;
+}
+
+int storage_set_calibration_parameter( int id, uint32_t val )
+{
+	int i;
+
+	for(i = 0; i < cal_data.param_count; i++)
+	{
+		if ( id == cal_data.params[i].id )
+		{
+			cal_data.params[i].value = val;
+			return 0;
+		}
+	}
+
+	if( cal_data.param_count >= CAL_MAX_PARAMS )
+		return -1;
+
+	cal_data.params[cal_data.param_count].id = id;
+	cal_data.params[cal_data.param_count].value = val;
+	cal_data.param_count ++;
+}
+
+wrc_cal_data_t* storage_get_calibration_data(void)
+{
+	return &cal_data;
 }
 
 /*

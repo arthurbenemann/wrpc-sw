@@ -11,6 +11,22 @@
 
 #include "sfp.h"
 
+// calibration parameter definitions. Board-specific.
+#define CAL_MAX_PARAMS 8
+#define CAL_FILE_MAGIC 0xcafebabe
+
+#define ASCII_TO_U32(a, b, c, d) ((((uint32_t)(a)&0xff) << 24) |     \
+									 (((uint32_t)(b)&0xff) << 16) | \
+									 (((uint32_t)(c)&0xff) << 8) |  \
+									 (((uint32_t)(d)&0xff) << 16))
+
+#define CAL_PARAM_T24P ASCII_TO_U32('t', '2', '4', 'p')
+#define CAL_PARAM_PHY_TARGET_TX_PHASE ASCII_TO_U32('l', 'p', 't', 'p')
+#define CAL_PARAM_DDS_LO_IOUPDATE_DELAY_PS ASCII_TO_U32('e', '1', '4', '0')
+#define CAL_PARAM_DDS_REF_IOUPDATE_DELAY_PS ASCII_TO_U32('e', '1', '4', '1')
+#define CAL_PARAM_CLKA_SYNC_DELAY_PS ASCII_TO_U32('e', '1', '4', '2')
+#define CAL_PARAM_CLKB_SYNC_DELAY_PS ASCII_TO_U32('e', '1', '4', '3')
+
 #define SFP_SECTION_PATTERN 0xdeadbeef
 
 #if defined CONFIG_LEGACY_EEPROM
@@ -63,13 +79,24 @@ struct s_sfpinfo {
 	uint8_t chksum;
 } __attribute__ ((__packed__));
 
+typedef struct
+{
+	uint32_t magic;
+	uint32_t param_count;
+	uint32_t checksum;
+	struct
+	{
+		uint32_t id;
+		uint32_t value;
+	} params[CAL_MAX_PARAMS];
+} wrc_cal_data_t;
+
+
 void storage_init( struct i2c_bus *bus, int i2c_addr);
 
 int storage_sfpdb_erase(void);
 int storage_match_sfp(struct s_sfpinfo *sfp);
 int storage_get_sfp(struct s_sfpinfo *sfp, uint8_t add, uint8_t pos);
-
-int storage_phtrans(uint32_t *val, uint8_t write);
 
 int storage_init_erase(void);
 int storage_init_add(const char *args[]);
@@ -96,5 +123,11 @@ int storage_sdbfs_erase(int mem_type, uint32_t base_adr, uint32_t blocksize,
 	uint8_t i2c_adr);
 int storage_gensdbfs(int mem_type, uint32_t base_adr, uint32_t blocksize,
 	uint8_t i2c_adr);
+
+int storage_load_calibration(void);
+int storage_save_calibration(void);
+int storage_get_calibration_parameter( int id, uint32_t *valp );
+int storage_set_calibration_parameter( int id, uint32_t val );
+wrc_cal_data_t* storage_get_calibration_data(void);
 
 #endif
