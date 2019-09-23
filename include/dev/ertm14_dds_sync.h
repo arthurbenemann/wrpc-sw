@@ -35,8 +35,8 @@
 #define ERTM14_DDS_SYNC_REF 1 // fixme: inverted cannel order in HDL
 
 // SYNC_N inputs of the AD9520s (backplane clock distribution)
-#define ERTM14_DDS_SYNC_CLKA 2
-#define ERTM14_DDS_SYNC_CLKB 3
+#define ERTM14_PLL_SYNC_CLKA 2
+#define ERTM14_PLL_SYNC_CLKB 3
 
 // I/O_UPDATE(+/-) of AD9910
 #define ERTM14_DDS_IOUPDATE_LO 4
@@ -58,7 +58,7 @@ struct dds_sync_unit_device {
 void dds_sync_unit_create( struct dds_sync_unit_device *dev, uint32_t base );
 void dds_sync_unit_setup_channel ( struct dds_sync_unit_device* dev, int ch, int enable, int pps_offset_ps, int polarity, int continuous );
 void dds_sync_unit_set_external_fine_delay ( struct dds_sync_unit_device* dev, int ch, int tap_size,  int (*set_external_delay)( struct dds_sync_unit_channel* ch, int ) );
-void dds_sync_unit_trigger( struct dds_sync_unit_device* dev, uint32_t mask );
+void dds_sync_unit_trigger( struct dds_sync_unit_device* dev, uint32_t mask, int force_now );
 void dds_sync_force_pulse( struct dds_sync_unit_device* dev, int ch );
 int dds_sync_unit_poll( struct dds_sync_unit_device* dev, uint32_t mask );
 

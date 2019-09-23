@@ -24,6 +24,8 @@
 #include "hw/wb_dds_sync_unit.h"
 #include "dev/ertm14_dds_sync.h"
 
+#define DS_CSR_FORCE0_OFFSET 8 // fixme
+
 void dds_sync_unit_create( struct dds_sync_unit_device *dev, uint32_t base )
 {
     int i;
@@ -67,7 +69,6 @@ void dds_sync_force_pulse( struct dds_sync_unit_device* dev, int channel )
 
     writel( ocr, dev->base + DS_REG_OCR0 + 4 * channel); // configure
 
-#define DS_CSR_FORCE0_OFFSET 6 // fixme
 
     uint32_t trig_mask = ( 1 << ( channel + DS_CSR_FORCE0_OFFSET) );
 
@@ -82,7 +83,7 @@ static uint8_t rotr( uint8_t x, int n )
     return (x >> n) | (x << (8-n) );
 }
 
-void dds_sync_unit_trigger( struct dds_sync_unit_device* dev, uint32_t mask )
+void dds_sync_unit_trigger( struct dds_sync_unit_device* dev, uint32_t mask, int force_now )
 {
     int i;
     uint32_t trig_mask = 0;
@@ -100,7 +101,7 @@ void dds_sync_unit_trigger( struct dds_sync_unit_device* dev, uint32_t mask )
             uint32_t coarse_ser = ch->pps_offset_ps / 2000 - coarse_par * 8;
             uint32_t fine = (ch->pps_offset_ps % 2000) / ch->delay_tap_size;
             
-            
+            //pp_printf("coarse_par %d coarse_ser %d fine %d\n", coarse_par, coarse_ser, fine );
             uint32_t mask;
             
             if( continuous )
@@ -124,11 +125,14 @@ void dds_sync_unit_trigger( struct dds_sync_unit_device* dev, uint32_t mask )
                 ch->set_external_delay( ch, fine );
             }
 
-            trig_mask |= (1<< i);
+            trig_mask |= (1<<i);
         }
     }
 
  //   pp_printf("TrigMask %x\n", trig_mask );
+
+    if(force_now)
+        trig_mask <<= DS_CSR_FORCE0_OFFSET; // fixme: use bitshifts from header file
 
     writel( trig_mask, dev->base + DS_REG_CSR); // arm trigger
 }
@@ -154,38 +158,3 @@ int dds_sync_unit_poll( struct dds_sync_unit_device* dev, uint32_t mask )
     return 1;
 }
 
-
-
-
-#if 0
-extern struct ad9910_device dds_ad9910_ref;
-extern struct ad9910_device dds_ad9910_lo;
-extern const struct gpio_pin pin_ad9910_ref_sync_smp_err;
-
-void ertm14_dds_sync_test()
-{
-    shw_pps_gen_init();
-
-    shw_pps_gen_enable_output(1);
-    shw_pps_gen_unmask_output(1);
-
-    ertm14_dds_sync_init();
-    int i = 0;
-    int dly_taps = 0;
-
-    for(;;)
-    {
-        ad9910_configure_sync( &dds_ad9910_ref, 1, dly_taps );
-        //ad9910_configure_sync( &dds_ad9910_lo, 1, 0 );
-
-        dds_sync_unit_trigger( &dds_sync_dev );
-        //pp_printf("Poll!\n");
-        while(!dds_sync_unit_poll( &dds_sync_dev ));
-        pp_printf("Trig! [%d] taps %d err %d\n", i++, dly_taps, gen_gpio_in(&pin_ad9910_ref_sync_smp_err));
-
-        dly_taps++;
-        dly_taps &= 0x1f;
-
-    }
-}
-#endif
