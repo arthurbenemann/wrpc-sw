@@ -71,7 +71,7 @@ int ad9910_program( struct ad9910_device *dev, uint64_t freq_hz, int phase, int 
     // formula (2) from AD9910 datasheet, page 22
 
     uint64_t ftw = (1ULL << 32) * freq_hz / AD9910_REF_FREQ;
-    uint64_t prof0_cr = ftw | (0x8b5ULL << 48);
+    uint64_t prof0_cr = ftw | (0x8b5ULL << 48); 
 
 //    pp_printf("ad9910_program [%08x%08x] asf %d!\n", (uint32_t)(prof0_cr >> 32), (uint32_t)prof0_cr, asf );
 
@@ -95,7 +95,7 @@ int ad9910_program( struct ad9910_device *dev, uint64_t freq_hz, int phase, int 
     return 0;
 }
 
-#define AD9910_SYNC_VERIF_DELAY_TAPS 1
+#define AD9910_SYNC_VERIF_DELAY_TAPS 0
 
 void ad9910_configure_sync( struct ad9910_device *dev, int enable, int fine_delay_taps )
 {
