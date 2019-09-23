@@ -100,7 +100,6 @@ int flash_sdb_check(void)
 
 void	flash_init(void)
 {
-	pp_printf("flash-init\n");
 	bb_spi_create( &spi_wrc_flash,
 		&pin_sysc_spi_ncs,
 		&pin_sysc_spi_mosi,
@@ -108,6 +107,6 @@ void	flash_init(void)
 		&pin_sysc_spi_sclk, 10 );
 
 	spi_flash_create( &wrc_flash_dev, &spi_wrc_flash );
-	pp_printf("flash-exit\n");
+
 	return 0;
 }
