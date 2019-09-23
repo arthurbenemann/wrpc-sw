@@ -82,7 +82,6 @@ static void wrc_initialize(void)
 	usleep_init();
 	spll_very_init();
 
-	ertm14_init();
 	
 	get_hw_name(wrc_hw_name);
 	storage_read_hdl_cfg();
@@ -94,9 +93,12 @@ static void wrc_initialize(void)
 	flash_init();
 	/*initialize I2C bus*/
 	bb_i2c_init( &dev_i2c_fmc );
-	
+
 	/*init storage (Flash / W1 EEPROM / I2C EEPROM*/
 	storage_init( &dev_i2c_fmc, FMC_EEPROM_ADR);
+	storage_load_calibration();
+
+	ertm14_init();
 
 	if( !ep_is_mac_addr_set() )
 	{
