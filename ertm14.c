@@ -218,6 +218,9 @@ static spll_gain_schedule_t spll_main_ocxo_gain_sched;
 static int has_new_config = 0;
 static int ertm_init_complete = 0;
 
+static int ertm14_update_config_task(void);
+
+
 static void ertm14_spll_setup(void)
 {
 /* configure a suitable PI gain schedule for the SoftPLL: */
@@ -267,7 +270,7 @@ static int ertm14_switch_sys_clock( int use_sys_from_pll )
     gen_gpio_out( &pin_sys_clk_sel_stb, 0);
 }
 
-uint32_t ch_delays[] = { 100000, 100000, 100000, 100000, 100000, 100000 };
+uint32_t ch_delays[] = { 100000, 100000, 100000, 100000, 100500, 100000 };
     
 static int ertm14_dds_sync_init()
 {
@@ -431,7 +434,7 @@ static int ertm14_align_clocks()
 
     psync_dbg( "DDS SYNC complete: errLO=%d errREF=%d\n", smp_err_lo, smp_err_ref);
     
-// now that we are done syncing DDS internal clocks, disable the feature
+// now that we are done syncing DDS internal clocks, disable the fpga SYNC_CLK output
     ad9910_configure_sync( &board.dds_ad9910_ref, 0, 0 );
     ad9910_configure_sync( &board.dds_ad9910_lo, 0, 0 );
 
@@ -862,6 +865,7 @@ int ertm14_init(void)
 
     wrc_task_create( "iuart14", NULL, iuart_14_poll );
     wrc_task_create( "clk-pps-sync", ertm14_clk_pps_sync_init, ertm14_clk_pps_sync_task );
+    wrc_task_create( "ertm-config", NULL, ertm14_update_config_task );
 
     pp_printf("eRTM14/15 init done\n");
 
@@ -892,14 +896,14 @@ void ertm14_config_init()
             cfg->lo.out_state [j] = ERTM15_RF_OUT_MONITOR;
         }
     
-        for(j = 0; j < ERTM14_CLKAB_OUT_MAX_ID; j++)
+        for(j = 0; j <= ERTM14_CLKAB_OUT_MAX_ID; j++)
         {
             cfg->clka_freq_hz[j] = 250000000;
             cfg->clkb_freq_hz[j] = 250000000;
         }
 
-        cfg->clka_enable_mask = 0;
-        cfg->clkb_enable_mask = 0;
+        cfg->clka_enable_mask = ( 1<<11);
+        cfg->clkb_enable_mask = ( 1<<11);
     }
 
     ertm14_apply_config( 0 );
@@ -931,7 +935,7 @@ int ertm14_get_current_config_id()
 static int ertm14_commit_config( struct  ertm14_board_config *cfg )
 {  
     int i;
-        for( i = 0; i < ERTM14_CLKAB_OUT_MAX_ID; i++)
+        for( i = 0; i <= ERTM14_CLKAB_OUT_MAX_ID; i++)
         {
 
             // digital clocks
@@ -943,8 +947,8 @@ static int ertm14_commit_config( struct  ertm14_board_config *cfg )
             int enable_a = ( cfg->clka_enable_mask & (1<<i) ) ? 1 : 0;
             int enable_b = ( cfg->clkb_enable_mask & (1<<i) ) ? 1 : 0;
 
-            pp_printf("CLKA%d: freq=%d Hz, divider=%d, enable=%d\n", freq_a, div_a, enable_a);
-            pp_printf("CLKA%d: freq=%d Hz, divider=%d, enable=%d\n", freq_b, div_b, enable_b);
+            pp_printf("CLKA%d: freq=%d Hz, divider=%d, enable=%d\n", i, freq_a, div_a, enable_a);
+            pp_printf("CLKA%d: freq=%d Hz, divider=%d, enable=%d\n", i, freq_b, div_b, enable_b);
 
             ad9520_set_output_divider( &board.dev_clka_distr, i, div_a ); // divide by 4 -> 250 MHz
             ad9520_set_output_divider( &board.dev_clkb_distr, i, div_b );
@@ -976,16 +980,42 @@ static int ertm14_update_config_task(void)
     }
 }
 
+static struct {
+    int freq;
+    int divider;
+} clkab_freqs [] = {
+    { 1000000000, 1 },
+    { 500000000, 2},
+    { 250000000, 4},
+    { 100000000, 5},
+    { 125000000, 8},
+    { 62500000, 16},
+    {-1,-1}
+};
+
 int ertm14_get_clkab_divider( int freq )
 {
-    switch( freq )
+    int i;
+    for (i=0;clkab_freqs[i].freq >= 0; i++)
     {
-        case 1000000000: return 1;
-        case 500000000: return 2;
-        case 250000000: return 4;
-        case 125000000: return 8;
-        case 62500000: return 16;
-        default:
-            return -1;
+        if (clkab_freqs[i].freq == freq)
+            return clkab_freqs[i].divider;
     }
+    
+    return -1;
+}
+
+int ertm14_get_supported_clkab_freqs( int *freqs, int max_count )
+{
+    int i;
+    for(i = 0;clkab_freqs[i].freq >= 0; i++)
+    {
+        if(  i < max_count )
+        {
+            freqs [i] = clkab_freqs[i].freq;
+        } else
+            break;
+    }
+
+    return i;
 }
