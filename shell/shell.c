@@ -153,6 +153,7 @@ void shell_init()
 int shell_interactive()
 {
 	int c;
+	uint32_t t_start;
 
 	switch (state) {
 	case SH_PROMPT:
@@ -163,18 +164,26 @@ int shell_interactive()
 		return 1;
 
 	case SH_INPUT:
-		c = console_getc();
+		t_start = timer_get_tics();
 
-		if (c < 0)
-			return 0;
+		do {
+			c = console_getc();
 
-		if (c == 27 || ((current_key & ESCAPE_FLAG) && c == 91))
-			current_key = ESCAPE_FLAG;
-		else
-			current_key |= c;
+			if (c < 0 && !(current_key & ESCAPE_FLAG) )
+				return 0;
+
+			if (c == 27 || ((current_key & ESCAPE_FLAG) && c == 91))
+			{
+				current_key = ESCAPE_FLAG;
+			}
+			else
+			{
+				current_key |= c;
+				break;
+			}
+		} while ( (timer_get_tics() - t_start) < 100 );
 
 		if (current_key & 0xff) {
-
 			switch (current_key) {
 			case KEY_LEFT:
 				if (cmd_pos > 0) {
