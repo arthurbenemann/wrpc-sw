@@ -94,7 +94,7 @@ int ad9520_set_output_divider( struct ad9520_device *dev, int channel, int divid
     if( divider == 1 ) // undivided output
     {
         ad9520_write(dev, 0x190 + 3*index, 0);
-        ad9520_write(dev, 0x191 + 3*index, 0x80); // bypass divider
+        ad9520_write(dev, 0x191 + 3*index, 0xc0); // bypass divider, ignore ysnc
         ad9520_write(dev, 0x192 + 3*index, 0);
     } else {
         int cyc = (divider / 2) - 1;
@@ -103,7 +103,7 @@ int ad9520_set_output_divider( struct ad9520_device *dev, int channel, int divid
             return -1;
 
         ad9520_write(dev, 0x190 + 3*index, cyc | (cyc<<4));
-        ad9520_write(dev, 0x191 + 3*index, 0); // enable divider
+        ad9520_write(dev, 0x191 + 3*index, 0x40); // enable divider, ignore ysnc
         ad9520_write(dev, 0x192 + 3*index, 0);
     }
 
@@ -112,52 +112,3 @@ int ad9520_set_output_divider( struct ad9520_device *dev, int channel, int divid
 }
 
 
-#if 0
-
-void ad9510_soft_reset(struct spi_bus *bus) {
-    int reg;
-    
-    // set reset bit to zero, to one, and to zero again
-    ad9510_write(bus, 0x00, 0x90 );
-    ad9510_write(bus, 0x00, 0xb0 );
-    ad9510_write(bus, 0x00, 0x90 );
-}
-
-// Configure AD9510
-int ad9510_configure(struct spi_bus *bus, struct ad95xx_config *cfg) {
-    int i;
-
-    if(cfg->regs[cfg->n_regs].addr != -1) {
-        pp_printf("WARNING! AD9510 config regs don't end with an end-of-list marker. Did you make mistake counting the number of regs\n");
-    }
-
-    ad9510_soft_reset(bus);
-
-    for(i = 0; i < cfg->n_regs; i++) {
-        ad9510_write(bus, cfg->regs[i].addr, cfg->regs[i].value);
-    }
-
-    for(i = 0; i < cfg->n_regs; i++) {
-        int rdbk = ad9510_read(bus, cfg->regs[i].addr);
-    }
-
-    return 0;
-}
-
-
-void ad9510_init() {
-    int i;
-
-    // Configure SPI bus to AD9510
-    for(i = 0; i < 2; i++) {
-        spi_init(&bus_ad9510[i]);
-        ad9510_write(&bus_ad9510[i], 0x00, 0x90);  // bidir mode, long command
-   	    ad9510_write(&bus_ad9510[i], 0x5a, 0x00);  // commit
-    }
-
-    // Configure AD9510
-    ad9510_configure(&bus_ad9510[0], &default_config);
-    ad9510_configure(&bus_ad9510[1], &default_config);
-}
-
-#endif
