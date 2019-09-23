@@ -97,6 +97,10 @@ int board_update(void);
 #define ERTM14_CMON_CLK_REF 3
 #define ERTM14_CMON_CLK_RX 4
 
+#define ERTM14_CLKAB_OUT_FRONT_PANEL 11
+
+// #define ERTM14_CALIBRATION_DEBUG 1
+
 struct ertm14_board
 {
     struct gpio_device gpio_aux;
