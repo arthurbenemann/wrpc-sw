@@ -385,4 +385,6 @@ static void shell_register_commands()
 	REGISTER_WRC_COMMAND(mac);
 	REGISTER_WRC_COMMAND(ertm);
 	REGISTER_WRC_COMMAND(sfp);
+	REGISTER_WRC_COMMAND(sdb);
+	REGISTER_WRC_COMMAND(calibration);
 }
