@@ -21,6 +21,7 @@
 
 #include <stdint.h>
 #include <stdio.h>
+#include <ppsi/ppsi.h>
 
 #include "dev/gpio.h"
 #include "dev/spi.h"
@@ -51,6 +52,15 @@
 #define ERTM14_IUART_MSG_IPMI_SNMP_REQ 3
 #define ERTM14_IUART_MSG_IPMI_CONSOLE_RESP 4
 #define ERTM14_IUART_MSG_IPMI_SNMP_RESP 5
+
+#define ERTM14_PSYNC_DEBUG
+
+#ifdef ERTM14_PSYNC_DEBUG
+    #define psync_dbg(...) pp_printf("[psync-dbg]"__VA_ARGS__)
+#else
+    #define psync_dbg(...)
+#endif
+
 
 struct ertm14_board board;
 static struct ertm14_board_config ertm14_configs[ ERTM14_MAX_CONFIGS ];
@@ -205,12 +215,15 @@ static struct ad95xx_config clk_dist_ertm15_default_config =
 
 static spll_gain_schedule_t spll_main_ocxo_gain_sched;
 
+static int has_new_config = 0;
+static int ertm_init_complete = 0;
+
 static void ertm14_spll_setup(void)
 {
 /* configure a suitable PI gain schedule for the SoftPLL: */
     spll_gain_schedule_t* gs=  &spll_main_ocxo_gain_sched;
 
-    gs->n_stages = 2;
+    gs->n_stages = 1;
 
 /* we start with ~100 Hz bandwidth to make it lock reasonably fast */
     gs->stages[0].kp = -1100;
@@ -219,10 +232,10 @@ static void ertm14_spll_setup(void)
     gs->stages[0].shift = PI_FRACBITS;
 
 /* once it's locked, the loop bandwidth is switched to ~0.1 Hz to filter out WR link added phase noise */
-    gs->stages[0].kp = -3000;
-    gs->stages[0].ki = -5;
-    gs->stages[0].lock_samples = 10000;
-    gs->stages[0].shift = 14;
+    gs->stages[1].kp = -3000;
+    gs->stages[1].ki = -5;
+    gs->stages[1].lock_samples = 10000;
+    gs->stages[1].shift = 14;
     
 	spll_set_gain_schedule( gs );
 }
@@ -254,9 +267,10 @@ static int ertm14_switch_sys_clock( int use_sys_from_pll )
     gen_gpio_out( &pin_sys_clk_sel_stb, 0);
 }
 
+uint32_t ch_delays[] = { 100000, 100000, 100000, 100000, 100000, 100000 };
+    
 static int ertm14_dds_sync_init()
 {
-    uint32_t ch_delays[] = { 100000, 100000, 100000, 100000, 100000, 100000 };
     const int n_params = 4;
     struct {
         uint32_t id;
@@ -297,6 +311,7 @@ static int ertm14_dds_sync_init()
     dds_sync_unit_set_external_fine_delay( &board.dds_sync_dev, ERTM14_DDS_SYNC_LO, 75, ad9910_set_fine_delay );
 
 // DDS IOupdate: internal delay line, single-shot mode, positive polarity
+    pp_printf("ref delay = %d lo delay = %d\n", ch_delays[ERTM14_DDS_IOUPDATE_REF], ch_delays[ERTM14_DDS_IOUPDATE_LO] );
     dds_sync_unit_setup_channel ( &board.dds_sync_dev, ERTM14_DDS_IOUPDATE_LO, 1, ch_delays[ERTM14_DDS_IOUPDATE_LO], 0, 0 );
     dds_sync_unit_setup_channel ( &board.dds_sync_dev, ERTM14_DDS_IOUPDATE_REF, 1, ch_delays[ERTM14_DDS_IOUPDATE_REF], 0, 0 );
 
@@ -310,7 +325,6 @@ static int ertm14_dds_sync_init()
 void ertm14_dds_sync_test()
 {
     shw_pps_gen_init();
-
     shw_pps_gen_enable_output(1);
     shw_pps_gen_unmask_output(1);
 
@@ -400,22 +414,46 @@ void ertm14_dds_sync_test()
 
     dds_sync_unit_setup_channel ( &board.dds_sync_dev, ERTM14_DDS_SYNC_LO, 1, 100000 + windows[0].setpoint, 0, 1 );
     dds_sync_unit_setup_channel ( &board.dds_sync_dev, ERTM14_DDS_SYNC_REF, 1, 100000 + windows[1].setpoint, 0, 1 );
+
+    
         
+}
+
+static int ertm14_align_clocks()
+{
+    uint32_t channel_mask = ( 1 << ERTM14_DDS_SYNC_LO ) | ( 1<< ERTM14_DDS_SYNC_REF );
+
     dds_sync_unit_trigger( &board.dds_sync_dev, channel_mask, 1 );
     while ( !dds_sync_unit_poll( &board.dds_sync_dev, channel_mask ) );
 
-    windows[0].smp_err = !!gen_gpio_in( &pin_ad9910_lo_sync_smp_err );
-    windows[1].smp_err = !!gen_gpio_in( &pin_ad9910_ref_sync_smp_err );
+    int smp_err_lo = !!gen_gpio_in( &pin_ad9910_lo_sync_smp_err );
+    int smp_err_ref = !!gen_gpio_in( &pin_ad9910_ref_sync_smp_err );
 
-    //pp_printf("done %d %d\n", windows[0].smp_err, windows[1].smp_err);
+    psync_dbg( "DDS SYNC complete: errLO=%d errREF=%d\n", smp_err_lo, smp_err_ref);
+    
+// now that we are done syncing DDS internal clocks, disable the feature
+    ad9910_configure_sync( &board.dds_ad9910_ref, 0, 0 );
+    ad9910_configure_sync( &board.dds_ad9910_lo, 0, 0 );
 
-    // now the CLKAB distribution & DDS IOUPDATE
+//for(;;)
+{
+    channel_mask = (1 << ERTM14_PLL_SYNC_CLKA) |
+                   (1 << ERTM14_PLL_SYNC_CLKB) |
+                   (1 << ERTM14_DDS_IOUPDATE_LO) |
+                   (1 << ERTM14_DDS_IOUPDATE_REF);
 
+    dds_sync_unit_setup_channel ( &board.dds_sync_dev, ERTM14_DDS_IOUPDATE_LO, 1, ch_delays[ERTM14_DDS_IOUPDATE_LO], 0, 0 );
 
+    //ch_delays[ERTM14_DDS_IOUPDATE_LO] += 200;
 
+    dds_sync_unit_trigger( &board.dds_sync_dev, channel_mask, 0 ); // trigger on PPS now
+    while ( !dds_sync_unit_poll( &board.dds_sync_dev, channel_mask ) );
 
-
+    psync_dbg( "DDS IOUPDATE & CLKAB sync complete\n");
 }
+    return 0;
+}
+
 
 extern struct console_device console_ipmi_dev;
 
@@ -496,10 +534,14 @@ void ertm14_align_ref_out_to_pps()
     }
 }
 
+
+
 #define CLK_PPS_STATE_START 0
 #define CLK_PPS_STATE_MASTER 1
 #define CLK_PPS_STATE_WAIT_SERVO 2
-#define CLK_PPS_STATE_SLAVE 1
+#define CLK_PPS_STATE_SLAVE 3
+#define CLK_PPS_STATE_DONE 4
+#define CLK_PPS_STATE_RUN_SYNC 5
 
 struct ertm14_clk_pps_sync_fsm {
     int state;
@@ -507,23 +549,88 @@ struct ertm14_clk_pps_sync_fsm {
     int prev_locked;
 } clk_pps_sync_state;
 
-static void ertm14_clk_pps_sync_init(void)
+
+static void ertm14_clk_pps_sync_restart(void)
 {
     struct ertm14_clk_pps_sync_fsm* fsm = &clk_pps_sync_state;
 
     fsm->state = CLK_PPS_STATE_START;
 }
 
+static void ertm14_clk_pps_sync_init(void)
+{
+    ertm14_clk_pps_sync_restart();
+}
+
 static void ertm14_clk_pps_sync_task(void)
 {
+    extern struct pp_instance ppi_static;
+    struct pp_instance *ppi = &ppi_static;
+
     struct ertm14_clk_pps_sync_fsm* fsm = &clk_pps_sync_state;
 
     int mode = wrc_ptp_get_mode();
 
-    switch(mode)
+    if( mode != fsm->prev_mode )
     {
-
+        psync_dbg("mode changed, restarting sync fsm\n");
+        fsm->state = CLK_PPS_STATE_START;
     }
+
+    fsm->prev_mode = mode;
+
+    switch(fsm->state)
+    {
+        case CLK_PPS_STATE_START:
+        {
+            fsm->prev_locked = -1;
+        
+            int mode = wrc_ptp_get_mode();
+
+            if( mode == WRC_MODE_MASTER || mode == WRC_MODE_GM )
+            {
+                fsm->state = CLK_PPS_STATE_MASTER;
+                psync_dbg("master mode\n");
+            } else {
+                fsm->state = CLK_PPS_STATE_SLAVE;
+                psync_dbg("slave mode\n");
+            }
+        }
+        break;
+
+        case CLK_PPS_STATE_MASTER:
+        {
+            if( spll_check_lock(0) )
+            {
+                psync_dbg("pll locked\n");
+                fsm->state = CLK_PPS_STATE_RUN_SYNC;
+            }
+        }
+        break;
+
+        case CLK_PPS_STATE_SLAVE:
+        {
+            struct wr_servo_state *ss = &((struct wr_data *)ppi->ext_data)->servo_state;
+
+            if( ss->state == WR_TRACK_PHASE )
+            {
+                psync_dbg("servo tracking phase, proceeding with sync\n");
+                fsm->state = CLK_PPS_STATE_RUN_SYNC;
+            }
+        }
+        break;
+
+
+        case CLK_PPS_STATE_RUN_SYNC:
+        {
+            ertm14_align_clocks();
+            fsm->state = CLK_PPS_STATE_DONE;
+        }
+        break;
+
+        default : break;
+    }
+    
 }
 
 
@@ -747,16 +854,19 @@ int ertm14_init(void)
 /* Init CLKA/CLKB distribution */
     ertm14_init_clkab_distribution();
    
-//    ertm14_dds_sync_test();
+    ertm14_dds_sync_test();
 
     pp_printf("Init IUART14\n");
 
     iuart_init_bare( &board.iuart_14, BASE_IUART_14, 115200 );
 
     wrc_task_create( "iuart14", NULL, iuart_14_poll );
-    wrc_task_create( "clk-pps-sync", ertm14_clk_pps_sync_task, ertm14_clk_pps_sync_task );
+    wrc_task_create( "clk-pps-sync", ertm14_clk_pps_sync_init, ertm14_clk_pps_sync_task );
 
     pp_printf("eRTM14/15 init done\n");
+
+    ertm_init_complete = 1;
+
     return 0;
 }
 
@@ -784,13 +894,15 @@ void ertm14_config_init()
     
         for(j = 0; j < ERTM14_CLKAB_OUT_MAX_ID; j++)
         {
-            cfg->clka_freq_hz[j] = 100000000;
-            cfg->clkb_freq_hz[j] = 100000000;
+            cfg->clka_freq_hz[j] = 250000000;
+            cfg->clkb_freq_hz[j] = 250000000;
         }
 
         cfg->clka_enable_mask = 0;
         cfg->clkb_enable_mask = 0;
     }
+
+    ertm14_apply_config( 0 );
 };
 
 struct ertm14_board_config *ertm14_get_config(int config_id)
@@ -798,9 +910,11 @@ struct ertm14_board_config *ertm14_get_config(int config_id)
     return &ertm14_configs[config_id];
 }
 
+
 int ertm14_apply_config(int config_id)
 {
     ertm14_current_config = &ertm14_configs[config_id];
+    has_new_config = 1;
 }
 
 int ertm14_get_current_config_id()
@@ -814,14 +928,52 @@ int ertm14_get_current_config_id()
     return -1;
 }
 
-int ertm14_is_config_ready()
-{
+static int ertm14_commit_config( struct  ertm14_board_config *cfg )
+{  
+    int i;
+        for( i = 0; i < ERTM14_CLKAB_OUT_MAX_ID; i++)
+        {
 
+            // digital clocks
+
+            int freq_a = cfg->clka_freq_hz[i];
+            int freq_b = cfg->clkb_freq_hz[i];
+            int div_a = ertm14_get_clkab_divider( freq_a );
+            int div_b = ertm14_get_clkab_divider( freq_b );
+            int enable_a = ( cfg->clka_enable_mask & (1<<i) ) ? 1 : 0;
+            int enable_b = ( cfg->clkb_enable_mask & (1<<i) ) ? 1 : 0;
+
+            pp_printf("CLKA%d: freq=%d Hz, divider=%d, enable=%d\n", freq_a, div_a, enable_a);
+            pp_printf("CLKA%d: freq=%d Hz, divider=%d, enable=%d\n", freq_b, div_b, enable_b);
+
+            ad9520_set_output_divider( &board.dev_clka_distr, i, div_a ); // divide by 4 -> 250 MHz
+            ad9520_set_output_divider( &board.dev_clkb_distr, i, div_b );
+
+            ad9520_enable_output( &board.dev_clka_distr, i, enable_a );
+            ad9520_enable_output( &board.dev_clkb_distr, i, enable_b );
+        }
+
+            // DDSes
+
+        ad9910_program(&board.dds_ad9910_lo, cfg->lo.freq_hz, 0, cfg->lo.ampl_factor );
+        ad9910_program(&board.dds_ad9910_ref, cfg->ref.freq_hz, 0, cfg->ref.ampl_factor );
+
+        pp_printf("DDS LO: freq=%d Hz, ampl=%d\n", cfg->lo.freq_hz, cfg->lo.ampl_factor );
+        pp_printf("DDS REF: freq=%d Hz, ampl=%d\n", cfg->ref.freq_hz, cfg->ref.ampl_factor );
 }
 
 static int ertm14_update_config_task(void)
 {
+    if( has_new_config && ertm_init_complete && ertm14_current_config->valid )
+    {
+        int i;
+        pp_printf("New config detected, applying...\n");
 
+        has_new_config = 0;
+        
+        ertm14_commit_config( ertm14_current_config );
+        ertm14_clk_pps_sync_restart();
+    }
 }
 
 int ertm14_get_clkab_divider( int freq )
