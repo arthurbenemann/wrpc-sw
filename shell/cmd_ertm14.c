@@ -69,12 +69,22 @@ static void dump_config( int id, struct ertm14_board_config *cfg )
 
     dump_dds_state("LO", &cfg->lo);
     dump_dds_state("REF", &cfg->ref);
+
+    pp_printf("CLKA/CLKB outputs: \n");
+    for(i = 0; i <= ERTM14_CLKAB_OUT_MAX_ID; i++)
+    {
+        pp_printf(" - CLKA%-02d: %-20d Hz (%s) CLKB%-02d: %-20d Hz (%s)\n",
+        i, cfg->clka_freq_hz[i], (cfg->clka_enable_mask & (1<<i)) ? "ON " : "OFF",
+        i, cfg->clkb_freq_hz[i], (cfg->clkb_enable_mask & (1<<i)) ? "ON " : "OFF" );
+
+    }
 }
 
 #define PARAM_FREQ 0
 #define PARAM_AMPL 1
+#define PARAM_ENABLE 2
 
-static void set_clock_param(int param, const char *name, const char *value)
+static void set_dds_param(int param, const char *name, const char *value)
 {
 
     if( !name || !value )
@@ -85,7 +95,7 @@ static void set_clock_param(int param, const char *name, const char *value)
 
     int is_lo = !strcasecmp( name , "lo");
     int is_ref = !strcasecmp( name , "ref");
-
+    
     struct ertm14_board_config *cfg = ertm14_get_config(selected_config);
     cfg->valid = 1;
 
@@ -99,6 +109,45 @@ static void set_clock_param(int param, const char *name, const char *value)
             case PARAM_FREQ:    dcfg->freq_hz = atoi(value); break;
             default: break;
         }
+    } else {
+        pp_printf("expected DDS name: lo ref\n");
+    }
+}
+
+static void set_clk_param(int param, const char *name, const char *channel, const char *value)
+{
+    int is_clka = !strcasecmp( name , "clka");
+    int is_clkb = !strcasecmp( name , "clkb");
+    
+    struct ertm14_board_config *cfg = ertm14_get_config(selected_config);
+    cfg->valid = 1;
+
+    
+    if (is_clka || is_clkb)
+    {
+        
+        uint32_t *freq = is_clka ? cfg->clka_freq_hz : cfg->clkb_freq_hz;
+        uint32_t *enable_mask = is_clka ? &cfg->clka_enable_mask : &cfg->clkb_enable_mask;
+        
+        int ch = atoi(channel);
+
+        switch(param)
+        {
+            case PARAM_FREQ:    freq[ch] = atoi(value); break;
+            case PARAM_ENABLE:
+            {
+              if(atoi(value))
+                *enable_mask |= (1<<ch);
+            else
+                *enable_mask &= ~(1<<ch);
+
+
+            }
+            default: break;
+        }
+
+    } else {
+        pp_printf("expected CLK name: clka clkb\n");
     }
 }
 
@@ -172,20 +221,37 @@ static int cmd_ertm(const char *args[])
 
 
     } else if (!strcasecmp(args[0], "show-config") ) {
-        for(i = 0; i < ERTM14_MAX_CONFIGS; i++)
-            dump_config( i, ertm14_get_config(i) );
+        dump_config( i, ertm14_get_config( selected_config ) );
+
+    } else if (!strcasecmp(args[0], "activate-config") ) {
+        if( !args[1] )
+        {
+            pp_printf("expected configuration ID\n");
+        }
+        int id = atoi(args[1]);
+        pp_printf("Activating configuration %d:\n", id );
+        dump_config( id, ertm14_get_config( id ) );
+
+        ertm14_apply_config( id );
+
 
     } else if (!strcasecmp(args[0], "select-config")) {
         if(args[1])
             selected_config = atoi( args[1] );
 
         pp_printf("Selected configuration: %d\n", selected_config);
-    } else if (!strcasecmp(args[0], "set-freq")) {
-        set_clock_param(PARAM_FREQ, args[1], args[2]);
+    } else if (!strcasecmp(args[0], "set-dds-freq")) {
+        set_dds_param(PARAM_FREQ, args[1], args[2] );
         dump_config( selected_config, ertm14_get_config(selected_config) );
 
-    } else if (!strcasecmp(args[0], "set-ampl")) {
-        set_clock_param(PARAM_AMPL, args[1], args[2]);
+    } else if (!strcasecmp(args[0], "set-dds-ampl")) {
+        set_dds_param(PARAM_AMPL, args[1], args[2]);
+        dump_config( selected_config, ertm14_get_config(selected_config) );
+    } else if (!strcasecmp(args[0], "set-clk-enable")) {
+        set_clk_param(PARAM_ENABLE, args[1], args[2], args[3]);
+        dump_config( selected_config, ertm14_get_config(selected_config) );
+    } else if (!strcasecmp(args[0], "set-clk-freq")) {
+        set_clk_param(PARAM_FREQ, args[1], args[2] ,args[3]);
         dump_config( selected_config, ertm14_get_config(selected_config) );
     }
 }
