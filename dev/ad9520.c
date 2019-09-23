@@ -94,7 +94,7 @@ int ad9520_set_output_divider( struct ad9520_device *dev, int channel, int divid
     if( divider == 1 ) // undivided output
     {
         ad9520_write(dev, 0x190 + 3*index, 0);
-        ad9520_write(dev, 0x191 + 3*index, 0xc0); // bypass divider, ignore ysnc
+        ad9520_write(dev, 0x191 + 3*index, 0x80); // bypass divider, ignore ysnc
         ad9520_write(dev, 0x192 + 3*index, 0);
     } else {
         int cyc = (divider / 2) - 1;
@@ -103,7 +103,7 @@ int ad9520_set_output_divider( struct ad9520_device *dev, int channel, int divid
             return -1;
 
         ad9520_write(dev, 0x190 + 3*index, cyc | (cyc<<4));
-        ad9520_write(dev, 0x191 + 3*index, 0x40); // enable divider, ignore ysnc
+        ad9520_write(dev, 0x191 + 3*index, 0x00); // enable divider, ignore ysnc
         ad9520_write(dev, 0x192 + 3*index, 0);
     }
 
