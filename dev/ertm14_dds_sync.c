@@ -33,7 +33,7 @@ void dds_sync_unit_create( struct dds_sync_unit_device *dev, uint32_t base )
     writel( 0, dev->base + DS_REG_CSR ); // disable core
     for(i=0;i<DDS_SYNC_N_CHANNELS;i++)
     {
-        dev->channels[i].delay_tap_size = 2000 / 31;
+        dev->channels[i].delay_tap_size = 78 /* ps */;
         dev->channels[i].index = i;
     }
 }
@@ -101,12 +101,8 @@ void dds_sync_unit_trigger( struct dds_sync_unit_device* dev, uint32_t mask, int
             uint32_t coarse_ser = ch->pps_offset_ps / 2000 - coarse_par * 8;
             uint32_t fine = (ch->pps_offset_ps % 2000) / ch->delay_tap_size;
             
-            uint32_t mask;
+            uint32_t mask = coarse_ser; // 24/09 VHDL generates mask internally 
             
-            if( continuous )
-                mask = 0xf0; //rotr(0xf0, 7-coarse_ser );
-            else
-                mask = (1 << (7-coarse_ser+1)) - 1;
 
             ocr = (coarse_par << DS_OCR0_PPS_OFFS_SHIFT)
 	                | (mask << DS_OCR0_MASK_SHIFT)
