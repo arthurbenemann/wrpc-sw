@@ -12,6 +12,12 @@
 
 #include "dev/clock_monitor.h"
 
+#ifdef ERTM14_CALIBRATION_DEBUG
+    #define cal_dbg(...) pp_printf("[cal-dbg]"__VA_ARGS__)
+#else
+    #define cal_dbg(...)
+#endif
+
 #define DEFAULT_COMMA_POS 0
 
 #define MDIO_DBG1_RESET_TX (1 << 0)
@@ -103,6 +109,12 @@ static void tx_fsm_init(struct wrc_port_tx_setup_state *fsm)
     fsm->cal_file_updated = 0;
     fsm->cnt = 0;
 
+    if( !storage_get_calibration_parameter( CAL_PARAM_PHY_TARGET_TX_PHASE, &fsm->cal_saved_phase ) )
+    {
+        cal_dbg("read tx target phase :%d ps\n", fsm->cal_saved_phase);
+        fsm->cal_saved_phase_valid = 1;
+    }
+
     tmo_init(&fsm->spll_lock_timeout, FSM_SPLL_LOCK_TIMEOUT_MS);
 }
 
@@ -119,7 +131,7 @@ static int tx_fsm_update()
 
         if( tmo_expired( &fsm->spll_lock_timeout ) )
         {
-            pp_printf("[tx-cal] Can't lock the SoftPLL. This is necessary for PHY calibratoin to continue. Retrying...\n");
+            cal_dbg("Can't lock the SoftPLL. This is necessary for PHY calibratoin to continue. Retrying...\n");
             tmo_restart( &fsm->spll_lock_timeout );
         }
 
@@ -181,7 +193,7 @@ static int tx_fsm_update()
         else if( tmo_expired(&fsm->phy_lock_timeout) )
         {
             fsm->state = TX_SETUP_STATE_RESET_PCS;
-            pp_printf("[tx-cal] PHY PLL lock timeout, retrying...[ dbg0 %04x]\n", dbg0 );
+            cal_dbg("PHY PLL lock timeout, retrying...[ dbg0 %04x]\n", dbg0 );
         }
         break;
     }
@@ -196,7 +208,7 @@ static int tx_fsm_update()
         {
             if( tmo_expired( &fsm->dmtd_timeout ) )
             {
-                pp_printf("[tx-cal] Phase measurement timeout, retrying...\n");
+                cal_dbg("Phase measurement timeout, retrying...\n");
                 //for(;;)
                   //  spll_show_stats();
                 fsm->state = TX_SETUP_STATE_RESET_PCS;
@@ -205,16 +217,15 @@ static int tx_fsm_update()
         }
 
 //        p2 = fsm->measured_phase = phase;
+        cal_dbg("samples %d last-phase %d\n", fsm->attempts, phase );
 
         if(tmo_expired(&fsm->refresh_timeout))
         {
-            pp_printf("[tx-cal] samples %d last-phase %d\n", fsm->attempts, fsm->measured_phase);
+//            pp_printf("[tx-cal] samples %d last-phase %d\n", fsm->attempts, fsm->measured_phase);
             tmo_restart(&fsm->refresh_timeout);
         }
 
-        // fixme: store calibration phase in eeprom just like in the tx_phase_cal.conf file on the switch
-        //pp_printf("Phase: %d\n", phase);
-        #if 0
+        
         if (!fsm->expected_phase_valid)
         {
             if (fsm->cal_saved_phase_valid)
@@ -222,23 +233,17 @@ static int tx_fsm_update()
                 //pr_info("Using phase from file :%d\n",
                 //	fsm->cal_saved_phase);
                 fsm->expected_phase = fsm->cal_saved_phase;
+                fsm->tollerance = 150; /*ps, bins are 200 ps wide*/
             }
-            else
+            else // find a sane default
             {
-                int phi = phase;
-
-                do // find the phase bin right after the rising parallel clock edge
-                {
-                    fsm->expected_phase = phi;
-                    phi -= 800;
-                } while (phi > 2000);
+                fsm->expected_phase = 10;
+                fsm->tollerance = 350; // fixme: this works for PHY oversampling at 5 Gbps (must be made generic at some time...)
             }
             fsm->expected_phase_valid = 1;
         }
-#endif
-        fsm->expected_phase = 10;
-        fsm->tollerance = 350;
 
+        
         int phase_min = fsm->expected_phase - fsm->tollerance;
         int phase_max = fsm->expected_phase + fsm->tollerance;
 
@@ -249,11 +254,11 @@ static int tx_fsm_update()
             int i;
 
             fsm->measured_phase = phase;
-            //pp_printf("[tx-cal] FIX phase %d\n", fsm->measured_phase );
+            cal_dbg("FIX phase %d\n", fsm->measured_phase );
 
-            spll_enable_ptracker(0, 0);
-            spll_set_ptracker_average_samples( PTRACKER_AVERAGE_SAMPLES );
-            spll_enable_ptracker(0, 1);
+            //spll_enable_ptracker(0, 0);
+            //spll_set_ptracker_average_samples( PTRACKER_AVERAGE_SAMPLES );
+            //spll_enable_ptracker(0, 1);
 
             fsm->state = TX_SETUP_VALIDATE;
         }
@@ -268,17 +273,24 @@ static int tx_fsm_update()
     case TX_SETUP_VALIDATE:
     {
         int phase, enabled;
-        int rv = spll_read_ptracker(0, &phase, &enabled);
+        //int rv = spll_read_ptracker(0, &phase, &enabled);
 
-        if (!rv)
-            return 0;
+        //if (!rv)
+          //  return 0;
 
-        fsm->measured_phase = phase;
-        pp_printf("[tx-cal] TX calibration complete (phase %d ps)\n", fsm->measured_phase);
+        //fsm->measured_phase = phase;
+        cal_dbg("TX calibration complete (phase %d ps)\n", fsm->measured_phase);
         spll_enable_ptracker(0, 0);
 
         // enable the PCS on the port
         ep_pcs_write(MDIO_DBG1, MDIO_DBG1_TX_ENABLE | MDIO_DBG1_DMTD_SOURCE_RXRECCLK);
+
+        if( !fsm->cal_saved_phase_valid )
+        {
+            cal_dbg("saving new target phase: %d ps\n", fsm->measured_phase);
+            storage_set_calibration_parameter( CAL_PARAM_PHY_TARGET_TX_PHASE, fsm->measured_phase);
+            storage_save_calibration();
+        }
 
         fsm->state = TX_SETUP_DONE;
         break;
@@ -330,7 +342,7 @@ static int rx_fsm_update(  )
 			if (early_link_up) {
 				if ( fsm_tx->state == TX_SETUP_DONE )
 				{
-					pp_printf("[rx-cal]: calibration started.\n");
+					cal_dbg("RX calibration started.\n");
 	
 					fsm->state = RX_SETUP_STATE_RESET_PCS;
 				}
@@ -429,14 +441,14 @@ static int rx_fsm_update(  )
        			int rx_comma_pos = (dbg0 >> 7) & 0x7f;
 				ep_pcs_write( MDIO_DBG1, MDIO_DBG1_RX_ENABLE | MDIO_DBG1_TX_ENABLE | MDIO_DBG1_DMTD_SOURCE_RXRECCLK | MDIO_DBG1_COMMA_TARGET_POS(DEFAULT_COMMA_POS) );
 				ep_pcs_write( MDIO_REG_MCR, MDIO_MCR_SPEED1000_MASK | MDIO_MCR_FULLDPLX_MASK | MDIO_MCR_ANENABLE | MDIO_MCR_ANRESTART  );
-				pp_printf("[rx-cal] RX calibration complete (after %d attempts) comma @ %d taps.\n", fsm->attempts, rx_comma_pos );
+				cal_dbg("RX calibration complete (after %d attempts) comma @ %d taps.\n", fsm->attempts, rx_comma_pos );
 				spll_enable_ptracker( 0, 0 );
                 spll_set_ptracker_average_samples( PTRACKER_AVERAGE_SAMPLES );
 
        			fsm->state = RX_SETUP_DONE;
 
 			} else {
-                pp_printf("[rx-cal] weird, can't stabilize link. Retrying [%d %d %d %d]\n", rx_up, rx_aligned, rx_comma_valid, rx_comma_pos );
+                cal_dbg("weird, can't stabilize link. Retrying [%d %d %d %d]\n", rx_up, rx_aligned, rx_comma_valid, rx_comma_pos );
                 fsm->state = RX_SETUP_STATE_RESET_PCS;
             }
 
@@ -453,7 +465,7 @@ static int rx_fsm_update(  )
 
 			if( ! (dbg0 & MDIO_DBG0_LINK_UP ) /*|| ( ( fsm->prev_link_up && !link_up ) )*/ )
 			{
-				pp_printf("[rx-cal]: port went down, need recalibration.\n");
+				cal_dbg("port went down, need RX recalibration.\n");
 				fsm->state = RX_SETUP_STATE_INIT;
                 fsm->prev_link_up = link_up;
 				return 0;
@@ -480,7 +492,7 @@ int phy_calibration_poll()
 
 void phy_calibration_init()
 {
-    pp_printf("Initializing PHY calibrator...\n");
+    cal_dbg("Initializing PHY calibrator...\n");
     ep_pcs_write(MDIO_REG_MCR, MDIO_MCR_PDOWN);	/* reset the PHY */
 	timer_delay_ms(200);
 	ep_pcs_write(MDIO_REG_MCR, MDIO_MCR_RESET);	/* reset the PHY */
