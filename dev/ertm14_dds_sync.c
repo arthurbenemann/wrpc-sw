@@ -92,7 +92,7 @@ void dds_sync_unit_trigger( struct dds_sync_unit_device* dev, uint32_t mask, int
     {
         struct dds_sync_unit_channel* ch = &dev->channels[i];
 
-        if(ch->flags & DDS_SYNC_ENABLED && ( mask & (1<<i)))
+        if( (ch->flags & DDS_SYNC_ENABLED) && ( mask & (1<<i)))
         {
             uint32_t ocr;
             int polarity = ch->flags & DDS_SYNC_NEGATIVE;
@@ -101,7 +101,6 @@ void dds_sync_unit_trigger( struct dds_sync_unit_device* dev, uint32_t mask, int
             uint32_t coarse_ser = ch->pps_offset_ps / 2000 - coarse_par * 8;
             uint32_t fine = (ch->pps_offset_ps % 2000) / ch->delay_tap_size;
             
-            //pp_printf("coarse_par %d coarse_ser %d fine %d\n", coarse_par, coarse_ser, fine );
             uint32_t mask;
             
             if( continuous )
