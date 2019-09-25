@@ -18,6 +18,8 @@
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+/* ertm14_dds_sync - driver for DDS Sync Unit (fine pulse generator) */
+
 #include "board.h"
 #include "dev/ad9910.h"
 
@@ -30,7 +32,10 @@ void dds_sync_unit_create( struct dds_sync_unit_device *dev, uint32_t base )
 {
     int i;
     dev->base = (void*) base;
-    writel( 0, dev->base + DS_REG_CSR ); // disable core
+    writel( DS_CSR_PLL_RST, dev->base + DS_REG_CSR ); // reset pll
+    usleep(10);
+    writel( 0, dev->base + DS_REG_CSR ); // un-reset pll
+
     for(i=0;i<DDS_SYNC_N_CHANNELS;i++)
     {
         dev->channels[i].delay_tap_size = 78 /* ps */;
@@ -63,7 +68,7 @@ void dds_sync_force_pulse( struct dds_sync_unit_device* dev, int channel )
     int polarity = ch->flags & DDS_SYNC_NEGATIVE;
 
     uint32_t ocr = (1 << DS_OCR0_PPS_OFFS_SHIFT)
-	                | (0xff << DS_OCR0_MASK_SHIFT)
+	                | (0x0 << DS_OCR0_MASK_SHIFT)
                     | (0 << DS_OCR0_FINE_SHIFT)
                     | (polarity ? DS_OCR0_POL : 0 );
 
@@ -72,7 +77,7 @@ void dds_sync_force_pulse( struct dds_sync_unit_device* dev, int channel )
 
     uint32_t trig_mask = ( 1 << ( channel + DS_CSR_FORCE0_OFFSET) );
 
-    //pp_printf("ForceSync ch %x ocr %x mask %x\n", channel, ocr, trig_mask);
+//    pp_printf("ForceSync ch %x ocr %x mask %x\n", channel, ocr, trig_mask);
     
 
     writel( trig_mask, dev->base + DS_REG_CSR ); // configure
@@ -146,7 +151,7 @@ int dds_sync_unit_poll( struct dds_sync_unit_device* dev, uint32_t mask )
 
         uint32_t mask = 1 << ( DS_CSR_READY_SHIFT + i);
 
-        if( (ch->flags & DDS_SYNC_ENABLED) && ((rv & mask) == 0 ) )
+        if( (ch->flags & DDS_SYNC_ENABLED) && ( (rv & mask) == 0 ) )
             return 0;
     }
 
