@@ -677,16 +677,17 @@ void ertm15_pll_init(void)
 
     if( ocxo_10mhz )
     { // PLL: R div = 1, N div = 100, LV/CM div: 50 (20 MHz output)
+        
         ltc6950_write( &board.ltc6950_pll, 0x15, 50 ); // RDIVOUT = 0, output div = 50
     
     } else if (ocxo_100mhz)
     {
         pp_printf("Using 100 mhz ocxo\n");
-        ltc6950_write( &board.ltc6950_pll, 0x15, 4 ); // RDIVOUT = 0, output div = 50
-        ltc6950_write( &board.ltc6950_pll, 0x8, 0xa ); // reference divider = 10
+        //ltc6950_write( &board.ltc6950_pll, 0x15, 4 ); // RDIVOUT = 0, output div = 50
+        ltc6950_write( &board.ltc6950_pll, 0x8, 0x1 ); // reference divider = 1 
 
-        //ltc6950_write( &board.ltc6950_pll, 0x15, 50 ); // RDIVOUT = 0, output div = 50
-        //ltc6950_write( &board.ltc6950_pll, 0x1a, 10 ); // N divider = 10 (VCO @ 1GHz, PFD @ 10 MHz)
+        ltc6950_write( &board.ltc6950_pll, 0x15, 50 ); // RDIVOUT = 0, output div = 50
+        ltc6950_write( &board.ltc6950_pll, 0x0a, 10 ); // N divider = 10 (VCO @ 1GHz, PFD @ 10 MHz)
     }
  
     //ertm14_align_ref_out_to_pps();
@@ -885,8 +886,8 @@ void ertm14_config_init()
         struct ertm14_board_config *cfg = &ertm14_configs[i];
 
         cfg->valid = 1;
-        cfg->lo.freq_hz = 100000000;
-        cfg->ref.freq_hz = 100000000;
+        cfg->lo.freq_hz = 223500000;
+        cfg->ref.freq_hz = 223500000;
         cfg->lo.ampl_factor = 50;
         cfg->ref.ampl_factor = 50;
 
