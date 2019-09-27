@@ -194,7 +194,7 @@ static int ui_update(void)
 	if (wrc_ui_mode == UI_GUI_MODE) {
 		ret = wrc_mon_gui();
 		if ( console_getc() == 27 || wrc_ui_refperiod == 0) {
-			shell_init();
+			shell_restart();
 			wrc_ui_mode = UI_SHELL_MODE;
 		}
 	} else {
