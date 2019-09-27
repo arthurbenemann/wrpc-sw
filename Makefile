@@ -173,6 +173,7 @@ $(OUTPUT).elf: $(LDS-y) $(AUTOCONF) gitmodules $(OUTPUT).a config.o pconfig.o sd
 	./save_size.sh $(SIZE) $@
 
 $(OUTPUT).a: $(OBJS)
+	rm -f wrc.a
 	ar rc $@ $(OBJS) 
 
 OBJCOPY-TARGET-$(CONFIG_LM32) = -O elf32-lm32 -B lm32

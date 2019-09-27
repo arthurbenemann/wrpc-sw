@@ -28,15 +28,13 @@
 #include "dev/ad7888.h"
 #include "dev/ertm15_rf_distr.h"
 
-extern struct gpio_device gpio_aux;
+static const struct gpio_pin pin_lo_ctrl_ser = { &board.gpio_aux, 39 };
+static const struct gpio_pin pin_lo_ctrl_updtclk = { &board.gpio_aux, 40 };
+static const struct gpio_pin pin_lo_ctrl_shftclk = { &board.gpio_aux, 41 };
 
-static const struct gpio_pin pin_lo_ctrl_ser = { &gpio_aux, 39 };
-static const struct gpio_pin pin_lo_ctrl_updtclk = { &gpio_aux, 40 };
-static const struct gpio_pin pin_lo_ctrl_shftclk = { &gpio_aux, 41 };
-
-static const struct gpio_pin pin_ref_ctrl_ser = { &gpio_aux, 42 };
-static const struct gpio_pin pin_ref_ctrl_updtclk = { &gpio_aux, 43 };
-static const struct gpio_pin pin_ref_ctrl_shftclk = { &gpio_aux, 44 };
+static const struct gpio_pin pin_ref_ctrl_ser = { &board.gpio_aux, 42 };
+static const struct gpio_pin pin_ref_ctrl_updtclk = { &board.gpio_aux, 43 };
+static const struct gpio_pin pin_ref_ctrl_shftclk = { &board.gpio_aux, 44 };
 
 static struct gpio_device gpio_rfsw_ref;
 static struct gpio_device gpio_rfsw_lo;
