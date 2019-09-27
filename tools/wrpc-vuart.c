@@ -2,7 +2,7 @@
  * Author: Federico Vaga <federico.vaga@cern.ch>
  */
 
-
+#if 0
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -212,4 +212,10 @@ int main(int argc, char *argv[])
 	return 0;
 out:
 	return -1;
+}
+#endif
+
+int main()
+{
+	return 0;
 }
