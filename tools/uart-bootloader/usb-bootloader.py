@@ -40,13 +40,11 @@ class SerialIF:
             port=device, baudrate=921600, timeout=0, rtscts=False)
 
     def reset_board(self):
-        self.ser.setRTS(True)
-        time.sleep(0.01)
-        self.ser.setRTS(False)
-        time.sleep(0.01)
-        self.ser.setRTS(True)
-        time.sleep(0.01)
-
+        print ("Resetting...\n")
+        for k in range(0,12):
+            self.ser.setDTR(True)
+            self.ser.setDTR(False)
+        
     def send(self, x):
         if isinstance(x, int):
             self.ser.write(struct.pack("B", x))
