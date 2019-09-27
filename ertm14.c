@@ -41,6 +41,8 @@
 #include "storage.h"
 #include "wrc_ptp.h"
 
+// allows the eRTM14 board to operate *without* the eRTM15 (no WR support, useful for IPMI testing)
+#define CONFIG_ERTM14_WITHOUT_ERTM15 1
 
 #include "hw/wb_10mhz_align_unit.h"
 #include "wrc-task.h"
@@ -810,6 +812,9 @@ int ertm14_init(void)
         100 );
 
 
+
+#ifndef CONFIG_ERTM14_WITHOUT_ERTM15
+
     ertm14_clock_monitor_init();
     ertm15_pll_init();
 
@@ -818,7 +823,7 @@ int ertm14_init(void)
     pp_printf("Switching system clock to CLK_SYS\n");
     ertm14_switch_sys_clock(1);
     
-    
+#endif    
 
     gen_gpio_out(&pin_ocxo_override, 0);
 
@@ -843,6 +848,8 @@ int ertm14_init(void)
 
     ad7888_create( &board.pwrmon_adc, &board.spi_ad7888 );
 
+#ifndef CONFIG_ERTM14_WITHOUT_ERTM15
+
 /* RF distribution switches and shift registers controlling these (eRTM15 - IC26..28) */
     ertm15_rf_distr_init( &board.rf_distr, &board.pwrmon_adc );
 
@@ -851,14 +858,17 @@ int ertm14_init(void)
 
     ad9910_program(&board.dds_ad9910_ref, 205000000ULL, 0, 0x0 );
     ad9910_program(&board.dds_ad9910_lo, 205000000ULL, 0, 0x0 );
+#endif
 
 /* Setup the SoftPLL for the OCXO */
     ertm14_spll_setup();
 
+#ifndef CONFIG_ERTM14_WITHOUT_ERTM15
 /* Init CLKA/CLKB distribution */
     ertm14_init_clkab_distribution();
    
     ertm14_dds_sync_test();
+#endif
 
     pp_printf("Init IUART14\n");
 
