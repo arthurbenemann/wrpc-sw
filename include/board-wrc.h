@@ -52,6 +52,8 @@ int board_update(void);
 #define BOARD_MAX_CHAN_AUX		2
 #define BOARD_MAX_PTRACKERS		1
 
+#define BASE_SPI 0x20900
+
 #ifdef CONFIG_IP
 #define HAS_IP 1
 #else

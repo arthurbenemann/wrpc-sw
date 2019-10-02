@@ -92,6 +92,7 @@ static void wrc_initialize(void)
 		mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3],
 		mac_addr[4], mac_addr[5]);
 
+	spec7_ad9516_init();
 	net_rst();
 	ep_init(mac_addr);
 	/* Sleep for 1s to make sure WRS v4.2 always realizes that

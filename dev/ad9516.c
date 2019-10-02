@@ -19,7 +19,11 @@
 
 #include "board.h"
 #include "syscon.h"
+
+#ifdef CONFIG_WR_NODE
+#else /* CONFIG_WR_SWITCH */
 #include "gpio-wrs.h"
+#endif
 
 #include "rt_ipc.h"
 
@@ -216,6 +220,36 @@ static void ad9516_sync_outputs(void *spi_base)
 
 }
 
+#ifdef CONFIG_WR_NODE
+
+int spec7_ad9516_init(void)
+{
+	pp_printf("Initializing SPEC7 AD9516 PLL...\n");
+
+	oc_spi_init((void *)BASE_SPI);
+	
+	void *spi_base = (void *)BASE_SPI;
+
+	/* reset the PLL */
+	gpio_out(GPIO_PLL_RESET, 1);
+	timer_delay(10);
+	gpio_out(GPIO_PLL_RESET, 0);
+	timer_delay(10);
+	
+	/* Use unidirectional SPI mode */
+	ad9516_write_reg(spi_base, 0x000, 0x99);
+
+	/* Check the presence of the chip */
+	if (ad9516_read_reg(spi_base, 0x3) != 0x43) {
+		pp_printf("Error: AD9516 PLL not responding.\n");
+		return -1;
+	}
+
+  ad9516_load_regset(spi_base, ad9516_base_config_spec7, ARRAY_SIZE(ad9516_base_config_spec7), 0);
+}
+
+#else /* CONFIG_WR_SWITCH */
+
 int ad9516_init(int scb_version, int ljd_present)
 {
 	pp_printf("Initializing AD9516 PLL...\n");
@@ -227,9 +261,9 @@ int ad9516_init(int scb_version, int ljd_present)
 	gpio_out(GPIO_SYS_CLK_SEL, 0); /* switch to the standby reference clock, since the PLL is off after reset */
 
 	/* reset the PLL */
-	gpio_out(GPIO_PLL_RESET_N, 0);
+	gpio_out(GPIO_PLL_RESET, 1);
 	timer_delay(10);
-	gpio_out(GPIO_PLL_RESET_N, 1);
+	gpio_out(GPIO_PLL_RESET, 0);
 	timer_delay(10);
 	
 	/* Use unidirectional SPI mode */
@@ -317,6 +351,7 @@ int ljd_ad9516_init (void) {
 	return 0;
 }
 
+#endif
 
 int rts_debug_command(int command, int value)
 {
