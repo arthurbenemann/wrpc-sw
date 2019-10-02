@@ -36,9 +36,9 @@ config TEMP_HIGH_THRESHOLD
 config TEMP_HIGH_RAPPEL
 	int
 	default 60
+
 config PLL_VERBOSE
 	boolean
-	default y if WR_SWITCH
 
 config PFILTER_VERBOSE
 	boolean
@@ -502,8 +502,7 @@ config PLL_VERBOSE
 	depends on DEVELOPER
 	boolean "Verbose messages in softpll"
 	help
-	  The softpll is usually silent in WR node and verbose in WR
-	  switch. You can enable pll messages in WR node for debugging.
+	  Outputs additional debugging messages in the softpll. Off by default.
 
 config PFILTER_VERBOSE
 	depends on DEVELOPER
