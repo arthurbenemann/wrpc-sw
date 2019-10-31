@@ -52,6 +52,8 @@ static uint32_t prev_nanos_for_profile;
 static uint32_t prev_ticks_for_profile;
 uint32_t print_task_time_threshold = CONFIG_DEFAULT_PRINT_TASK_TIME_THRESHOLD;
 
+int ext_10mhz = 0;
+
 static void wrc_initialize(void)
 {
 	uint8_t mac_addr[6];
@@ -92,7 +94,7 @@ static void wrc_initialize(void)
 		mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3],
 		mac_addr[4], mac_addr[5]);
 
-	spec7_ad9516_init();
+	spec7_ad9516_init(ext_10mhz);
 	net_rst();
 	ep_init(mac_addr);
 	/* Sleep for 1s to make sure WRS v4.2 always realizes that

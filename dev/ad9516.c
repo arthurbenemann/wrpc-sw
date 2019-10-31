@@ -222,7 +222,7 @@ static void ad9516_sync_outputs(void *spi_base)
 
 #ifdef CONFIG_WR_NODE
 
-int spec7_ad9516_init(void)
+int spec7_ad9516_init(int ext_10mhz)
 {
 	pp_printf("Initializing SPEC7 AD9516 PLL...\n");
 
@@ -245,7 +245,13 @@ int spec7_ad9516_init(void)
 		return -1;
 	}
 
-  ad9516_load_regset(spi_base, ad9516_base_config_spec7, ARRAY_SIZE(ad9516_base_config_spec7), 0);
+  if (ext_10mhz) {
+    /* Configuration for the SPEC7: External 10 MHZ In (Bulls-Eye B03/B04) => 125 MHz on outputs 0, 1, 2 */
+    ad9516_load_regset(spi_base, ad9516_10mhz_base_config_spec7, ARRAY_SIZE(ad9516_10mhz_base_config_spec7), 0);
+  } else {
+    /* Configuration for the SPEC7: Forward 125 MHz VCXO_REFCLK at CLK input to outputs 0, 1, 2 */
+    ad9516_load_regset(spi_base, ad9516_base_config_spec7, ARRAY_SIZE(ad9516_base_config_spec7), 0);
+  }    
 }
 
 #else /* CONFIG_WR_SWITCH */
