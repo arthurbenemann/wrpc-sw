@@ -151,25 +151,69 @@ static void set_clk_param(int param, const char *name, const char *channel, cons
     }
 }
 
-static int measure_clock( int id, int ref_channel, int ref_frequency )
+static int measure_clock(int id, int ref_channel, int ref_frequency)
 {
-    struct wb_clock_monitor_device* cm = &board.ertm14_cmon;
+    struct wb_clock_monitor_device *cm = &board.ertm14_cmon;
 
-    wb_cm_set_ref_frequency( cm, ref_frequency );
-    wb_cm_configure(cm, ref_channel, 2, 6250000 );
-    wb_cm_restart( cm );
-    
-    while( ! ( cm->freq_valid_mask & (1<<id ) ) )
-        wb_cm_read( cm );
-    
+    wb_cm_set_ref_frequency(cm, ref_frequency);
+    wb_cm_configure(cm, ref_channel, 2, 6250000);
+    wb_cm_restart(cm);
+
+    while (!(cm->freq_valid_mask & (1 << id)))
+        wb_cm_read(cm);
+
     return cm->freqs[id];
+}
+
+static void ertm_test_dac()
+{
+    int i = 0;
+    pp_printf("Playing sawtooth on eRTM15 OCXO DAC. Press ESC to abort.\n");
+
+    for (;;)
+    {
+        int c = console_getc();
+
+        if (c == 0x1b)
+            break;
+
+        spll_set_dac(0, i & 0xffff);
+
+        i += 100;
+
+        timer_delay(5);
+    }
+}
+
+static void ertm_show_cm()
+{
+    int i;
+    struct wb_clock_monitor_device *cm = &board.ertm14_cmon;
+
+    wb_cm_set_ref_frequency(cm, DMTD_CLOCK_FREQ_HZ);
+    wb_cm_configure(cm, ERTM14_CMON_CLK_DMTD, 2, 6250000);
+    wb_cm_restart(cm);
+    while (!(cm->freq_valid_mask & (1 << 0)))
+        wb_cm_read(cm);
+    for (i = 0; i < 5; i++)
+    {
+        pp_printf("cm%d: %d (valid=%d)\n", i, cm->freqs[i], cm->freq_valid_mask & (1 << i) ? 1 : 0);
+    }
 }
 
 static int cmd_ertm(const char *args[])
 {
 	int i;
-    
-	if (!strcasecmp(args[0], "test-clocks")) {
+    if (!strcasecmp(args[0], "test-dac")) 
+    {
+        ertm_test_dac();
+    }
+    else if (!strcasecmp(args[0], "cm")) 
+    {
+        ertm_show_cm();
+	}
+    else if (!strcasecmp(args[0], "test-clocks")) 
+    {
 		pp_printf("eRTM14/15 clock frequency test:\n");
 
         phy_calibration_disable();
