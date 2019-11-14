@@ -95,6 +95,8 @@ static int cmd_pll(const char *args[])
 		str[3] = 0xbe;
 		console_uart_write_bytes(str, 4); // sync word
 		console_uart_set_crlf_mode(0);
+		spll_debug_queue_purge();
+
 		int nt = 0;
 		uint32_t buf[256];
 		for(;;)
