@@ -32,12 +32,13 @@ extern volatile struct PPSG_WB *PPSG;
 typedef struct {
 	int ki, kp;		/* integral and proportional gains (1<<PI_FRACBITS == 1.0f) */
 	int shift;		/* fractional bits shift factor (defaults to PI_FRACBITS) */
-	int integrator;		/* current integrator value */
+	int64_t integrator;		/* current integrator value */
 	int bias;		/* DC offset always added to the output */
 	int anti_windup;	/* when non-zero, anti-windup is enabled */
 	int y_min;		/* min/max output range, used by clapming and antiwindup algorithms */
 	int y_max;
 	int x, y;		/* Current input (x) and output value (y) */
+	int dithered;		/* Enable dithering of DAC output */
 } spll_pi_t;
 
 /* lock detector state */
