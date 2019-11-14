@@ -72,13 +72,13 @@ int helper_update(struct spll_helper_state *s, int tag,
 
 		if (s->ld.lock_changed)
 		{
-			spll_debug(DBG_EVENT | DBG_HELPER, DBG_EVT_LOCKED, 0);
+		//	spll_debug(DBG_EVENT | DBG_HELPER, DBG_EVT_LOCKED, 0);
 			s->ld.lock_changed = 0;
 		}
 
 		//spll_debug(DBG_SAMPLE_ID | DBG_HELPER, s->sample_n++, 0);
-		spll_debug(DBG_Y | DBG_HELPER, y, 0);
-		spll_debug(DBG_ERR | DBG_HELPER, err, 1);
+		//spll_debug(DBG_Y | DBG_HELPER, y, 0);
+		//spll_debug(DBG_ERR | DBG_HELPER, err, 1);
 
 		if (ld_update((spll_lock_det_t *)&s->ld, err))
 			return SPLL_LOCKED;

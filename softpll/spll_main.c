@@ -74,7 +74,6 @@ static inline void mpll_handle_gain_schedule( struct spll_main_state *s )
 
 	if( s->gain_sched->locked_d && !s->ld.locked ) // Pll out-of-lock? restart
 	{
-		pp_printf("MPLL lock lost\n");
 		s->gain_sched->current_stage = 0;
 		s->locked = 0;
 		do_update = 1;
@@ -84,7 +83,6 @@ static inline void mpll_handle_gain_schedule( struct spll_main_state *s )
 		spll_debug(DBG_EVENT | DBG_MAIN, DBG_EVT_GAIN_SWITCH, 0);
 		if ( s->gain_sched->current_stage == s->gain_sched->n_stages - 1 )
 		{
-			if (!s->locked) pll_verbose("MPLL final locked [%d %d %d]\n", s->sample_n, s->ld.lock_cnt, s->ld.lock_samples );
 			s->locked = 1;
 			s->gain_sched->locked_d = 1;
 			return;
@@ -100,7 +98,6 @@ static inline void mpll_handle_gain_schedule( struct spll_main_state *s )
 	if( do_update )
 	{
 		spll_gain_schedule_item_t* stage = &s->gain_sched->stages[ s->gain_sched->current_stage ];
-		pll_verbose("Changing MPLL stage to %d [%d %d %d pp %d %d %d]\n", s->gain_sched->current_stage, s->sample_n, s->ld.lock_cnt, s->ld.locked, stage->kp, stage->ki, stage->lock_samples );
 		s->pi.kp = stage->kp;
 		s->pi.ki = stage->ki;
 		s->pi.shift = stage->shift;
@@ -208,15 +205,16 @@ int mpll_update(struct spll_main_state *s, int tag, int source)
 
 #endif
 
-		y = pi_update((spll_pi_t *)&s->pi, err);
+		y = pi_update((spll_pi_t *)&s->pi, err );
 		SPLL->DAC_MAIN = SPLL_DAC_MAIN_VALUE_W(y)
 			| SPLL_DAC_MAIN_DAC_SEL_W(s->dac_index);
 		if (s->dac_index == 0)
 			spll_log_dac(y);
 
-		spll_debug(DBG_MAIN | DBG_REF, s->tag_ref + s->adder_ref, 0);
-		spll_debug(DBG_MAIN | DBG_TAG, s->tag_out + s->adder_out, 0);
+		//spll_debug(DBG_MAIN | DBG_REF, s->tag_ref + s->adder_ref, 0);
+		//spll_debug(DBG_MAIN | DBG_TAG, s->tag_out + s->adder_out, 0);
 		spll_debug(DBG_MAIN | DBG_ERR, err, 0);
+
 		//spll_debug(DBG_MAIN | DBG_SAMPLE_ID, s->sample_n++, 0);
 		spll_debug(DBG_MAIN | DBG_Y, y, 1);
 
