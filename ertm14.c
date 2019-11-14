@@ -42,7 +42,7 @@
 #include "wrc_ptp.h"
 
 // allows the eRTM14 board to operate *without* the eRTM15 (no WR support, useful for IPMI testing)
-#define CONFIG_ERTM14_WITHOUT_ERTM15 1
+#undef CONFIG_ERTM14_WITHOUT_ERTM15
 
 #include "hw/wb_10mhz_align_unit.h"
 #include "wrc-task.h"
@@ -124,6 +124,8 @@ static struct gpio_pin pin_ad9520_clkb_sda = {  &board.gpio_aux, 60 };
 static struct gpio_pin pin_sys_clk_sel_stb = {  &board.gpio_aux, 61 };
 static struct gpio_pin pin_sys_clk_sel_next = {  &board.gpio_aux, 62 };
 
+static struct ad95xx_config pll_ext_10mhz_config = 
+#include "ertm_14_pll_ext_10mhz.h"
 
 static struct ad95xx_config pll_main_dot050_config =
 #include "ertm_14_pll_main_dot050_config.h"
@@ -228,20 +230,30 @@ static void ertm14_spll_setup(void)
 /* configure a suitable PI gain schedule for the SoftPLL: */
     spll_gain_schedule_t* gs=  &spll_main_ocxo_gain_sched;
 
-    gs->n_stages = 1;
+    gs->n_stages = 2;
 
 /* we start with ~100 Hz bandwidth to make it lock reasonably fast */
-    gs->stages[0].kp = -1100;
-    gs->stages[0].ki = -30;
-    gs->stages[0].lock_samples = 10000;
-    gs->stages[0].shift = PI_FRACBITS;
+    gs->stages[0].kp = -4000 * 16;
+    gs->stages[0].ki = -5 * 16;
+    gs->stages[0].lock_samples = 30000;
+    gs->stages[0].shift = 16;
 
 /* once it's locked, the loop bandwidth is switched to ~0.1 Hz to filter out WR link added phase noise */
     gs->stages[1].kp = -3000;
     gs->stages[1].ki = -5;
     gs->stages[1].lock_samples = 10000;
-    gs->stages[1].shift = 14;
-    
+    gs->stages[1].shift = 16;
+
+#if 0
+    gs->n_stages = 1;
+
+/* we start with ~100 Hz bandwidth to make it lock reasonably fast */
+    gs->stages[0].kp = -4000;
+    gs->stages[0].ki = -5;
+    gs->stages[0].lock_samples = 10000;
+    gs->stages[0].shift = 12;
+#endif
+
 	spll_set_gain_schedule( gs );
 }
 
@@ -270,6 +282,7 @@ static int ertm14_switch_sys_clock( int use_sys_from_pll )
     gen_gpio_out( &pin_sys_clk_sel_next, use_sys_from_pll );
     gen_gpio_out( &pin_sys_clk_sel_stb, 1);
     gen_gpio_out( &pin_sys_clk_sel_stb, 0);
+    return 0;
 }
 
 uint32_t ch_delays[] = { 100000, 100000, 100000, 100000, 100500, 100000 };
@@ -358,7 +371,7 @@ void ertm14_dds_sync_test()
         windows[j].best_length = -1;
         windows[j].start = -1;
         windows[j].length = 0;
-    }windows[2];
+    }
 
     for(i = 0; i < 100; i++)
     {
@@ -500,10 +513,11 @@ static void iuart_14_poll()
     if (msg <= 0)
         return;
 
+    //pp_printf("RxM\n");
 
     if( msg == START_INSN_CHAR_VAL )
     {
-        //pp_printf("req %d %d %d\n",board.iuart_14.rx_buf, board.iuart_14.rx_csize, board.iuart_14.rx_csize );
+        pp_printf("req %d %d %d\n",board.iuart_14.rx_buf, board.iuart_14.rx_csize, board.iuart_14.rx_csize );
         handle_iuart_request( board.iuart_14.rx_buf, board.iuart_14.rx_csize );
     }
 }
@@ -721,8 +735,15 @@ int ertm14_init_ref_clock_distribution(void)
     ad951x_init(&board.ad9516_main, &board.spi_pll_main, &pin_pll_main_reset, &pin_pll_main_lock );
     ad951x_init(&board.ad9516_ext, &board.spi_pll_ext, &pin_pll_ext_reset, &pin_pll_ext_lock );
 
-    //ad951x_configure(&ad9516_main, &pll_main_dot050_config);
+#ifdef CONFIG_ERTM14_WITHOUT_ERTM15
+    gen_gpio_out(&pin_main_xo_en_n, 0); // enable DOT050 VCXO
+    ad951x_configure(&board.ad9516_main, &pll_main_dot050_config);
+#else
+    gen_gpio_out(&pin_main_xo_en_n, 1); // disable DOT050 VCXO
     ad951x_configure(&board.ad9516_main, &pll_main_ocxo_config);
+//    ad951x_configure(&board.ad9516_ext, &pll_ext_10mhz_config);
+
+#endif
 }
 
 int ertm15_init_dds(void)
@@ -812,18 +833,18 @@ int ertm14_init(void)
         100 );
 
 
+    ertm14_clock_monitor_init();
 
 #ifndef CONFIG_ERTM14_WITHOUT_ERTM15
 
-    ertm14_clock_monitor_init();
     ertm15_pll_init();
+
+#endif    
 
     ertm14_init_ref_clock_distribution();
 
     pp_printf("Switching system clock to CLK_SYS\n");
     ertm14_switch_sys_clock(1);
-    
-#endif    
 
     gen_gpio_out(&pin_ocxo_override, 0);
 
@@ -986,8 +1007,10 @@ static int ertm14_update_config_task(void)
 
         has_new_config = 0;
         
+#ifndef CONFIG_ERTM14_WITHOUT_ERTM15
         ertm14_commit_config( ertm14_current_config );
         ertm14_clk_pps_sync_restart();
+#endif
     }
 }
 
