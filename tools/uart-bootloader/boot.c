@@ -22,7 +22,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#define CONFIG_ERTM14_FLASH
+#undef CONFIG_ERTM14_FLASH
 
 #include "board.h"
 
@@ -66,12 +66,13 @@ static uint32_t orig_reset_vector = 0x4;
 
 typedef void (*voidfunc_t)();
 
+struct simple_uart_device dev_uart;
+
 #ifdef CONFIG_ERTM14_FLASH
 
 #define BASE_AUXWB 0x48000
 
 
-struct simple_uart_device dev_uart;
 struct gpio_device gpio_aux;
 struct spi_bus spi_flash;
 struct spi_flash_device dev_flash;
@@ -352,9 +353,11 @@ void boot_fsm()
             on_cmd_go(rxbuf + 5, len);
             break;
 
+#ifdef CONFIG_ERTM14_FLASH
         case CMD_GET_FLASH_ID:
             on_cmd_get_flash_id(rxbuf + 5, len);
             break;
+#endif
 
         default:
             break;
