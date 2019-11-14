@@ -113,6 +113,7 @@ void check_vco_frequencies(void);
 void spll_set_ptracker_average_samples( int samp );
 
 int spll_get_debug_queue_samples( uint32_t *buf, int size, int undersample );
+void spll_debug_queue_purge(void);
 
 /*
  * Aux and main state:

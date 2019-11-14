@@ -376,15 +376,14 @@ void spll_init(int mode, int slave_ref_channel, int align_pps)
 	
 
 	/* Purge debug queue */
-	//if ( SPLL->CSR & SPLL_CSR_DBG_SUPPORTED )
+
+	if ( SPLL->CSR & SPLL_CSR_DBG_SUPPORTED )
 	{
-		pp_printf("Purge dbgq\n");
 		while (!(SPLL->DFR_HOST_CSR & SPLL_DFR_HOST_CSR_EMPTY))
 		{
 			dummy = SPLL->DFR_HOST_R0;
 			(void) dummy;
 		}
-
 	}
 
 	if(mode == SPLL_MODE_DISABLED)
@@ -523,17 +522,13 @@ void spll_show_stats()
 
 	if (softpll.mode > 0)
 		    pp_printf("softpll: irqs %d seq %s mode %d "
-		     "alignment_state %d HL%d ML%d HY=%d MY=%d DelCnt=%d ptm=%x avgc=%d pv=%d rdy=%d refc=%d tagc=%d kp %d ki %d shift %d\n",
+		     "alignment_state %d HL%d ML%d HY=%d MY=%d DelCnt=%d ptm=%x avgc=%d pv=%d rdy=%d refc=%d tagc=%d\n",
 		      s->irq_count, statename,
 			      s->mode, s->ext.align_state,
 			      s->helper.ld.locked, s->mpll.locked,
 			      s->helper.pi.y, s->mpll.pi.y,
 			      s->delock_count,
-				  ptracker_mask, s->ptrackers[0].avg_count, s->ptrackers[0].phase_val, s->ptrackers[0].ready, s->ptrackers[0].ref_count, s->ptrackers[0].tag_count,
-				  
-				  s->mpll.pi.kp,
-				  s->mpll.pi.ki,
-				  s->mpll.pi.shift
+				  ptracker_mask, s->ptrackers[0].avg_count, s->ptrackers[0].phase_val, s->ptrackers[0].ready, s->ptrackers[0].ref_count, s->ptrackers[0].tag_count
 			);
 		
 }
@@ -771,6 +766,18 @@ void spll_set_gain_schedule( spll_gain_schedule_t* sch )
 	softpll.mpll.gain_sched = sch;
 	enable_irq();
 }
+
+
+void spll_debug_queue_purge(void)
+{
+	int dummy;
+	while (!(SPLL->DFR_HOST_CSR & SPLL_DFR_HOST_CSR_EMPTY))
+		{
+			dummy = SPLL->DFR_HOST_R0;
+			(void) dummy;
+		}
+}
+
 
 int spll_get_debug_queue_samples( uint32_t *buf, int count, int undersample )
 {
