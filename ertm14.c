@@ -719,6 +719,7 @@ int ertm14_init_clkab_distribution()
     ad9520_init( &board.dev_clka_distr, &board.i2c_clka_distr, 0x5c );
     ad9520_init( &board.dev_clkb_distr, &board.i2c_clkb_distr, 0x5c );
 
+    pp_printf("Init CLKAB distribution\n");
     ad9520_configure( &board.dev_clka_distr, &clk_dist_ertm15_default_config);
     ad9520_configure( &board.dev_clkb_distr, &clk_dist_ertm15_default_config);
 
@@ -728,6 +729,11 @@ int ertm14_init_clkab_distribution()
 
     ad9520_enable_output( &board.dev_clka_distr, ERTM14_CLKAB_OUT_FRONT_PANEL, 1 );
     ad9520_enable_output( &board.dev_clkb_distr, ERTM14_CLKAB_OUT_FRONT_PANEL, 1 );
+
+// force a SYNC pulse to make sure the SYNC_N pins of the AD9520s are high
+// (so that any clock output is possible)    
+    dds_sync_force_pulse( &board.dds_sync_dev, ERTM14_PLL_SYNC_CLKA );
+    dds_sync_force_pulse( &board.dds_sync_dev, ERTM14_PLL_SYNC_CLKB );
 }
 
 int ertm14_init_ref_clock_distribution(void)
