@@ -35,6 +35,7 @@
 #include "dev/ertm15_rf_distr.h"
 #include "dev/spi_flash.h"
 #include "dev/i2c.h"
+#include "dev/pps_gen.h"
 #include "softpll_ng.h"
 #include "endpoint.h"
 #include "console.h"
@@ -62,6 +63,9 @@
 #else
     #define psync_dbg(...)
 #endif
+
+#define ertm_verbose(...) pp_printf("[ertm] "__VA_ARGS__)
+#define ertm_error(...) pp_printf("ERROR [ertm] "__VA_ARGS__)
 
 
 struct ertm14_board board;
@@ -225,6 +229,20 @@ static int ertm_init_complete = 0;
 static int ertm14_update_config_task(void);
 
 
+// fixme: use PRESENCE_A/B pins instead of LTC6950 PLL chip
+static int check_ertm15_presence(void)
+{
+    ltc6950_init(&board.ltc6950_pll, &board.spi_ltc6950);
+
+    int id = ltc6950_read( &board.ltc6950_pll, 0x16 );
+    
+    if( id != 0x65 )
+        return 0;
+
+    return 1;
+}
+
+
 static void ertm14_spll_setup(void)
 {
 /* configure a suitable PI gain schedule for the SoftPLL: */
@@ -244,6 +262,13 @@ static void ertm14_spll_setup(void)
     gs->stages[1].lock_samples = 10000;
     gs->stages[1].shift = 16;
 
+    // disable 2nd stage for DOT050 and Morion OCXO
+    if ( board.mode & ERTM14_MODE_WITHOUT_ERTM15 )
+        gs->n_stages = 1;
+    
+    if ( board.mode & ERTM14_MODE_OCXO_10MHZ )
+        gs->n_stages = 1;
+        
 #if 0
     gs->n_stages = 1;
 
@@ -287,7 +312,7 @@ static int ertm14_switch_sys_clock( int use_sys_from_pll )
 
 uint32_t ch_delays[] = { 100000, 100000, 100000, 100000, 100500, 100000 };
     
-static int ertm14_dds_sync_init()
+static int ertm14_dds_sync_init(void)
 {
     const int n_params = 4;
     struct {
@@ -340,14 +365,13 @@ static int ertm14_dds_sync_init()
     return 0;
 }
 
-void ertm14_dds_sync_test()
+static void ertm14_dds_sync_calibrate(void)
 {
     shw_pps_gen_init();
     shw_pps_gen_enable_output(1);
     shw_pps_gen_unmask_output(1);
 
     int i = 0, j;
-    int dly_taps = 0;
 
     uint32_t channel_mask = ( 1 << ERTM14_DDS_SYNC_LO ) | ( 1<< ERTM14_DDS_SYNC_REF );
 
@@ -437,7 +461,7 @@ void ertm14_dds_sync_test()
         
 }
 
-static int ertm14_align_clocks()
+static int ertm14_align_clocks(void)
 {
     uint32_t channel_mask = ( 1 << ERTM14_DDS_SYNC_LO ) | ( 1<< ERTM14_DDS_SYNC_REF );
 
@@ -505,10 +529,9 @@ static void handle_iuart_request( uint8_t *buf, int size )
     }
 }
 
-static void iuart_14_poll()
+static void iuart_14_poll(void)
 {
-    int n = 0;
-    int msg = iuart_recv_message(&board.iuart_14);
+        int msg = iuart_recv_message(&board.iuart_14);
 
     if (msg <= 0)
         return;
@@ -522,14 +545,14 @@ static void iuart_14_poll()
     }
 }
 
-void ertm14_clock_monitor_init()
+static void ertm14_clock_monitor_init(void)
 {
     wb_cm_init(&board.ertm14_cmon, BASE_CLOCK_MONITOR, 5);
     wb_cm_set_ref_frequency( &board.ertm14_cmon, DMTD_CLOCK_FREQ_HZ );
     wb_cm_configure(&board.ertm14_cmon, ERTM14_CMON_CLK_DMTD, 2, 6250000 );
 }
 
-void ertm14_align_ref_out_to_pps()
+static void ertm14_align_ref_out_to_pps(void)
 {
     int i;
 
@@ -653,6 +676,7 @@ static void ertm14_clk_pps_sync_task(void)
 }
 
 
+
 // initializes the eRTM15 LTC6950 PLL & OCXO
 void ertm15_pll_init(void)
 {
@@ -668,7 +692,7 @@ void ertm15_pll_init(void)
     // load default 'bootstrap' config and check what is the OCXO frequency
     ltc6950_configure(&board.ltc6950_pll, &pll_ertm15_bootstrap_config);
 
-    pp_printf("Probing OCXO frequency");
+    ertm_verbose("Probing OCXO frequency...");
 
     // measure the OCXO freq
     wb_cm_restart(&board.ertm14_cmon);
@@ -684,7 +708,8 @@ void ertm15_pll_init(void)
 
     int ocxo_10mhz = ocxo_freq > ( 10000000 - 20000 ) && ocxo_freq <  ( 10000000 + 20000 );
     int ocxo_100mhz = ocxo_freq > ( 100000000 - 20000 ) && ocxo_freq <  ( 100000000 + 20000 );
-    
+
+
     if( ! (ocxo_100mhz || ocxo_10mhz) )
     {
         pp_printf("Error: the OCXO has neither 10 nor 100 MHz center frequency. WTF?\n");
@@ -695,7 +720,7 @@ void ertm15_pll_init(void)
     { // PLL: R div = 1, N div = 100, LV/CM div: 50 (20 MHz output)
         
         ltc6950_write( &board.ltc6950_pll, 0x15, 50 ); // RDIVOUT = 0, output div = 50
-    
+        board.mode |= ERTM14_MODE_OCXO_10MHZ;    
     } else if (ocxo_100mhz)
     {
         pp_printf("Using 100 mhz ocxo\n");
@@ -704,6 +729,7 @@ void ertm15_pll_init(void)
 
         ltc6950_write( &board.ltc6950_pll, 0x15, 50 ); // RDIVOUT = 0, output div = 50
         ltc6950_write( &board.ltc6950_pll, 0x0a, 10 ); // N divider = 10 (VCO @ 1GHz, PFD @ 10 MHz)
+        board.mode |= ERTM14_MODE_OCXO_100MHZ;
     }
  
     //ertm14_align_ref_out_to_pps();
@@ -738,18 +764,32 @@ int ertm14_init_clkab_distribution()
 
 int ertm14_init_ref_clock_distribution(void)
 {
-    ad951x_init(&board.ad9516_main, &board.spi_pll_main, &pin_pll_main_reset, &pin_pll_main_lock );
-    ad951x_init(&board.ad9516_ext, &board.spi_pll_ext, &pin_pll_ext_reset, &pin_pll_ext_lock );
+    int main_stat = ad951x_init(&board.ad9516_main, &board.spi_pll_main, &pin_pll_main_reset, &pin_pll_main_lock);
+    int ext_stat = ad951x_init(&board.ad9516_ext, &board.spi_pll_ext, &pin_pll_ext_reset, &pin_pll_ext_lock);
 
-#ifdef CONFIG_ERTM14_WITHOUT_ERTM15
-    gen_gpio_out(&pin_main_xo_en_n, 0); // enable DOT050 VCXO
-    ad951x_configure(&board.ad9516_main, &pll_main_dot050_config);
-#else
-    gen_gpio_out(&pin_main_xo_en_n, 1); // disable DOT050 VCXO
-    ad951x_configure(&board.ad9516_main, &pll_main_ocxo_config);
-//    ad951x_configure(&board.ad9516_ext, &pll_ext_10mhz_config);
+    if( main_stat < 0 )
+    {
+        ertm_error( "Failed to configure the main clock distribution AD9516 (chip not responding)\n ");
+        return -1;
+    }
 
-#endif
+    if( ext_stat < 0 )
+    {
+        ertm_error( "Failed to configure the external 10 MHz clock multiplier AD9516 (chip not responding)\n ");
+        return -1;
+    }
+
+    if (board.mode & ERTM14_MODE_WITHOUT_ERTM15)
+    {
+        gen_gpio_out(&pin_main_xo_en_n, 0); // enable DOT050 VCXO
+        ad951x_configure(&board.ad9516_main, &pll_main_dot050_config);
+    }
+    else
+    {
+        gen_gpio_out(&pin_main_xo_en_n, 1); // disable DOT050 VCXO
+        ad951x_configure(&board.ad9516_main, &pll_main_ocxo_config);
+        // ad951x_configure(&board.ad9516_ext, &pll_ext_10mhz_config);
+    }
 }
 
 int ertm15_init_dds(void)
@@ -788,6 +828,13 @@ int ertm14_init(void)
 {
     int i;
     uint32_t id;
+
+    memset( &board, 0, sizeof( struct ertm14_board ));
+
+#ifdef CONFIG_ERTM14_WITHOUT_ERTM15
+    board.mode |= ERTM14_MODE_WITHOUT_ERTM15;
+#endif
+
 
     ertm14_config_init();
 
@@ -839,17 +886,27 @@ int ertm14_init(void)
         100 );
 
 
+    int ertm15_present = check_ertm15_presence();
+
+    if( !ertm15_present )
+        board.mode |= ERTM14_MODE_WITHOUT_ERTM15;
+
+    if ( board.mode & ERTM14_MODE_WITHOUT_ERTM15 )
+        ertm_verbose( "Configuring board *WITHOUT* eRTM15 support (eRTM15 not found or disabled in software).\n");
+    else
+        ertm_verbose( "Configuring board WITH eRTM15 support.\n");
+    
+
     ertm14_clock_monitor_init();
 
-#ifndef CONFIG_ERTM14_WITHOUT_ERTM15
-
-    ertm15_pll_init();
-
-#endif    
+    if( ! (board.mode & ERTM14_MODE_WITHOUT_ERTM15 ) )
+    {
+        ertm15_pll_init();
+    }
 
     ertm14_init_ref_clock_distribution();
 
-    pp_printf("Switching system clock to CLK_SYS\n");
+    ertm_verbose("Switching system clock to CLK_SYS\n");
     ertm14_switch_sys_clock(1);
 
     gen_gpio_out(&pin_ocxo_override, 0);
@@ -875,29 +932,36 @@ int ertm14_init(void)
 
     ad7888_create( &board.pwrmon_adc, &board.spi_ad7888 );
 
-#ifndef CONFIG_ERTM14_WITHOUT_ERTM15
+    if( ! (board.mode & ERTM14_MODE_WITHOUT_ERTM15 ) )
+    {
+        ertm_verbose("Initializing RF distribution\n");
 
-/* RF distribution switches and shift registers controlling these (eRTM15 - IC26..28) */
-    ertm15_rf_distr_init( &board.rf_distr, &board.pwrmon_adc );
 
-/* Now that the clocks are ready, init the DDS synthesizers */
-    ertm15_init_dds();
+    /* RF distribution switches and shift registers controlling these (eRTM15 - IC26..28) */
+        ertm15_rf_distr_init( &board.rf_distr, &board.pwrmon_adc );
 
-    ad9910_program(&board.dds_ad9910_ref, 205000000ULL, 0, 0x0 );
-    ad9910_program(&board.dds_ad9910_lo, 205000000ULL, 0, 0x0 );
-#endif
+    /* Now that the clocks are ready, init the DDS synthesizers */
+
+        ertm_verbose("Initializing DDSes\n");
+        ertm15_init_dds();
+
+        ad9910_program(&board.dds_ad9910_ref, 205000000ULL, 0, 0x0 );
+        ad9910_program(&board.dds_ad9910_lo, 205000000ULL, 0, 0x0 );
+    }
 
 /* Setup the SoftPLL for the OCXO */
     ertm14_spll_setup();
 
-#ifndef CONFIG_ERTM14_WITHOUT_ERTM15
-/* Init CLKA/CLKB distribution */
-    ertm14_init_clkab_distribution();
-   
-    ertm14_dds_sync_test();
-#endif
+    if( ! (board.mode & ERTM14_MODE_WITHOUT_ERTM15 ) )
+    {
+        /* Init CLKA/CLKB distribution */
+        ertm_verbose("Initializing CLKA/CLKB distribution...\n");
+        ertm14_init_clkab_distribution();
+        ertm_verbose("Calibrating DDS sync pulse...\n");
+        ertm14_dds_sync_calibrate();
+    }
 
-    pp_printf("Init IUART14\n");
+    ertm_verbose("Init IUART14\n");
 
     iuart_init_bare( &board.iuart_14, BASE_IUART_14, 115200 );
 
@@ -905,7 +969,7 @@ int ertm14_init(void)
     wrc_task_create( "clk-pps-sync", ertm14_clk_pps_sync_init, ertm14_clk_pps_sync_task );
     wrc_task_create( "ertm-config", NULL, ertm14_update_config_task );
 
-    pp_printf("eRTM14/15 init done\n");
+    ertm_verbose("eRTM14/15 init done\n");
 
     ertm_init_complete = 1;
 
@@ -926,7 +990,7 @@ void ertm14_config_init()
         cfg->lo.freq_hz = 223500000;
         cfg->ref.freq_hz = 223500000;
         cfg->lo.ampl_factor = 50;
-        cfg->ref.ampl_factor = 50;
+        cfg->ref.ampl_factor = 50; 
 
         for( j = 0; j <= ERTM14_RF_OUT_MAX_ID; j++)
         {
@@ -1006,17 +1070,18 @@ static int ertm14_commit_config( struct  ertm14_board_config *cfg )
 
 static int ertm14_update_config_task(void)
 {
-    if( has_new_config && ertm_init_complete && ertm14_current_config->valid )
+    if (has_new_config && ertm_init_complete && ertm14_current_config->valid)
     {
         int i;
         pp_printf("New config detected, applying...\n");
 
         has_new_config = 0;
-        
-#ifndef CONFIG_ERTM14_WITHOUT_ERTM15
-        ertm14_commit_config( ertm14_current_config );
-        ertm14_clk_pps_sync_restart();
-#endif
+
+        if (!(board.mode & ERTM14_MODE_WITHOUT_ERTM15))
+        {
+            ertm14_commit_config(ertm14_current_config);
+            ertm14_clk_pps_sync_restart();
+        }
     }
 }
 

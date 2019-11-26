@@ -101,6 +101,10 @@ int board_update(void);
 
 // #define ERTM14_CALIBRATION_DEBUG 1
 
+#define ERTM14_MODE_WITHOUT_ERTM15 (1 << 0)
+#define ERTM14_MODE_OCXO_10MHZ (1 << 1)
+#define ERTM14_MODE_OCXO_100MHZ (1 << 2)
+
 struct ertm14_board
 {
     struct gpio_device gpio_aux;
@@ -131,6 +135,8 @@ struct ertm14_board
     struct m24aa025_device m24_mac_ids[2];
     struct dds_sync_unit_device dds_sync_dev;
     struct iuart_device iuart_14;
+
+    int mode;
 };
 
 struct ertm14_dds_config
