@@ -85,9 +85,8 @@ int ad951x_init(struct ad951x_device *dev, struct spi_bus *spi, struct gpio_pin 
     ad951x_write(dev, 0x232, 0x01);  // commit
 
     uint8_t id = ad951x_read( dev, 0x3 );
-    pp_printf("AD9516 ID: 0x%02x\n", id );
 
-    return 0;
+    return id == 0xc3 ? 0 : -1;
 }
 
 
