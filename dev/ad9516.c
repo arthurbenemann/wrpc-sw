@@ -248,12 +248,14 @@ int spec7_ad9516_init(int ext_10mhz)
   if (ext_10mhz) {
     /* Configuration for the SPEC7: External 10 MHZ In (Bulls-Eye B03/B04) => 125 MHz on outputs 0, 1, 2 */
     ad9516_load_regset(spi_base, ad9516_10mhz_base_config_spec7, ARRAY_SIZE(ad9516_10mhz_base_config_spec7), 0);
+    ad9516_wait_lock(spi_base);
+    pp_printf("AD9516 locked.\n");
   } else {
     /* Configuration for the SPEC7: Forward 125 MHz VCXO_REFCLK at CLK input to outputs 0, 1, 2 */
     ad9516_load_regset(spi_base, ad9516_base_config_spec7, ARRAY_SIZE(ad9516_base_config_spec7), 0);
+    timer_delay(10);    
   }
 
-	timer_delay(10);
   pp_printf("Switch clk_sys source from free running clk_dmtd to AD9516 output.\n");
  	/* AD9516 now initialized so switch clk_sys from free running clk_dmtd to AD9516 output */
 	gpio_out(GPIO_PLL_CLK_SEL, 1);

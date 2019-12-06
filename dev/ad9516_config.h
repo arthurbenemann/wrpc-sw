@@ -307,7 +307,7 @@ const struct ad9516_reg ad9516_10mhz_base_config_spec7[] = {
 {0x0016, 0x05}, /* DM divide by 16 (16/17 mode) */
 {0x0017, 0x00},
 {0x0018, 0x07},
-{0x0019, 0x00},
+{0x0019, 0x80}, /* Synchronous Reset R, A and B counters on SYNC_n pin */
 {0x001A, 0x00},
 {0x001B, 0x00},
 {0x001C, 0x01}, /* differential reference */
