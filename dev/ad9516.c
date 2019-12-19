@@ -281,9 +281,9 @@ int ad9516_init(int scb_version)
 	ad9516_wait_lock(spi_base);
 
 	ad9516_sync_outputs(spi_base);
-	if( scb_version >= 34) {	//New SCB v3.4. 10MHz Output.
+	if( scb_version >= 34) {	
 
-		/*ad9516_set_output_divider(spi_base, 0, 8, 0);
+		ad9516_set_output_divider(spi_base, 0, 8, 0);
 		ad9516_set_output_divider(spi_base, 1, 8, 0);
 
 		ad9516_set_output_divider(spi_base, 2, 8, 0);  	
@@ -295,15 +295,15 @@ int ad9516_init(int scb_version)
 		ad9516_set_output_divider(spi_base, 6, 2, 0);  	
 		// ad9516_set_output_divider(spi_base, 7, 3, 0);
 
-		ad9516_set_output_divider(spi_base, 8, 50, 0);  	
-		ad9516_set_output_divider(spi_base, 9, 50, 0);*/
+		ad9516_set_output_divider(spi_base, 8, 20, 0);  	
+		ad9516_set_output_divider(spi_base, 9, 20, 0);
 		/*The following PLL outputs have been configured through the ad9516_base_config_34 register,
 		 * so it doesn't need to replicate the configuration:
 		 *
-		 * Output 6 => 62.5 MHz
-		 * Output 7	=> 62.5 MHz7
-		 * Output 8	=> 10 MHz
-		 * Output 9	=> 10 MHz
+		 * Output 6 	=> 62.5 MHz
+		 * Output 7	=> 62.5 MHz
+		 * Output 8	=> 25 MHz
+		 * Output 9	=> 25 MHz
 		 */
 
 	} else {	//Old one

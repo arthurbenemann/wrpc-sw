@@ -55,7 +55,12 @@ int main(void)
 
 	for(;;)
 	{
+		uint32_t tics = timer_get_tics();
 
+		if (time_after(tics, start_tics + TICS_PER_SECOND/4)) {
+			spll_show_stats();
+			start_tics = tics;
+		}
 
 		rts_update();
 		rtipc_action();

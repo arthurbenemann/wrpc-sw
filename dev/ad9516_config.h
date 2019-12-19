@@ -129,10 +129,10 @@ const struct ad9516_reg ad9516_base_config_34_20[] = {
 {0x019B, 0x21},
 {0x019C, 0x20},
 {0x019D, 0x00},
-{0x019E, 0x21},
+{0x019E, 0x99},
 {0x019F, 0x00},
 {0x01A0, 0x44},
-{0x01A1, 0x00},
+{0x01A1, 0x20},
 {0x01A2, 0x00},
 {0x01A3, 0x00},
 {0x01E0, 0x01},
@@ -378,10 +378,10 @@ const struct ad9516_reg ad9516_ref_tcxo_50[] = {
 {0x001C, 0x02}  /* Use REF1 */
 };
 
-/* Config for 20 MHz VCTCXO reference (RDiv = 5, use REF1) */
+/* Config for 20 MHz VCTCXO reference (RDiv = 2, use REF1) */
 const struct ad9516_reg ad9516_ref_tcxo_20[] = {
 {0x0011, 0x02},
-{0x0012, 0x00}, /* RDiv = 4 */
+{0x0012, 0x00}, /* RDiv = 2 */
 {0x001C, 0x02}  /* Use REF1 */
 };
 
