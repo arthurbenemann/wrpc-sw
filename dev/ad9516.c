@@ -259,7 +259,8 @@ int spec7_ad9516_init(int ext_10mhz)
   pp_printf("Switch clk_sys source from free running clk_dmtd to AD9516 output.\n");
  	/* AD9516 now initialized so switch clk_sys from free running clk_dmtd to AD9516 output */
 	gpio_out(GPIO_PLL_CLK_SEL, 1);
-	timer_delay(10);
+	timer_delay(1000);
+  pp_printf("now running on ref clock.\n");
 
 }
 
