@@ -9,6 +9,7 @@ endif
 
 export CROSS_COMPILE
 export CONFIG_ABSCAL
+#export CONFIG_WR_SPEC7
 
 CC =		$(CROSS_COMPILE)gcc
 LD =		$(CROSS_COMPILE)ld
@@ -250,6 +251,9 @@ $(CURDIR)/.config:
 # following targets from Makefile.kconfig
 silentoldconfig:
 	@mkdir -p include/config
+# please remove
+#	@mkdir -p include/configTest
+	###
 	$(MAKE) quiet=quiet_ -f Makefile.kconfig $@
 
 scripts_basic config:
