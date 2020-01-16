@@ -66,7 +66,7 @@ void mpll_init(struct spll_main_state *s, int id_ref,
 	s->dac_index = id_out - spll_n_chan_ref;
 
 	pll_verbose("ref %d out %d idx %x \n", s->id_ref, s->id_out, s->dac_index);
-  pp_printf("Testing PI Vales Kp %i\t Pi %i\t \n",s->pi.kp,s->pi.ki);
+//  pp_printf("Testing PI Vales Kp %i\t Pi %i\t \n",s->pi.kp,s->pi.ki);
 	pi_init((spll_pi_t *)&s->pi);
 	ld_init((spll_lock_det_t *)&s->ld);
 }
