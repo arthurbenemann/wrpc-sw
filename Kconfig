@@ -1,6 +1,5 @@
 
 mainmenu "WR PTP Core software configuration"
-
 # Later we'll build wr_cpu.bin for wr-switch from this code base
 config WR_SWITCH
 	bool "Build rt_cpu.bin, for the WR-Switch FPGA"
@@ -311,6 +310,14 @@ config ABSCAL
 	  If you select this, you'll be able to do absolute calibration
 	  using a loop-back SFP adapter, according to the procedure
 	  described and documented by Peter Jansweijer.
+
+#config for SPEC7
+config WR_NODE_SPEC7
+        depends on WR_NODE
+        boolean "Support for the SPEC7."
+	default Y
+        help
+	  To build the configuration for the SPEC7  this should be selected.The softpll needs different Kp,Ki values due a other type of VCXO.
 
 config LLDP
 	depends on WR_NODE
