@@ -17,13 +17,45 @@ void helper_init(struct spll_helper_state *s, int ref_channel)
 	/* Phase branch PI controller */
 	s->pi.y_min = 5;
 	s->pi.y_max = (1 << DAC_BITS) - 5;
+
 #if defined(CONFIG_WR_NODE)
-	s->pi.kp = -750;//(int)(0.3 * 32.0 * 16.0);	// / 2;
-	s->pi.ki = -2;//(int)(0.03 * 32.0 * 3.0);	// / 2;
+	s->pi.kp = -1100;//(int)(0.3 * 32.0 * 16.0);	// / 2;
+	s->pi.ki = -1100;//(int)(0.3 * 32.0 * 16.0);	// / 2;
+	#elif defined(CONFIG_WR_SPEC7)
+		s->pi.kp = -800;		// / 2;
+		s->pi.ki = -10;			// / 2;
 #else
 	s->pi.kp = 150;
 	s->pi.ki = 2;
+//#endif
+//#else
+#error "Please set CONFIG for wr switch or wr node or SPEC7"
 #endif
+
+/*#if defined(CONFIG_WR_SWITCH)
+	if (ljd_present) {
+		s->pi.kp = 2000;
+		s->pi.ki = 15;
+	} else {
+		s->pi.kp = 1100;		// / 2;
+		s->pi.ki = 30;			// / 2;
+	}
+#elif defined(CONFIG_WR_NODE)
+ 	s->pi.kp = -1100;		// / 2;
+	s->pi.ki = -30;			// / 2;
+	if (CONFIG_WR_NODE_SPEC7)
+	{
+		s->pi.kp = -800;		// / 2;
+		s->pi.ki = -10;			// / 2;
+	}
+#else
+//#error "Please set CONFIG for wr switch or wr node"
+//#endif
+#error " "Please set CONFIG for wr switch or wr node or SPEC7""
+#endif*/
+
+
+
 	s->pi.anti_windup = 1;
 
 	/* Phase branch lock detection */
