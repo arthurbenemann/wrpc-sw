@@ -39,11 +39,22 @@ void mpll_init(struct spll_main_state *s, int id_ref,
 		s->pi.ki = 30;			// / 2;
 	}
 #elif defined(CONFIG_WR_NODE)
-	s->pi.kp = -5500;		// / 2;
+ 	s->pi.kp = -1100;		// / 2;
 	s->pi.ki = -30;			// / 2;
+	if (CONFIG_WR_NODE_SPEC7)
+	{
+		s->pi.kp = -800;		// / 2;
+		s->pi.ki = -10;			// / 2;
+	}
 #else
-#error "Please set CONFIG for wr switch or wr node"
+//#error "Please set CONFIG for wr switch or wr node"
+//#endif
+#error " "Please set CONFIG for wr switch or wr node or SPEC7""
 #endif
+
+
+
+
 	s->enabled = 0;
 
 	/* Freqency branch lock detection */
@@ -55,7 +66,7 @@ void mpll_init(struct spll_main_state *s, int id_ref,
 	s->dac_index = id_out - spll_n_chan_ref;
 
 	pll_verbose("ref %d out %d idx %x \n", s->id_ref, s->id_out, s->dac_index);
-
+  pp_printf("Testing PI Vales Kp %i\t Pi %i\t \n",s->pi.kp,s->pi.ki);
 	pi_init((spll_pi_t *)&s->pi);
 	ld_init((spll_lock_det_t *)&s->ld);
 }
