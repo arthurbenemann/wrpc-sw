@@ -58,8 +58,9 @@ int board_update(void);
 #define HAS_IP 0
 #endif
 
-#define BASE_SOFTPLL 0x40200
-#define BASE_PPS_GEN 0x40300
-#define BASE_ERTM14_DDS_SYNC_UNIT  0x48300
+#define BASE_SOFTPLL 0x20200
+#define BASE_PPS_GEN 0x20300
+#define BASE_UART                   0x20500
+#define BASE_SYSCON                 0x20400
 
 #endif /* __BOARD_WRC_H */
