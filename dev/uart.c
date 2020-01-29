@@ -14,7 +14,7 @@
 
 #include <hw/wb_uart.h>
 
-#define CALC_BAUD(baudrate) \
+#define SUART_CALC_BAUD(baudrate) \
     ( ((( (unsigned long long)baudrate * 8ULL) << (16 - 7)) + \
       (CPU_CLOCK >> 8)) / (CPU_CLOCK >> 7) )
 
@@ -22,7 +22,14 @@ void suart_init(struct simple_uart_device *dev, uint32_t base_addr, int baudrate
 {
 	dev->base = (void*) base_addr;
 	dev->crlf_mode = 0;
-	writel( CALC_BAUD(baudrate), dev->base + UART_REG_BCR );
+	writel( SUART_CALC_BAUD(baudrate), dev->base + UART_REG_BCR );
+}
+
+void suart_init_default_baudrate(struct simple_uart_device *dev, uint32_t base_addr)
+{
+	dev->base = (void*) base_addr;
+	dev->crlf_mode = 0;
+	writel( SUART_CALC_BAUD(CONSOLE_UART_BAUDRATE), dev->base + UART_REG_BCR );
 }
 
 void suart_write_byte(struct simple_uart_device *dev, int b)
