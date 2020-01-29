@@ -64,13 +64,13 @@ int ad9910_probe( struct ad9910_device *dev, struct spi_bus *bus, void (*trigger
 }
 
 
-int ad9910_program( struct ad9910_device *dev, uint64_t freq_hz, int phase, int fs_current )
+int ad9910_program( struct ad9910_device *dev, uint64_t ftw_n, int phase, int fs_current )
 {
     int i;
 
     // formula (2) from AD9910 datasheet, page 22
 
-    uint64_t ftw = (1ULL << 32) * freq_hz / AD9910_REF_FREQ;
+    uint64_t ftw = ftw_n;
     uint64_t prof0_cr = ftw | (0x8b5ULL << 48); 
 
 //    pp_printf("ad9910_program [%08x%08x] asf %d!\n", (uint32_t)(prof0_cr >> 32), (uint32_t)prof0_cr, asf );
