@@ -141,7 +141,7 @@ struct ertm14_board
 
 struct ertm14_dds_config
 {
-    uint32_t freq_hz;
+    uint32_t ftw;
     uint8_t out_state[ERTM14_RF_OUT_MAX_ID + 1];
     int out_power[ERTM14_RF_OUT_MAX_ID + 1];
     int amp_power;
