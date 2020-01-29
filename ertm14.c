@@ -829,6 +829,9 @@ int ertm14_init(void)
     int i;
     uint32_t id;
 
+    has_new_config = 0;
+    ertm_init_complete = 0;
+
     memset( &board, 0, sizeof( struct ertm14_board ));
 
 #ifdef CONFIG_ERTM14_WITHOUT_ERTM15
@@ -987,8 +990,8 @@ void ertm14_config_init()
         struct ertm14_board_config *cfg = &ertm14_configs[i];
 
         cfg->valid = 1;
-        cfg->lo.freq_hz = 223500000;
-        cfg->ref.freq_hz = 223500000;
+        cfg->lo.ftw = 0x39374BC6;
+        cfg->ref.ftw =  0x39374BC6;
         cfg->lo.ampl_factor = 50;
         cfg->ref.ampl_factor = 50; 
 
@@ -1000,15 +1003,13 @@ void ertm14_config_init()
     
         for(j = 0; j <= ERTM14_CLKAB_OUT_MAX_ID; j++)
         {
-            cfg->clka_freq_hz[j] = 250000000;
-            cfg->clkb_freq_hz[j] = 250000000;
+            cfg->clka_freq_hz[j] = 500000000;
+            cfg->clkb_freq_hz[j] = 500000000;
         }
 
-        cfg->clka_enable_mask = ( 1<<11);
-        cfg->clkb_enable_mask = ( 1<<11);
+        cfg->clka_enable_mask = -1; //( 1<<11);
+        cfg->clkb_enable_mask = -1; //( 1<<11);
     }
-
-    ertm14_apply_config( 0 );
 };
 
 struct ertm14_board_config *ertm14_get_config(int config_id)
@@ -1061,11 +1062,23 @@ static int ertm14_commit_config( struct  ertm14_board_config *cfg )
 
             // DDSes
 
-        ad9910_program(&board.dds_ad9910_lo, cfg->lo.freq_hz, 0, cfg->lo.ampl_factor );
-        ad9910_program(&board.dds_ad9910_ref, cfg->ref.freq_hz, 0, cfg->ref.ampl_factor );
+        ad9910_program(&board.dds_ad9910_lo, cfg->lo.ftw, 0, cfg->lo.ampl_factor );
+        ad9910_program(&board.dds_ad9910_ref, cfg->ref.ftw, 0, cfg->ref.ampl_factor );
 
-        pp_printf("DDS LO: freq=%d Hz, ampl=%d\n", cfg->lo.freq_hz, cfg->lo.ampl_factor );
-        pp_printf("DDS REF: freq=%d Hz, ampl=%d\n", cfg->ref.freq_hz, cfg->ref.ampl_factor );
+        pp_printf("DDS LO: FTW=0x%08x, ampl=%d\n", cfg->lo.ftw, cfg->lo.ampl_factor );
+        pp_printf("DDS REF: FTW=0x%08x, ampl=%d\n", cfg->ref.ftw, cfg->ref.ampl_factor );
+        
+        for( i = ERTM14_RF_OUT_MIN_ID; i <= ERTM14_RF_OUT_MAX_ID; i++)
+        {
+            int st_lo = cfg->lo.out_state[i] == ERTM15_RF_OUT_ON ? 1 : 0;
+            int st_ref = cfg->ref.out_state[i] == ERTM15_RF_OUT_ON ? 1 : 0;
+            pp_printf("i %d lo %x ref %x\n", i, st_lo, st_ref );
+
+            ertm15_rf_distr_output_enable( &board.rf_distr, ERTM15_RF_LO, i, st_lo );
+            ertm15_rf_distr_output_enable( &board.rf_distr, ERTM15_RF_REF, i, st_ref );
+        }
+
+        ertm15_update_rf_switches( &board.rf_distr );
 }
 
 static int ertm14_update_config_task(void)
