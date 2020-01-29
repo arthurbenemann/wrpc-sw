@@ -213,11 +213,30 @@ class DSIBootloader:
 
     SECTOR_SIZE = 0x10000
     PAGE_SIZE = 0x100
+    
+    def program_flash(self, fw, target):
+        #print("PGM", target)
+        if target.lower() == "fpga":
+            offset = 0
+            image = fw
+        elif target.lower() == "wrc":
+            offset = 0x300000
+            image = struct.pack(">LLL", 0xf1dee41a, len(fw), 0xe000b800) + fw[4:]
+            #print(type(fw), len(fw), len(image))
+        elif target.lower() == "autoexec":
+            offset = 0x610000
+            image = struct.pack(">H", len(fw)) + fw
+        else:
+            print("Unknown flash target: %s" % target)
+            return
 
-    def program_flash(self, fw):
+        return self.do_program_flash(image, offset)
+        
+    def do_program_flash(self, fw, offset = 0):
         remaining = len(fw)
-        for i in range(0,
-                       (remaining + self.SECTOR_SIZE - 1) / self.SECTOR_SIZE):
+
+        for i in range(offset / self.SECTOR_SIZE,
+                       (offset + (remaining + self.SECTOR_SIZE - 1)) / self.SECTOR_SIZE):
             sys.stdout.write("\rErasing sector 0x%x          " %
                              (i * self.SECTOR_SIZE))
             sys.stdout.flush()
@@ -230,7 +249,7 @@ class DSIBootloader:
             for b in fw[p:p + n]:
                 data.append(ord(b))
 
-            self.cmd_program_page(p, data)
+            self.cmd_program_page(p + offset, data)
             p += n
             remaining -= n
 
@@ -321,7 +340,7 @@ def main(argv):
     our_port = "/dev/ttyUSB0"
     do_flash = False
     try:
-        opts, args = getopt.getopt(argv[1:], "hfp:", ["uart"])
+        opts, args = getopt.getopt(argv[1:], "hf:p:", ["uart"])
     except getopt.GetoptError:
         print('Usage: %s [-f] [-p serial_port_device] file.bin' % argv[0])
         sys.exit(2)
@@ -330,13 +349,14 @@ def main(argv):
             print('Usage: %s [-f] [-p serial_port_device] file.bin' % argv[0])
             print('Options:')
             print(
-                '-f / --flash  - flashes the FPGA bitstream instead of loading the CPU image (can brick your board!)'
+                '-f / --flash [fpga|autoexec|wrc] - flashes the FPGA bitstream/autoexec file/WRC image instead of loading the CPU image (can brick your board!)'
             )
             print(
                 '-p / --port:  - specifies the serial port device (default: %s)'
                 % our_port)
             sys.exit()
         elif opt in ("-f", "--flash"):
+	    flash_target = arg
             do_flash = True
         elif opt in ("-p", "--port"):
             our_port = arg
@@ -352,7 +372,7 @@ def main(argv):
 
     boot.boot_enter()
     if do_flash:
-        boot.program_flash(fw)
+        boot.program_flash(fw, flash_target)
     else:
         boot.load_ram(fw, 0x0)
     run_terminal(boot.sock)

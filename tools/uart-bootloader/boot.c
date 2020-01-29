@@ -22,7 +22,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#undef CONFIG_ERTM14_FLASH
+#define CONFIG_ERTM14_FLASH
 
 #include "board.h"
 
@@ -37,6 +37,7 @@
 #endif
 
 #include "dev/uart.h"
+#include "hw/wrc_syscon_regs.h"
 
 #define CMD_INIT 1
 #define CMD_ERASE_SECTOR 2
@@ -44,6 +45,7 @@
 #define CMD_WRITE_RAM 4
 #define CMD_GO 5
 #define CMD_GET_FLASH_ID 6
+#define CMD_EXIT 7
 
 
 #define RSP_OK 1
@@ -56,7 +58,7 @@
 
 #define RX_BUF_SIZE (256 + 16)
 
-#define BOOT_TIMEOUT 500
+#define BOOT_TIMEOUT 2000
 #define UART_TIMEOUT 2000
 
 
@@ -77,24 +79,45 @@ struct gpio_device gpio_aux;
 struct spi_bus spi_flash;
 struct spi_flash_device dev_flash;
 
-static const struct gpio_pin pin_flash_cs_n = {  &gpio_aux, 55 };
-static const struct gpio_pin pin_flash_miso = {  &gpio_aux, 53 };
-static const struct gpio_pin pin_flash_mosi = {  &gpio_aux, 54 };
-static const struct gpio_pin pin_flash_sck = {  &gpio_aux, 56 };
+static void boot_sysc_gpio_set_dir(const struct gpio_pin *pin, int dir)
+{
+}
+
+static void boot_sysc_gpio_set_out(const struct gpio_pin *pin, int value)
+{
+	
+    if(value)
+		writel( ( 1<< pin->pin), (void*) ( BASE_SYSCON + SYSC_REG_GPSR) );
+	else
+		writel( ( 1<< pin->pin), (void *) ( BASE_SYSCON + SYSC_REG_GPCR) );
+}
+
+static int boot_sysc_gpio_read_pin(const struct gpio_pin *pin)
+{
+  return readl(BASE_SYSCON + SYSC_REG_GPSR) & (1<<pin->pin) ? 1 : 0;
+}
+
+static const struct gpio_device boot_syscon_gpio = {
+	NULL,
+	boot_sysc_gpio_set_dir,
+	boot_sysc_gpio_set_out,
+	boot_sysc_gpio_read_pin
+};
+
+static const struct gpio_pin boot_pin_sysc_spi_sclk = { &boot_syscon_gpio, 10 };
+static const struct gpio_pin boot_pin_sysc_spi_ncs = { &boot_syscon_gpio, 11 };
+static const struct gpio_pin boot_pin_sysc_spi_mosi = { &boot_syscon_gpio, 12 };
+static const struct gpio_pin boot_pin_sysc_spi_miso = { &boot_syscon_gpio, 13 };
 
 void  boot_flash_init()
 {
     wb_gpio_create( &gpio_aux, BASE_AUXWB );
     bb_spi_create( &spi_flash,
-        &pin_flash_cs_n,
-        &pin_flash_mosi,
-        &pin_flash_miso,
-        &pin_flash_sck,
-        10 );
+		&boot_pin_sysc_spi_ncs,
+		&boot_pin_sysc_spi_mosi,
+		&boot_pin_sysc_spi_miso,
+		&boot_pin_sysc_spi_sclk, 10 );
 
-    gen_gpio_set_dir( &pin_flash_mosi, 1 );
-    gen_gpio_set_dir( &pin_flash_cs_n, 1 );
-    gen_gpio_set_dir( &pin_flash_sck, 1 );
 
     spi_flash_create( &dev_flash, &spi_flash );
 }
@@ -288,7 +311,10 @@ void boot_fsm()
 
         int c = suart_read_blocking();
 
-        if ((c != 0x55) || timeout_hit)
+        if(timeout_hit && boot_wait)
+            break;
+
+        if (c != 0x55)
         {
             continue;
         }
@@ -352,6 +378,9 @@ void boot_fsm()
         case CMD_GO:
             on_cmd_go(rxbuf + 5, len);
             break;
+        
+        case CMD_EXIT:
+            return;
 
 #ifdef CONFIG_ERTM14_FLASH
         case CMD_GET_FLASH_ID:
@@ -366,6 +395,30 @@ void boot_fsm()
 }
 
 
+#define ERTM14_FLASH_PAGE_SIZE 65536
+#define ERTM14_FLASH_SIZE 16777216
+#define ERTM14_FIRMWARE_MAGIC 0xf1dee41a
+void try_flash_boot()
+{
+    uint8_t buf[512];
+    uint32_t offset;
+    for(offset = 0; offset < ERTM14_FLASH_SIZE; offset += ERTM14_FLASH_PAGE_SIZE)
+    {
+        uint32_t magic, size;
+        spi_flash_read(&dev_flash, offset, buf, 8 );
+        magic = unpack_be32( buf );
+        size = unpack_be32( buf + 4 );
+
+        if ( magic == ERTM14_FIRMWARE_MAGIC )
+        {
+            spi_flash_read(&dev_flash, offset + 8, (void*)0, size);
+            start_user();
+        }
+    }
+}
+
+
+
 
 void start_user()
 {
@@ -374,15 +427,21 @@ void start_user()
     f();
 }
 
-int main()
+int boot_main()
 {
-    suart_init( &dev_uart, BASE_UART, CONSOLE_UART_BAUDRATE );
+    suart_init_default_baudrate( &dev_uart, BASE_UART );
 
-    timer_init();
+    timer_init(1);
+
     #ifdef CONFIG_ERTM14_FLASH
         boot_flash_init();
     #endif
+
     boot_fsm();
+
+    #ifdef CONFIG_ERTM14_FLASH
+        try_flash_boot();
+    #endif
     start_user();
 
     return 0;
