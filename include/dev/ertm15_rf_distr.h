@@ -50,6 +50,7 @@ struct ertm15_rf_distribution_device {
 void ertm15_rf_distr_init( struct ertm15_rf_distribution_device *dev, struct ad7888_device *pwr_mon_adc );
 int ertm15_rf_distr_measure_power ( struct ertm15_rf_distribution_device *dev );
 void ertm15_rf_distr_output_enable( struct ertm15_rf_distribution_device *dev, int path, int channel, int enabled );
+void ertm15_update_rf_switches( struct ertm15_rf_distribution_device *dev );
 
 
 #endif

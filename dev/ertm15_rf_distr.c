@@ -125,20 +125,6 @@ static int rf_switch_set( int path, int channel, int state)
 }
 
 
-static void update_rf_switches( struct ertm15_rf_distribution_device *dev )
-{
-    int i;
-
-    for( i = 0; rf_switch_sreg_pin_mapping[i].channel != 0; i++ )
-    {
-        const struct pin_mapping* p = &rf_switch_sreg_pin_mapping[i];
-
-        int enabled = ( p->path == ERTM15_RF_LO ? dev->lo_enabled : dev->ref_enabled ) & (1 << p->channel );
-
-        pp_printf("rf_distr: switch %s ch %d -> %s\n", p->path == ERTM15_RF_LO ? "LO" : "REF", p->channel, enabled ? "ON" : "OFF" );
-        rf_switch_set( p->path, p->channel, enabled ? ERTM15_RF_OUT_ON : ERTM15_RF_OUT_OFF );
-    }
-}
 
 void ertm15_rf_distr_init( struct ertm15_rf_distribution_device *dev, struct ad7888_device *pwr_mon_adc )
 {
@@ -155,7 +141,7 @@ void ertm15_rf_distr_init( struct ertm15_rf_distribution_device *dev, struct ad7
     dev->pwr_mon_adc = pwr_mon_adc;
 
     // disable all RF outputs to the backplane
-    update_rf_switches( dev );
+    ertm15_update_rf_switches( dev );
 }
 
 static int convert_power( int adc_value )
@@ -213,7 +199,21 @@ void ertm15_rf_distr_output_enable( struct ertm15_rf_distribution_device *dev, i
         *mask |= ( 1 << channel );
     else
         *mask &= ~( 1 << channel );
-
-    update_rf_switches( dev );
 }
+
+void ertm15_update_rf_switches( struct ertm15_rf_distribution_device *dev )
+{
+    int i;
+
+    for( i = 0; rf_switch_sreg_pin_mapping[i].channel != 0; i++ )
+    {
+        const struct pin_mapping* p = &rf_switch_sreg_pin_mapping[i];
+
+        int enabled = ( p->path == ERTM15_RF_LO ? dev->lo_enabled : dev->ref_enabled ) & (1 << p->channel );
+
+        pp_printf("rf_distr: switch %s ch %d -> %s\n", p->path == ERTM15_RF_LO ? "LO" : "REF", p->channel, enabled ? "ON" : "OFF" );
+        rf_switch_set( p->path, p->channel, enabled ? ERTM15_RF_OUT_ON : ERTM15_RF_OUT_OFF );
+    }
+}
+
 
