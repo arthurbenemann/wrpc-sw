@@ -28,8 +28,6 @@ void spi_flash_create(struct spi_flash_device *dev, struct spi_bus *bus)
 
 	uint32_t id = spi_flash_read_id( dev );
 
-	pp_printf("Flash ID = 0x%08x\n", id );
-
 }
 
 /*
