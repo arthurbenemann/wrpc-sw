@@ -39,7 +39,7 @@ static const char *get_rf_out_state_string(int state)
 static void dump_dds_state( const char *name, struct ertm14_dds_config *cfg ) 
 {
     int i;
-    pp_printf("%s DDS frequency:          %-09d Hz\n", name, cfg->freq_hz);
+    pp_printf("%s DDS FTW:                0x%08x\n", name, cfg->ftw);
     pp_printf("%s DDS amplitude factor:   %d\n", name, cfg->ampl_factor);
     pp_printf("%s DDS measured power:     %d.%-02d dBm\n", name, cfg->amp_power / 1000, cfg->amp_power % 1000);
     pp_printf("%s outputs:\n", name);
@@ -80,11 +80,12 @@ static void dump_config( int id, struct ertm14_board_config *cfg )
     }
 }
 
-#define PARAM_FREQ 0
+#define PARAM_FTW 0
 #define PARAM_AMPL 1
 #define PARAM_ENABLE 2
+#define PARAM_FREQ 3
 
-static void set_dds_param(int param, const char *name, const char *value)
+static void set_dds_param(int param, const char *name, const char *value, const char *value2)
 {
 
     if( !name || !value )
@@ -105,8 +106,19 @@ static void set_dds_param(int param, const char *name, const char *value)
 
         switch(param)
         {
-            case PARAM_AMPL:    dcfg->ampl_factor = atoi(value); break;
-            case PARAM_FREQ:    dcfg->freq_hz = atoi(value); break;
+            case PARAM_AMPL:    dcfg->ampl_factor = strtol(value, NULL, 0); break;
+            case PARAM_FTW:    dcfg->ftw = strtol(value, NULL, 0); break;
+            case PARAM_ENABLE:
+            {
+                 int out = atoi(value);
+                 if( out >= ERTM14_RF_OUT_MIN_ID && out <= ERTM14_RF_OUT_MAX_ID )
+                 {
+                    dcfg->out_state[out] = atoi(value2) ? ERTM15_RF_OUT_ON : ERTM15_RF_OUT_OFF;
+                 } else {
+                     pp_printf("Expected LO/REF output index\n");
+                 }
+                 break;
+            }
             default: break;
         }
     } else {
@@ -284,19 +296,16 @@ static int cmd_ertm(const char *args[])
             selected_config = atoi( args[1] );
 
         pp_printf("Selected configuration: %d\n", selected_config);
-    } else if (!strcasecmp(args[0], "set-dds-freq")) {
-        set_dds_param(PARAM_FREQ, args[1], args[2] );
-        dump_config( selected_config, ertm14_get_config(selected_config) );
-
+    } else if (!strcasecmp(args[0], "set-dds-ftw")) {
+        set_dds_param(PARAM_FTW, args[1], args[2], args[3] );
     } else if (!strcasecmp(args[0], "set-dds-ampl")) {
-        set_dds_param(PARAM_AMPL, args[1], args[2]);
-        dump_config( selected_config, ertm14_get_config(selected_config) );
+        set_dds_param(PARAM_AMPL, args[1], args[2], 0 );
+    } else if (!strcasecmp(args[0], "set-dds-enable")) {
+        set_dds_param(PARAM_ENABLE, args[1], args[2], args[3]);
     } else if (!strcasecmp(args[0], "set-clk-enable")) {
         set_clk_param(PARAM_ENABLE, args[1], args[2], args[3]);
-        dump_config( selected_config, ertm14_get_config(selected_config) );
     } else if (!strcasecmp(args[0], "set-clk-freq")) {
         set_clk_param(PARAM_FREQ, args[1], args[2] ,args[3]);
-        dump_config( selected_config, ertm14_get_config(selected_config) );
     }
 }
 
