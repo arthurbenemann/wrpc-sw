@@ -178,7 +178,7 @@ static void storage_sdb_list(struct sdbfs *fs)
 
 	while ((d = sdbfs_scan(fs, new)) != NULL) {
 		d->sdb_component.product.record_type = '\0';
-		pp_printf("file 0x%08x @ %4i, name %s\n",
+		pp_printf("file 0x%08x @ 0x%08x, name %s\n",
 			  (int)(d->sdb_component.product.device_id),
 			  (int)(d->sdb_component.addr_first),
 			  (char *)(d->sdb_component.product.name));
@@ -828,7 +828,7 @@ int storage_init_readcmd(uint8_t *buf, uint8_t bufsize, uint8_t next)
 	if (next == 0)
 		ptr = sizeof(used);
 	do {
-		if (ptr - sizeof(used) > bufsize)
+		if (i > bufsize)
 			goto out;
 		if (sdbfs_fread(&wrc_sdb, (ptr++),
 				&buf[i], sizeof(char)) != sizeof(char))
