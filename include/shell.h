@@ -24,12 +24,10 @@ struct wrc_shell_cmd {
 	char *name;
 	int (*exec) (const char *args[]);
 };
-extern struct wrc_shell_cmd __cmd_begin[], __cmd_end[];
 
 /* Put the structures in their own section */
 #define DEFINE_WRC_COMMAND(_name) \
-	static struct wrc_shell_cmd __wrc_cmd_ ## _name \
-	__attribute__((section(".cmd"), __used__))
+	const struct wrc_shell_cmd __wrc_cmd_ ## _name 
 
 char *env_get(const char *var);
 int env_set(const char *var, const char *value);
