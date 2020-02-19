@@ -9,25 +9,27 @@
 #ifndef __TEMPERATURE_H__
 #define __TEMPERATURE_H__
 
+#define WRC_MAX_TEMPERATURES 4
+
 struct wrc_onetemp {
 	char *name;
 	int32_t t;  /* fixed point, 16.16 (signed!) */
 };
+
 #define TEMP_INVALID (0x8000 << 16)
 
 struct wrc_temp {
+	int used;
 	int (*read)(struct wrc_temp *);
 	void *data;
 	struct wrc_onetemp *t; /* zero-terminated */
 };
 
-#define DEFINE_TEMPERATURE(_name) \
-        static struct wrc_temp __wrc_temp_ ## _name \
-        __attribute__((section(".temp"), __used__))
-
 /* lib functions  */
 extern uint32_t wrc_temp_get(char *name);
 struct wrc_onetemp *wrc_temp_getnext(struct wrc_onetemp *);
 extern int wrc_temp_format(char *buffer, int len);
+void wrc_temp_init(void);
+int wrc_temp_refresh(void);
 
 #endif /* __TEMPERATURE_H__ */

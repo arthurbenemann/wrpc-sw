@@ -39,7 +39,7 @@ void spll_log_dac(int y)
 }
 
 
-static void daclog_init(void)
+void daclog_init(void)
 {
 	daclog_socket = ptpd_netif_create_socket(&__static_daclog_socket, NULL,
 						 PTPD_SOCK_UDP, 1050);
@@ -48,7 +48,7 @@ static void daclog_init(void)
 
 static int configured;
 
-static int daclog_poll(void)
+int daclog_poll(void)
 {
 	struct wr_sockaddr addr;
 	int len = sizeof(struct daclog_buf);
@@ -74,12 +74,6 @@ static int daclog_poll(void)
 	ptpd_netif_sendto(daclog_socket, &addr, b, len, 0);
 	return 1;
 }
-
-DEFINE_WRC_TASK(daclog) = {
-	.name = "daclog",
-	.init = daclog_init,
-	.job = daclog_poll,
-};
 
 static int cmd_daclog(const char *args[])
 {

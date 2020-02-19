@@ -6,6 +6,8 @@
 #ifndef __WRC_TASK_H__
 #define __WRC_TASK_H__
 
+#define WRC_MAX_TASKS 16
+
 /*
  * A task is a data structure, but currently suboptimal.
  * FIXME: init must return int, and both should get a pointer to data
@@ -15,7 +17,7 @@
 struct wrc_task {
 	int used;
 	char name[16];
-	int *enable;		/* A global enable variable */
+	int (*enabled)(void);
 	void (*init)(void);
 	int (*job)(void);
 	/* And we keep statistics about cpu usage */
@@ -25,24 +27,12 @@ struct wrc_task {
 	unsigned long max_run_ticks; /* in ticks */
 };
 
-#define WRC_MAX_TASKS 8
-
-extern struct wrc_task tasks[WRC_MAX_TASKS];
-
-/* An helper for periodic tasks, relying on a static varible */
-static inline int __task_not_yet(uint32_t *lastt, unsigned period,
-	uint32_t now)
-{
-	if (!*lastt) {
-		*lastt = now;
-		return 0;
-	}
-	if (time_before(now, *lastt + period))
-		return 1; /* not yet */
-
-	*lastt += period;
-	return 0;
-}
-
+void wrc_tasks_init(void);
+struct wrc_task* wrc_task_create( const char *name, void (*init)(void), int (*job)(void) );
+void wrc_task_set_enable( struct wrc_task* task, int (*enabled)(void) );
+struct wrc_task *wrc_task_get(int tid);
+void wrc_start_all_tasks(void);
+void wrc_poll_all_tasks(void);
+void wrc_tasks_accounting_init(void);
 
 #endif /* __WRC_TASK_H__ */
