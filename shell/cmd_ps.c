@@ -23,7 +23,7 @@ static int cmd_ps(const char *args[])
 		if(!strcasecmp(args[0], "reset")) {
 			for(i = 0; i < WRC_MAX_TASKS; i++)
 			{
-				struct wrc_task* t = wrc_get_task(i);
+				struct wrc_task* t = wrc_task_get(i);
 				if(!t)
 					return 0;
 				if(!t->used)
@@ -42,7 +42,7 @@ static int cmd_ps(const char *args[])
 	pp_printf(" iterations     seconds.micros    max_ms name\n");
 	for(i = 0; i < WRC_MAX_TASKS; i++)
 	{
-		struct wrc_task* t = wrc_get_task(i);
+		struct wrc_task* t = wrc_task_get(i);
 		if(!t)
 			return 0;
 		if(!t->used)
