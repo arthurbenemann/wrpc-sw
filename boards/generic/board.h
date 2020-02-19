@@ -10,7 +10,13 @@
  * when wrpc-sw is build for wrc (node) -- as opposed to wrs (switch)
  */
 
+
 #include <hw/memlayout.h>
+
+
+/* Fixed base addresses */
+#define BASE_SOFTPLL 0x20200
+#define BASE_PPS_GEN 0x20300
 
 /* Board-specific parameters */
 #define TICS_PER_SECOND 1000
