@@ -12,13 +12,13 @@
 #include <temperature.h>
 #include <shell.h>
 
-extern struct wrc_temp __temp_begin[], __temp_end[];
 
 /*
  * Library functions
  */
 uint32_t wrc_temp_get(char *name)
 {
+#if 0
 	struct wrc_temp *ta;
 	struct wrc_onetemp *wt;
 
@@ -27,11 +27,13 @@ uint32_t wrc_temp_get(char *name)
 		if (!strcmp(wt->name, name))
 			return wt->t;
 	}
+#endif
 	return TEMP_INVALID;
 }
 
 struct wrc_onetemp *wrc_temp_getnext(struct wrc_onetemp *pt)
 {
+#if 0
 	struct wrc_temp *ta;
 	struct wrc_onetemp *wt;
 
@@ -52,6 +54,8 @@ struct wrc_onetemp *wrc_temp_getnext(struct wrc_onetemp *pt)
 			}
 		}
 	}
+#endif
+
 	return NULL;
 }
 
@@ -85,30 +89,28 @@ extern int wrc_temp_format(char *buffer, int len)
 /*
  * The task
  */
-static void wrc_temp_init(void)
+void wrc_temp_init(void)
 {
+#if 0
 	struct wrc_temp *ta;
 
 	/* Call all actors, so they can init themselves (using ->data) */
 	for (ta = __temp_begin; ta < __temp_end; ta++)
 		ta->read(ta);
+#endif
 }
 
-static int wrc_temp_refresh(void)
+int wrc_temp_refresh(void)
 {
+#if 0
 	struct wrc_temp *ta;
 	int ret = 0;
 
 	for (ta = __temp_begin; ta < __temp_end; ta++)
 		ret += ta->read(ta);
 	return (ret > 0);
+#endif
 }
-
-DEFINE_WRC_TASK(temp) = {
-	.name = "temperature",
-	.init = wrc_temp_init,
-	.job = wrc_temp_refresh,
-};
 
 /*
  * The shell command

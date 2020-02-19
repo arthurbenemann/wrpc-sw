@@ -66,7 +66,7 @@ unsigned int ipv4_checksum(unsigned short *buf, int shorts)
 	return (~sum & 0xffff);
 }
 
-static void ipv4_init(void)
+void ipv4_init(void)
 {
 	struct wr_sockaddr saddr;
 
@@ -169,7 +169,7 @@ static int rdate_poll(void)
 	return 1;
 }
 
-static int ipv4_poll(void)
+int ipv4_poll(void)
 {
 	int ret = 0;
 
@@ -190,13 +190,6 @@ void getIP(unsigned char *IP)
 {
 	memcpy(IP, myIP, 4);
 }
-
-DEFINE_WRC_TASK(ipv4) = {
-	.name = "ipv4",
-	.enable = &link_status,
-	.init = ipv4_init,
-	.job = ipv4_poll,
-};
 
 void setIP(unsigned char *IP)
 {

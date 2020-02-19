@@ -1,4 +1,4 @@
-obj-y += lib/util.o
+obj-y += lib/util.o lib/wrc-tasks.o
 
 obj-$(CONFIG_LM32) += \
 	lib/atoi.o \

@@ -11,7 +11,9 @@
 
 #ifndef __LLDP_H
 #define __LLDP_H
+
 #include "minic.h"
+
 #define LLDP_MCAST_MAC	"\x01\x80\xC2\x00\x00\x0E" /* 802.1AB-2005,
 						      Table 8-1 */
 #define LLDP_ETH_TYP	0x88CC	/* 802.1AB-2005, Table 8-2 */
@@ -40,6 +42,7 @@
 #define MNG_ADDR_SUBTYPE_IPv4	1	/* ianaAddressFamilyNumbers MIB */
 #define MNG_ADDR_SUBTYPE_MAC	6	/* ianaAddressFamilyNumbers MIB */
 #define MNG_IF_NUM_SUBTYPE_IFINDEX	2 /* 802.1AB-2005, 9.5.9.5 */
+
 enum TLV_TYPE {
 		END_LLDP = 0,	/* mandatory TLVs */
 		CHASSIS_ID,
@@ -52,5 +55,8 @@ enum TLV_TYPE {
 		MNG_ADD,
 		USER_DEF
 		};
+
+void lldp_init(void);
+int lldp_poll(void);
 
 #endif /* __LLDP_H */
