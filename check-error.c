@@ -36,7 +36,7 @@ int mprintf(const char *fmt, ...)
 	return 0;
 }
 
-#ifdef CONFIG_PPSI /* with ppsi we can avoid libgcc code for division */
+#ifdef CONFIG_DISALLOW_LONG_DIVISION /* with ppsi we can avoid libgcc code for division */
 /* was used twice in picos_to_ts  */
 long long __moddi3 (long long A, long long B)
 {
@@ -57,4 +57,4 @@ long long __divdi3 (long long A, long long B)
 	__you_should_not_divide_ll_in_wrpc_sw();
 	return 0;
 }
-#endif /* config_ppsi */
+#endif
