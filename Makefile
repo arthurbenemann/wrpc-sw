@@ -82,6 +82,7 @@ export sdbfsimg-y
 
 all:
 
+include boards/boards.mk
 include shell/shell.mk
 include lib/lib.mk
 include pp_printf/printf.mk
@@ -148,6 +149,7 @@ PPSI-CFG-y = wrpc_defconfig
 PPSI-CFG-$(CONFIG_P2P) = wrpc_pdelay_defconfig
 PPSI-CFG-$(CONFIG_HOST_PROCESS) = unix_defconfig
 PPSI-FLAGS-$(CONFIG_LM32) = CONFIG_NO_PRINTF=y
+PPSI-FLAGS-$(CONFIG_TARGET_GENERIC_PHY_8BIT) = CONFIG_TARGET_GENERIC_PHY_8BIT=y
 
 $(obj-ppsi): gitmodules
 	test -s $(PPSI)/.config || $(MAKE) -C $(PPSI) $(PPSI-CFG-y)
