@@ -1,14 +1,39 @@
 
 mainmenu "WR PTP Core software configuration"
 
-# Later we'll build wr_cpu.bin for wr-switch from this code base
-config WR_SWITCH
-	bool "Build rt_cpu.bin, for the WR-Switch FPGA"
-	default n
+choice
+	prompt "Target Platform"
+
+config TARGET_GENERIC_PHY_8BIT
+	bool "Generic WR Node with 8-bit PCS/PHY"
+	help
+	  Selects a generic PTP code build for PHYs with 8-bit datapath (e.g. Spartan-6)
+
+config TARGET_GENERIC_PHY_16BIT
+	bool "Generic WR Node with 16-bit PCS/PHY"
+	help
+	  Selects a generic PTP code build for PHYs with 16-bit datapath (e.g. Virtex-6, Kintex-7)
+
+config TARGET_WR_SWITCH
+	bool "White Rabbit Switch RT CPU"
+	help
+	  Builds the rt_cpu.bin, for the WR Switch FPGA
+
+config TARGET_AFCZ
+	bool "AFCZ FMC Carrier"
+	help
+	  AFCZ FMC Carrier (Zynq Ultrascale+)
+
+config TARGET_ERTM14
+	bool "eRTM14/15 MTCA.4 WR Receiver"
+	help
+	  eRTM14/15 MTCA.4 WR Receiver (Kintex-7)
+
+endchoice
 
 config WR_NODE
 	bool
-	default !WR_SWITCH
+	default !TARGET_WR_SWITCH
 
 # most options with no prompt here are prompted-for in the "advanced" section
 
@@ -22,7 +47,8 @@ config PRINT_BUFSIZE
 
 config RAMSIZE
 	int
-	default 65536 if WR_SWITCH
+	default 65536 if TARGET_WR_SWITCH
+	default 196608 if TARGET_ERTM14
 	default 131072
 
 config TEMP_POLL_INTERVAL
@@ -36,16 +62,17 @@ config TEMP_HIGH_THRESHOLD
 config TEMP_HIGH_RAPPEL
 	int
 	default 60
+
 config PLL_VERBOSE
 	boolean
-	default y if WR_SWITCH
+	default y if TARGET_WR_SWITCH
 
 config PFILTER_VERBOSE
 	boolean
 
 config WRC_VERBOSE
 	boolean
-	default y if WR_SWITCH
+	default y if TARGET_WR_SWITCH
 
 config VLAN
 	boolean
@@ -83,14 +110,6 @@ config EMBEDDED_NODE
 	default LM32 && WR_NODE
 
 # CONFIG_WR_SWITCH has no further options at all at this point
-
-config WR_NODE_PCS16
-	depends on WR_NODE
-	boolean "Compile for 16-bit PCS"
-	default n
-	help
-	  This allows to compile the WR PTP Core software for 16-bit PCS platforms
-	  (e.g. Kintex-7).
 
 config STACKSIZE
 	depends on WR_NODE
@@ -415,7 +434,7 @@ config FLASH_INIT
 
 # CHECK_RESET for switch and node
 config CHECK_RESET
-	depends on DEVELOPER && LM32 || WR_SWITCH
+	depends on DEVELOPER && LM32 || TARGET_WR_SWITCH
 	bool "Print a stack trace if reset happens"
 	help
 	  If the CPU is following a NULL pointer, the program will
@@ -479,7 +498,7 @@ config ASSERT
 	  with no Kconfig -- and it does the same, unconditionally.
 
 config DETERMINISTIC_BINARY
-	depends on DEVELOPER || WR_SWITCH
+	depends on DEVELOPER || TARGET_WR_SWITCH
 	boolean "Build a binary that is the same every time"
 	help
 	  This option is used to #ifdef __DATE__ and __TIME__ strings
@@ -512,9 +531,9 @@ config PFILTER_VERBOSE
 	  A debug tool for people changing the packet filter rules
 
 config WRC_VERBOSE
-	depends on DEVELOPER || WR_SWITCH
+	depends on DEVELOPER || TARGET_WR_SWITCH
 	boolean "More verbose messages in wr core"
-	default y if WR_SWITCH
+	default y if TARGET_WR_SWITCH
 	help
 	  This enables some more diagnostic messages. Normally off.
 

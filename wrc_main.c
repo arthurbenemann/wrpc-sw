@@ -57,43 +57,20 @@ static void wrc_initialize(void)
 	uint8_t mac_addr[6];
 
 	sdb_find_devices();
-	uart_init_hw();
+	wrc_board_early_init();
 
 	pp_printf("WR Core: starting up...\n");
 
 	timer_init(1);
 	get_hw_name(wrc_hw_name);
 
+	wrc_board_init();
+
 	if (HAS_GENSDBFS)
 		storage_read_hdl_cfg();
 
-	wrpc_w1_init();
-	wrpc_w1_bus.detail = ONEWIRE_PORT;
-	w1_scan_bus(&wrpc_w1_bus);
-
-	/*initialize flash*/
-	flash_init();
-	/*initialize I2C bus*/
-	mi2c_init(WRPC_FMC_I2C);
-	/*init storage (Flash / W1 EEPROM / I2C EEPROM*/
-	storage_init(WRPC_FMC_I2C, FMC_EEPROM_ADR);
-
-	if (get_persistent_mac(ONEWIRE_PORT, mac_addr) == -1) {
-		pp_printf("Unable to determine MAC address\n");
-		mac_addr[0] = 0x22;	/*
-		mac_addr[1] = 0x33;	*
-		mac_addr[2] = 0x44;	* fallback MAC if get_persistent_mac fails
-		mac_addr[3] = 0x55;	*
-		mac_addr[4] = 0x66;	*
-		mac_addr[5] = 0x77;	*/
-	}
-
-	pp_printf("Local MAC address: %02x:%02x:%02x:%02x:%02x:%02x\n",
-		mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3],
-		mac_addr[4], mac_addr[5]);
-
 	net_rst();
-	ep_init(mac_addr);
+	ep_init();
 	/* Sleep for 1s to make sure WRS v4.2 always realizes that
 	 * the link is down */
 	timer_delay_ms(200);
@@ -116,6 +93,8 @@ static void wrc_initialize(void)
 	shw_pps_gen_get_time(NULL, &prev_nanos_for_profile);
 	/* get tics */
 	prev_ticks_for_profile = timer_get_tics();
+
+	wrc_board_create_tasks();
 }
 
 DEFINE_WRC_TASK0(idle) = {
