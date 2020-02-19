@@ -64,4 +64,6 @@ int board_update(void);
 #define HAS_ABSCAL 0
 #endif
 
+#define CONFIG_DISALLOW_LONG_DIVISION
+
 #endif /* __BOARD_WRC_H */
