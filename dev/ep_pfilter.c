@@ -105,7 +105,7 @@ void pfilter_init_default(void)
 	 * Patch the local MAC address in place,
 	 * in the first three instructions after NOP
 	 */
-	get_mac_addr(mac);
+	ep_get_mac_addr(mac);
 	v[2] &= ~(0xffff << 13);
 	v[4] &= ~(0xffff << 13);
 	v[6] &= ~(0xffff << 13);

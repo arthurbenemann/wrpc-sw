@@ -45,14 +45,14 @@ static int cmd_mac(const char *args[])
 
 	if (!args[0] || !strcasecmp(args[0], "get")) {
 		/* get current MAC */
-		get_mac_addr(mac);
+		ep_get_mac_addr(mac);
 	} else if (!strcasecmp(args[0], "getp")) {
 		/* get persistent MAC */
-		get_mac_addr(mac);
+		ep_get_mac_addr(mac);
 		get_persistent_mac(ONEWIRE_PORT, mac);
 	} else if (!strcasecmp(args[0], "set") && args[1]) {
 		decode_mac(args[1], mac);
-		set_mac_addr(mac);
+		ep_set_mac_addr(mac);
 		pfilter_init_default();
 	} else if (!strcasecmp(args[0], "setp") && args[1]) {
 		decode_mac(args[1], mac);
