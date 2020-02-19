@@ -6,9 +6,21 @@
  * specifically for wr-switch (which doesn't refer to submodules).
  * Same appplies to ./tools/, where we can avoid a Makefile
  * patch for add "-include ../include/generated/autoconf.h"
- */
-#if defined(CONFIG_WR_SWITCH)
-#  include "board-wrs.h"
+ *
+*/
+
+#ifndef __BOARD_H
+#define __BOARD_H
+
+#if defined(CONFIG_TARGET_GENERIC_PHY_8BIT) || defined(CONFIG_TARGET_GENERIC_PHY_16BIT)
+#  include "boards/generic/board.h"
 #else
-#  include "board-wrc.h"
+#error "Unsupported board"
+#endif
+
+
+int wrc_board_early_init(void);
+int wrc_board_init(void);
+int wrc_board_create_tasks(void);
+
 #endif
