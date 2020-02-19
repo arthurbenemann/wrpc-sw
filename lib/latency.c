@@ -40,7 +40,7 @@ static struct wr_sockaddr latency_addr = {
 	.ethertype = 0, /* htons(CONFIG_LATENCY_ETHTYPE) -- not constant! */
 };
 
-static void latency_init(void)
+void latency_init(void)
 {
 	latency_addr.ethertype = htons(CONFIG_LATENCY_ETHTYPE);
 	latency_socket = ptpd_netif_create_socket(&__static_latency_socket,
@@ -263,7 +263,7 @@ static int latency_poll_tx(void)
 static uint32_t lastt;
 static uint32_t latency_period_ms;
 
-static int latency_poll(void)
+int latency_poll(void)
 {
 	if (!latency_period_ms)
 		return latency_poll_rx();
@@ -274,11 +274,6 @@ static int latency_poll(void)
 	return latency_poll_tx();
 }
 
-DEFINE_WRC_TASK(uptime) = {
-	.name = "latency-probe",
-	.init = latency_init,
-	.job = latency_poll,
-};
 
 
 static int cmd_ltest(const char *args[])
