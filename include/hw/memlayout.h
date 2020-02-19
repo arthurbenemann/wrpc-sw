@@ -10,8 +10,6 @@
 
 extern unsigned char *BASE_MINIC;
 extern unsigned char *BASE_EP;
-extern unsigned char *BASE_SOFTPLL;
-extern unsigned char *BASE_PPS_GEN;
 extern unsigned char *BASE_SYSCON;
 extern unsigned char *BASE_UART;
 extern unsigned char *BASE_ONEWIRE;
