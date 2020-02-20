@@ -6,7 +6,7 @@
  *
  * Released according to the GNU GPL, version 2 or any later version.
  */
-#include "syscon.h"
+#include "dev/syscon.h"
 #include <errno.h>
 #include <string.h>
 

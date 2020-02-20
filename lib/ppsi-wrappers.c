@@ -11,8 +11,8 @@
 #include <libwr/hal_shmem.h>
 #include <libwr/shmem.h>
 #include <wrc_ptp.h>
-#include <syscon.h>
-#include <endpoint.h>
+#include <dev/syscon.h>
+#include <dev/endpoint.h>
 #include <softpll_ng.h>
 #include <ptpd_netif.h>
 

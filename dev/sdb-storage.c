@@ -9,20 +9,20 @@
  */
 #include <errno.h>
 #include <wrc.h>
-#include <w1.h>
+#include <dev/w1.h>
 #include <storage.h>
 
 #include "types.h"
-#include "i2c.h"
-#include "onewire.h"
-#include "endpoint.h"
-#include "syscon.h"
+#include "dev/i2c.h"
+#include "dev/onewire.h"
+#include "dev/endpoint.h"
+#include "dev/syscon.h"
 #include <sdb.h>
 
 #define SDBFS_BIG_ENDIAN
 #include <libsdbfs.h>
-#include <flash.h>
-#include <fram.h>
+#include <dev/flash.h>
+#include <dev/fram.h>
 
 /*
  * This source file is a drop-in replacement of the legacy one: it manages

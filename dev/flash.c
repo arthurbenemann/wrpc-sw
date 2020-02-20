@@ -7,8 +7,8 @@
  * Released according to the GNU LGPL, version 2.1 or any later version.
  */
 #include <wrc.h>
-#include <flash.h>
 #include <types.h>
+#include <dev/flash.h>
 #include <storage.h>
 
 #define SDBFS_BIG_ENDIAN

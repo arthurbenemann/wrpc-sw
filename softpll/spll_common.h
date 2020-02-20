@@ -12,7 +12,7 @@
 #ifndef __SPLL_COMMON_H
 #define __SPLL_COMMON_H
 
-#include <syscon.h>
+#include <dev/syscon.h>
 
 #include <hw/softpll_regs.h>
 #include <hw/pps_gen_regs.h>

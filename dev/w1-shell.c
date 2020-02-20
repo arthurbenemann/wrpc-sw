@@ -4,7 +4,7 @@
  */
 #include <wrc.h>
 #include <shell.h>
-#include <w1.h>
+#include <dev/w1.h>
 
 #define BLEN 32
 

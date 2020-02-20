@@ -27,8 +27,8 @@
 
 #include "shell.h"
 #include "storage.h"
-#include "syscon.h"
-#include "endpoint.h"
+#include "dev/syscon.h"
+#include "dev/endpoint.h"
 
 #include "sfp.h"
 

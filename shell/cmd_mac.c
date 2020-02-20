@@ -14,8 +14,8 @@
 
 #include "softpll_ng.h"
 #include "shell.h"
-#include "onewire.h"
-#include "endpoint.h"
+#include "dev/onewire.h"
+#include "dev/endpoint.h"
 
 void decode_mac(const char *str, unsigned char *mac)
 {

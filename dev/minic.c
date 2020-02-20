@@ -15,9 +15,9 @@
 
 #include "types.h"
 #include "board.h"
-#include "pps_gen.h"		/* for pps_gen_get_time() */
-#include "minic.h"
-#include <syscon.h>
+#include "dev/pps_gen.h"		/* for pps_gen_get_time() */
+#include "dev/minic.h"
+#include <dev/syscon.h>
 
 #include <hw/minic_regs.h>
 

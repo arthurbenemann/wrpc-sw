@@ -7,7 +7,7 @@
  * Released according to the GNU GPL, version 2 or any later version.
  */
 #include "shell.h"
-#include "endpoint.h"
+#include "dev/endpoint.h"
 #include <string.h>
 #include <wrc.h>
 #include <errno.h>
