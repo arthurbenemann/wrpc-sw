@@ -17,7 +17,7 @@
 
 #include <wrc.h>
 #include <shell.h>
-#include <endpoint.h>
+#include <dev/endpoint.h>
 #include <hw/endpoint_regs.h>
 
 extern uint32_t _binary_rules_novlan_bin_start[];

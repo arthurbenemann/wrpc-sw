@@ -10,7 +10,7 @@
  */
 #include <wrc.h>
 #include "board.h"
-#include "pps_gen.h"
+#include "dev/pps_gen.h"
 
 #include "hw/pps_gen_regs.h"
 

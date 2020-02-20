@@ -12,13 +12,14 @@
 #include <wrc.h>
 
 #include "board.h"
-#include "syscon.h"
-#include "endpoint.h"
 #include "softpll_ng.h"
 #include "wrc_ptp.h"
 #include "storage.h"
 #include "ptpd_netif.h"
-#include "rxts_calibrator.h"
+
+#include "dev/syscon.h"
+#include "dev/endpoint.h"
+#include "dev/rxts_calibrator.h"
 
 /* New calibrator for the transition phase value. A major pain in the ass for
    the folks who frequently rebuild their gatewares. The idea is described

@@ -9,15 +9,15 @@
 
 #include <inttypes.h>
 #include <wrc.h>
-#include <w1.h>
+#include <dev/w1.h>
 #include <ppsi/ppsi.h>
 #include <wrpc.h>
 #include <wr-api.h>
-#include <minic.h>
+#include <dev/minic.h>
 #include <softpll_ng.h>
-#include <syscon.h>
-#include <pps_gen.h>
-#include <onewire.h>
+#include <dev/syscon.h>
+#include <dev/pps_gen.h>
+#include <dev/onewire.h>
 #include <temperature.h>
 #include "wrc_ptp.h"
 #include "hal_exports.h"

@@ -7,7 +7,7 @@
  * Released according to the GNU GPL, version 2 or any later version.
  */
 #include <string.h>
-#include <w1.h>
+#include <dev/w1.h>
 #include <board.h>
 #include <hw/sockit_owm_regs.h>
 

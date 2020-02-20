@@ -14,8 +14,9 @@
 #include <errno.h>
 
 #include <wrc.h>
-#include "uart.h"
-#include "syscon.h"
+#include "dev/uart.h"
+#include "dev/syscon.h"
+
 #include "shell.h"
 #include "storage.h"
 

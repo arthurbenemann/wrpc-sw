@@ -17,8 +17,8 @@
 #include <wrc.h>
 #include "shell.h"
 #include "storage.h"
-#include "syscon.h"
-#include "rxts_calibrator.h"
+#include "dev/syscon.h"
+#include "dev/rxts_calibrator.h"
 
 static int cmd_calibration(const char *args[])
 {

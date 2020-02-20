@@ -7,10 +7,10 @@
  * Released according to the GNU LGPL, version 2.1 or any later version.
  */
 #include <wrc.h>
-#include <fram.h>
+#include <dev/fram.h>
 #include <types.h>
 #include <storage.h>
-#include <flash.h>
+#include <dev/flash.h>
 
 #define SDBFS_BIG_ENDIAN
 #include <libsdbfs.h>

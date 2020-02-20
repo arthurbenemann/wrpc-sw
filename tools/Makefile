@@ -6,7 +6,7 @@ CFLAGS += -D__GIT_VER__="\"$(GIT_VER)\"" -D__GIT_USR__="\"$(GIT_USR)\""
 LDFLAGS = -lutil -L../liblinux -ldevmap -L../liblinux/extest -lextest
 LDFLAGS += -lreadline
 ALL    = genraminit genramvhd genrammif
-ALL   += wrpc-w1-read wrpc-w1-write
+#ALL   += wrpc-w1-read wrpc-w1-write
 ALL   += pfilter-builder
 ALL   += wrpc-dump mapper
 ALL   += wrpc-vuart

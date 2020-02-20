@@ -180,7 +180,7 @@
 #include <string.h>
 #include <errno.h>
 
-#include <endpoint.h> /* for operations and type pfilter_op_t */
+#include <dev/endpoint.h> /* for operations and type pfilter_op_t */
 
 #define PFILTER_MAX_CODE_SIZE      32
 
