@@ -18,9 +18,9 @@
 #include "ptpd_netif.h"
 
 #include "board.h"
-#include "pps_gen.h"
-#include "minic.h"
-#include "endpoint.h"
+#include "dev/pps_gen.h"
+#include "dev/minic.h"
+#include "dev/endpoint.h"
 #include "softpll_ng.h"
 #include "ipv4.h"
 

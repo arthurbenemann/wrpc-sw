@@ -9,7 +9,7 @@
 #include <inttypes.h>
 
 #include "board.h"
-#include "uart.h"
+#include "dev/uart.h"
 
 #include <hw/wb_uart.h>
 

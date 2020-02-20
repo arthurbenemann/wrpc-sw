@@ -22,7 +22,7 @@
 #include "shell.h"
 #include "util.h"
 #include "wrc_ptp.h"
-#include "pps_gen.h"
+#include "dev/pps_gen.h"
 
 static int cmd_time(const char *args[])
 {

@@ -9,7 +9,7 @@
  */
 #include <wrc.h>
 #include "shell.h"
-#include "syscon.h"
+#include "dev/syscon.h"
 #include "revision.h"
 
 #ifdef CONFIG_DEVELOPER

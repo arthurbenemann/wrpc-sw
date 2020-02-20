@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <w1.h>
+#include <dev/w1.h>
 
 #define LSB_ADDR(X) ((X) & 0xFF)
 #define MSB_ADDR(X) (((X) & 0xFF00)>>8)

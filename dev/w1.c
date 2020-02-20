@@ -3,7 +3,7 @@
  * Alessandro Rubini, 2013 GNU GPL2 or later
  */
 #include <string.h>
-#include <w1.h>
+#include <dev/w1.h>
 #include <unistd.h>
 
 static const struct w1_ops *ops = &wrpc_w1_ops; /* local shorter name */

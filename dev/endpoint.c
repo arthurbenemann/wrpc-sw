@@ -11,8 +11,8 @@
 #include <wrc.h>
 
 #include "board.h"
-#include "syscon.h"
-#include <endpoint.h>
+#include "dev/syscon.h"
+#include <dev/endpoint.h>
 #include "storage.h"
 
 #include <hw/endpoint_regs.h>

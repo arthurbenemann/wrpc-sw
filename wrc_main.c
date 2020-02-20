@@ -13,26 +13,26 @@
 #include <stdarg.h>
 
 #include <wrc.h>
-#include <w1.h>
 #include <temperature.h>
-#include "syscon.h"
-#include "uart.h"
-#include "endpoint.h"
-#include "minic.h"
-#include "pps_gen.h"
-#include "ptpd_netif.h"
-#include "i2c.h"
-#include "storage.h"
-#include "softpll_ng.h"
-#include "onewire.h"
-#include "pps_gen.h"
-#include "shell.h"
-#include "lib/ipv4.h"
-#include "rxts_calibrator.h"
-#include "flash.h"
+#include <dev/w1.h>
+#include <dev/syscon.h>
+#include <dev/uart.h>
+#include <dev/endpoint.h>
+#include <dev/minic.h>
+#include <dev/pps_gen.h>
+#include <ptpd_netif.h>
+#include <dev/i2c.h>
+#include <storage.h>
+#include <softpll_ng.h>
+#include <dev/onewire.h>
+#include <dev/pps_gen.h>
+#include <shell.h>
+#include <lib/ipv4.h>
+#include <dev/rxts_calibrator.h>
+#include <dev/flash.h>
 
-#include "wrc_ptp.h"
-#include "system_checks.h"
+#include <wrc_ptp.h>
+#include <system_checks.h>
 
 #ifdef CONFIG_DAC_LOG
 #include "dev/dac_log.h"
