@@ -13,7 +13,8 @@ obj-$(CONFIG_EMBEDDED_NODE) += \
 	dev/devicelist.o \
 	dev/rxts_calibrator.o \
 	dev/flash.o \
-	dev/fram.o
+	dev/fram.o \
+	dev/gpio.o
 
 obj-$(CONFIG_WR_NODE) += \
 	dev/temperature.o \
