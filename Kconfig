@@ -134,6 +134,11 @@ config LATENCY_SYSLOG
 
 # The other ones can be set by non-developers
 
+config IPMI_CONSOLE
+	bool "Support for IPMI remote console"
+	depends on WR_NODE
+	default y
+
 config P2P
 	depends on WR_NODE
 	default n

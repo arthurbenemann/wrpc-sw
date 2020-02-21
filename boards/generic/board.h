@@ -72,4 +72,8 @@ int board_update(void);
 
 #define CONFIG_DISALLOW_LONG_DIVISION
 
+#define BOARD_MAX_CONSOLE_DEVICES 1
+
+#define CONSOLE_UART_BAUDRATE 115200
+
 #endif /* __BOARD_WRC_H */

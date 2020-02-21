@@ -14,7 +14,7 @@
 #include <errno.h>
 
 #include <wrc.h>
-#include "dev/uart.h"
+#include "dev/console.h"
 #include "dev/syscon.h"
 
 #include "shell.h"
@@ -160,7 +160,7 @@ int shell_interactive()
 		return 1;
 
 	case SH_INPUT:
-		c = uart_read_byte();
+		c = console_getc();
 
 		if (c < 0)
 			return 0;

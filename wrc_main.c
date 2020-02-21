@@ -16,7 +16,7 @@
 #include <temperature.h>
 #include <dev/w1.h>
 #include <dev/syscon.h>
-#include <dev/uart.h>
+#include <dev/console.h>
 #include <dev/endpoint.h>
 #include <dev/minic.h>
 #include <dev/pps_gen.h>
@@ -68,6 +68,7 @@ static void wrc_initialize(void)
 	uint8_t mac_addr[6];
 
 	sdb_find_devices();
+	console_init();
 	wrc_board_early_init();
 
 	pp_printf("WR Core: starting up...\n");
@@ -149,7 +150,7 @@ static int ui_update(void)
 
 	if (wrc_ui_mode == UI_GUI_MODE) {
 		ret = wrc_mon_gui();
-		if (uart_read_byte() == 27 || wrc_ui_refperiod == 0) {
+		if ( console_getc() == 27 || wrc_ui_refperiod == 0) {
 			shell_init();
 			wrc_ui_mode = UI_SHELL_MODE;
 		}
