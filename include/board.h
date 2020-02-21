@@ -12,9 +12,7 @@
 #ifndef __BOARD_H
 #define __BOARD_H
 
-#define BASE_SOFTPLL 0x20200
-#define BASE_PPS_GEN 0x20300
-
+#include <hw/rawmem.h>
 
 #if defined(CONFIG_TARGET_GENERIC_PHY_8BIT) || defined(CONFIG_TARGET_GENERIC_PHY_16BIT)
 #  include "boards/generic/board.h"
