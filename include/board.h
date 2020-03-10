@@ -16,8 +16,10 @@
 
 #if defined(CONFIG_TARGET_GENERIC_PHY_8BIT) || defined(CONFIG_TARGET_GENERIC_PHY_16BIT)
 #  include "boards/generic/board.h"
-#else
-#error "Unsupported board"
+#elif defined(CONFIG_TARGET_WR_SWITCH)
+#  include "boards/wr-switch/board.h"
+#elif defined(CONFIG_TARGET_AFCZ)
+#  include "boards/afcz/board.h"
 #endif
 
 
