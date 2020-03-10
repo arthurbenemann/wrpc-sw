@@ -8,12 +8,12 @@
  * Released according to the GNU GPL, version 2 or any later version.
  */
 #include <wrc.h>
-#include "uart.h"
+#include "dev/console.h"
 #include "softpll_ng.h"
 #include "minipc.h"
 #include "revision.h"
 #include "system_checks.h"
-#include "gpio-wrs.h"
+#include "dev/gpio-wrs.h"
 
 
 int scb_ver = 33;		/* SCB version */
@@ -24,7 +24,7 @@ extern struct spll_stats stats;
 void init_hw_after_reset(void)
 {
 	/* Ok, now init the devices so we can printf and delay */
-	uart_init_hw();
+	console_init();
 }
 
 int main(void)
@@ -34,7 +34,7 @@ int main(void)
 	check_reset();
 	stats.start_cnt++;
 	_endram = ENDRAM_MAGIC;
-	uart_init_hw();
+	console_init();
 	pp_printf("\n");
 	pp_printf("WR Switch Real Time Subsystem (c) CERN 2011 - 2014\n");
 	pp_printf("Revision: %s, built: %s %s.\n",

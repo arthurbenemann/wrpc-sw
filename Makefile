@@ -27,13 +27,12 @@ MAKEALL_COPY_LIST=.bin .elf
 # we miss CONFIG_ARCH_LM32 as we have no other archs by now
 obj-$(CONFIG_LM32) = arch/lm32/crt0.o arch/lm32/irq.o
 LDS-$(CONFIG_WR_NODE)   = arch/lm32/ram.ld
-LDS-$(CONFIG_WR_SWITCH) = arch/lm32/ram-wrs.ld
+LDS-$(CONFIG_TARGET_WR_SWITCH) = arch/lm32/ram-wrs.ld
 LDS-$(CONFIG_HOST_PROCESS) =
 
 obj-$(CONFIG_WR_NODE)   += wrc_main.o
 obj-$(CONFIG_WR_NODE_SIM) += wrc_main_sim.o
-obj-$(CONFIG_WR_SWITCH) += wrs_main.o
-obj-$(CONFIG_WR_SWITCH) += ipc/minipc-mem-server.o ipc/rt_ipc.o
+obj-$(CONFIG_TARGET_WR_SWITCH) += ipc/minipc-mem-server.o ipc/rt_ipc.o
 
 obj-y += dump-info.o
 # our linker script is preprocessed, so have a rule here
@@ -119,7 +118,7 @@ WRC-O-FLAGS-$(CONFIG_LM32) = --gc-sections -e _start
 OBJS = $(obj-y)
 
 OUTPUT-$(CONFIG_WR_NODE)   = wrc
-OUTPUT-$(CONFIG_WR_SWITCH) = rt_cpu
+OUTPUT-$(CONFIG_TARGET_WR_SWITCH) = rt_cpu
 OUTPUT := $(OUTPUT-y)
 
 GIT_VER = $(shell git describe --always --dirty | sed  's;^wr-switch-sw-;;')
