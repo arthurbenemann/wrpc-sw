@@ -8,7 +8,6 @@
 
 #include "shell.h"
 #include "dev/syscon.h"
-#include "hw/memlayout.h"
 #include "storage.h"
 #include <dev/flash.h>
 
