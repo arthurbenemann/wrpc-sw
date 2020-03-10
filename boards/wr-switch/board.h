@@ -3,8 +3,8 @@
  *
  * Released according to the GNU GPL, version 2 or any later version.
  */
-#ifndef __BOARD_H
-#define __BOARD_H
+#ifndef __BOARD_WRS_H
+#define __BOARD_WRS_H
 
 #define TICS_PER_SECOND 100000
 
@@ -28,5 +28,11 @@
 #define BOARD_MAX_CHAN_REF		18
 #define BOARD_MAX_CHAN_AUX		1
 #define BOARD_MAX_PTRACKERS		18
+
+#define CONSOLE_UART_BAUDRATE 115200
+#define BOARD_MAX_CONSOLE_DEVICES 1
+
+// fixme:
+#define CONFIG_WR_SWITCH
 
 #endif
