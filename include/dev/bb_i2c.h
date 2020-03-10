@@ -3,8 +3,8 @@
  *
  * Released according to the GNU GPL, version 2 or any later version.
  */
-#ifndef __I2C_H
-#define __I2C_H
+#ifndef __BB_I2C_H
+#define __BB_I2C_H
 
 #include <stdint.h>
 
