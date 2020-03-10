@@ -69,11 +69,10 @@ static void wrc_initialize(void)
 
 	sdb_find_devices();
 	console_init();
+	timer_init(1);
 	wrc_board_early_init();
 
 	pp_printf("WR Core: starting up...\n");
-
-	timer_init(1);
 	get_hw_name(wrc_hw_name);
 
 	wrc_board_init();
