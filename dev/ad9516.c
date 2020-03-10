@@ -18,8 +18,8 @@
 #include <wrc.h>
 
 #include "board.h"
-#include "syscon.h"
-#include "gpio-wrs.h"
+#include "dev/syscon.h"
+#include "dev/gpio-wrs.h"
 
 #include "rt_ipc.h"
 
