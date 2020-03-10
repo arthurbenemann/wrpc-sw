@@ -14,7 +14,6 @@
 #include "ipv4.h"
 #include "ptpd_netif.h"
 #include "pps_gen.h"
-#include "hw/memlayout.h"
 #include "hw/etherbone-config.h"
 
 enum ip_status ip_status = IP_TRAINING;
