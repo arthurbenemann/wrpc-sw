@@ -18,6 +18,7 @@ obj-$(CONFIG_EMBEDDED_NODE) += \
 	dev/bb_spi.o \
 	dev/bb_i2c.o \
 	dev/24aa025.o \
+	dev/74x595.o \
 	dev/clock_monitor.o
 
 obj-$(CONFIG_WR_NODE) += \
