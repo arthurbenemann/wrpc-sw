@@ -21,6 +21,7 @@ obj-$(CONFIG_EMBEDDED_NODE) += \
 	dev/74x595.o \
 	dev/ad7888.o \
 	dev/ad951x.o \
+	dev/ad9910.o \
 	dev/clock_monitor.o
 
 obj-$(CONFIG_WR_NODE) += \
