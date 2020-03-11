@@ -21,6 +21,8 @@ struct wr_si57x_interface_device
 	struct gpio_pin pin_sda;
 	struct gpio_device gpio_i2c;
 	struct i2c_bus master;
+	int n1, hsdiv;
+	uint64_t rfreq;
 };
 
 struct idt8v_clock_mux_device {
@@ -50,10 +52,6 @@ static uint8_t idt8v_read_regs( struct idt8v_clock_mux_device*dev )
 	for( i = 0; i < 16; i++ )
 		bb_i2c_get_byte( dev->bus, &dev->regs[i], i == 15 ? 1 : 0 );
 	bb_i2c_stop( dev->bus );
-
-	pp_printf("Idt8v regs:\n");
-	for(i=0;i<16;i++)
-		pp_printf("r%d = %x\n", i, dev->regs[i]);
 }
 
 static uint8_t idt8v_commit_configuration( struct idt8v_clock_mux_device*dev )
@@ -90,7 +88,6 @@ static void idt8v_configure_io ( struct idt8v_clock_mux_device*dev, int io_index
 		r = (1 << 7) | output_sel;
 	}
 
-	pp_printf("cfg r %d = %x\n", io_index, r );
 	dev->regs[ io_index ] = r;
 }
 
@@ -104,8 +101,6 @@ static void si57x_gpio_out(const struct gpio_pin *pin, int value)
 
 	uint32_t mask = (pin->pin == SI57X_PIN_SCL ? SI570_GPCR_SCL : SI570_GPCR_SDA );
 	uint32_t reg = (value ? SI570_REG_GPSR : SI570_REG_GPCR );
-
-//	pp_printf("gpio: base %p pin %d mask %d reg %x value %x\n", dev->base_addr, pin->pin, mask, reg, value );
 
 
 	writel( mask, dev->base_addr + reg );
@@ -186,7 +181,13 @@ void si57x_get_xtal_frequency( struct wr_si57x_interface_device *dev, uint32_t* 
 	uint64_t n1 = ( ( (regs[0] & 0x1f) << 2) | (regs[1] >> 6) ) + 1;
 	uint64_t hs_div = (regs[0] >> 5) + 4;
 
-//	pp_printf("RFREQ %08x %08x n1 %d hsdiv %d\n", (uint32_t) (rfreq >> 32), (uint32_t) rfreq, (int)n1, (int)hs_div );
+	pp_printf("RFREQ %08x %08x n1 %d hsdiv %d\n", (uint32_t) (rfreq >> 32), (uint32_t) rfreq, (int)n1, (int)hs_div );
+
+	if( rfreq == 0 )
+	{
+		pp_printf("strange, rfreq == 0\n");
+		return;
+	}
 
 	uint64_t f0 = 100000000;
 	uint64_t f_xtal = (f0 * hs_div * n1 ) * ( 1ULL << 28 ) / rfreq;
@@ -194,19 +195,14 @@ void si57x_get_xtal_frequency( struct wr_si57x_interface_device *dev, uint32_t* 
 	if( freq_hz )
 		*freq_hz = f_xtal;
 
-    pp_printf("f_xtal %d\n",  (uint32_t) f_xtal );
-
-	
 }
 
-int si57x_calc_frequency( uint32_t f_xtal, uint32_t freq_hz, uint8_t *regs )
+int si57x_calc_frequency( uint32_t f_xtal, uint32_t freq_hz, uint64_t *rfreq_out, int* hsdiv_out, int* n1_out )
 {
 	const uint8_t hsdiv_values[] = { 4, 5, 6, 7, 9, 11, 0 };
 	int hsdiv_idx, n1;
 	const uint64_t f_dco_min = 4850000000;
 	const uint64_t f_dco_max = 5670000000;
-	
-
 
 		for( hsdiv_idx = 0; hsdiv_values[hsdiv_idx] != 0; hsdiv_idx++ )
 		{
@@ -224,15 +220,10 @@ int si57x_calc_frequency( uint32_t f_xtal, uint32_t freq_hz, uint8_t *regs )
 
 			uint64_t rfreq = f_dco * (1ULL<<28) / f_xtal;
 
-			pp_printf("CalcF %d RFREQ %08x %08x n1 %d hsdiv %d\n", freq_hz, (uint32_t) (rfreq >> 32), (uint32_t) rfreq, (int)n1, (int)hs_div );
+			*rfreq_out = rfreq;
+			*hsdiv_out = hsdiv_idx;
+			*n1_out = n1;
 
-			regs[12] = (rfreq & 0xff);
-			regs[11] = ((rfreq >> 8) & 0xff);
-			regs[10] = ((rfreq >> 16) & 0xff);
-			regs[9] =  ((rfreq >> 24) & 0xff);
-			regs[8] = ((rfreq >>32) & 0x3f) | (((n1-1) & 0xff) << 6);
-			regs[7] = (hsdiv_idx << 5) | ((n1-1) >> 2);
-			
 			return 0;
 		}
 	}
@@ -252,35 +243,81 @@ void si57x_reset(struct wr_si57x_interface_device *dev )
 }
 
 
-int si57x_set_frequency( struct wr_si57x_interface_device *dev, uint32_t f_xtal, uint32_t freq_hz )
+int si57x_adjust_frequency( struct wr_si57x_interface_device *dev, int adj )
 {
 	uint8_t regs[16];
 
-	int i;
-	
-	if( si57x_calc_frequency ( f_xtal, freq_hz, regs ) < 0 )
-		return -1;
+	uint64_t rfreq = dev->rfreq + (adj - 32767) * 10;
+
+	regs[12] = (rfreq & 0xff);
+	regs[11] = ((rfreq >> 8) & 0xff);
+	regs[10] = ((rfreq >> 16) & 0xff);
+	regs[9] =  ((rfreq >> 24) & 0xff);
+	regs[8] = ((rfreq >>32) & 0x3f) | (((dev->n1-1) & 0xff) << 6);
+	regs[7] = (dev->hsdiv << 5) | ((dev->n1-1) >> 2);
 
 	uint8_t r137, r135;
-
-	pp_printf("WR: ");
-	for(i=0;i<16;i++)
-		pp_printf("%02x ", regs[i]);
-	pp_printf("\n");
 
 	si57x_read( dev, 135, &r135, 1 );
 	si57x_read( dev, 137, &r137, 1 );
 	r137 |= (1<<4); // freeze DCO
-	pp_printf("r135 %x r137 %x\n", r135, r137 );
 	si57x_write( dev, 137, &r137, 1);
-
 	si57x_write( dev, 7, regs + 7, 6 );
-
 	r137 &= ~(1<<4); // unfreeze DCO
 	si57x_write( dev, 137, &r137, 1);
+//	r135 |= (1<<6); // assert NewFreq
+//	si57x_write( dev, 135, &r135, 1);
 
+	return 0;
+}
+
+
+
+int si57x_set_frequency( struct wr_si57x_interface_device *dev, uint32_t f_xtal, uint32_t freq_hz )
+{
+	uint8_t regs[16];
+	uint64_t rfreq;
+	int hsdiv;
+	int n1;
+	int i;
+	
+	if( si57x_calc_frequency ( f_xtal, freq_hz, &rfreq, &hsdiv, &n1 ) < 0 )
+		return -1;
+
+	dev->n1 = n1;
+	dev->hsdiv = hsdiv;
+	dev->rfreq = rfreq;
+
+	pp_printf("n1 %d hsdiv %d %d\n", dev->n1, dev->hsdiv, hsdiv );
+
+	regs[12] = (dev->rfreq & 0xff);
+	regs[11] = ((dev->rfreq >> 8) & 0xff);
+	regs[10] = ((dev->rfreq >> 16) & 0xff);
+	regs[9] =  ((dev->rfreq >> 24) & 0xff);
+	regs[8] = ((dev->rfreq >>32) & 0x3f) | (((dev->n1-1) & 0xff) << 6);
+	regs[7] = (dev->hsdiv << 5) | ((dev->n1-1) >> 2);
+
+	for(i = 7; i <= 12 ; i++)
+		pp_printf("%02x ", regs[i]);
+
+	uint8_t r137, r135;
+
+	timer_delay_ms(10);
+
+	writel( (uint32_t) ( rfreq & 0xffffffffULL), dev->base_addr + SI570_REG_RFREQL );
+	writel( (uint32_t) ( rfreq >> 32) | (((n1-1) & 0xff) << 6), dev->base_addr + SI570_REG_RFREQH );
+	writel( SI570_CR_ENABLE | SI570_CR_I2C_ADDR_W ( ( dev->i2c_addr << 1 ) ) | SI570_CR_GAIN_W(10), dev->base_addr + SI570_REG_CR );
+
+	si57x_read( dev, 135, &r135, 1 );
+	si57x_read( dev, 137, &r137, 1 );
+	r137 |= (1<<4); // freeze DCO
+	si57x_write( dev, 137, &r137, 1);
+	si57x_write( dev, 7, regs + 7, 6 );
+	r137 &= ~(1<<4); // unfreeze DCO
+	si57x_write( dev, 137, &r137, 1);
 	r135 |= (1<<6); // assert NewFreq
 	si57x_write( dev, 135, &r135, 1);
+
 	return 0;
 }
 
@@ -288,7 +325,6 @@ int si57x_set_frequency( struct wr_si57x_interface_device *dev, uint32_t f_xtal,
 void wr_si57x_interface_init( struct wr_si57x_interface_device *dev, void* base_addr, uint8_t i2c_addr )
 {
 
-	pp_printf("Si57x IF @ %p\n", base_addr );
 	dev->base_addr = base_addr;
 	dev->gpio_i2c.priv = (void *) dev;
 	dev->gpio_i2c.read_pin = si57x_gpio_in;
@@ -301,6 +337,71 @@ void wr_si57x_interface_init( struct wr_si57x_interface_device *dev, void* base_
 	dev->pin_sda.pin = SI57X_PIN_SDA;
 	bb_i2c_create( &dev->master, &dev->pin_scl, &dev->pin_sda );
 }
+
+
+static int calc_apr(int meas_min, int meas_max, int f_center )
+{
+	// apr_min is in PPM
+
+	if( f_center < meas_min || f_center > meas_max )
+		f_center = (meas_min + meas_max) / 2;
+
+	int64_t delta_low =  meas_min - f_center;
+	int64_t delta_hi = meas_max - f_center;
+	uint64_t u_delta_low, u_delta_hi;
+	int ppm_lo, ppm_hi;
+
+	if(delta_low >= 0)
+		return -1;
+	if(delta_hi <= 0)
+		return -1;
+
+	/* __div64_32 divides 64 by 32; result is in the 64 argument. */
+	u_delta_low = -delta_low * 1000000LL;
+	__div64_32(&u_delta_low, f_center);
+	ppm_lo = (int)u_delta_low;
+
+	u_delta_hi = delta_hi * 1000000LL;
+	__div64_32(&u_delta_hi, f_center);
+	ppm_hi = (int)u_delta_hi;
+
+	return ppm_lo < ppm_hi ? ppm_lo : ppm_hi;
+}
+
+static void check_vco_freq( int cm_channel, int cm_ref, void (*dac_setter)(int ))
+{
+	int f_min, f_max;
+	
+	wb_cm_configure( &board.clk_mon, cm_ref, 2, 10000000 );
+	wb_cm_set_ref_frequency( &board.clk_mon, CPU_CLOCK );
+
+	dac_setter( 0 );
+	timer_delay_ms( 10 );
+	wb_cm_restart( &board.clk_mon );
+	while( ! (wb_cm_read( &board.clk_mon ) & ( 1<< cm_channel) ) );
+	f_min = board.clk_mon.freqs[ cm_channel ];
+	dac_setter( 65535 );
+	timer_delay_ms( 10 );
+	wb_cm_restart( &board.clk_mon );
+	while( ! (wb_cm_read( &board.clk_mon ) & ( 1<< cm_channel) ) );
+	f_max = board.clk_mon.freqs[ cm_channel ];
+
+	pp_printf("VCO ch %d:  Low=%d Hz Hi=%d Hz, APR = %d ppm.\n", cm_channel, f_min, f_max, calc_apr(f_min, f_max, 62500000) );
+}
+
+
+void set_dmtd_dac( int value )
+{
+	spll_set_dac( -1, value );
+}
+
+void set_main_dac( int value )
+{
+	//pp_printf("Adjust: %d\n", value );
+	//si57x_adjust_frequency( &board.si57x, value );
+	spll_set_dac( 0, value );
+}
+
 
 int wrc_board_early_init()
 {
@@ -326,55 +427,24 @@ int wrc_board_early_init()
 	si57x_read( &board.si57x, 0, regs, 16 ); 
 	int i;
 
-	pp_printf("Si57x readback: ");
-	for(i = 0; i < 16; i++)
-		pp_printf("%02x ", regs[i] );
-	pp_printf("\n");
-
-	uint32_t f_xtal;
+	int32_t f_xtal;
 
 
 	si57x_get_xtal_frequency( &board.si57x, &f_xtal );
+	pp_printf("Xtal freq: %d Hz\n", f_xtal );
 	si57x_set_frequency( &board.si57x, f_xtal, 125000000 );
 
-	
-	pp_printf("Readback\n");
-	si57x_read( &board.si57x, 0, regs, 16 ); 
-	pp_printf("Si57x readback (post-program): ");
-
-	for(i = 0; i < 16; i++)
-		pp_printf("%02x ", regs[i] );
-	pp_printf("\n");
-
-
 	idt8v_clock_mux_init ( &board.clk_mux, &board.si57x.master, IDT8V_I2C_ADDR );
-	idt8v_configure_io ( &board.clk_mux, AFCZ_IC33_CLK_SI570_1_IN, 1, 0, 0);
-	idt8v_configure_io ( &board.clk_mux, AFCZ_IC33_CLK_SI570_2_IN, 1, 0, 0);
+	idt8v_configure_io ( &board.clk_mux, AFCZ_IC33_CLK_SI570_1_IN, 1, 1, 0);
+	idt8v_configure_io ( &board.clk_mux, AFCZ_IC33_CLK_SI570_2_IN, 1, 1, 0);
 	idt8v_configure_io ( &board.clk_mux, AFCZ_IC33_FPGA_CLK3_OUT, 0, 0, AFCZ_IC33_CLK_SI570_1_IN);
 	idt8v_configure_io ( &board.clk_mux, AFCZ_IC33_FPGA_CLK_GTX_CUST2_OUT, 0, 0, AFCZ_IC33_CLK_SI570_1_IN);
 	idt8v_commit_configuration ( &board.clk_mux );
 
-for(;;);
-	idt8v_read_regs( &board.clk_mux );
-
-	timer_delay_ms(2000);
-
 	wb_cm_init( &board.clk_mon, BASE_CLOCK_MONITOR, 6 );
-	wb_cm_configure( &board.clk_mon, AFCZ_CM_CHANNEL_CLK_SYS, 8, 625000 );
-	wb_cm_set_ref_frequency( &board.clk_mon, CPU_CLOCK );
 
-	for( i = 0; i < 5; i++)
-	{
-
-		wb_cm_restart( &board.clk_mon );
-		timer_delay_ms(2000);
-		wb_cm_read( &board.clk_mon );
-		int j;
-		for(j = 0; j < 6; j++)
-		pp_printf("f%d = %d Hz [%d]\n", j, board.clk_mon.freqs[j], board.clk_mon.freq_valid_mask & (1<<j) ? 1 : 0);
-
-	}
-
+	check_vco_freq( AFCZ_CM_CHANNEL_CLK_DMTD, AFCZ_CM_CHANNEL_CLK_SYS, set_dmtd_dac );
+	check_vco_freq( AFCZ_CM_CHANNEL_CLK_REF, AFCZ_CM_CHANNEL_CLK_SYS, set_main_dac );
 
 	return 0;
 }
