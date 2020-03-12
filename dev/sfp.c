@@ -14,7 +14,8 @@
 #include <errno.h>
 
 #include "dev/syscon.h"
-#include "dev/i2c.h"
+#include "dev/bb_i2c.h"
+#include "dev/gpio.h"
 #include "sfp.h"
 #include "storage.h"
 
@@ -28,35 +29,36 @@ char sfp_pn[SFP_PN_LEN];
 
 static int sfp_present(void)
 {
-	return !gpio_in(GPIO_SFP_DET);
+	return !gen_gpio_in(&pin_sysc_sfp_det);
 }
 
 static int sfp_read_part_id(char *part_id)
 {
 	int i;
 	uint8_t data, sum;
-	mi2c_init(WRPC_SFP_I2C);
 
-	mi2c_start(WRPC_SFP_I2C);
-	mi2c_put_byte(WRPC_SFP_I2C, 0xA0);
-	mi2c_put_byte(WRPC_SFP_I2C, 0x00);
-	mi2c_repeat_start(WRPC_SFP_I2C);
-	mi2c_put_byte(WRPC_SFP_I2C, 0xA1);
-	mi2c_get_byte(WRPC_SFP_I2C, &data, 1);
-	mi2c_stop(WRPC_SFP_I2C);
+	bb_i2c_init( &dev_i2c_sfp );
+
+	bb_i2c_start( &dev_i2c_sfp );
+	bb_i2c_put_byte(&dev_i2c_sfp, 0xA0);
+	bb_i2c_put_byte(&dev_i2c_sfp, 0x00);
+	bb_i2c_repeat_start(&dev_i2c_sfp);
+	bb_i2c_put_byte(&dev_i2c_sfp, 0xA1);
+	bb_i2c_get_byte(&dev_i2c_sfp, &data, 1);
+	bb_i2c_stop(&dev_i2c_sfp);
 
 	sum = data;
 
-	mi2c_start(WRPC_SFP_I2C);
-	mi2c_put_byte(WRPC_SFP_I2C, 0xA1);
+	bb_i2c_start( &dev_i2c_sfp );
+	bb_i2c_put_byte(&dev_i2c_sfp, 0xA1);
 	for (i = 1; i < 63; ++i) {
-		mi2c_get_byte(WRPC_SFP_I2C, &data, 0);
+		bb_i2c_get_byte(&dev_i2c_sfp, &data, 0);
 		sum = (uint8_t) ((uint16_t) sum + data) & 0xff;
 		if (i >= 40 && i <= 55)	//Part Number
 			part_id[i - 40] = data;
 	}
-	mi2c_get_byte(WRPC_SFP_I2C, &data, 1);	//final word, checksum
-	mi2c_stop(WRPC_SFP_I2C);
+	bb_i2c_get_byte(&dev_i2c_sfp, &data, 1);	//final word, checksum
+	bb_i2c_stop(&dev_i2c_sfp);
 
 	if (sum == data)
 		return 0;
