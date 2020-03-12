@@ -600,7 +600,7 @@ int get_set_qtags_param(struct cmd_desc *cmdd, struct atom *atoms)
 	volatile struct WR_STREAMERS_WB *ptr =
 		(volatile struct WR_STREAMERS_WB *)wrstm->base;
 	int argc;
-	uint32_t vid, prio, txcfg5, cfg;
+	uint32_t vid, prio, txcfg5, cfg, ena=0;
 
 	if (atoms == (struct atom *)VERBOSE_HELP) {
 		printf("%s - %s\n", cmdd->name, cmdd->help);
@@ -609,14 +609,7 @@ int get_set_qtags_param(struct cmd_desc *cmdd, struct atom *atoms)
 
 	++atoms;
 	txcfg5 = iomemr32(wrstm->is_be, ptr->TX_CFG5);
-	if (atoms->type == Terminator) { //read current flag
-		vid = (txcfg5 & WR_STREAMERS_TX_CFG5_QTAG_VID_MASK) >>
-		      WR_STREAMERS_TX_CFG5_QTAG_VID_SHIFT;
-		prio = (txcfg5 & WR_STREAMERS_TX_CFG5_QTAG_PRIO_MASK) >>
-		       WR_STREAMERS_TX_CFG5_QTAG_PRIO_SHIFT;
-	}
-	else { // writing new QTag settings
-
+	if (atoms->type != Terminator) { // writing new QTag settings
 		argc = 0; //count provided arguments
 		if (atoms->type != Numeric)
 			return -TST_ERR_WRONG_ARG;
@@ -644,8 +637,16 @@ int get_set_qtags_param(struct cmd_desc *cmdd, struct atom *atoms)
 		cfg = iomemr32(wrstm->is_be, ptr->CFG);
 		cfg |= WR_STREAMERS_CFG_OR_TX_QTAG;
 		ptr->CFG = iomemw32(wrstm->is_be, cfg);
+		ena=1;
 	}
-	fprintf(stderr, "Tagging with QTag: VLAN ID: %d prio: %d\n",
+	ena = txcfg5 & WR_STREAMERS_TX_CFG5_QTAG_ENA;
+	vid = (txcfg5 & WR_STREAMERS_TX_CFG5_QTAG_VID_MASK) >>
+		WR_STREAMERS_TX_CFG5_QTAG_VID_SHIFT;
+	prio = (txcfg5 & WR_STREAMERS_TX_CFG5_QTAG_PRIO_MASK) >>
+		WR_STREAMERS_TX_CFG5_QTAG_PRIO_SHIFT;
+
+	fprintf(stderr, "Tagging with QTag: %s\n",(ena)?"Enabled":"Disabled");
+	fprintf(stderr, "Tagging settings : VLAN ID= %d prio= %d\n",
 		vid, prio);
 	return 1;
 }
