@@ -11,36 +11,41 @@
 #include <types.h>
 #include <storage.h>
 #include <dev/flash.h>
+#include <dev/bb_spi.h>
+#include <dev/syscon.h>
 
 #define SDBFS_BIG_ENDIAN
 #include <libsdbfs.h>
 
+struct fram_device wrc_fram_dev;
 
 /*
  * Init function (just set the SPI pins for idle)
  */
-void fram_init(void)
+void fram_init(struct fram_device *dev, struct spi_bus *bus)
 {
-	//flash_init(); //ML: it is the same as flash, so no need to call it
+	dev->bus = bus;
 }
 
 /*
  * Write data to flash chip
  */
-int fram_write(uint32_t addr, uint8_t *buf, int count)
+int fram_write(struct fram_device *dev, uint32_t addr, uint8_t *buf, int count)
 {
 	int i;
 
-	bbspi_transfer(1, 0);                   // idle (possibly not needed)
-	bbspi_transfer(0, 0x06);                // WREN (set write enable latch)
-	bbspi_transfer(1, 0);                   // idle (possibly not needed)
-	bbspi_transfer(0, 0x02);                // optcode for writing
-	bbspi_transfer(0, (addr & 0xFF00) >> 8);// write address MSB
-	bbspi_transfer(0, (addr & 0xFF));       // write address LSB
+	bb_spi_cs(dev->bus, 1);
+	bb_spi_write(dev->bus, 0x06, 8);                // WREN (set write enable latch)
+	bb_spi_cs(dev->bus, 0);
+
+	bb_spi_cs(dev->bus, 1);
+	bb_spi_write(dev->bus, 0x02, 8);                // optcode for writing
+	bb_spi_write(dev->bus, (addr & 0xFF00) >> 8, 8);// write address MSB
+	bb_spi_write(dev->bus, (addr & 0xFF), 8);       // write address LSB
 	for (i = 0; i < count; i++) {
-		bbspi_transfer(0, buf[i]);
+		bb_spi_write(dev->bus, buf[i], 8);
 	}
-	bbspi_transfer(1, 0);
+	bb_spi_cs(dev->bus, 0);
 
 	return count;
 }
@@ -48,29 +53,29 @@ int fram_write(uint32_t addr, uint8_t *buf, int count)
 /*
  * Read data from flash
  */
-int fram_read(uint32_t addr, uint8_t *buf, int count)
+int fram_read(struct fram_device *dev, uint32_t addr, uint8_t *buf, int count)
 {
 	int i;
 
-	bbspi_transfer(1, 0);                    // idle (possibly not needed)
-	bbspi_transfer(0, 0x03);                 // optcode for reading
-	bbspi_transfer(0, (addr & 0xFF00) >> 8);
-	bbspi_transfer(0, (addr & 0xFF));
+	bb_spi_cs(dev->bus, 1);
+	bb_spi_write(dev->bus, 0x03, 8);                 // optcode for reading
+	bb_spi_write(dev->bus, (addr & 0xFF00) >> 8, 8);
+	bb_spi_write(dev->bus, (addr & 0xFF), 8);
 	for (i = 0; i < count; i++) {
-		buf[i] = bbspi_transfer(0, 0);
+		buf[i] = bb_spi_read(dev->bus, 8);
 	}
-	bbspi_transfer(1, 0);
+	bb_spi_cs(dev->bus, 0);
 
 	return count;
 }
 
-int fram_erase(uint32_t addr, int count)
+int fram_erase(struct fram_device *dev, uint32_t addr, int count)
 {
 	int i;
 	uint8_t buf[1] = {0xff};
 
 	for (i = 0; i < count; i++)
-		fram_write(addr+i, buf , 1);
+		fram_write(dev, addr+i, buf , 1);
 	return count;
 }
 
@@ -91,12 +96,12 @@ static struct sdbfs wrc_sdb = {
  */
 static int sdb_fram_read(struct sdbfs *fs, int offset, void *buf, int count)
 {
-	return fram_read(offset, buf, count);
+	return fram_read(&wrc_fram_dev, offset, buf, count);
 }
 
 static int sdb_fram_write(struct sdbfs *fs, int offset, void *buf, int count)
 {
-	return fram_write(offset, buf, count);
+	return fram_write(&wrc_fram_dev, offset, buf, count);
 }
 
 /*
@@ -131,7 +136,7 @@ int fram_sdb_check(void)
         };
 
 	for (i = 0; i < ARRAY_SIZE(entry_point); i++) {
-		fram_read(entry_point[i], (uint8_t *)&magic, 4);
+		fram_read(&wrc_fram_dev, entry_point[i], (uint8_t *)&magic, 4);
 		if (magic == SDB_MAGIC)
 			break;
 	}

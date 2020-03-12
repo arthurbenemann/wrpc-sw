@@ -11,11 +11,17 @@
 
 #include "types.h"
 
+struct fram_device {
+    struct spi_bus *bus;
+};
+
+extern struct fram_device wrc_fram_dev;
+
 /* Fram interface functions */
-void	fram_init(void);
-int	fram_write(uint32_t addr, uint8_t *buf, int count);
-int	fram_read(uint32_t addr, uint8_t *buf, int count);
-int 	fram_erase(uint32_t addr, int count);
+void fram_init( struct fram_device *dev, struct spi_bus *bus );
+int	fram_write( struct fram_device *dev, uint32_t addr, uint8_t *buf, int count);
+int	fram_read( struct fram_device *dev, uint32_t addr, uint8_t *buf, int count);
+int	fram_erase( struct fram_device *dev, uint32_t addr, int count);
 
 /* SDB flash interface functions */
 int fram_sdb_check(void);
