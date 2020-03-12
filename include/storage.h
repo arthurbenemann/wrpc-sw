@@ -63,7 +63,7 @@ struct s_sfpinfo {
 	uint8_t chksum;
 } __attribute__ ((__packed__));
 
-void storage_init(int i2cif, int i2c_addr);
+void storage_init( struct i2c_bus *bus, int i2c_addr);
 
 int storage_sfpdb_erase(void);
 int storage_match_sfp(struct s_sfpinfo *sfp);
