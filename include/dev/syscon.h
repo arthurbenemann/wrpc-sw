@@ -78,6 +78,25 @@ struct SYSCON_WB {
 	uint32_t WDIAG_TEMP;
 };
 
+extern const struct gpio_pin pin_sysc_led_link;
+extern const struct gpio_pin pin_sysc_led_stat;
+extern const struct gpio_pin pin_sysc_btn1;
+extern const struct gpio_pin pin_sysc_btn2;
+extern const struct gpio_pin pin_sysc_sfp_det;
+extern const struct gpio_pin pin_sysc_spi_sclk;
+extern const struct gpio_pin pin_sysc_spi_ncs;
+extern const struct gpio_pin pin_sysc_spi_mosi;
+extern const struct gpio_pin pin_sysc_spi_miso;
+extern const struct gpio_pin pin_sysc_fmc_scl;
+extern const struct gpio_pin pin_sysc_fmc_sda;
+extern const struct gpio_pin pin_sysc_sfp_scl;
+extern const struct gpio_pin pin_sysc_sfp_sda;
+extern const struct gpio_pin pin_sysc_net_rst;
+
+extern struct i2c_bus dev_i2c_fmc;
+extern struct i2c_bus dev_i2c_sfp;
+extern struct spi_flash_device wrc_flash_dev;
+
 /*GPIO pins*/
 #define GPIO_LED_LINK SYSC_GPSR_LED_LINK
 #define GPIO_LED_STAT SYSC_GPSR_LED_STAT

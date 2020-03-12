@@ -6,16 +6,71 @@
  *
  * Released according to the GNU GPL, version 2 or any later version.
  */
+
 #include "dev/syscon.h"
+
 #include <errno.h>
 #include <string.h>
 
-struct s_i2c_if i2c_if[2] = {
-	{SYSC_GPSR_FMC_SCL, SYSC_GPSR_FMC_SDA, FMC_I2C_DELAY},
-	{SYSC_GPSR_SFP_SCL, SYSC_GPSR_SFP_SDA, SFP_I2C_DELAY}
+#include "dev/gpio.h"
+#include "dev/bb_i2c.h"
+
+
+static void sysc_gpio_set_dir(const struct gpio_pin *pin, int dir)
+{
+}
+
+static void sysc_gpio_set_out(const struct gpio_pin *pin, int value)
+{
+	if(value)
+		syscon->GPSR = ( 1<< pin->pin);
+	else
+		syscon->GPCR = ( 1<< pin->pin);
+}
+
+static int sysc_gpio_read_pin(const struct gpio_pin *pin)
+{
+  return (syscon->GPSR & (1<<pin->pin)) ? 1 : 0;
+}
+
+static const struct gpio_device syscon_gpio = {
+	NULL,
+	sysc_gpio_set_dir,
+	sysc_gpio_set_out,
+	sysc_gpio_read_pin
 };
 
 volatile struct SYSCON_WB *syscon;
+
+// fixme: use indices for GPIO pins in the WB file, not masks
+const struct gpio_pin pin_sysc_led_link = { &syscon_gpio, 1 };
+const struct gpio_pin pin_sysc_led_stat = { &syscon_gpio, 0 };
+const struct gpio_pin pin_sysc_btn1 = { &syscon_gpio, 5 };
+const struct gpio_pin pin_sysc_btn2 = { &syscon_gpio, 6 };
+const struct gpio_pin pin_sysc_sfp_det = { &syscon_gpio, 7 };
+const struct gpio_pin pin_sysc_spi_sclk = { &syscon_gpio, 10 };
+const struct gpio_pin pin_sysc_spi_ncs = { &syscon_gpio, 11 };
+const struct gpio_pin pin_sysc_spi_mosi = { &syscon_gpio, 12 };
+const struct gpio_pin pin_sysc_spi_miso = { &syscon_gpio, 13 };
+const struct gpio_pin pin_sysc_fmc_scl = { &syscon_gpio, 2 };
+const struct gpio_pin pin_sysc_fmc_sda = { &syscon_gpio, 3 };
+const struct gpio_pin pin_sysc_sfp_scl = { &syscon_gpio, 8 };
+const struct gpio_pin pin_sysc_sfp_sda = { &syscon_gpio, 9 };
+const struct gpio_pin pin_sysc_net_rst = { &syscon_gpio, 4 };
+
+#define FMC_I2C_DELAY 15
+#define SFP_I2C_DELAY 300
+
+struct i2c_bus dev_i2c_fmc =
+	{ (struct gpio_pin*) &pin_sysc_fmc_scl,
+	  (struct gpio_pin*) &pin_sysc_fmc_sda,
+	  FMC_I2C_DELAY };
+
+struct i2c_bus dev_i2c_sfp = 
+	{ (struct gpio_pin*) &pin_sysc_sfp_scl,
+	  (struct gpio_pin*) &pin_sysc_sfp_sda,
+	  SFP_I2C_DELAY };
+
 
 /****************************
  *       BOARD NAME
