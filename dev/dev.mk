@@ -6,7 +6,6 @@ obj-$(CONFIG_LM32) += 	dev/simple_uart.o dev/console.o
 obj-$(CONFIG_EMBEDDED_NODE) += \
 	dev/endpoint.o \
 	dev/ep_pfilter.o \
-	dev/i2c.o \
 	dev/minic.o \
 	dev/syscon.o \
 	dev/sfp.o \
@@ -22,6 +21,7 @@ obj-$(CONFIG_EMBEDDED_NODE) += \
 	dev/ad7888.o \
 	dev/ad951x.o \
 	dev/ad9910.o \
+	dev/spi_flash.o \
 	dev/clock_monitor.o
 
 obj-$(CONFIG_WR_NODE) += \
