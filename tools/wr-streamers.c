@@ -12,6 +12,10 @@
 
 #include <hw/wr_streamers.h>
 
+#define GW_REG_VER_ERROR     -1
+#define GW_REG_VER_OK         0
+#define GW_REG_VER_DIFFERENT  1
+
 static struct mapping_desc *wrstm = NULL;
 
 #define LEAP_SECONDS_DEFAULT 37
@@ -828,13 +832,25 @@ static int verify_reg_version()
 	gw_reg_map_version = iomemr32(wrstm->is_be, ptr->VER);
 	fprintf(stderr, "Wishbone register version: in FPGA = 0x%x |"
 		" in SW = 0x%x\n", gw_reg_map_version, WBGEN2_WR_STREAMERS_VERSION);
-	if(gw_reg_map_version < WBGEN2_WR_STREAMERS_VERSION)
-		return -1;
-	else if(gw_reg_map_version > WBGEN2_WR_STREAMERS_VERSION)
-		return 1;
 
-	else
-		return 0;
+	if(gw_reg_map_version == WBGEN2_WR_STREAMERS_VERSION)
+		return GW_REG_VER_OK;
+	else if(gw_reg_map_version == 0xffffffff || gw_reg_map_version == 0x0){
+		fprintf(stderr, "\n\nWrong reading of version register, exiting ...\n\n");
+		return GW_REG_VER_ERROR;
+        }
+	else {
+		fprintf(stderr, "\n");
+		fprintf(stderr, "============== !!! WARNING !!! ===============\n");
+		fprintf(stderr, " Register version in FPGA and SW do not match\n");
+		if(gw_reg_map_version < WBGEN2_WR_STREAMERS_VERSION)
+			fprintf(stderr, "  This software is the newer than the bitstream\n");
+		if(gw_reg_map_version > WBGEN2_WR_STREAMERS_VERSION)
+			fprintf(stderr, "  This software is older than the bitstream\n");
+		fprintf(stderr, "      Some commands may not be supported\n");
+		fprintf(stderr, "============== !!! WARNING !!! ===============\n\n");
+		return GW_REG_VER_DIFFERENT;
+	}
 }
 
 int main(int argc, char *argv[])
@@ -857,17 +873,8 @@ int main(int argc, char *argv[])
 	}
 
 	ret = verify_reg_version();
-	if (ret !=0) {
-		fprintf(stderr, "\n");
-		fprintf(stderr, "============== !!! WARNING !!! ===============\n");
-		fprintf(stderr, " Register version in FPGA and SW do not match\n");
-		if(ret>0)
-			fprintf(stderr, "  Your software is older than the bitstream\n");
-		if(ret>0)
-			fprintf(stderr, "  Your software is the newer than the bitstream\n");
-		fprintf(stderr, "      Some commands may not be supported\n");
-		fprintf(stderr, "============== !!! WARNING !!! ===============\n\n");
-	}
+	if (ret == GW_REG_VER_ERROR) //something is wrong if incorrection version value
+		return -1;
 	
 	ret = extest_register_user_cmd(wrstm_cmd, WRSTM_CMD_NB);
 	if (ret) {
