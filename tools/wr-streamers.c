@@ -16,6 +16,7 @@ static struct mapping_desc *wrstm = NULL;
 
 #define LEAP_SECONDS_DEFAULT 37
 static int leap_seconds = LEAP_SECONDS_DEFAULT;
+static uint32_t gw_reg_map_version = 0;
 
 static char *stats_mesg[][2] = {
 	{"Number of sent wr streamer frames since reset", "tx_cnt"},
@@ -173,6 +174,17 @@ int read_stats(struct cmd_desc *cmdd, struct atom *atoms)
 
 	return 1;
 }
+int support_from_version(uint32_t sw_reg_map_version)
+{
+	if(sw_reg_map_version > gw_reg_map_version)
+	{
+		fprintf(stderr, "\nFunction not supported in gateware\n"
+		"(support from version=%d, you interface version=%d)\n\n",
+		sw_reg_map_version, gw_reg_map_version);
+		return -1;
+	}
+	return 0;
+}
 
 int read_reset_time(struct cmd_desc *cmdd, struct atom *atoms)
 {
@@ -239,6 +251,9 @@ int reset_seqid(struct cmd_desc *cmdd, struct atom *atoms)
 
 int hdl_sw_reset(struct cmd_desc *cmdd, struct atom *atoms)
 {
+	if (support_from_version(/*supported as of gw version:*/ 2))
+		return 0;
+
 	volatile struct WR_STREAMERS_WB *ptr =
 		(volatile struct WR_STREAMERS_WB *)wrstm->base;
 
@@ -470,6 +485,9 @@ int get_set_latency(struct cmd_desc *cmdd, struct atom *atoms)
 
 int get_latency_stats(struct cmd_desc *cmdd, struct atom *atoms)
 {
+	if (support_from_version(/*supported as of gw version:*/ 2))
+		return 0;
+
 	volatile struct WR_STREAMERS_WB *ptr =
 		(volatile struct WR_STREAMERS_WB *)wrstm->base;
 
@@ -500,6 +518,9 @@ int get_latency_stats(struct cmd_desc *cmdd, struct atom *atoms)
 
 int get_set_latency_timeout(struct cmd_desc *cmdd, struct atom *atoms)
 {
+	if (support_from_version(/*supported as of gw version:*/ 2))
+		return 0;
+
 	volatile struct WR_STREAMERS_WB *ptr =
 		(volatile struct WR_STREAMERS_WB *)wrstm->base;
 	int lat;
@@ -803,12 +824,14 @@ static int verify_reg_version()
 {
 	volatile struct WR_STREAMERS_WB *ptr =
 		(volatile struct WR_STREAMERS_WB *)wrstm->base;
-	uint32_t ver = 0;
-	ver = iomemr32(wrstm->is_be, ptr->VER);
+	gw_reg_map_version = iomemr32(wrstm->is_be, ptr->VER);
 	fprintf(stderr, "Wishbone register version: in FPGA = 0x%x |"
-		" in SW = 0x%x\n", ver, WBGEN2_WR_STREAMERS_VERSION);
-	if(ver != WBGEN2_WR_STREAMERS_VERSION)
+		" in SW = 0x%x\n", gw_reg_map_version, WBGEN2_WR_STREAMERS_VERSION);
+	if(gw_reg_map_version < WBGEN2_WR_STREAMERS_VERSION)
 		return -1;
+	else if(gw_reg_map_version > WBGEN2_WR_STREAMERS_VERSION)
+		return 1;
+
 	else
 		return 0;
 }
@@ -833,11 +856,16 @@ int main(int argc, char *argv[])
 	}
 
 	ret = verify_reg_version();
-	if (ret) {
+	if (ret !=0) {
+		fprintf(stderr, "\n");
 		fprintf(stderr, "============== !!! WARNING !!! ===============\n");
-		fprintf(stderr, "Register version in FPGA and SW does not match\n");
-		fprintf(stderr, "           Using SW at your own risk          \n");
-		fprintf(stderr, "============== !!! WARNING !!! ===============\n");
+		fprintf(stderr, " Register version in FPGA and SW do not match\n");
+		if(ret>0)
+			fprintf(stderr, "  Your software is older than the bitstream\n");
+		if(ret>0)
+			fprintf(stderr, "  Your software is the newer than the bitstream\n");
+		fprintf(stderr, "      Some commands may not be supported\n");
+		fprintf(stderr, "============== !!! WARNING !!! ===============\n\n");
 	}
 	
 	ret = extest_register_user_cmd(wrstm_cmd, WRSTM_CMD_NB);
