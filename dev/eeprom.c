@@ -10,7 +10,7 @@
 #include <wrc.h>
 
 #include "types.h"
-#include "i2c.h"
+#include "dev/i2c.h"
 #include "storage.h"
 #include "board.h"
 #include "syscon.h"
