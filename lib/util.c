@@ -124,3 +124,22 @@ void term_clear(void)
 {
 	pp_printf("\e[2J\e[1;1H");
 }
+
+int tmo_init(timeout_t *tmo, uint32_t milliseconds)
+{
+	tmo->start_tics = timer_get_tics();
+	tmo->timeout = milliseconds;
+	return 0;
+}
+
+int tmo_restart(timeout_t *tmo)
+{
+	tmo->start_tics = timer_get_tics();
+	return 0;
+}
+
+int tmo_expired(timeout_t *tmo)
+{
+	return (timer_get_tics() - tmo->start_tics > tmo->timeout);
+}
+
