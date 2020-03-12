@@ -76,32 +76,32 @@ int read_stats(struct cmd_desc *cmdd, struct atom *atoms)
 		cnt_lat = ((uint64_t)iomemr32(wrstm->is_be, ptr->RX_STAT13)
 			  << 32) | iomemr32(wrstm->is_be, ptr->RX_STAT12);
 		avg_lat = (((double)acc_lat) * 8 / 1000) / (double)cnt_lat;
-		fprintf(stderr, "Latency [us]    : min=%10g max=%10g avg =%10g "
+		fprintf(stderr, "Latency [us]    : min=%15g max=%15g avg =%15g "
 			"(overflow    =%d)\n",
 			min_lat, max_lat, avg_lat, overflow);
-		fprintf(stderr, "Frames  [number]: tx =%10lu rx =%10lu lost=%10lu "
-			"(lost blocks =%lu)\n",
-			((uint64_t)iomemr32(wrstm->is_be, ptr->TX_STAT3)
-			<< 32) | iomemr32(wrstm->is_be, ptr->TX_STAT2),
-			((uint64_t)iomemr32(wrstm->is_be, ptr->RX_STAT5)
-			<< 32) | iomemr32(wrstm->is_be, ptr->RX_STAT4),
-			((uint64_t)iomemr32(wrstm->is_be, ptr->RX_STAT7)
-			<< 32) | iomemr32(wrstm->is_be, ptr->RX_STAT6),
-			((uint64_t)iomemr32(wrstm->is_be, ptr->RX_STAT9)
-			<< 32) | iomemr32(wrstm->is_be, ptr->RX_STAT8));
+		fprintf(stderr, "Frames  [number]: tx =%15"PRIu64" rx =%15"PRIu64" "
+			"lost=%15"PRIu64" (lost blocks =%"PRIu64")\n",
+			(uint64_t)(((uint64_t)iomemr32(wrstm->is_be, ptr->TX_STAT3)
+			<< 32) | iomemr32(wrstm->is_be, ptr->TX_STAT2)),
+			(uint64_t)(((uint64_t)iomemr32(wrstm->is_be, ptr->RX_STAT5)
+			<< 32) | iomemr32(wrstm->is_be, ptr->RX_STAT4)),
+			(uint64_t)(((uint64_t)iomemr32(wrstm->is_be, ptr->RX_STAT7)
+			<< 32) | iomemr32(wrstm->is_be, ptr->RX_STAT6)),
+			(uint64_t)(((uint64_t)iomemr32(wrstm->is_be, ptr->RX_STAT9)
+			<< 32) | iomemr32(wrstm->is_be, ptr->RX_STAT8)));
 		break;
 	case 0:
-		fprintf(stderr, "%s:%lu\n", stats_mesg[0][1],
+		fprintf(stderr, "%s:%"PRIu64"\n", stats_mesg[0][1],
 			((uint64_t)iomemr32(wrstm->is_be, ptr->TX_STAT3)
 			<< 32) | iomemr32(wrstm->is_be, ptr->TX_STAT2));
 		break;
 	case 1:
-		fprintf(stderr, "%s:%lu\n", stats_mesg[1][1],
+		fprintf(stderr, "%s:%"PRIu64"\n", stats_mesg[1][1],
 			((uint64_t)iomemr32(wrstm->is_be, ptr->RX_STAT5)
 			<< 32) | iomemr32(wrstm->is_be, ptr->RX_STAT4));
 		break;
 	case 2:
-		fprintf(stderr, "%s:%lu\n", stats_mesg[2][1],
+		fprintf(stderr, "%s:%"PRIu64"\n", stats_mesg[2][1],
 			((uint64_t)iomemr32(wrstm->is_be, ptr->RX_STAT7)
 			<< 32) | iomemr32(wrstm->is_be, ptr->RX_STAT6));
 		break;
@@ -116,21 +116,21 @@ int read_stats(struct cmd_desc *cmdd, struct atom *atoms)
 				iomemr32(wrstm->is_be, ptr->RX_STAT1)));
 		break;
 	case 5:
-		fprintf(stderr, "%s:%lu\n", stats_mesg[5][1],
+		fprintf(stderr, "%s:%"PRIu64"\n", stats_mesg[5][1],
 			((uint64_t)iomemr32(wrstm->is_be, ptr->RX_STAT11)
 			<< 32) | iomemr32(wrstm->is_be, ptr->RX_STAT10));
 		break;
 	case 6:
-		fprintf(stderr, "%s:%lu\n", stats_mesg[6][1],
+		fprintf(stderr, "%s:%"PRIu64"\n", stats_mesg[6][1],
 			((uint64_t)iomemr32(wrstm->is_be, ptr->RX_STAT13)
 			<< 32) | iomemr32(wrstm->is_be, ptr->RX_STAT12));
 		break;
 	case 7:
-		fprintf(stderr, "%s:%lu\n", stats_mesg[7][1],
+		fprintf(stderr, "%s:%"PRIu64"\n", stats_mesg[7][1],
 			((uint64_t)iomemr32(wrstm->is_be, ptr->RX_STAT9)
 			<< 32) | iomemr32(wrstm->is_be, ptr->RX_STAT8));
 		break;
-        case 8: 
+	case 8:// print all
 		max_lat = WR_STREAMERS_RX_STAT0_RX_LATENCY_MAX_R(
 			  iomemr32(wrstm->is_be, ptr->RX_STAT0));
 		max_lat = (max_lat * 8) / 1000.0;
@@ -138,22 +138,34 @@ int read_stats(struct cmd_desc *cmdd, struct atom *atoms)
 			  iomemr32(wrstm->is_be, ptr->RX_STAT1));
 		min_lat = (min_lat * 8) / 1000.0;
 		overflow = WR_STREAMERS_SSCR1_RX_LATENCY_ACC_OVERFLOW &
-		           iomemr32(wrstm->is_be, ptr->SSCR1);
+			   iomemr32(wrstm->is_be, ptr->SSCR1);
 		//put it all together
 		acc_lat = ((uint64_t)iomemr32(wrstm->is_be, ptr->RX_STAT11)
 			  << 32) |iomemr32(wrstm->is_be, ptr->RX_STAT10);
 		cnt_lat = ((uint64_t)iomemr32(wrstm->is_be, ptr->RX_STAT13)
 			  << 32) | iomemr32(wrstm->is_be, ptr->RX_STAT12);
 		avg_lat = (((double)acc_lat) * 8 / 1000) / (double)cnt_lat;
-		fprintf(stderr, "%s: min=%10g max=%10g avg =%10g "
-			"(0x%x, 0x%x, %lu=%u << 32 | %u)*8/1000 us, "
-			"cnt =%lu overflow =%d)\n", stats_mesg[8][1],
+		fprintf(stderr, "Latency [us]    : min=%10g max=%10g avg =%10g \n"
+			"(0x%lx, 0x%lx, %"PRIu64"=%lu << 32 | %lu)*8/1000 us, "
+			"cnt =%"PRIu64" overflow =%d)\n",
 			min_lat, max_lat, avg_lat,
-			iomemr32(wrstm->is_be, ptr->RX_STAT1),
-			iomemr32(wrstm->is_be, ptr->RX_STAT0),
-			acc_lat, iomemr32(wrstm->is_be, ptr->RX_STAT11),
-			iomemr32(wrstm->is_be, ptr->RX_STAT10),
+			(unsigned long)iomemr32(wrstm->is_be, ptr->RX_STAT1),
+			(unsigned long)iomemr32(wrstm->is_be, ptr->RX_STAT0),
+			acc_lat, (unsigned long) iomemr32(wrstm->is_be, ptr->RX_STAT11),
+			(unsigned long) iomemr32(wrstm->is_be, ptr->RX_STAT10),
 			cnt_lat, overflow);
+
+		fprintf(stderr, "Frames  [number]: tx =%"PRIu64" rx =%"PRIu64" "
+			"lost=%"PRIu64" (lost blocks =%"PRIu64")\n",
+			(uint64_t)(((uint64_t)iomemr32(wrstm->is_be, ptr->TX_STAT3)
+			  << 32) | iomemr32(wrstm->is_be, ptr->TX_STAT2)),
+			(uint64_t)(((uint64_t)iomemr32(wrstm->is_be, ptr->RX_STAT5)
+			  << 32) | iomemr32(wrstm->is_be, ptr->RX_STAT4)),
+			(uint64_t)(((uint64_t)iomemr32(wrstm->is_be, ptr->RX_STAT7)
+			  << 32) | iomemr32(wrstm->is_be, ptr->RX_STAT6)),
+			(uint64_t)(((uint64_t)iomemr32(wrstm->is_be, ptr->RX_STAT9)
+			  << 32) | iomemr32(wrstm->is_be, ptr->RX_STAT8)));
+		break;
 	}
 
 	//release snapshot
@@ -291,7 +303,7 @@ int get_set_tx_local_mac(struct cmd_desc *cmdd, struct atom *atoms)
 	lsw = iomemr32(wrstm->is_be, ptr->TX_CFG1);
 	msw = iomemr32(wrstm->is_be, ptr->TX_CFG2);
 	val = lsw | (msw << 32);
-	fprintf(stderr, "TX Local MAC address 0x%lx\n", val);
+	fprintf(stderr, "TX Local MAC address 0x%"PRIx64"\n", val);
 	return 1;
 }
 
@@ -320,7 +332,7 @@ int get_set_tx_remote_mac(struct cmd_desc *cmdd, struct atom *atoms)
 	lsw = iomemr32(wrstm->is_be, ptr->TX_CFG3);
 	msw = iomemr32(wrstm->is_be, ptr->TX_CFG4);
 	val = lsw | (msw << 32);
-	fprintf(stderr, "TX Target MAC address 0x%lx\n", val);
+	fprintf(stderr, "TX Target MAC address 0x%"PRIx64"\n", val);
 	return 1;
 }
 
@@ -375,7 +387,7 @@ int get_set_rx_local_mac(struct cmd_desc *cmdd, struct atom *atoms)
 	lsw = iomemr32(wrstm->is_be, ptr->RX_CFG1);
 	msw = iomemr32(wrstm->is_be, ptr->RX_CFG2);
 	val = lsw | (msw << 32);
-	fprintf(stderr, "RX Local MAC address 0x%lx\n", val);
+	fprintf(stderr, "RX Local MAC address 0x%"PRIx64"\n", val);
 	return 1;
 }
 
@@ -404,7 +416,7 @@ int get_set_rx_remote_mac(struct cmd_desc *cmdd, struct atom *atoms)
 	lsw = iomemr32(wrstm->is_be, ptr->RX_CFG3);
 	msw = iomemr32(wrstm->is_be, ptr->RX_CFG4);
 	val = lsw | (msw << 32);
-	fprintf(stderr, "RX Target MAC address 0x%lx\n", val);
+	fprintf(stderr, "RX Target MAC address 0x%"PRIx64"\n", val);
 	return 1;
 }
 
