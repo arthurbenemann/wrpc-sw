@@ -14,166 +14,12 @@
 #define SDBFS_BIG_ENDIAN
 #include <libsdbfs.h>
 
-/*
- * Delay function - limit SPI clock speed to 10 MHz
- */
-void delay(void)
-{
-	int i;
+#include "dev/syscon.h"
+#include "dev/bb_spi.h"
+#include "dev/spi_flash.h"
 
-	for (i = 0; i < (int)(CPU_CLOCK/10000000); i++)
-		asm volatile ("nop");
-}
-
-/*
- * Bit-bang SPI transfer function
- */
-uint8_t bbspi_transfer(int cspin, uint8_t val)
-{
-	int i;
-
-	gpio_out(GPIO_SPI_NCS, cspin);
-	delay();
-	for (i = 0; i < 8; i++) {
-		gpio_out(GPIO_SPI_SCLK, 0);
-		if (val & 0x80) {
-			gpio_out(GPIO_SPI_MOSI, 1);
-		} else {
-			gpio_out(GPIO_SPI_MOSI, 0);
-		}
-		delay();
-		gpio_out(GPIO_SPI_SCLK, 1);
-		val <<= 1;
-		val |= gpio_in(GPIO_SPI_MISO);
-		delay();
-	}
-
-	gpio_out(GPIO_SPI_SCLK, 0);
-
-	return val;
-}
-
-/*
- * Init function (just set the SPI pins for idle)
- */
-void flash_init(void)
-{
-	gpio_out(GPIO_SPI_NCS, 1);
-	gpio_out(GPIO_SPI_SCLK, 0);
-	gpio_out(GPIO_SPI_MOSI, 0);
-}
-
-/*
- * Write data to flash chip
- */
-int flash_write(uint32_t addr, uint8_t *buf, int count)
-{
-	int i;
-
-	bbspi_transfer(1, 0);
-	bbspi_transfer(0, 0x06);
-	bbspi_transfer(1, 0);
-	bbspi_transfer(0, 0x02);
-	bbspi_transfer(0, (addr & 0xFF0000) >> 16);
-	bbspi_transfer(0, (addr & 0xFF00) >> 8);
-	bbspi_transfer(0, (addr & 0xFF));
-	for (i = 0; i < count; i++) {
-		bbspi_transfer(0, buf[i]);
-	}
-	bbspi_transfer(1, 0);
-
-	/* make sure the write is complete */
-	while (flash_rsr() & 0x01) {
-		/* do nothing */
-		}
-
-	return count;
-}
-
-/*
- * Read data from flash
- */
-int flash_read(uint32_t addr, uint8_t *buf, int count)
-{
-	int i;
-
-	bbspi_transfer(1, 0);
-	bbspi_transfer(0, 0x0b);
-	bbspi_transfer(0, (addr & 0xFF0000) >> 16);
-	bbspi_transfer(0, (addr & 0xFF00) >> 8);
-	bbspi_transfer(0, (addr & 0xFF));
-	bbspi_transfer(0, 0);
-	for (i = 0; i < count; i++) {
-		buf[i] = bbspi_transfer(0, 0);
-	}
-	bbspi_transfer(1, 0);
-
-	return count;
-}
-
-int flash_erase(uint32_t addr, int count)
-{
-	int i;
-	int sectors;
-
-	/*calc number of sectors to be removed*/
-	if (count % storage_cfg.blocksize > 0)
-		sectors = 1;
-	else
-		sectors = 0;
-	sectors += (count / storage_cfg.blocksize);
-
-	for (i = 0; i < sectors; ++i) {
-		flash_serase(addr + i*storage_cfg.blocksize);
-		while (flash_rsr() & 0x01)
-			;
-	}
-
-	return count;
-}
-
-/*
- * Sector erase
- */
-void flash_serase(uint32_t addr)
-{
-	bbspi_transfer(1, 0);
-	bbspi_transfer(0, 0x06);
-	bbspi_transfer(1, 0);
-	bbspi_transfer(0, 0xD8);
-	bbspi_transfer(0, (addr & 0xFF0000) >> 16);
-	bbspi_transfer(0, (addr & 0xFF00) >> 8);
-	bbspi_transfer(0, (addr & 0xFF));
-	bbspi_transfer(1, 0);
-}
-
-/*
- * Bulk erase
- */
-void
-flash_berase(void)
-{
-	bbspi_transfer(1, 0);
-	bbspi_transfer(0, 0x06);
-	bbspi_transfer(1, 0);
-	bbspi_transfer(0, 0xc7);
-	bbspi_transfer(1, 0);
-}
-
-/*
- * Read status register
- */
-uint8_t flash_rsr(void)
-{
-	uint8_t retval;
-
-	bbspi_transfer(1, 0);
-	bbspi_transfer(0, 0x05);
-	retval = bbspi_transfer(0, 0);
-	bbspi_transfer(1, 0);
-	return retval;
-}
-
+static struct spi_bus spi_wrc_flash;
+struct spi_flash_device wrc_flash_dev;
 
 /*****************************************************************************/
 /*			SDB						     */
@@ -191,12 +37,12 @@ static struct sdbfs wrc_sdb = {
  */
 static int sdb_flash_read(struct sdbfs *fs, int offset, void *buf, int count)
 {
-	return flash_read(offset, buf, count);
+	return spi_flash_read( &wrc_flash_dev, offset, buf, count );
 }
 
 static int sdb_flash_write(struct sdbfs *fs, int offset, void *buf, int count)
 {
-	return flash_write(offset, buf, count);
+	return spi_flash_write( &wrc_flash_dev, offset, buf, count );
 }
 
 
@@ -249,5 +95,18 @@ int flash_sdb_check(void)
 	wrc_sdb.read = sdb_flash_read;
 	wrc_sdb.write = sdb_flash_write;
 	flash_sdb_list(&wrc_sdb);
+	return 0;
+}
+
+void	flash_init(void)
+{
+	bb_spi_create( &spi_wrc_flash,
+		&pin_sysc_spi_ncs,
+		&pin_sysc_spi_mosi,
+		&pin_sysc_spi_miso,
+		&pin_sysc_spi_sclk, 10 );
+
+	spi_flash_create( &wrc_flash_dev, &spi_wrc_flash );
+
 	return 0;
 }

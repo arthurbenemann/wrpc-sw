@@ -13,15 +13,15 @@
 #include <storage.h>
 
 #include "types.h"
-#include "dev/i2c.h"
+#include "dev/bb_i2c.h"
 #include "dev/onewire.h"
 #include "dev/endpoint.h"
 #include "dev/syscon.h"
+#include "dev/spi_flash.h"
 #include <sdb.h>
 
 #define SDBFS_BIG_ENDIAN
 #include <libsdbfs.h>
-#include <dev/flash.h>
 #include <dev/fram.h>
 
 /*
@@ -43,33 +43,33 @@ struct storage_config storage_cfg;
 /* Functions for Flash access */
 static int sdb_flash_read(struct sdbfs *fs, int offset, void *buf, int count)
 {
-	return flash_read(offset, buf, count);
+	return spi_flash_read( &wrc_flash_dev,offset, buf, count);
 }
 
 static int sdb_flash_write(struct sdbfs *fs, int offset, void *buf, int count)
 {
-	return flash_write(offset, buf, count);
+	return spi_flash_write( &wrc_flash_dev,offset, buf, count);
 }
 
 static int sdb_flash_erase(struct sdbfs *fs, int offset, int count)
 {
-	return flash_erase(offset, count);
+	return spi_flash_erase( &wrc_flash_dev, offset, count);
 }
 
 /* Functions for FRAM access */
 static int sdb_fram_read(struct sdbfs *fs, int offset, void *buf, int count)
 {
-	return fram_read(offset, buf, count);
+	return fram_read(&wrc_fram_dev, offset, buf, count);
 }
 
 static int sdb_fram_write(struct sdbfs *fs, int offset, void *buf, int count)
 {
-	return fram_write(offset, buf, count);
+	return fram_write(&wrc_fram_dev, offset, buf, count);
 }
 
 static int sdb_fram_erase(struct sdbfs *fs, int offset, int count)
 {
-	return fram_erase(offset, count);
+	return fram_erase(&wrc_fram_dev, offset, count);
 }
 
 /* The methods for W1 access */
@@ -94,7 +94,7 @@ static int sdb_w1_erase(struct sdbfs *fs, int offset, int count)
  * calling convention. So we miss the low-level and high-level layer splitting
  */
 struct i2c_params {
-	int ifnum;
+	struct i2c_bus *bus;
 	int addr;
 };
 
@@ -106,22 +106,22 @@ static int sdb_i2c_read(struct sdbfs *fs, int offset, void *buf, int count)
 	struct i2c_params *p = fs->drvdata;
 	unsigned char *cb = buf;
 
-	mi2c_start(p->ifnum);
-	if (mi2c_put_byte(p->ifnum, p->addr << 1) < 0) {
-		mi2c_stop(p->ifnum);
+	bb_i2c_start(p->bus);
+	if (bb_i2c_put_byte(p->bus, p->addr << 1) < 0) {
+		bb_i2c_stop(p->bus);
 		return -1;
 	}
-	mi2c_put_byte(p->ifnum, (offset >> 8) & 0xff);
-	mi2c_put_byte(p->ifnum, offset & 0xff);
-	mi2c_repeat_start(p->ifnum);
-	mi2c_put_byte(p->ifnum, (p->addr << 1) | 1);
+	bb_i2c_put_byte(p->bus, (offset >> 8) & 0xff);
+	bb_i2c_put_byte(p->bus, offset & 0xff);
+	bb_i2c_repeat_start(p->bus);
+	bb_i2c_put_byte(p->bus, (p->addr << 1) | 1);
 	for (i = 0; i < count - 1; ++i) {
-		mi2c_get_byte(p->ifnum, cb, 0);
+		bb_i2c_get_byte(p->bus, cb, 0);
 		cb++;
 	}
-	mi2c_get_byte(p->ifnum, cb, 1);
+	bb_i2c_get_byte(p->bus, cb, 1);
 	cb++;
-	mi2c_stop(p->ifnum);
+	bb_i2c_stop(p->bus);
 
 	return count;
 }
@@ -133,22 +133,22 @@ static int sdb_i2c_write(struct sdbfs *fs, int offset, void *buf, int count)
 	unsigned char *cb = buf;
 
 	for (i = 0; i < count; i++) {
-		mi2c_start(p->ifnum);
+		bb_i2c_start(p->bus);
 
-		if (mi2c_put_byte(p->ifnum, p->addr << 1) < 0) {
-			mi2c_stop(p->ifnum);
+		if (bb_i2c_put_byte(p->bus, p->addr << 1) < 0) {
+			bb_i2c_stop(p->bus);
 			return -1;
 		}
-		mi2c_put_byte(p->ifnum, (offset >> 8) & 0xff);
-		mi2c_put_byte(p->ifnum, offset & 0xff);
-		mi2c_put_byte(p->ifnum, *cb++);
+		bb_i2c_put_byte(p->bus, (offset >> 8) & 0xff);
+		bb_i2c_put_byte(p->bus, offset & 0xff);
+		bb_i2c_put_byte(p->bus, *cb++);
 		offset++;
-		mi2c_stop(p->ifnum);
+		bb_i2c_stop(p->bus);
 
 		do {		/* wait until the chip becomes ready */
-			mi2c_start(p->ifnum);
-			busy = mi2c_put_byte(p->ifnum, p->addr << 1);
-			mi2c_stop(p->ifnum);
+			bb_i2c_start(p->bus);
+			busy = bb_i2c_put_byte(p->bus, p->addr << 1);
+			bb_i2c_stop(p->bus);
 		} while (busy);
 
 	}
@@ -161,22 +161,22 @@ static int sdb_i2c_erase(struct sdbfs *fs, int offset, int count)
 	struct i2c_params *p = fs->drvdata;
 
 	for (i = 0; i < count; i++) {
-		mi2c_start(p->ifnum);
+		bb_i2c_start(p->bus);
 
-		if (mi2c_put_byte(p->ifnum, p->addr << 1) < 0) {
-			mi2c_stop(p->ifnum);
+		if (bb_i2c_put_byte(p->bus, p->addr << 1) < 0) {
+			bb_i2c_stop(p->bus);
 			return -1;
 		}
-		mi2c_put_byte(p->ifnum, (offset >> 8) & 0xff);
-		mi2c_put_byte(p->ifnum, offset & 0xff);
-		mi2c_put_byte(p->ifnum, 0xff);
+		bb_i2c_put_byte(p->bus, (offset >> 8) & 0xff);
+		bb_i2c_put_byte(p->bus, offset & 0xff);
+		bb_i2c_put_byte(p->bus, 0xff);
 		offset++;
-		mi2c_stop(p->ifnum);
+		bb_i2c_stop(p->bus);
 
 		do {		/* wait until the chip becomes ready */
-			mi2c_start(p->ifnum);
-			busy = mi2c_put_byte(p->ifnum, p->addr << 1);
-			mi2c_stop(p->ifnum);
+			bb_i2c_start(p->bus);
+			busy = bb_i2c_put_byte(p->bus, p->addr << 1);
+			bb_i2c_stop(p->bus);
 		} while (busy);
 
 	}
@@ -193,7 +193,7 @@ static void storage_sdb_list(struct sdbfs *fs)
 
 	while ((d = sdbfs_scan(fs, new)) != NULL) {
 		d->sdb_component.product.record_type = '\0';
-		pp_printf("file 0x%08x @ %4i, name %s\n",
+		pp_printf("file 0x%08x @ 0x%08x, name %s\n",
 			  (int)(d->sdb_component.product.device_id),
 			  (int)(d->sdb_component.addr_first),
 			  (char *)(d->sdb_component.product.name));
@@ -216,7 +216,7 @@ uint8_t has_eeprom = 0; /* modified at init time */
  *
  * This is called by wrc_main, after initializing both w1 and i2c
  */
-void storage_init(int chosen_i2cif, int chosen_i2c_addr)
+void storage_init( struct i2c_bus *bus, int chosen_i2c_addr)
 {
 	uint32_t magic = 0;
 	static unsigned entry_points_eeprom[] = {0, 64, 128, 256, 512, 1024};
@@ -239,7 +239,7 @@ void storage_init(int chosen_i2cif, int chosen_i2c_addr)
 	 * 1. Check if there is SDBFS in the Flash.
 	 */
 	for (i = 0; i < ARRAY_SIZE(entry_points_flash); i++) {
-		flash_read(entry_points_flash[i], (void *)&magic, sizeof(magic));
+		spi_flash_read(&wrc_flash_dev, entry_points_flash[i], (void *)&magic, sizeof(magic));
 		if (magic == SDB_MAGIC)
 			break;
 	}
@@ -255,11 +255,12 @@ void storage_init(int chosen_i2cif, int chosen_i2c_addr)
 		goto found_exit;
 	}
 
+
 	/*
 	 * 2. Check if there is SDBFS in the FRAM.
 	 */
 	for (i = 0; i < ARRAY_SIZE(entry_points_fram); i++) {
-		fram_read(entry_points_fram[i], (void *)&magic, sizeof(magic));
+		fram_read(&wrc_fram_dev, entry_points_fram[i], (void *)&magic, sizeof(magic));
 		if (magic == SDB_MAGIC)
 			break;
 	}
@@ -298,13 +299,13 @@ void storage_init(int chosen_i2cif, int chosen_i2c_addr)
 	}
 
 	/*
-	 * 4. If w1 failed, look for i2c: start from low offsets.
+	 * 3. If w1 failed, look for i2c: start from low offsets.
 	 */
-	i2c_params.ifnum = chosen_i2cif;
+	i2c_params.bus = bus;
 	i2c_params.addr = EEPROM_START_ADR;
 	while (i2c_params.addr <= EEPROM_STOP_ADR) {
 		/* First, we check if I2C EEPROM is there */
-		if (!mi2c_devprobe(i2c_params.ifnum, i2c_params.addr)) {
+		if (!bb_i2c_devprobe(bus, i2c_params.addr)) {
 			i2c_params.addr++;
 			continue;
 		}
@@ -356,7 +357,7 @@ int get_persistent_mac(uint8_t portnum, uint8_t *mac)
 
 	if (IS_HOST_PROCESS) {
 		/* we don't have sdb working, so get the real eth address */
-		get_mac_addr(mac);
+		ep_get_mac_addr(mac);
 		return 0;
 	}
 
@@ -773,7 +774,7 @@ int storage_init_readcmd(uint8_t *buf, uint8_t bufsize, uint8_t next)
 	if (next == 0)
 		ptr = sizeof(used);
 	do {
-		if (ptr - sizeof(used) > bufsize)
+		if (i > bufsize)
 			goto out;
 		if (sdbfs_fread(&wrc_sdb, (ptr++),
 				&buf[i], sizeof(char)) != sizeof(char))
@@ -794,7 +795,7 @@ int storage_read_hdl_cfg(void)
 	if (storage_cfg.memtype == MEM_FLASH && storage_cfg.blocksize == 0) {
 		storage_cfg.valid = 0;
 		/* keep default blocksize for backwards compatibility */
-		storage_cfg.blocksize = FLASH_BLOCKSIZE;
+		storage_cfg.blocksize = SPI_FLASH_DEFAULT_BLOCKSIZE;
 	} else
 		storage_cfg.valid = 1;
 	return 0;
@@ -819,7 +820,7 @@ int storage_sdbfs_erase(int mem_type, uint32_t base_adr, uint32_t blocksize,
 		sdb_flash_erase(NULL, base_adr, SDBFS_REC * blocksize);
 	} else if (mem_type == MEM_EEPROM) {
 		pp_printf("Erasing EEPROM %d (0x%x)...\n", i2c_adr, base_adr);
-		i2c_params.ifnum = WRPC_FMC_I2C;
+		i2c_params.bus = &dev_i2c_fmc;
 		i2c_params.addr  = i2c_adr;
 		wrc_sdb.drvdata = &i2c_params;
 		sdb_i2c_erase(&wrc_sdb, base_adr, SDBFS_REC *
@@ -901,11 +902,11 @@ int storage_gensdbfs(int mem_type, uint32_t base_adr, uint32_t blocksize,
 		*/
 	} else if (mem_type == MEM_EEPROM) {
 		/* First, check if EEPROM is really there */
-		if (!mi2c_devprobe(WRPC_FMC_I2C, i2c_adr)) {
+		if (!bb_i2c_devprobe(&dev_i2c_fmc, i2c_adr)) {
 			pp_printf("I2C EEPROM not found\n");
 			return -EINVAL;
 		}
-		i2c_params.ifnum = WRPC_FMC_I2C;
+		i2c_params.bus = &dev_i2c_fmc;
 		i2c_params.addr  = i2c_adr;
 		pp_printf("Formatting SDBFS in I2C EEPROM %d (0x%x)...\n",
 				i2c_params.addr, base_adr);
@@ -948,7 +949,7 @@ int storage_gensdbfs(int mem_type, uint32_t base_adr, uint32_t blocksize,
 		}
         }
 	/* re-initialize storage after writing sdbfs image */
-	storage_init(WRPC_FMC_I2C, FMC_EEPROM_ADR);
+	storage_init( &dev_i2c_fmc, FMC_EEPROM_ADR);
 
 	return mem_type;
 }
