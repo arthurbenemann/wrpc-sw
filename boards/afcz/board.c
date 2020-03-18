@@ -37,14 +37,24 @@ struct idt8v_clock_mux_device {
 #define SI57X_I2C_ADDR 0x55
 #define IDT8V_I2C_ADDR 0x58
 
+struct pca9554_gpio_device
+{
+	struct i2c_bus *bus;
+	uint8_t i2c_addr;
+	struct gpio_device gpio;
+};
+
+
 struct {
 	struct gpio_device gpio_aux;
 	struct wr_si57x_interface_device si57x;
 	struct wb_clock_monitor_device clk_mon;
 	struct idt8v_clock_mux_device clk_mux;
+	struct pca9554_gpio_device gpio_rtm_main;
+	struct pca9554_gpio_device gpio_rtm_sfp;
 } board;
 
-static uint8_t idt8v_read_regs( struct idt8v_clock_mux_device*dev )
+static void idt8v_read_regs( struct idt8v_clock_mux_device*dev )
 {
 	int i;
 	bb_i2c_start( dev->bus );
@@ -54,7 +64,7 @@ static uint8_t idt8v_read_regs( struct idt8v_clock_mux_device*dev )
 	bb_i2c_stop( dev->bus );
 }
 
-static uint8_t idt8v_commit_configuration( struct idt8v_clock_mux_device*dev )
+static void idt8v_commit_configuration( struct idt8v_clock_mux_device*dev )
 {
 	int i;
 	bb_i2c_start( dev->bus );
@@ -243,36 +253,6 @@ void si57x_reset(struct wr_si57x_interface_device *dev )
 }
 
 
-int si57x_adjust_frequency( struct wr_si57x_interface_device *dev, int adj )
-{
-	uint8_t regs[16];
-
-	uint64_t rfreq = dev->rfreq + (adj - 32767) * 10;
-
-	regs[12] = (rfreq & 0xff);
-	regs[11] = ((rfreq >> 8) & 0xff);
-	regs[10] = ((rfreq >> 16) & 0xff);
-	regs[9] =  ((rfreq >> 24) & 0xff);
-	regs[8] = ((rfreq >>32) & 0x3f) | (((dev->n1-1) & 0xff) << 6);
-	regs[7] = (dev->hsdiv << 5) | ((dev->n1-1) >> 2);
-
-	uint8_t r137, r135;
-
-	si57x_read( dev, 135, &r135, 1 );
-	si57x_read( dev, 137, &r137, 1 );
-	r137 |= (1<<4); // freeze DCO
-	si57x_write( dev, 137, &r137, 1);
-	si57x_write( dev, 7, regs + 7, 6 );
-	r137 &= ~(1<<4); // unfreeze DCO
-	si57x_write( dev, 137, &r137, 1);
-//	r135 |= (1<<6); // assert NewFreq
-//	si57x_write( dev, 135, &r135, 1);
-
-	return 0;
-}
-
-
-
 int si57x_set_frequency( struct wr_si57x_interface_device *dev, uint32_t f_xtal, uint32_t freq_hz )
 {
 	uint8_t regs[16];
@@ -306,7 +286,7 @@ int si57x_set_frequency( struct wr_si57x_interface_device *dev, uint32_t f_xtal,
 
 	writel( (uint32_t) ( rfreq & 0xffffffffULL), dev->base_addr + SI570_REG_RFREQL );
 	writel( (uint32_t) ( rfreq >> 32) | (((n1-1) & 0xff) << 6), dev->base_addr + SI570_REG_RFREQH );
-	writel( SI570_CR_ENABLE | SI570_CR_I2C_ADDR_W ( ( dev->i2c_addr << 1 ) ) | SI570_CR_GAIN_W(10), dev->base_addr + SI570_REG_CR );
+	writel( SI570_CR_ENABLE | SI570_CR_CLK_DIV_W(100) | SI570_CR_I2C_ADDR_W ( ( dev->i2c_addr << 1 ) ) | SI570_CR_GAIN_W(10), dev->base_addr + SI570_REG_CR );
 
 	si57x_read( dev, 135, &r135, 1 );
 	si57x_read( dev, 137, &r137, 1 );
@@ -321,6 +301,90 @@ int si57x_set_frequency( struct wr_si57x_interface_device *dev, uint32_t f_xtal,
 	return 0;
 }
 
+#define PCA9554_REG_IN 0
+#define PCA9554_REG_OUT 1
+#define PCA9554_REG_INVERT 2
+#define PCA9554_REG_CONFIG 3
+
+
+
+static uint8_t pca9554_read_reg( struct pca9554_gpio_device *dev, uint8_t reg )
+{
+	uint8_t rv;
+	bb_i2c_start(dev->bus);
+	bb_i2c_put_byte(dev->bus, dev->i2c_addr << 1);
+	bb_i2c_put_byte(dev->bus,  reg );
+	bb_i2c_repeat_start(dev->bus );
+	bb_i2c_put_byte(dev->bus,  (dev->i2c_addr << 1) | 1);
+	bb_i2c_get_byte(dev->bus, &rv, 1 );
+	bb_i2c_stop(dev->bus);
+	return rv;
+}
+
+static void pca9554_write_reg( struct pca9554_gpio_device *dev, uint8_t reg, uint8_t value )
+{
+	bb_i2c_start(dev->bus);
+	bb_i2c_put_byte(dev->bus, dev->i2c_addr << 1);
+	bb_i2c_put_byte(dev->bus,  reg );
+	bb_i2c_put_byte(dev->bus,  value );
+	bb_i2c_stop(dev->bus);
+}
+
+static void pca9554_gpio_out(const struct gpio_pin *pin, int value)
+{
+	struct pca9554_gpio_device* dev = ( struct pca9554_gpio_device* ) pin->device->priv;
+
+
+	uint8_t oreg = pca9554_read_reg( dev, PCA9554_REG_OUT );
+
+	if( value )
+		oreg |= ( 1<< pin->pin );
+	else
+		oreg &= ~ ( 1<< pin->pin );
+
+
+	pca9554_write_reg( dev, PCA9554_REG_OUT, oreg );
+}
+
+
+
+static void pca9554_gpio_set_dir(const struct gpio_pin *pin, int dir)
+{
+	struct pca9554_gpio_device* dev = ( struct pca9554_gpio_device* ) pin->device->priv;
+
+
+	uint8_t dreg = pca9554_read_reg( dev, PCA9554_REG_CONFIG );
+
+	if( ! dir )
+		dreg |= ( 1<< pin->pin );
+	else
+		dreg &= ~ ( 1<< pin->pin );
+
+
+	pca9554_write_reg( dev, PCA9554_REG_CONFIG, dreg );
+	
+}
+
+
+static int pca9554_gpio_in(const struct gpio_pin *pin)
+{
+	struct pca9554_gpio_device* dev = ( struct pca9554_gpio_device* ) pin->device->priv;
+
+// fixme: implement
+	return 0;
+}
+
+
+void pca9554_gpio_init( struct pca9554_gpio_device *dev, struct i2c_bus *bus, uint8_t i2c_addr )
+{
+	dev->bus = bus;
+	dev->i2c_addr = i2c_addr;
+	dev->gpio.priv = (void *) dev;
+	dev->gpio.read_pin = pca9554_gpio_in;
+	dev->gpio.set_dir = pca9554_gpio_set_dir;
+	dev->gpio.set_out = pca9554_gpio_out;
+	pp_printf("GpioInit dev %p out %p\n", dev, dev->gpio.set_out );
+}
 
 void wr_si57x_interface_init( struct wr_si57x_interface_device *dev, void* base_addr, uint8_t i2c_addr )
 {
@@ -397,10 +461,45 @@ void set_dmtd_dac( int value )
 
 void set_main_dac( int value )
 {
-	//pp_printf("Adjust: %d\n", value );
-	//si57x_adjust_frequency( &board.si57x, value );
 	spll_set_dac( 0, value );
 }
+
+const struct gpio_pin pin_rtm_4sfp_led_orange = { &board.gpio_rtm_main.gpio, 3 };
+const struct gpio_pin pin_rtm_4sfp_i2c_reset_n = { &board.gpio_rtm_main.gpio, 5 };
+
+
+const struct gpio_pin pin_rtm_4sfp_sfp_tx_disable = { &board.gpio_rtm_sfp.gpio, 1 };
+
+void sfp_setup()
+{
+	pp_printf("Check RTM & init SFPs...\n");
+	//bb_i2c_scan( &board.si57x.master );
+	tca9548_select_channels( &board.si57x.master, 0x70, 1 << AFCZ_I2C_MUX_CHANNEL_RTM );
+	//bb_i2c_scan( &board.si57x.master );
+
+	pca9554_gpio_init( &board.gpio_rtm_main, &board.si57x.master, 0x20 ); // fixme : constants
+	pca9554_gpio_init( &board.gpio_rtm_sfp, &board.si57x.master, 0x22 ); // fixme : constants
+
+	gen_gpio_out( &pin_rtm_4sfp_i2c_reset_n, 0 );
+	gen_gpio_out( &pin_rtm_4sfp_i2c_reset_n, 1 );
+
+
+	pp_printf("pre-scan\n");
+	bb_i2c_scan( &board.si57x.master );
+
+	// select SFP0
+	tca9548_select_channels( &board.si57x.master, 0x74, 1 << RTM_4SFP_MUX_SFP0 );
+
+	pp_printf("post-scan\n");
+	bb_i2c_scan( &board.si57x.master );
+
+	gen_gpio_set_dir( &pin_rtm_4sfp_sfp_tx_disable, 1 );
+	gen_gpio_out( &pin_rtm_4sfp_sfp_tx_disable, 0 );
+
+
+
+}
+
 
 
 int wrc_board_early_init()
@@ -408,7 +507,7 @@ int wrc_board_early_init()
 //	wb_gpio_create( &board.gpio_aux, 0x48000 );
 
 	wr_si57x_interface_init( &board.si57x, BASE_SI57X_INTERFACE, SI57X_I2C_ADDR );
-	tca9548_select_channels( &board.si57x.master, 0x70, 1 << 2 );
+	tca9548_select_channels( &board.si57x.master, 0x70, 1 << AFCZ_I2C_MUX_CHANNEL_SI570 );
 
 	net_rst();
 	ep_init();
@@ -431,7 +530,6 @@ int wrc_board_early_init()
 
 
 	si57x_get_xtal_frequency( &board.si57x, &f_xtal );
-	pp_printf("Xtal freq: %d Hz\n", f_xtal );
 	si57x_set_frequency( &board.si57x, f_xtal, 125000000 );
 
 	idt8v_clock_mux_init ( &board.clk_mux, &board.si57x.master, IDT8V_I2C_ADDR );
@@ -443,8 +541,12 @@ int wrc_board_early_init()
 
 	wb_cm_init( &board.clk_mon, BASE_CLOCK_MONITOR, 6 );
 
-	check_vco_freq( AFCZ_CM_CHANNEL_CLK_DMTD, AFCZ_CM_CHANNEL_CLK_SYS, set_dmtd_dac );
-	check_vco_freq( AFCZ_CM_CHANNEL_CLK_REF, AFCZ_CM_CHANNEL_CLK_SYS, set_main_dac );
+	sfp_setup();
+
+	tca9548_select_channels( &board.si57x.master, 0x70, 1 << AFCZ_I2C_MUX_CHANNEL_SI570 );
+
+//	check_vco_freq( AFCZ_CM_CHANNEL_CLK_DMTD, AFCZ_CM_CHANNEL_CLK_SYS, set_dmtd_dac );
+//check_vco_freq( AFCZ_CM_CHANNEL_CLK_REF, AFCZ_CM_CHANNEL_CLK_SYS, set_main_dac );
 
 	return 0;
 }
@@ -452,14 +554,18 @@ int wrc_board_early_init()
 int wrc_board_init()
     {
 	pp_printf("WR Core AFCZ port starting up\n");    
+
 /*initialize flash*/
 	flash_init();
+
 	/*initialize I2C bus*/
-	mi2c_init(WRPC_FMC_I2C);
+	bb_i2c_init(&dev_i2c_fmc);
+
 	/*init storage (Flash / W1 EEPROM / I2C EEPROM*/
-	storage_init(WRPC_FMC_I2C, FMC_EEPROM_ADR);
+	storage_init( &dev_i2c_fmc , FMC_EEPROM_ADR);
 
         wrpc_w1_init();
+
 	wrpc_w1_bus.detail = ONEWIRE_PORT;
 	w1_scan_bus(&wrpc_w1_bus);
 
