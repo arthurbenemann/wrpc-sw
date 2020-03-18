@@ -164,15 +164,13 @@ $(obj-ppsi): gitmodules
 sdb-lib/libsdbfs.a:
 	$(MAKE) -C sdb-lib
 
-$(OUTPUT).elf: $(LDS-y) $(AUTOCONF) gitmodules $(OUTPUT).o config.o pconfig.o
+$(OUTPUT).elf: $(LDS-y) $(AUTOCONF) gitmodules config.o pconfig.o $(OBJS)
 	$(CC) $(CFLAGS) -D__GIT_VER__="\"$(GIT_VER)\"" -D__GIT_USR__="\"$(GIT_USR)\"" -c revision.c
-	${CC} -o $@ revision.o config.o pconfig.o $(OUTPUT).o $(LDFLAGS)
+	${CC} -o $@ revision.o config.o pconfig.o $(OBJS) $(LDFLAGS)
 	${OBJDUMP} -d $(OUTPUT).elf > $(OUTPUT)_disasm.S
 	$(SIZE) $@
 	./save_size.sh $(SIZE) $@
 
-$(OUTPUT).o: $(OBJS)
-	$(LD) $(WRC-O-FLAGS-y) -r $(OBJS) -T bigobj.lds -o $@
 
 OBJCOPY-TARGET-$(CONFIG_LM32) = -O elf32-lm32 -B lm32
 OBJCOPY-TARGET-$(CONFIG_HOST_PROCESS) = -O elf64-x86-64 -B i386
@@ -206,7 +204,7 @@ pconfig.o: ppsi/.config
 $(AUTOCONF): silentoldconfig gitmodules
 
 clean:
-	rm -f $(OBJS) $(OUTPUT).o config.o pconfig.o revision.o $(OUTPUT).elf \
+	rm -f $(OBJS) config.o pconfig.o revision.o $(OUTPUT).elf \
 		$(LDS) \
 		$(OUTPUT).bin rules-*.bin \
 		$(OUTPUT).bram $(OUTPUT).vhd $(OUTPUT).mif $(OUTPUT)_disasm.S
