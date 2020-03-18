@@ -6,6 +6,7 @@
 #ifndef __GPIO_H
 #define __GPIO_H
 
+#if 0 // fixme - migrate to new GPIO framework
 #include <stdint.h>
 
 #include "board.h"
@@ -48,6 +49,6 @@ static inline int gpio_in(int pin)
   return __gpio->PSR & (1<<pin) ? 1: 0;
 }
 
-        
+#endif
 #endif
         
