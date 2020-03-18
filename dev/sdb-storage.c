@@ -259,6 +259,7 @@ void storage_init( struct i2c_bus *bus, int chosen_i2c_addr)
 	/*
 	 * 2. Check if there is SDBFS in the FRAM.
 	 */
+	#if 0
 	for (i = 0; i < ARRAY_SIZE(entry_points_fram); i++) {
 		fram_read(&wrc_fram_dev, entry_points_fram[i], (void *)&magic, sizeof(magic));
 		if (magic == SDB_MAGIC)
@@ -275,6 +276,7 @@ void storage_init( struct i2c_bus *bus, int chosen_i2c_addr)
 		wrc_sdb.erase = sdb_fram_erase;
 		goto found_exit;
 	}
+	#endif
 	/*
 	 * 3. Look for w1 first: if there is no eeprom it fails fast
 	 */
