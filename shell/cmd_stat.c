@@ -35,6 +35,9 @@ static int cmd_stat(const char *args[])
 	} else if (!strcasecmp(args[0], "off")) {
 		wrc_stat_running = 0;
 		pp_printf("statistics now off\n");
+	} else if (!strcasecmp(args[0], "1")) {
+		wrc_stat_running = -1; /* Special meaning... (only one) */
+		wrc_stats_last--; /* force a line to be printed */
 	} else
 		return -EINVAL;
 	return 0;

@@ -30,6 +30,7 @@ static char *stats_mesg[][2] = {
         {"Counter of the accumulated frequency", "acc_freq_cnt"},
         {"Number of indications that one or more blocks in a"
 	 "frame were lost (probably CRC error) since reset", "rx_cnt_lost_blk"},
+        {"Latency statistics with raw values for calculations", "rx_lat_raw"}
 };
 
 int read_stats(struct cmd_desc *cmdd, struct atom *atoms)
@@ -43,10 +44,10 @@ int read_stats(struct cmd_desc *cmdd, struct atom *atoms)
 	if (atoms == (struct atom *)VERBOSE_HELP) {
 		printf("%s - options\n"
 		       "\t0: %s\n\t1: %s\n\t2: %s\n\t3: %s\n\t4: %s\n\t5: %s\n"
-		       "\t6: %s\n\t7: %s\n", cmdd->name, stats_mesg[0][0],
+		       "\t6: %s\n\t7: %s\n\t8: %s\n", cmdd->name, stats_mesg[0][0],
 		       stats_mesg[1][0], stats_mesg[2][0], stats_mesg[3][0],
 		       stats_mesg[4][0], stats_mesg[5][0], stats_mesg[6][0],
-		       stats_mesg[7][0]);
+		       stats_mesg[7][0], stats_mesg[8][0]);
 		return 1;
 	}
 
@@ -76,15 +77,9 @@ int read_stats(struct cmd_desc *cmdd, struct atom *atoms)
 			  << 32) | iomemr32(wrstm->is_be, ptr->RX_STAT12);
 		avg_lat = (((double)acc_lat) * 8 / 1000) / (double)cnt_lat;
 		fprintf(stderr, "Latency [us]    : min=%10g max=%10g avg =%10g "
-			"(0x%x, 0x%x, %lu=%u << 32 | %u)*8/1000 us, "
-			"cnt =%lu overflow =%d)\n",
-			min_lat, max_lat, avg_lat,
-			iomemr32(wrstm->is_be, ptr->RX_STAT1),
-			iomemr32(wrstm->is_be, ptr->RX_STAT0),
-			acc_lat, iomemr32(wrstm->is_be, ptr->RX_STAT11),
-			iomemr32(wrstm->is_be, ptr->RX_STAT10),
-			cnt_lat, overflow);
-		fprintf(stderr, "Frames  [number]: tx =%lu rx =%lu lost=%lu "
+			"(overflow    =%d)\n",
+			min_lat, max_lat, avg_lat, overflow);
+		fprintf(stderr, "Frames  [number]: tx =%10lu rx =%10lu lost=%10lu "
 			"(lost blocks =%lu)\n",
 			((uint64_t)iomemr32(wrstm->is_be, ptr->TX_STAT3)
 			<< 32) | iomemr32(wrstm->is_be, ptr->TX_STAT2),
@@ -135,6 +130,30 @@ int read_stats(struct cmd_desc *cmdd, struct atom *atoms)
 			((uint64_t)iomemr32(wrstm->is_be, ptr->RX_STAT9)
 			<< 32) | iomemr32(wrstm->is_be, ptr->RX_STAT8));
 		break;
+        case 8: 
+		max_lat = WR_STREAMERS_RX_STAT0_RX_LATENCY_MAX_R(
+			  iomemr32(wrstm->is_be, ptr->RX_STAT0));
+		max_lat = (max_lat * 8) / 1000.0;
+		min_lat = WR_STREAMERS_RX_STAT1_RX_LATENCY_MIN_R(
+			  iomemr32(wrstm->is_be, ptr->RX_STAT1));
+		min_lat = (min_lat * 8) / 1000.0;
+		overflow = WR_STREAMERS_SSCR1_RX_LATENCY_ACC_OVERFLOW &
+		           iomemr32(wrstm->is_be, ptr->SSCR1);
+		//put it all together
+		acc_lat = ((uint64_t)iomemr32(wrstm->is_be, ptr->RX_STAT11)
+			  << 32) |iomemr32(wrstm->is_be, ptr->RX_STAT10);
+		cnt_lat = ((uint64_t)iomemr32(wrstm->is_be, ptr->RX_STAT13)
+			  << 32) | iomemr32(wrstm->is_be, ptr->RX_STAT12);
+		avg_lat = (((double)acc_lat) * 8 / 1000) / (double)cnt_lat;
+		fprintf(stderr, "%s: min=%10g max=%10g avg =%10g "
+			"(0x%x, 0x%x, %lu=%u << 32 | %u)*8/1000 us, "
+			"cnt =%lu overflow =%d)\n", stats_mesg[8][1],
+			min_lat, max_lat, avg_lat,
+			iomemr32(wrstm->is_be, ptr->RX_STAT1),
+			iomemr32(wrstm->is_be, ptr->RX_STAT0),
+			acc_lat, iomemr32(wrstm->is_be, ptr->RX_STAT11),
+			iomemr32(wrstm->is_be, ptr->RX_STAT10),
+			cnt_lat, overflow);
 	}
 
 	//release snapshot
@@ -203,6 +222,23 @@ int reset_seqid(struct cmd_desc *cmdd, struct atom *atoms)
 	}
 
 	ptr->SSCR1 = iomemw32(wrstm->is_be, WR_STREAMERS_SSCR1_RST_SEQ_ID);
+	return 1;
+}
+
+int hdl_sw_reset(struct cmd_desc *cmdd, struct atom *atoms)
+{
+	volatile struct WR_STREAMERS_WB *ptr =
+		(volatile struct WR_STREAMERS_WB *)wrstm->base;
+
+	if (atoms == (struct atom *)VERBOSE_HELP) {
+		printf("%s - %s\n", cmdd->name, cmdd->help);
+		return 1;
+	}
+
+	ptr->RSTR = iomemw32(wrstm->is_be, WR_STREAMERS_RSTR_RST_SW);
+        fprintf(stderr, "Reseted the tx and rx wr_streamer HDL modules \n"
+                        "(streamer statistics are not affected and require "
+                        "reset)\n");
 	return 1;
 }
 
@@ -420,6 +456,80 @@ int get_set_latency(struct cmd_desc *cmdd, struct atom *atoms)
 	return 1;
 }
 
+int get_latency_stats(struct cmd_desc *cmdd, struct atom *atoms)
+{
+	volatile struct WR_STREAMERS_WB *ptr =
+		(volatile struct WR_STREAMERS_WB *)wrstm->base;
+
+	if (atoms == (struct atom *)VERBOSE_HELP) {
+		printf("%s - %s\n", cmdd->name, cmdd->help);
+		return 1;
+	}
+
+	//snapshot stats
+	ptr->SSCR1 = iomemw32(wrstm->is_be, WR_STREAMERS_SSCR1_SNAPSHOT_STATS);
+
+	fprintf(stderr, "Fixed latency frames [number]: "
+                "match   = %10lu "
+                "late    = %10lu "
+                "timeout = %10lu\n",
+		((uint64_t)iomemr32(wrstm->is_be, ptr->RX_STAT20)
+		<< 32) | iomemr32(wrstm->is_be, ptr->RX_STAT19),
+		((uint64_t)iomemr32(wrstm->is_be, ptr->RX_STAT16)
+		<< 32) | iomemr32(wrstm->is_be, ptr->RX_STAT15),
+		((uint64_t)iomemr32(wrstm->is_be, ptr->RX_STAT18)
+		<< 32) | iomemr32(wrstm->is_be, ptr->RX_STAT17)
+        );
+
+	//release snapshot
+	ptr->SSCR1 = 0;
+	return 1;
+}
+
+int get_set_latency_timeout(struct cmd_desc *cmdd, struct atom *atoms)
+{
+	volatile struct WR_STREAMERS_WB *ptr =
+		(volatile struct WR_STREAMERS_WB *)wrstm->base;
+	int lat;
+	uint32_t val;
+
+	if (atoms == (struct atom *)VERBOSE_HELP) {
+		printf("%s - %s\n", cmdd->name, cmdd->help);
+		return 1;
+	}
+
+	++atoms;
+	if (atoms->type == Terminator) {
+		// Get Latency
+		val = WR_STREAMERS_RX_CFG6_RX_FIXED_LATENCY_TIMEOUT_R(
+			 iomemr32(wrstm->is_be, ptr->RX_CFG6));
+		fprintf(stderr, "Fixed latency timeout: %d [us]\n",
+			(val * 8) / 1000);
+	}
+	else {
+		if (atoms->type != Numeric)
+			return -TST_ERR_WRONG_ARG;
+		lat = atoms->val;
+		if (lat < 0) {
+			val = 0x1000000;
+			lat = (val * 8) / 1000;
+			fprintf(stderr, "Setting default value of ~134ms\n");
+		}
+		else{
+                	val = (lat * 1000) / 8;
+                }
+		ptr->RX_CFG6 = iomemw32(wrstm->is_be,
+			WR_STREAMERS_RX_CFG6_RX_FIXED_LATENCY_TIMEOUT_W(val));
+		val = WR_STREAMERS_RX_CFG6_RX_FIXED_LATENCY_TIMEOUT_R(
+		      iomemr32(wrstm->is_be, ptr->RX_CFG6));
+		fprintf(stderr, "Fixed latency timeout set: %d [us] "
+			"(set %d | read : %d [8ns cycles])\n",
+			lat, ((lat * 1000) / 8), val);
+	}
+
+	return 1;
+}
+
 int get_set_qtags_flag(struct cmd_desc *cmdd, struct atom *atoms)
 {
 	volatile struct WR_STREAMERS_WB *ptr =
@@ -573,6 +683,8 @@ enum wrstm_cmd_id{
 	WRSTM_CMD_RX_REM_MAC,
 	*/
 	WRSTM_CMD_LATENCY,
+	WRSTM_CMD_LATENCY_STATS,
+	WRSTM_CMD_LATENCY_TIMEOUT,
 	WRSTM_CMD_QTAG_ENB,
 	WRSTM_CMD_QTAG_VP,
 	WRSTM_CMD_QTAG_OR,
@@ -580,6 +692,7 @@ enum wrstm_cmd_id{
 //	WRSTM_CMD_DBG_BYTE,
 //	WRSTM_CMD_DBG_MUX,
 //	WRSTM_CMD_DBG_VAL,
+	WRSTM_CMD_HDL_SW_RESET,
 	WRSTM_CMD_LAST,
 };
 
@@ -619,9 +732,15 @@ struct cmd_desc wrstm_cmd[WRSTM_CMD_NB + 1] = {
 	{ 1, WRSTM_CMD_TX_ETHERTYPE, "txether",
 	  "get/set TX ethertype", "ethertype", 0, get_set_tx_ethertype},
 	  **************************************************************** */
-	{ 1, WRSTM_CMD_LATENCY, "lat",
+	{ 1, WRSTM_CMD_LATENCY, "flat",
 	  "get/set config of fixed latency in integer [us] (-1 to disable)",
-	  "[latency]", 0, get_set_latency},
+	  "[fixed latency value]", 0, get_set_latency},
+	{ 1, WRSTM_CMD_LATENCY_STATS, "flatstats",
+	  "get statistics regarding fixed latency operation",
+	  "", 0, get_latency_stats},
+	{ 1, WRSTM_CMD_LATENCY_TIMEOUT, "flattimeout",
+	  "get/set fixed latency timeout [us] (-1 to set default: ~1ms)",
+	  "[timeout value]", 0, get_set_latency_timeout},
 	{ 1, WRSTM_CMD_QTAG_ENB, "qtagf",
 	  "QTags flag on off",
 	  "[0/1]", 0, get_set_qtags_flag},
@@ -641,6 +760,9 @@ struct cmd_desc wrstm_cmd[WRSTM_CMD_NB + 1] = {
 //	  "set whether tx or rx frames should be snooped", "dir", 1,},
 //	{ 1, WRSTM_CMD_DBG_VAL, "dbgword",
 //	  "read the snooped 32-bit value", "", 0,},
+	{ 1, WRSTM_CMD_HDL_SW_RESET, "hdlswreset",
+	  "HD software reset of rx and tx streamer HDL modules (excludes stats)",
+	   "", 0, hdl_sw_reset},
 	{0, },
 };
 
@@ -700,9 +822,10 @@ int main(int argc, char *argv[])
 
 	ret = verify_reg_version();
 	if (ret) {
+		fprintf(stderr, "============== !!! WARNING !!! ===============\n");
 		fprintf(stderr, "Register version in FPGA and SW does not match\n");
-		dev_unmap(wrstm);
-		return -1;
+		fprintf(stderr, "           Using SW at your own risk          \n");
+		fprintf(stderr, "============== !!! WARNING !!! ===============\n");
 	}
 	
 	ret = extest_register_user_cmd(wrstm_cmd, WRSTM_CMD_NB);

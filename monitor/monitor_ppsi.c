@@ -330,6 +330,11 @@ static int wrc_log_stats(void)
 			ptp_mode != WRC_MODE_SLAVE)
 		return 0;
 	last_jiffies = timer_get_tics();
+
+	/* Print only one time */
+	if(wrc_stat_running == -1)
+		wrc_stat_running = 0;
+
 	wrc_stats_last = s->update_count;
 
 	shw_pps_gen_get_time(&sec, &nsec);

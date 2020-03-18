@@ -204,6 +204,16 @@ static int rts_enable_ptracker_func(const struct minipc_pd *pd, uint32_t *args, 
     return 0;
 }
 
+
+static int rts_set_average_samples_func(const struct minipc_pd *pd, uint32_t *args, void *ret)
+{
+	pstate.ipc_count++;
+	spll_set_ptracker_average_samples((int)args[0], (int)args[1]);
+    *(int *) ret = 0;
+    return 0;
+}
+
+
 static int rts_debug_command_func(const struct minipc_pd *pd, uint32_t *args, void *ret)
 {
 		pstate.ipc_count++;
@@ -228,6 +238,7 @@ int rtipc_init(void)
 	rtipc_rts_adjust_phase_struct.f = rts_adjust_phase_func;
 	rtipc_rts_enable_ptracker_struct.f = rts_enable_ptracker_func;
 	rtipc_rts_debug_command_struct.f = rts_debug_command_func;
+	rtipc_rts_set_average_samples_struct.f = rts_set_average_samples_func;
 	
 	minipc_export(server, &rtipc_rts_set_mode_struct);
 	minipc_export(server, &rtipc_rts_get_state_struct);
@@ -235,6 +246,7 @@ int rtipc_init(void)
   minipc_export(server, &rtipc_rts_adjust_phase_struct);
   minipc_export(server, &rtipc_rts_enable_ptracker_struct);
   minipc_export(server, &rtipc_rts_debug_command_struct);
+  minipc_export(server, &rtipc_rts_set_average_samples_struct);
 
 
 	return 0;

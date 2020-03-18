@@ -433,11 +433,16 @@ you would have to install it manually. E.g. in Ubuntu, please install
 
 First, you need to download and unpack the LM32 toolchain from the location
 mentioned in section \ref{Repositories and Releases}. The following example
-uses 32bit version of a toolchain. If you encounter problems running it, please
-use 64bit version.
+uses 32bit version of a toolchain.
 \begin{lstlisting}
-$ wget http://www.ohwr.org/attachments/download/1133/lm32.tar.xz
+$ wget https://www.ohwr.org/project/wrpc-sw/uploads/a2e8eeba448fbc8d580e68004e6f6c7f/lm32.tar.xz
 $ tar xJf lm32.tar.xz -C <your_location>
+\end{lstlisting}
+
+If you encounter problems running it, please use the 64bit version.
+\begin{lstlisting}
+$ wget https://www.ohwr.org/project/wrpc-sw/uploads/2776ce0ba43503d1486ae205b48fb450/lm32_host_64bit.tar.xz
+$ tar xJf lm32_host_64bit.tar.xz -C <your_location>
 \end{lstlisting}
 
 Then you need to set a \texttt{CROSS\_COMPILE} environment variable in order
@@ -531,7 +536,8 @@ $ make
 You have to download also the "golden" firmware for SPEC card. It is used by
 the drivers to recognize the hardware:
 \begin{lstlisting}
-$ wget http://www.ohwr.org/attachments/download/4057/spec-init.bin-2015-09-18
+$ wget https://www.ohwr.org/project/spec-sw/uploads/636e7eaa2e1c3a884e2f9f694fdfd1b9/spec-init.bin-2015-09-18
+
 $ sudo mv spec-init.bin-2015-09-18 /lib/firmware/fmc/spec-init.bin
 \end{lstlisting}
 
@@ -1342,24 +1348,26 @@ All the available commands are listed with \texttt{h}:
 \begin{lstlisting}[basicstyle=\scriptsize\ttfamily]
 cfv-774-cbt:wrstm[00] > h
 Valid COMMANDS:
-Idx  Name       Params                   Description
-# 1: q          [                   ] -> Quit test program
-# 2: h          [ o c               ] -> Help on commands
-# 3: a          [                   ] -> Atom list commands
-# 4: his        [                   ] -> History
-# 5: s          [ Seconds           ] -> Sleep seconds
-# 6: ms         [ MilliSecs         ] -> Sleep milliseconds
-# 7: sh         [ Unix Cmd          ] -> Shell command
-# 8: stats      [ [0/1/2/3/4/5/6/7] ] -> show streamers statistics
-# 9: reset      [                   ] -> show time of the latest reset / time elapsed since then
-#10: resetcnt   [                   ] -> reset tx/rx/lost counters and avg/min/max latency values
-#11: resetseqid [                   ] -> reset sequence ID of the tx streamer
-#12: lat        [ [latency]         ] -> get/set config of fixed latency in integer [us] (-1 to disable)
-#13: qtagf      [ [0/1]             ] -> QTags flag on off
-#14: qtagvp     [ [VID,prio]        ] -> QTags Get/Set VLAN ID and priority
-#15: qtagor     [ [0/1]             ] -> get/set overriding of default qtag config with WB config (set
-                                         using qtagf, qtagvp)
-#16: ls         [ [leapseconds]     ] -> get/set leap seconds
+Idx  Name        Params                       Description
+# 1: q           [                       ] -> Quit test program
+# 2: h           [ o c                   ] -> Help on commands
+# 3: a           [                       ] -> Atom list commands
+# 4: his         [                       ] -> History
+# 5: s           [ Seconds               ] -> Sleep seconds
+# 6: ms          [ MilliSecs             ] -> Sleep milliseconds
+# 7: sh          [ Unix Cmd              ] -> Shell command
+# 8: stats       [ [0/1/2/3/4/5/6/7]     ] -> show streamers statistics
+# 9: reset       [                       ] -> show time of the latest reset / time elapsed since then
+#10: resetcnt    [                       ] -> reset tx/rx/lost counters and avg/min/max latency values
+#11: resetseqid  [                       ] -> reset sequence ID of the tx streamer
+#12: flat        [ [fixed latency value] ] -> get/set config of fixed latency in integer [us] (-1 to disable)
+#13: flatstats   [                       ] -> get statistics regarding fixed latency operation
+#14: flattimeout [ [timeout value]       ] -> get/set fixed latency timeout [us] (-1 to set default: ~1ms)
+#15: qtagf       [ [0/1]                 ] -> QTags flag on off
+#16: qtagvp      [ [VID,prio]            ] -> QTags Get/Set VLAN ID and priority
+#17: qtagor      [ [0/1]                 ] -> get/set overriding of default qtag config with WB config (set ...
+#18: ls          [ [leapseconds]         ] -> get/set leap seconds
+#19: hdlswreset  [                       ] -> HD software reset of rx and tx streamer HDL modules (excludes ...
 
 Type "h name" to get complete command help
 \end{lstlisting}
@@ -1367,8 +1375,9 @@ In order to see all the WR Streamers statistics, the \texttt{stats} command
 inside the prompt should be executed as follows:
 \begin{lstlisting}
 cfc-774-cbt:wrstm[01] > stats
-Latency [us]    : min=     3.736 max=     8.216 avg =   3.88176 
-Frames  [number]: tx =0 rx =61897834620 lost=0 (lost blocks =0)
+Latency [us]    : min=     3.824 max=     5.656 avg =    3.8958 (overflow    =0)
+Frames  [number]: tx =   1558137 rx =   1558137 lost=         0 (lost blocks =0)
+
 \end{lstlisting}
 
 The commands that are available from the interactive prompt can be also executed directly
@@ -2041,7 +2050,7 @@ package.
 
 First, please download the SDBFS image from \textit{ohwr.org}:
 \begin{lstlisting}
-$ wget http://www.ohwr.org/attachments/download/4060/sdbfs-flash.bin
+$ wget https://www.ohwr.org/project/wr-cores/uploads/6f33b5a8660bd0f2ff7a07526b4484d6/sdbfs-flash.bin
 \end{lstlisting}
 It contains all the files required by the core. They are empty, but have to
 exist in the SDBFS structure to be filled later from the WR PTP Core shell or
@@ -2080,7 +2089,7 @@ This \textit{mcs} file already includes both SDBFS image and FPGA bitstream.
 In the case when you want to run a custom gateware or you have a custom hardware, you can 
 download a standalone SDBFS image:
 \begin{lstlisting}
-$ wget http://www.ohwr.org/attachments/download/4558/sdbfs-standalone-160812.bin
+$ wget https://www.ohwr.org/project/wr-cores/uploads/9dad995e74a3d49b472b8654833be01a/sdbfs-standalone-160812.bin
 \end{lstlisting}
 and generate a custom \textit{*.mcs} file with your own FPGA bitstream. You should
 use the following layout:

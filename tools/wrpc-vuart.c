@@ -15,6 +15,10 @@
 #include <hw/wb_uart.h>
 #include <libdevmap.h>
 
+#define VUART_EOL 13
+#define VUART_CMD_USLEEP 1000000
+#define VUART_CMD_PROMPT "wrc#"
+
 static void wrpc_vuart_help(char *prog)
 {
 	const char *mapping_help_str;
@@ -81,6 +85,19 @@ static size_t wr_vuart_read(struct mapping_desc *vuart, char *buf, size_t size)
 }
 
 /**
+ * It flush vuart buffer.
+ *
+ * @param[in] vuart token from dev_map()
+ *
+ */
+static void wr_vuart_flush(struct mapping_desc *vuart)
+{
+	char rx;
+
+	while(wr_vuart_read(vuart,&rx,1) == 1) {}
+}
+
+/**
  * It writes a number of bytes from a given buffer
  * @param[in] vuart token from dev_map()
  * @param[in] buf buffer to write
@@ -99,16 +116,22 @@ static size_t wr_vuart_write(struct mapping_desc *vuart, char *buf, size_t size)
 	return size;
 }
 
-static void wrpc_vuart_term_main(struct mapping_desc *vuart, int keep_term)
+static void wrpc_vuart_term_main(struct mapping_desc *vuart, int keep_term, int command_mode, char *command)
 {
 	struct termios oldkey, newkey;
 	//above is place for old and new port settings for keyboard teletype
 	int need_exit = 0;
+	int cmd_sent = 0;
+	int cmd_len = 0;
+	char *prompt = VUART_CMD_PROMPT;
+	int i_prompt = 0;
+	int i;
 	fd_set fds;
 	int ret;
 	char rx, tx;
 
-	fprintf(stderr, "[press C-a to exit]\n");
+	if(!command_mode)
+		fprintf(stderr, "[press C-a to exit]\n");
 
 	if(!keep_term) {
 		tcgetattr(STDIN_FILENO,&oldkey);
@@ -122,49 +145,102 @@ static void wrpc_vuart_term_main(struct mapping_desc *vuart, int keep_term)
 		tcsetattr(STDIN_FILENO,TCSANOW,&newkey);
 	}
 	while(!need_exit) {
-		struct timeval tv = {0, 10000};
+		if (!command_mode) {
+			struct timeval tv = {0, 10000};
 
-		FD_ZERO(&fds);
-		FD_SET(STDIN_FILENO, &fds);
+			FD_ZERO(&fds);
+			FD_SET(STDIN_FILENO, &fds);
 
-		/*
-		 * Check if the STDIN has characters to read
-		 * (what the user writes)
-		 */
-		ret = select(STDIN_FILENO + 1, &fds, NULL, NULL, &tv);
-		switch (ret) {
-		case -1:
-			perror("select");
-			break;
-		case 0: /* timeout */
-			break;
-		default:
-			if(!FD_ISSET(STDIN_FILENO, &fds))
+			/*
+			 * Check if the STDIN has characters to read
+			 * (what the user writes)
+			 */
+			ret = select(STDIN_FILENO + 1, &fds, NULL, NULL, &tv);
+			switch (ret) {
+			case -1:
+				perror("select");
 				break;
-			/* The user wrote something */
-			do {
-				ret = read(STDIN_FILENO, &tx, 1);
-			} while (ret < 0 && errno == EINTR);
-			if (ret != 1) {
-				fprintf(stderr, "nothing to read. Port disconnected?\n");
-				need_exit = 1; /* kill */
-			}
-			/* If the user character is C-a, then kill */
-			if(tx == '\x01')
-				need_exit = 1;
+			case 0: /* timeout */
+				break;
+			default:
+				if(!FD_ISSET(STDIN_FILENO, &fds))
+					break;
+				/* The user wrote something */
+				do {
+					ret = read(STDIN_FILENO, &tx, 1);
+				} while (ret < 0 && errno == EINTR);
+				if (ret != 1) {
+					fprintf(stderr, "nothing to read. Port disconnected?\n");
+					need_exit = 1; /* kill */
+				}
+				/* If the user character is C-a, then kill */
+				if(tx == '\x01')
+					need_exit = 1;
 
-			ret = wr_vuart_write(vuart, &tx, 1);
-			if (ret != 1) {
-				fprintf(stderr, "Unable to write (errno: %d)\n", errno);
-				need_exit = 1;
+				ret = wr_vuart_write(vuart, &tx, 1);
+				if (ret != 1) {
+					fprintf(stderr, "Unable to write (errno: %d)\n", errno);
+					need_exit = 1;
+				}
+				break;
 			}
-			break;
+		} else {
+			if(!cmd_sent) {
+				/* Flush Vuart before sending command */
+				wr_vuart_flush(vuart);
+				/* Send command */
+				cmd_len = strlen(command);
+				ret = wr_vuart_write(vuart, command, cmd_len-1);
+				if (ret != cmd_len-1) {
+					fprintf(stderr, "Unable to write the command (errno: %d)\n",errno);
+					need_exit = 1;
+				}
+				/* Flush command echo */
+				wr_vuart_flush(vuart);
+				/* Send end character */
+				ret = wr_vuart_write(vuart, &command[cmd_len-1], 1);
+				if (ret != 1) {
+					fprintf(stderr, "Unable to write the end character of command (errno: %d)\n",errno);
+					need_exit = 1;
+
+				}
+				/* Wait for a while before reading command results */
+				usleep(VUART_CMD_USLEEP);
+				/* Discard characters until end of line control one */
+				while(wr_vuart_read(vuart, &rx, 1)) {
+					if(rx == VUART_EOL)
+						break;
+				}
+				
+				cmd_sent = 1;
+			}
 		}
 
 		/* Print all the incoming charactes */
-		while((wr_vuart_read(vuart, &rx, 1)) == 1)
-			fprintf(stderr,"%c", rx);
-
+		while((wr_vuart_read(vuart, &rx, 1)) == 1) {
+			if (command_mode == 1) {
+				/* Prompt detection, skip characters */
+				if (rx == prompt[i_prompt]) {
+					i_prompt++;
+					/* Prompt detected! */
+					if(i_prompt == strlen(prompt)) {
+						need_exit = 1;
+						break;
+					}
+				} else {
+					/* Check if some previous characters have been skipped by
+					   prompt detector code and print them */
+					for(i = 0 ; i < i_prompt ; i++)
+						fprintf(stderr,"%c",prompt[i]);
+					/* Reset prompt detector */
+					i_prompt = 0;
+					/* Print current character */
+					fprintf(stderr,"%c", rx);
+				}
+			} else {
+				fprintf(stderr,"%c",rx);
+			}
+		}
 	}
 
 	if(!keep_term)
@@ -176,6 +252,9 @@ int main(int argc, char *argv[])
 {
 	char c;
 	int keep_term = 0;
+	int command_mode = 0;
+	char cmd[50];
+	int cmd_len = 0;
 	struct mapping_args *map_args;
 	struct mapping_desc *vuart = NULL;
 
@@ -186,8 +265,18 @@ int main(int argc, char *argv[])
 	}
 
 	/* Parse specific args */
-	while ((c = getopt (argc, argv, "k")) != -1) {
+	while ((c = getopt (argc, argv, "c:k")) != -1) {
 		switch (c) {
+		case 'c':
+			/* Enable command mode */
+			command_mode = 1;
+			/* Get the command from args */
+			strcpy(cmd, optarg);
+			cmd_len = strlen(cmd);
+			/* Put end of buffer for terminal */
+			cmd[cmd_len] = VUART_EOL;
+			cmd[cmd_len+1] = 0;
+			break;
 		case 'k':
 			keep_term = 1;
 			break;
@@ -206,7 +295,7 @@ int main(int argc, char *argv[])
 		goto out;
 	}
 
-	wrpc_vuart_term_main(vuart, keep_term);
+	wrpc_vuart_term_main(vuart, keep_term, command_mode, cmd);
 	dev_unmap(vuart);
 
 	return 0;

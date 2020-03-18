@@ -13,6 +13,7 @@
 #include "minipc.h"
 #include "revision.h"
 #include "system_checks.h"
+#include "gpio-wrs.h"
 
 
 int scb_ver = 33;		/* SCB version */
@@ -40,6 +41,12 @@ int main(void)
 	      build_revision, build_date, build_time);
 	pp_printf("SCB version: %d. %s\n", scb_ver,(scb_ver>=34)?"10 MHz SMC Output.":"" );
 	pp_printf("Start counter %d\n", stats.start_cnt);
+	/* Low-jitter Daughterboard detection */
+	ljd_present = gpio_in(GPIO_LJD_BOARD_DETECT);
+	if (ljd_present) {
+		pp_printf("\n--- WRS Low jitter board detected. ---\n");
+		pp_printf("Allow 1 hour of warming up before starting measurements\n");
+	}
 	pp_printf("--\n");
 
 	if (stats.start_cnt > 1) {
@@ -47,7 +54,7 @@ int main(void)
 		/* for sure problem is in calling second time ad9516_init,
 		 * but not only */
 	}
-	ad9516_init(scb_ver);
+	ad9516_init(scb_ver, ljd_present);
 	rts_init();
 	rtipc_init();
 	spll_very_init();
