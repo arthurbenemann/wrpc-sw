@@ -30,6 +30,11 @@
 #define AFCZ_IC33_FPGA_CLK3_OUT 9
 #define AFCZ_IC33_FPGA_CLK_GTX_CUST2_OUT 8
 
+#define AFCZ_I2C_MUX_CHANNEL_SI570 2
+#define AFCZ_I2C_MUX_CHANNEL_RTM 7
+
+#define RTM_4SFP_MUX_SFP0 0
+
 /* Board-specific parameters */
 #define TICS_PER_SECOND 1000
 
@@ -37,13 +42,8 @@
 #define CPU_CLOCK 62500000ULL
 
 /* WR Reference clock period (picoseconds) and frequency (Hz) */
-#ifdef CONFIG_WR_NODE_PCS16
-#  define REF_CLOCK_PERIOD_PS 16000
-#  define REF_CLOCK_FREQ_HZ 62500000
-#else
-#  define REF_CLOCK_PERIOD_PS 8000
-#  define REF_CLOCK_FREQ_HZ 125000000
-#endif
+#define REF_CLOCK_PERIOD_PS 16000
+#define REF_CLOCK_FREQ_HZ 62500000
 
 /* Baud rate of the builtin UART (does not apply to the VUART) */
 #define UART_BAUDRATE 115200ULL
@@ -61,11 +61,7 @@ int board_init(void);
 int board_update(void);
 
 /* spll parameter that are board-specific */
-#ifdef CONFIG_WR_NODE_PCS16
-#  define BOARD_DIVIDE_DMTD_CLOCKS	0
-#else
-#  define BOARD_DIVIDE_DMTD_CLOCKS	1
-#endif
+#define BOARD_DIVIDE_DMTD_CLOCKS	0
 #define BOARD_MAX_CHAN_REF		1
 #define BOARD_MAX_CHAN_AUX		2
 #define BOARD_MAX_PTRACKERS		1
