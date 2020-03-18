@@ -78,6 +78,8 @@ struct SYSCON_WB {
 	uint32_t WDIAG_TEMP;
 };
 
+/* GPIO pins */
+
 extern const struct gpio_pin pin_sysc_led_link;
 extern const struct gpio_pin pin_sysc_led_stat;
 extern const struct gpio_pin pin_sysc_btn1;
@@ -96,17 +98,6 @@ extern const struct gpio_pin pin_sysc_net_rst;
 extern struct i2c_bus dev_i2c_fmc;
 extern struct i2c_bus dev_i2c_sfp;
 extern struct spi_flash_device wrc_flash_dev;
-
-/*GPIO pins*/
-#define GPIO_LED_LINK SYSC_GPSR_LED_LINK
-#define GPIO_LED_STAT SYSC_GPSR_LED_STAT
-#define GPIO_BTN1     SYSC_GPSR_BTN1
-#define GPIO_BTN2     SYSC_GPSR_BTN2
-#define GPIO_SFP_DET  SYSC_GPSR_SFP_DET
-#define GPIO_SPI_SCLK SYSC_GPSR_SPI_SCLK
-#define GPIO_SPI_NCS  SYSC_GPSR_SPI_NCS
-#define GPIO_SPI_MOSI SYSC_GPSR_SPI_MOSI
-#define GPIO_SPI_MISO SYSC_GPSR_SPI_MISO
 
 #define WRPC_FMC_I2C  0
 #define WRPC_SFP_I2C  1
@@ -127,21 +118,6 @@ void timer_init(uint32_t enable);
 
 extern volatile struct SYSCON_WB *syscon;
 
-/****************************
- *        GPIO
- ***************************/
-static inline void gpio_out(int pin, int val)
-{
-	if (val)
-		syscon->GPSR = pin;
-	else
-		syscon->GPCR = pin;
-}
-
-static inline int gpio_in(int pin)
-{
-	return syscon->GPSR & pin ? 1 : 0;
-}
 
 static inline int sysc_get_memsize(void)
 {
