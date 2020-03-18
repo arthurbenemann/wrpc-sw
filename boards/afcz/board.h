@@ -34,6 +34,14 @@
 #define AFCZ_I2C_MUX_CHANNEL_RTM 7
 
 #define RTM_4SFP_MUX_SFP0 0
+#define RTM_4SFP_MUX_SFP1 1
+#define RTM_4SFP_MUX_SFP2 2
+#define RTM_4SFP_MUX_SFP3 3
+#define RTM_4SFP_MUX_SFP4 4
+#define RTM_4SFP_MUX_SFP5 5
+#define RTM_4SFP_MUX_SFP6 6
+
+
 
 /* Board-specific parameters */
 #define TICS_PER_SECOND 1000

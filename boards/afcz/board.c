@@ -484,17 +484,27 @@ void sfp_setup()
 	gen_gpio_out( &pin_rtm_4sfp_i2c_reset_n, 1 );
 
 
-	pp_printf("pre-scan\n");
-	bb_i2c_scan( &board.si57x.master );
+	const int sfp_busses [] = 
+	{
+		RTM_4SFP_MUX_SFP0,
+		RTM_4SFP_MUX_SFP1,
+		RTM_4SFP_MUX_SFP2,
+		RTM_4SFP_MUX_SFP3,
+		RTM_4SFP_MUX_SFP4,
+		RTM_4SFP_MUX_SFP5,
+		RTM_4SFP_MUX_SFP6,
+		-1
+	};
+	int i;
 
-	// select SFP0
-	tca9548_select_channels( &board.si57x.master, 0x74, 1 << RTM_4SFP_MUX_SFP0 );
+	for( i = 0; sfp_busses[i] >= 0; i++ )
+	{
+		// select SFPx
+		tca9548_select_channels( &board.si57x.master, 0x74, 1 << sfp_busses[i] );
 
-	pp_printf("post-scan\n");
-	bb_i2c_scan( &board.si57x.master );
-
-	gen_gpio_set_dir( &pin_rtm_4sfp_sfp_tx_disable, 1 );
-	gen_gpio_out( &pin_rtm_4sfp_sfp_tx_disable, 0 );
+		gen_gpio_set_dir( &pin_rtm_4sfp_sfp_tx_disable, 1 );
+		gen_gpio_out( &pin_rtm_4sfp_sfp_tx_disable, 0 );
+	}
 
 
 
