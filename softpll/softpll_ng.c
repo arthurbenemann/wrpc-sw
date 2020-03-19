@@ -284,6 +284,8 @@ void spll_very_init()
 	PPSG = (volatile struct PPSG_WB *)BASE_PPS_GEN;
 	PPSG->ESCR = 0;
 	PPSG->CR = PPSG_CR_CNT_EN | PPSG_CR_CNT_RST | PPSG_CR_PWIDTH_W(PPS_WIDTH);
+
+	memset( &softpll, 0, sizeof(struct softpll_state ));
 }
 
 void spll_init(int mode, int slave_ref_channel, int flags)
@@ -305,6 +307,11 @@ void spll_init(int mode, int slave_ref_channel, int flags)
 
 	s->mode = mode;
 	s->delock_count = 0;
+
+	SPLL->OCER = 0;
+	SPLL->RCER = 0;
+	SPLL->ECCR = 0;
+	SPLL->EIC_IDR = 1;
 
 	SPLL->DAC_HPLL = 0;
 	SPLL->DAC_MAIN = 0;
