@@ -19,7 +19,7 @@
  */
 
 #include "dev/ad9520.h"
-#include "dev/i2c.h"
+#include "dev/bb_i2c.h"
 
 
 // Write to AD9510 via I2C
