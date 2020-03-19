@@ -31,7 +31,7 @@ obj-$(CONFIG_WR_NODE) += \
 	dev/temperature.o \
 	dev/pps_gen.o
 
-obj-$(CONFIG_TARGET_WR_SWITCH) += dev/timer-wrs.o dev/ad9516.o
+obj-$(CONFIG_TARGET_WR_SWITCH) += dev/timer-wrs.o dev/gpio.o
 obj-$(CONFIG_PUTS_SYSLOG) += dev/puts-syslog.o
 
 obj-$(CONFIG_LEGACY_EEPROM) += dev/eeprom.o
