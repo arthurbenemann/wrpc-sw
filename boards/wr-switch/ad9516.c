@@ -19,7 +19,8 @@
 
 #include "board.h"
 #include "dev/syscon.h"
-#include "dev/gpio-wrs.h"
+#include "dev/gpio.h"
+#include "gpio-wrs.h"
 
 #include "rt_ipc.h"
 
@@ -214,12 +215,12 @@ int ad9516_init(int scb_version, int ljd_present)
 	
 	void *spi_base = (void *)BASE_SPI;
 
-	gpio_out(GPIO_SYS_CLK_SEL, 0); /* switch to the standby reference clock, since the PLL is off after reset */
+	gen_gpio_out(&gpio_pin_sys_clk_sel, 0); /* switch to the standby reference clock, since the PLL is off after reset */
 
 	/* reset the PLL */
-	gpio_out(GPIO_PLL_RESET_N, 0);
+	gen_gpio_out(&gpio_pin_pll_reset_n, 0);
 	timer_delay(10);
-	gpio_out(GPIO_PLL_RESET_N, 1);
+	gen_gpio_out(&gpio_pin_pll_reset_n, 1);
 	timer_delay(10);
 	
 	/* Use unidirectional SPI mode */
@@ -273,9 +274,9 @@ int ad9516_init(int scb_version, int ljd_present)
 	
 	pp_printf("AD9516 locked.\n");
 
-	gpio_out(GPIO_SYS_CLK_SEL, 1); /* switch the system clock to the PLL reference */
-	gpio_out(GPIO_PERIPH_RESET_N, 0); /* reset all peripherals which use AD9516-provided clocks */
-	gpio_out(GPIO_PERIPH_RESET_N, 1);
+	gen_gpio_out(&gpio_pin_sys_clk_sel, 1); /* switch the system clock to the PLL reference */
+	gen_gpio_out(&gpio_pin_periph_reset_n, 0); /* reset all peripherals which use AD9516-provided clocks */
+	gen_gpio_out(&gpio_pin_periph_reset_n, 1);
 
 	return 0;
 }
