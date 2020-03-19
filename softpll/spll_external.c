@@ -52,7 +52,7 @@ void external_start(struct spll_external_state *s)
 
 int external_locked(volatile struct spll_external_state *s)
 {
-	if (!s->helper->ld.locked || !s->main->ld.locked ||
+	if (!s->helper->ld.locked || !s->main->locked ||
 			!(SPLL->ECCR & SPLL_ECCR_EXT_REF_LOCKED) ||  // ext PLL became unlocked
 			(SPLL->ECCR & SPLL_ECCR_EXT_REF_STOPPED))   // 10MHz unplugged (only SPEC)
 		return 0;
@@ -152,7 +152,7 @@ int external_align_fsm(volatile struct spll_external_state *s)
 
 		case ALIGN_STATE_START_MAIN:
 			SPLL->AL_CR = 2;
-			if(s->helper->ld.locked && s->main->ld.locked) {
+			if(s->helper->ld.locked && s->main->locked) {
 				PPSG->CR = PPSG_CR_CNT_EN | PPSG_CR_PWIDTH_W(10);
 				PPSG->ADJ_NSEC = 3;
 				PPSG->ESCR = PPSG_ESCR_SYNC;

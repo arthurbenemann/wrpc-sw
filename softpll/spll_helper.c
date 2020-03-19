@@ -25,6 +25,7 @@ void helper_init(struct spll_helper_state *s, int ref_channel)
 	s->pi.ki = 2;
 #endif
 	s->pi.anti_windup = 1;
+	s->pi.shift = PI_FRACBITS;
 
 	/* Phase branch lock detection */
 	s->ld.threshold = 200;

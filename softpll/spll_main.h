@@ -20,9 +20,10 @@ struct spll_main_state {
 
 	spll_pi_t pi;
 	spll_lock_det_t ld;
+	spll_gain_schedule_t* gain_sched;
 
 	int adder_ref, adder_out, tag_ref, tag_out, tag_ref_d, tag_out_d;
-
+	int locked; // locked flag
 	int phase_shift_target;
 	int phase_shift_current;
 	int id_ref, id_out;	/* IDs of the reference and the output channel */

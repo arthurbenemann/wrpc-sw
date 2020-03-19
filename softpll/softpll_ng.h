@@ -111,8 +111,9 @@ void spll_set_dac(int out_channel, int value);
 /* Returns current DAC sample value for output (out_channel) */
 int spll_get_dac(int out_channel);
 
+void spll_set_gain_schedule( spll_gain_schedule_t* sch );
+
 void check_vco_frequencies(void);
-int spll_measure_frequency(int osc);
 void spll_set_ptracker_average_samples(int channel, int nsamples);
 
 /*
