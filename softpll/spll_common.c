@@ -14,13 +14,36 @@
 #include <wrc.h>
 #include "softpll_ng.h"
 
+int gen_dither( int pi_shift )
+{
+	static const uint32_t lcg_m = 1103515245;
+	static const uint32_t lcg_i = 12345;	
+  	static uint32_t seed = 0;
+
+	seed *= lcg_m;
+	seed += lcg_i;
+	seed &= 0x7fffffffUL;
+
+  	int d = seed & (( 1<<pi_shift) - 1);
+	if ( seed & (1<<pi_shift))
+		return -d;
+	else
+		return d;
+	
+}
+
+
 int pi_update(spll_pi_t *pi, int x)
 {
-	int i_new, y;
+	int64_t i_new;
+	int y;
 	pi->x = x;
-	i_new = pi->integrator + x;
+	i_new = pi->integrator + (int64_t) pi->ki * x;
 
-	y = ((i_new * pi->ki + x * pi->kp) >> PI_FRACBITS) + pi->bias;
+	int64_t y_preround = (i_new + (int64_t) x * pi->kp) + ( 1 << (pi->shift - 1) );
+
+	int dither = pi->dithered ? gen_dither( pi->shift ) : 0;
+	y = ( (y_preround + dither) >> pi->shift) + pi->bias;
 
 	/* clamping (output has to be in <y_min, y_max>) and
 	   anti-windup: stop the integrator if the output is already
@@ -47,6 +70,7 @@ void pi_init(spll_pi_t *pi)
 {
 	pi->integrator = 0;
 	pi->y = pi->bias;
+	pi->dithered = 0;
 }
 
 /* Lock detector state machine. Takes an error sample (y) and checks
@@ -68,7 +92,7 @@ int ld_update(spll_lock_det_t *ld, int y)
 			ld->lock_cnt++;
 
 		if (ld->lock_cnt == ld->lock_samples) {
-			ld->lock_changed = 1;
+			ld->lock_changed = !ld->locked;
 			ld->locked = 1;
 			return 1;
 		}
@@ -76,9 +100,9 @@ int ld_update(spll_lock_det_t *ld, int y)
 		if (ld->lock_cnt > ld->delock_samples)
 			ld->lock_cnt--;
 
-		if (ld->lock_cnt == ld->delock_samples) {
+		if (ld->lock_cnt == ld->delock_samples && ld->locked) {
 			ld->lock_cnt = 0;
-			ld->lock_changed = 1;
+			ld->lock_changed = ld->locked;
 			ld->locked = 0;
 			return -1;
 		}
