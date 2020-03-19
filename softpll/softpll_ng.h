@@ -36,6 +36,11 @@
 #define SPLL_OSC_DMTD 1
 #define SPLL_OSC_EXT 2
 
+/* flags passed to spll_init() */
+#define SPLL_FLAG_ALIGN_PPS (1<<0) /* enables rephasing of the local oscillator to the external PPS signal */
+#define SPLL_FLAG_USE_LJD (1<<1)   /* enables the Low Jitter Daughterboard mezzanine (WRS V3 - specific) */
+
+
 /* Note on channel naming:
  - ref_channel means a PHY recovered clock input. There can be one (as in WR core) or more (WR switch).
  - out_channel means an output channel, which represents PLL feedback signal from a local, tunable oscillator. Every SPLL implementation
@@ -47,11 +52,11 @@
 
 /* 
 Initializes the SoftPLL to work in mode (mode). Extra parameters depend on choice of the mode:
-- for SPLL_MODE_GRAND_MASTER: non-zero (align_pps) value enables realignment of the WR reference rising edge to the 
+- for SPLL_MODE_GRAND_MASTER: flags == SPLL_FLAG_ALIGN_PPS value enables realignment of the WR reference rising edge to the 
   rising edge of 10 MHz external clock that comes immediately after a PPS pulse
 - for SPLL_MODE_SLAVE: (ref_channel) indicates the reference channel to which we are locking our PLL. 
 */
-void spll_init(int mode, int ref_channel, int align_pps);
+void spll_init(int mode, int ref_channel, int flags);
 void spll_very_init(void);
 
 /* Disables the SoftPLL and cleans up stuff */
@@ -150,7 +155,7 @@ struct spll_fifo_log {
 };
 #define FIFO_LOG_LEN 16
 
-extern int ljd_present;
+extern int spll_ljd_present;
 
 #endif // __SOFTPLL_NG_H
 
