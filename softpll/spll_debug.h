@@ -23,7 +23,6 @@ integral/proportional gains on the response of the system.
 #define DBG_TAG 2
 #define DBG_REF 5
 #define DBG_PERIOD 3
-#define DBG_EVENT 4
 #define DBG_SAMPLE_ID 6
 
 #define DBG_TAG_MASK 0xf0
