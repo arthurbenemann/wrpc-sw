@@ -3,7 +3,7 @@
 void spll_very_init(void)
 {}
 
-void spll_init(int mode, int ref_channel, int align_pps)
+void spll_init(int mode, int ref_channel, int flags)
 {}
 
 void spll_enable_ptracker(int ref_channel, int enable)

@@ -21,6 +21,8 @@
 
 static struct rts_pll_state pstate;
 
+extern int scb_ljd_present;
+
 static void clear_state(void)
 {
 	int i;
@@ -71,7 +73,14 @@ int rts_set_mode(int mode)
 		{
 			pp_printf("RT: Setting mode to %s.\n", options[i].desc);
 			if(options[i].do_init)
-				spll_init(options[i].mode_spll, 0, 1);
+			{
+				uint32_t flags = SPLL_FLAG_ALIGN_PPS;
+
+				if( scb_ljd_present )
+					flags |= SPLL_FLAG_USE_LJD;
+
+				spll_init(options[i].mode_spll, 0, flags);
+			}
 			else
 				spll_init(SPLL_MODE_DISABLED, 0, 0);
 		}
