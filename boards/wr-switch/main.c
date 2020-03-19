@@ -13,10 +13,10 @@
 #include "minipc.h"
 #include "revision.h"
 #include "system_checks.h"
-#include "dev/gpio-wrs.h"
-
+#include "gpio-wrs.h"
 
 int scb_ver = 33;		/* SCB version */
+int scb_ljd_present = 0; /* LJD presence */
 
 extern struct spll_stats stats;
 
@@ -34,16 +34,17 @@ int main(void)
 	check_reset();
 	stats.start_cnt++;
 	_endram = ENDRAM_MAGIC;
+	wrs_gpio_init();
 	console_init();
 	pp_printf("\n");
-	pp_printf("WR Switch Real Time Subsystem (c) CERN 2011 - 2014\n");
+	pp_printf("WR Switch Real Time Subsystem (c) CERN 2011 - 2020\n");
 	pp_printf("Revision: %s, built: %s %s.\n",
 	      build_revision, build_date, build_time);
 	pp_printf("SCB version: %d. %s\n", scb_ver,(scb_ver>=34)?"10 MHz SMC Output.":"" );
 	pp_printf("Start counter %d\n", stats.start_cnt);
 	/* Low-jitter Daughterboard detection */
-	ljd_present = gpio_in(GPIO_LJD_BOARD_DETECT);
-	if (ljd_present) {
+	scb_ljd_present = gen_gpio_in(&gpio_pin_ljd_board_detect);
+	if (scb_ljd_present) {
 		pp_printf("\n--- WRS Low jitter board detected. ---\n");
 		pp_printf("Allow 1 hour of warming up before starting measurements\n");
 	}
@@ -54,7 +55,7 @@ int main(void)
 		/* for sure problem is in calling second time ad9516_init,
 		 * but not only */
 	}
-	ad9516_init(scb_ver, ljd_present);
+	ad9516_init(scb_ver, scb_ljd_present);
 	rts_init();
 	rtipc_init();
 	spll_very_init();
