@@ -24,7 +24,8 @@ obj-$(CONFIG_EMBEDDED_NODE) += \
 	dev/spi_flash.o \
 	dev/clock_monitor.o \
 	dev/iuart.o \
-	dev/ltc6950.o
+	dev/ltc6950.o \
+	dev/ad9520.o
 
 obj-$(CONFIG_WR_NODE) += \
 	dev/temperature.o \
