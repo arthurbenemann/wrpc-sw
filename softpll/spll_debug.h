@@ -30,8 +30,10 @@ integral/proportional gains on the response of the system.
 #define DBG_EXT 0x40		/* Sample source: External Reference PLL */
 #define DBG_MAIN 0x0		/* ...          : Main PLL */
 
-#define DBG_EVT_START 1		/* PLL has just started */
-#define DBG_EVT_LOCKED 2	/* PLL has just become locked */
+#define DBG_EVT_START 1			/* PLL has just started */
+#define DBG_EVT_LOCKED 2		/* PLL has just become locked */
+#define DBG_EVT_GAIN_SWITCH 3	/* PLL switched the PI gain (scheduling) */
+
 
 /* Writes a parameter to the debug FIFO.
 

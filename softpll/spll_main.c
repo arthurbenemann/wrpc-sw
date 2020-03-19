@@ -30,6 +30,7 @@ void mpll_init(struct spll_main_state *s, int id_ref,
 	s->pi.y_max = 65530;
 	s->pi.anti_windup = 1;
 	s->pi.bias = 30000;
+	s->pi.shift = PI_FRACBITS;
 #if defined(CONFIG_WR_SWITCH)
 	if (spll_ljd_present) {
 		s->pi.kp = 2000;
@@ -54,10 +55,63 @@ void mpll_init(struct spll_main_state *s, int id_ref,
 	s->id_out = id_out;
 	s->dac_index = id_out - spll_n_chan_ref;
 
-	pll_verbose("ref %d out %d idx %x \n", s->id_ref, s->id_out, s->dac_index);
+	if( s->gain_sched )
+	{
+		s->gain_sched->current_stage = 0;
+		s->gain_sched->locked_d = 0;
+	}
 
 	pi_init((spll_pi_t *)&s->pi);
 	ld_init((spll_lock_det_t *)&s->ld);
+}
+
+static inline void mpll_handle_gain_schedule( struct spll_main_state *s )
+{
+	int do_update = 0;
+
+	if (!s->gain_sched)
+	{
+		s->locked = s->ld.locked;
+		return;
+	}
+
+	if( s->gain_sched->locked_d && !s->ld.locked ) // Pll out-of-lock? restart
+	{
+		s->gain_sched->current_stage = 0;
+		s->locked = 0;
+		do_update = 1;
+	}
+	else if ( !s->gain_sched->locked_d && s->ld.locked ) // PLL lock acquired? advance stage
+	{
+		spll_debug(DBG_EVENT | DBG_MAIN, DBG_EVT_GAIN_SWITCH, 0);
+		if ( s->gain_sched->current_stage == s->gain_sched->n_stages - 1 )
+		{
+			s->locked = 1;
+			s->gain_sched->locked_d = 1;
+			return;
+		}
+		else
+		{
+			s->gain_sched->current_stage++;
+		}
+
+		do_update = 1;
+	}
+
+	if( do_update )
+	{
+		spll_gain_schedule_item_t* stage = &s->gain_sched->stages[ s->gain_sched->current_stage ];
+		s->pi.kp = stage->kp;
+		s->pi.ki = stage->ki;
+		s->pi.shift = stage->shift;
+		s->ld.lock_samples = stage->lock_samples;
+		s->ld.lock_cnt = 0;
+		s->ld.lock_changed = 0;
+		s->ld.locked = 0;
+		s->gain_sched->locked_d = 0;
+	}
+
+	s->gain_sched->locked_d = s->ld.locked;
 }
 
 void mpll_start(struct spll_main_state *s)
@@ -74,6 +128,21 @@ void mpll_start(struct spll_main_state *s)
 	s->phase_shift_current = 0;
 	s->sample_n = 0;
 	s->enabled = 1;
+	s->locked = 0;
+
+
+	if( s->gain_sched )
+	{
+		s->gain_sched->current_stage = 0;
+		s->gain_sched->locked_d = 0;
+		s->pi.kp = s->gain_sched->stages[0].kp;
+		s->pi.ki = s->gain_sched->stages[0].ki;
+		s->pi.shift = s->gain_sched->stages[0].shift;
+		s->ld.lock_samples = s->gain_sched->stages[0].lock_samples;
+		s->ld.lock_cnt = 0;
+	}
+
+
 	pi_init((spll_pi_t *)&s->pi);
 	ld_init((spll_lock_det_t *)&s->ld);
 
@@ -130,7 +199,7 @@ int mpll_update(struct spll_main_state *s, int tag, int source)
 		   2**HPLL_N.
 
 		   Proper solution: tag sequence numbers */
-		if (s->ld.locked) {
+		if (s->locked) {
 			err &= (1 << HPLL_N) - 1;
 			if (err & (1 << (HPLL_N - 1)))
 				err |= ~((1 << HPLL_N) - 1);
@@ -159,7 +228,7 @@ int mpll_update(struct spll_main_state *s, int tag, int source)
 			s->adder_out -= MPLL_TAG_WRAPAROUND;
 		}
 
-		if (s->ld.locked) {
+		if (s->locked) {
 			if (s->phase_shift_current < s->phase_shift_target) {
 				s->phase_shift_current++;
 #if defined(CONFIG_WR_SWITCH)
@@ -177,7 +246,14 @@ int mpll_update(struct spll_main_state *s, int tag, int source)
 #endif
 			}
 		}
-		if (ld_update((spll_lock_det_t *)&s->ld, err))
+
+		ld_update((spll_lock_det_t *)&s->ld, err);
+		if( s->ld.lock_changed) 
+			spll_debug(DBG_EVENT | DBG_MAIN, DBG_EVT_LOCKED, 1);
+
+		mpll_handle_gain_schedule(s);
+
+		if(s->locked)
 			return SPLL_LOCKED;
 	}
 
@@ -219,3 +295,4 @@ int mpll_shifter_busy(struct spll_main_state *s)
 {
 	return s->phase_shift_target != s->phase_shift_current;
 }
+

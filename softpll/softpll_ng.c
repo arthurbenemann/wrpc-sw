@@ -186,7 +186,7 @@ static inline void sequencing_fsm(struct softpll_state *s, int tag_value, int ta
 
 		case SEQ_WAIT_MAIN:
 		{
-			if (s->mpll.ld.locked)
+			if (s->mpll.locked)
 			{
 				start_ptrackers(s);
 				s->seq_state = SEQ_READY;
@@ -205,7 +205,7 @@ static inline void sequencing_fsm(struct softpll_state *s, int tag_value, int ta
 				s->delock_count++;
 				s->seq_state = SEQ_CLEAR_DACS;
 				set_channel_status(s->mpll.id_ref, 0);
-			} else if (s->mode == SPLL_MODE_SLAVE && !s->mpll.ld.locked) {
+			} else if (s->mode == SPLL_MODE_SLAVE && !s->mpll.locked) {
 				s->delock_count++;
 				s->seq_state = SEQ_CLEAR_DACS;
 				set_channel_status(s->mpll.id_ref, 0);
@@ -501,7 +501,7 @@ void spll_show_stats()
 		     "alignment_state %d HL%d ML%d HY=%d MY=%d DelCnt=%d setpoint:%d\n",
 		      s->irq_count, statename,
 			      s->mode, s->ext.align_state,
-			      s->helper.ld.locked, s->mpll.ld.locked,
+			      s->helper.ld.locked, s->mpll.locked,
 			      s->helper.pi.y, s->mpll.pi.y,
 			      s->delock_count, s->mpll.phase_shift_current);
 }
@@ -556,7 +556,7 @@ static int spll_update_aux_clocks(void)
 
 		switch (s->seq_state) {
 			case AUX_DISABLED:
-				if (softpll.mpll.ld.locked && aux_locking_enabled(ch)) {
+				if (softpll.mpll.locked && aux_locking_enabled(ch)) {
 					pll_verbose("softpll: enabled aux channel %d\n", ch);
 					spll_start_channel(ch);
 					s->seq_state = AUX_LOCK_PLL;
@@ -583,7 +583,7 @@ static int spll_update_aux_clocks(void)
 				break;
 
 			case AUX_READY:
-				if (!softpll.mpll.ld.locked || !s->pll.dmtd.ld.locked) {
+				if (!softpll.mpll.locked || !s->pll.dmtd.ld.locked) {
 					pll_verbose("softpll: aux channel %d or mpll lost lock\n", ch);
 					set_channel_status(ch, 0); 
 					s->seq_state = AUX_DISABLED;
@@ -653,7 +653,7 @@ int spll_update()
 	stats.seq_state = softpll.seq_state;
 	stats.align_state = softpll.ext.align_state;
 	stats.H_lock = softpll.helper.ld.locked;
-	stats.M_lock = softpll.mpll.ld.locked;
+	stats.M_lock = softpll.mpll.locked;
 	stats.H_y = softpll.helper.pi.y;
 	stats.M_y = softpll.mpll.pi.y;
 	stats.del_cnt = softpll.delock_count;
@@ -662,7 +662,7 @@ int spll_update()
 	return ret != 0;
 }
 
-int spll_measure_frequency(int osc)
+static int spll_measure_frequency(int osc)
 {
 	volatile uint32_t *reg;
 
@@ -680,7 +680,7 @@ int spll_measure_frequency(int osc)
 			return 0;
 	}
 
-  //  timer_delay_ms(2000);
+    timer_delay_ms(2000);
     return (*reg ) & (0xfffffff);
 }
 
@@ -732,3 +732,11 @@ void check_vco_frequencies()
 	f_min = spll_measure_frequency(SPLL_OSC_EXT);
 	pll_verbose("EXT clock: Freq=%d Hz\n", f_min);
 }
+
+void spll_set_gain_schedule( spll_gain_schedule_t* sch )
+{
+	disable_irq();
+	softpll.mpll.gain_sched = sch;
+	enable_irq();
+}
+
