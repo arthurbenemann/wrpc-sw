@@ -35,12 +35,29 @@ static void wrpc_vuart_help(char *prog)
  *
  *
  */
+
+static uint32_t vuart_readl(struct mapping_desc *vuart, int reg)
+{
+	uint32_t r = *(volatile uint32_t *)( vuart->base + reg );
+
+	if(vuart->is_be)
+		return ntohl(r);
+	else
+		return r;
+}
+
+
+static void vuart_writel(struct mapping_desc *vuart, uint32_t value, int reg)
+{
+	if(vuart->is_be)
+		value = htonl(value);
+
+	*(volatile uint32_t *)( vuart->base + reg ) = value;
+}
+
 static int8_t wr_vuart_rx(struct mapping_desc *vuart)
 {
-	int rdr = ((volatile struct UART_WB *)vuart->base)->HOST_RDR;
-	if (vuart->is_be)
-		rdr = ntohl(rdr);
-
+	int rdr = vuart_readl( vuart, UART_REG_HOST_RDR );
 	return (rdr & UART_HOST_RDR_RDY) ? UART_HOST_RDR_DATA_R(rdr) : -1;
 }
 
@@ -50,15 +67,12 @@ static int8_t wr_vuart_rx(struct mapping_desc *vuart)
  */
 static void wr_vuart_tx(struct mapping_desc *vuart, char data)
 {
-	volatile struct UART_WB *ptr = (volatile struct UART_WB *)vuart->base;
-	int sr = (vuart->is_be) ? ntohl(ptr->SR) : ptr->SR;
-	uint32_t val;
+	int sr = vuart_readl( vuart, UART_REG_SR );
 
 	while(sr & UART_SR_RX_RDY)
-		sr = (vuart->is_be) ? ntohl(ptr->SR) : ptr->SR;
-	val = (vuart->is_be) ? htonl(UART_HOST_TDR_DATA_W(data)) :
-		UART_HOST_TDR_DATA_W(data);
-	ptr->HOST_TDR =  val;
+		 sr = vuart_readl( vuart, UART_REG_SR );
+
+	vuart_writel( vuart, UART_HOST_TDR_DATA_W(data), UART_REG_HOST_TDR );
 }
 
 /**
@@ -288,7 +302,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	vuart = dev_map(map_args, sizeof(struct UART_WB));
+	vuart = dev_map(map_args, getpagesize() );
 	if (!vuart) {
 		fprintf(stderr, "%s: vuart_open() failed: %s\n", argv[0],
 			strerror(errno));
