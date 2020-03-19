@@ -32,8 +32,7 @@ volatile struct SPLL_WB *SPLL = (volatile struct SPLL_WB*) ( BASE_SOFTPLL );
 volatile struct PPSG_WB *PPSG = (volatile struct PPSG_WB*) ( BASE_PPS_GEN );
 
 int spll_n_chan_ref, spll_n_chan_out;
-int ljd_present = 0;		/* Low-jitter Daughterboard presence indicator */
-
+int spll_ljd_present = 0;
 
 #define MAIN_CHANNEL (spll_n_chan_ref)
 
@@ -287,7 +286,7 @@ void spll_very_init()
 	PPSG->CR = PPSG_CR_CNT_EN | PPSG_CR_CNT_RST | PPSG_CR_PWIDTH_W(PPS_WIDTH);
 }
 
-void spll_init(int mode, int slave_ref_channel, int align_pps)
+void spll_init(int mode, int slave_ref_channel, int flags)
 {
 	static const char *modes[] = { "", "grandmaster", "freemaster", "slave", "disabled" };
 	volatile int dummy;
@@ -302,7 +301,8 @@ void spll_init(int mode, int slave_ref_channel, int align_pps)
 
 	spll_n_chan_ref = SPLL_CSR_N_REF_R(csr);
 	spll_n_chan_out = SPLL_CSR_N_OUT_R(csr);
-	
+	spll_ljd_present = (flags & SPLL_FLAG_USE_LJD ? 1 : 0);
+
 	s->mode = mode;
 	s->delock_count = 0;
 
@@ -345,7 +345,7 @@ void spll_init(int mode, int slave_ref_channel, int align_pps)
 		if(SPLL->ECCR & SPLL_ECCR_EXT_SUPPORTED) {
 			s->ext.helper = &s->helper;
 			s->ext.main = &s->mpll;
-			external_init(&s->ext, spll_n_chan_ref + spll_n_chan_out, align_pps);
+			external_init(&s->ext, spll_n_chan_ref + spll_n_chan_out, flags & SPLL_FLAG_ALIGN_PPS ? 1 : 0);
 		} else {
 			pll_verbose("softpll: attempting to enable GM mode on non-GM hardware.\n");
 			return;

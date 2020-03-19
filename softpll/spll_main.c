@@ -31,7 +31,7 @@ void mpll_init(struct spll_main_state *s, int id_ref,
 	s->pi.anti_windup = 1;
 	s->pi.bias = 30000;
 #if defined(CONFIG_WR_SWITCH)
-	if (ljd_present) {
+	if (spll_ljd_present) {
 		s->pi.kp = 2000;
 		s->pi.ki = 15;
 	} else {
