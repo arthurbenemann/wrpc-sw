@@ -53,6 +53,8 @@
 #define REF_CLOCK_PERIOD_PS 16000
 #define REF_CLOCK_FREQ_HZ 62500000
 
+#define NS_PER_CLOCK 16
+
 /* Baud rate of the builtin UART (does not apply to the VUART) */
 #define UART_BAUDRATE 115200ULL
 
