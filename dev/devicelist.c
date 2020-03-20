@@ -6,11 +6,15 @@
  *
  * Released according to the GNU GPL, version 2 or any later version.
  */
+
+#ifdef BOARD_USE_SDB
+
 #include <wrc.h>
 #define SDBFS_BIG_ENDIAN
 #include <libsdbfs.h>
 
 /* The following pointers are exported */
+
 unsigned char *BASE_MINIC;
 unsigned char *BASE_EP;
 unsigned char *BASE_SYSCON;
@@ -84,3 +88,5 @@ void sdb_find_devices(void)
 						    d->vid, d->did);
 	}
 }
+
+#endif
