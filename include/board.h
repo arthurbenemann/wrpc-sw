@@ -23,6 +23,8 @@
 #  include "boards/wr-switch/board.h"
 #elif defined(CONFIG_TARGET_AFCZ)
 #  include "boards/afcz/board.h"
+#elif defined(CONFIG_TARGET_ERTM14)
+#  include "boards/ertm14/board.h"
 #endif
 
 
