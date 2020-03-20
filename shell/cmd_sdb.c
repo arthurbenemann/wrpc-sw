@@ -20,6 +20,8 @@
 
 static int cmd_sdb(const char *args[])
 {
+	// fixme: rewrite...
+	#if 0
 	uint8_t i2c_adr = FMC_EEPROM_ADR;
 	int blocksize	= 1;
 
@@ -68,6 +70,7 @@ static int cmd_sdb(const char *args[])
 				storage_cfg.blocksize, 0);
 		return 0;
 	}
+	#endif
 	return -EINVAL;
 }
 
