@@ -201,7 +201,7 @@ int measure_t24p(uint32_t *value)
 	while (!ep_link_up(NULL))
 		timer_delay_ms(100);
 
-	spll_init(SPLL_MODE_SLAVE, 0, SPLL_FLAG_USE_LJD);
+	spll_init(SPLL_MODE_SLAVE, 0, 0);
 	pp_printf("Locking PLL...\n");
 	while (!spll_check_lock(0))
 		timer_delay_ms(100);
