@@ -67,9 +67,15 @@ static void wrc_initialize(void)
 {
 	uint8_t mac_addr[6];
 
+#ifdef CONFIG_USE_SDB
 	sdb_find_devices();
+#endif
+
 	console_init();
 	timer_init(1);
+	spll_very_init();
+	usleep_init();
+
 	wrc_board_early_init();
 
 	pp_printf("WR Core: starting up...\n");
@@ -92,8 +98,6 @@ static void wrc_initialize(void)
 	wrc_ptp_init();
 	/* try reading t24 phase transition from EEPROM */
 	calib_t24p(WRC_MODE_MASTER, &cal_phase_transition);
-	spll_very_init();
-	usleep_init();
 	shell_init();
 
 	wrc_ui_mode = UI_SHELL_MODE;
@@ -163,7 +167,9 @@ static int ui_update(void)
 void init_hw_after_reset(void)
 {
 	/* Ok, now init the devices so we can printf and delay */
+#ifdef CONFIG_USE_SDB
 	sdb_find_devices();
+#endif
 	uart_init_hw();
 	timer_init(1);
 }
