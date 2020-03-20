@@ -43,4 +43,37 @@ int tmo_init(timeout_t *tmo, uint32_t milliseconds);
 int tmo_restart(timeout_t *tmo);
 int tmo_expired(timeout_t *tmo);
 
+static inline int within_range(int x, int minval, int maxval, int wrap)
+{
+    int rv;
+
+    //printf("min %d max %d x %d ", minval, maxval, x);
+
+    while (maxval >= wrap)
+        maxval -= wrap;
+
+    while (maxval < 0)
+        maxval += wrap;
+
+    while (minval >= wrap)
+        minval -= wrap;
+
+    while (minval < 0)
+        minval += wrap;
+
+    while (x < 0)
+        x += wrap;
+
+    while (x >= wrap)
+        x -= wrap;
+
+    if (maxval > minval)
+        rv = (x >= minval && x <= maxval) ? 1 : 0;
+    else
+        rv = (x >= minval || x <= maxval) ? 1 : 0;
+
+    return rv;
+}
+
+
 #endif
