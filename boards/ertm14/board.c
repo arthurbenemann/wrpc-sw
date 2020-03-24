@@ -452,14 +452,13 @@ static void handle_iuart_request( uint8_t *buf, int size )
     }
 }
 
+/* Task polls requests coming from the eRTM14 IUART from the MMC and dispatches them to handlers */
 static void iuart_14_poll(void)
 {
-        int msg = iuart_recv_message(&board.iuart_14);
+    int msg = iuart_recv_message(&board.iuart_14);
 
     if (msg <= 0)
         return;
-
-    //pp_printf("RxM\n");
 
     if( msg == START_INSN_CHAR_VAL )
     {
@@ -472,6 +471,10 @@ static void ertm14_clock_monitor_init(void)
 {
     wb_cm_init(&board.ertm14_cmon, BASE_CLOCK_MONITOR, 5);
     wb_cm_set_ref_frequency( &board.ertm14_cmon, DMTD_CLOCK_FREQ_HZ );
+
+    /* use the DDMTD clock as the reference frequency (we don't care much about accuracy here)
+       as it's always available regardless of the configuration of the I2C/SPI chips. Prescaler of 2
+       and gate freq of 6.25 MHz give fast enough measurements with sufficient digits. */
     wb_cm_configure(&board.ertm14_cmon, ERTM14_CMON_CLK_DMTD, 2, 6250000 );
 }
 
@@ -757,19 +760,27 @@ int ertm14_init(void)
 
     memset( &board, 0, sizeof( struct ertm14_board ));
 
+
+    /* eRTM14 can work independently of eRTM15. If CONFIG_ERTM14_WITHOUT_ERTM15 is set,
+       the software will assume we don't have an eRTM15 sandwiched even if we do. */
 #ifdef CONFIG_ERTM14_WITHOUT_ERTM15
     board.mode |= ERTM14_MODE_WITHOUT_ERTM15;
 #endif
 
 
+    /* apply a default, sane configuration (initialize the config struct) */
     ertm14_config_init();
 
+    /* most of the I/Os of the slow peripherals (i2c, spi) are bitbanged. First, let's
+       initialize the GPIO controller they're connected to */
     wb_gpio_create( &board.gpio_aux, BASE_AUXWB );
 
+    /* enable the main VCXO */
     gen_gpio_set_dir(&pin_main_xo_en_n, 1);
     gen_gpio_out(&pin_main_xo_en_n, 0);
 
 
+    /* initialize the SPI bus for the main PLL (IC?) */
     bb_spi_create ( &board.spi_pll_main,
         &pin_pll_main_cs_n,
         &pin_pll_main_sdi,
@@ -778,7 +789,7 @@ int ertm14_init(void)
         AD951X_BIT_DELAY
         );
 
-    
+    /* initialize the SPI bus for the external clock (10 MHz input) PLL (IC?) */
     bb_spi_create ( &board.spi_pll_ext,
         &pin_pll_ext_cs_n,
         &pin_pll_ext_sdi,
@@ -787,7 +798,7 @@ int ertm14_init(void)
         AD951X_BIT_DELAY
         );
 
-    
+    /* initialize the SPI bus for the eRTM15 PLL (IC?) */
     bb_spi_create( &board.spi_ltc6950,
         &pin_ltc6950_ce_gen,
         &pin_ltc6950_sdi,
@@ -795,15 +806,15 @@ int ertm14_init(void)
         &pin_ltc6950_sclk,
         100 );
 
-    
-   bb_spi_create( &board.spi_ad9910_ref,
+    /* initialize the SPI bus for the eRTM15 REF DDS (IC?) */
+    bb_spi_create( &board.spi_ad9910_ref,
         NULL,
         &pin_ad9910_ref_sdio,
         &pin_ad9910_ref_sdio,
         &pin_ad9910_ref_sclk,
         100 );
 
-
+    /* initialize the SPI bus for the eRTM15 LO DDS (IC?) */
     bb_spi_create( &board.spi_ad9910_lo,
         NULL,
         &pin_ad9910_lo_sdio,
@@ -812,6 +823,7 @@ int ertm14_init(void)
         100 );
 
 
+    /* detect if the eRTM15 is present and decide how to configure the board */
     int ertm15_present = check_ertm15_presence();
 
     if( !ertm15_present )
@@ -823,20 +835,29 @@ int ertm14_init(void)
         ertm_verbose( "Configuring board WITH eRTM15 support.\n");
     
 
+    /* Initialize the clock monitor core - it monitors the frequencies of all clocks coming to the FPGA.
+       We use it to self-diagnose if the board's oscillators are working correctly. */
     ertm14_clock_monitor_init();
+
 
     if( ! (board.mode & ERTM14_MODE_WITHOUT_ERTM15 ) )
     {
+        /* Set up the eRTM15's PLL */
         ertm15_pll_init();
     }
 
+    /* Set up the eRTM14's PLLs (AD9516s) */
     ertm14_init_ref_clock_distribution();
 
+    /* At this point, we should have a stable CLK_REF coming from the PLL. Tell the FPGA to use it also as the system clock */
     ertm_verbose("Switching system clock to CLK_SYS\n");
     ertm14_switch_sys_clock(1);
 
+    /* Disable bit-banged OCXO control (used for debug) */
     gen_gpio_out(&pin_ocxo_override, 0);
 
+    /* Create a debug SPI master for testing the OCXO tuning. Normally it's driven in hardware by the SoftPLL, I left
+       this device for debugging purposes. It's active if GPIO pin ocxo_override == 1 */
     bb_spi_create( &board.spi_ocxo_dac,
         &pin_ocxo_cs_n,
         &pin_ocxo_data,
@@ -845,10 +866,10 @@ int ertm14_init(void)
         100 );
 
 
-/* Unique MAC address storage chips (eRTM14 - IC7 and IC8) */
+    /* Read unique MAC addresses from storage chips (eRTM14 - IC7 and IC8) */
     ertm14_init_mac_eeprom();
 
-/* RF Power Monitor ADC (eRTM15 - IC43) */
+    /* RF Power Monitor ADC (eRTM15 - IC43) */
     bb_spi_create( &board.spi_ad7888,
         &pin_pwrmon_adc_cs_n,
         &pin_pwrmon_adc_din,
@@ -866,27 +887,29 @@ int ertm14_init(void)
     /* RF distribution switches and shift registers controlling these (eRTM15 - IC26..28) */
         ertm15_rf_distr_init( &board.rf_distr, &board.pwrmon_adc );
 
-    /* Now that the clocks are ready, init the DDS synthesizers */
-
+    /* Now that the PLL clocks are ready, init the DDS synthesizers */
         ertm_verbose("Initializing DDSes\n");
         ertm15_init_dds();
 
+        /* Program the DDSes to some meaninfgul settings, say, 205 MHz */
         ad9910_program(&board.dds_ad9910_ref, 205000000ULL, 0, 0x0 );
         ad9910_program(&board.dds_ad9910_lo, 205000000ULL, 0, 0x0 );
     }
 
-/* Setup the SoftPLL for the OCXO */
+    /* Setup the SoftPLL for the OCXO we have */
     ertm14_spll_setup();
 
     if( ! (board.mode & ERTM14_MODE_WITHOUT_ERTM15 ) )
     {
-        /* Init CLKA/CLKB distribution */
+        /* Init CLKA/CLKB distribution (AD9520s) */
         ertm_verbose("Initializing CLKA/CLKB distribution...\n");
         ertm14_init_clkab_distribution();
         ertm_verbose("Calibrating DDS sync pulse...\n");
         ertm14_dds_sync_calibrate();
     }
 
+    /* Initialize the IUART which is responsible for the communication with the MMC.
+       Fixme: below is IUART14 which talks to the MMC on eRTM14. If eRTM15 is present, we need another IUART device. */
     ertm_verbose("Init IUART14\n");
 
     iuart_init_bare( &board.iuart_14, BASE_IUART_14, 115200 );
@@ -1059,20 +1082,23 @@ int ertm14_get_supported_clkab_freqs( int *freqs, int max_count )
 
 int wrc_board_early_init()
 {
-    /*initialize flash*/
+    /* initialize SPI flash */
 	flash_init();
 
-	/*initialize I2C bus*/
+	/* initialize I2C bus */
 	bb_i2c_init( &dev_i2c_fmc );
+   
+    /* init storage (we use the SPI flash on eRTM14) */
+    storage_spiflash_create( &wrc_storage_dev, &wrc_flash_dev );
+    storage_mount( &wrc_storage_dev );
 
-	/*init storage (Flash / W1 EEPROM / I2C EEPROM*/
-	storage_init( &dev_i2c_fmc, FMC_EEPROM_ADR);
-
+    /* reset the networking part of the WRCore and start the WR Endpoint */
    	net_rst();
 	ep_init();
 
     /* Sleep for 1s to make sure WRS v4.2 always realizes that
 	 * the link is down */
+    // fixme: not sure this is necessary in eRTM14 but it doesn't hurt - TW
 	timer_delay_ms(200);
 	ep_enable(1, 1);
 	timer_delay_ms(200);
