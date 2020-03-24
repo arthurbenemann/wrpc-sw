@@ -68,7 +68,6 @@
 #define HAS_GENSDBFS 0
 #endif
 
-extern uint32_t cal_phase_transition;
 extern uint8_t has_eeprom;
 
 struct s_sfpinfo {
@@ -91,6 +90,12 @@ typedef struct
 	} params[CAL_MAX_PARAMS];
 } wrc_cal_data_t;
 
+struct spi_flash_device;
+struct storage_device;
+
+extern struct storage_device wrc_storage_dev;
+
+void storage_spiflash_create(struct storage_device *dev, struct spi_flash_device *flash);
 
 void storage_init( struct i2c_bus *bus, int i2c_addr);
 
@@ -105,20 +110,6 @@ int storage_init_add(const char *args[]);
 int storage_init_show(void);
 int storage_init_readcmd(uint8_t *buf, uint8_t bufsize, uint8_t next);
 
-struct storage_config {
-	int memtype;
-	int valid;
-	uint32_t blocksize;
-	uint32_t baseadr;
-};
-
-extern struct storage_config storage_cfg;
-
-#define MEM_FLASH     0
-#define MEM_EEPROM    1
-#define MEM_1W_EEPROM 2
-#define MEM_FRAM      3
-#define SDBFS_REC 5
 
 int storage_read_hdl_cfg(void);
 
@@ -126,11 +117,5 @@ int storage_sdbfs_erase(int mem_type, uint32_t base_adr, uint32_t blocksize,
 	uint8_t i2c_adr);
 int storage_gensdbfs(int mem_type, uint32_t base_adr, uint32_t blocksize,
 	uint8_t i2c_adr);
-
-int storage_load_calibration(void);
-int storage_save_calibration(void);
-int storage_get_calibration_parameter( int id, uint32_t *valp );
-int storage_set_calibration_parameter( int id, uint32_t val );
-wrc_cal_data_t* storage_get_calibration_data(void);
 
 #endif
