@@ -97,11 +97,11 @@ extern unsigned char *BASE_EP;
 #define ERTM14_CLKAB_OUT_MAX_ID 11
 
 // clock monitor core channels (see ertm14_top.vhd for assignment to the clock monitor core)
-#define ERTM14_CMON_CLK_SYS 0
-#define ERTM14_CMON_CLK_DMTD 1
-#define ERTM14_CMON_CLK_PLL_FB 2
-#define ERTM14_CMON_CLK_REF 3
-#define ERTM14_CMON_CLK_RX 4
+#define ERTM14_CMON_CLK_SYS 0       /* system clock */
+#define ERTM14_CMON_CLK_DMTD 1      /* DDMTD sampling clock */
+#define ERTM14_CMON_CLK_PLL_FB 2    /* fixme: I don't remember, check in VHDL */
+#define ERTM14_CMON_CLK_REF 3       /* WR REF clock (from the VCXO/OCXO) */
+#define ERTM14_CMON_CLK_RX 4        /* RX clock (recovered by the WR PHY) */
 
 #define ERTM14_CLKAB_OUT_FRONT_PANEL 11
 
@@ -123,7 +123,6 @@ struct ertm14_board
     struct spi_bus spi_ad9910_lo;
     struct spi_bus spi_ocxo_dac;
     struct spi_bus spi_ad7888;
-    //struct spi_bus spi_flash;
     struct i2c_bus i2c_clka_distr;
     struct i2c_bus i2c_clkb_distr;
 
@@ -134,7 +133,6 @@ struct ertm14_board
     struct ad9910_device dds_ad9910_lo;
     struct ad7888_device pwrmon_adc;
     struct ertm15_rf_distribution_device rf_distr;
-    //struct spi_flash_device dev_flash;
     struct ad9520_device dev_clka_distr;
     struct ad9520_device dev_clkb_distr;
     struct i2c_bus i2c_mac_addr;
