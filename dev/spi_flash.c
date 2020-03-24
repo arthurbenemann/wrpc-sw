@@ -13,6 +13,9 @@
 
 static uint8_t spi_flash_rsr(struct spi_flash_device *dev);
 
+
+#define flash_dbg(...) pp_printf("[spi-flash] "); pp_printf(__VA_ARGS__)
+
 /*
  * Init function (just set the SPI pins for idle)
  */
@@ -21,13 +24,17 @@ void spi_flash_create(struct spi_flash_device *dev, struct spi_bus *bus)
 	int i;
 
 	dev->bus = bus;
-	dev->sector_size = 4096;
+	dev->sector_size = 16384;
+	
 
 	for(i=0;i < 10; i++)
 		(void) spi_flash_rsr( dev ); // make sure SPI bus is in known state
 
 	uint32_t id = spi_flash_read_id( dev );
 
+	dev->size = 1 << (( id >> 0 ) & 0xff);
+
+	flash_dbg("spi_flash: device ID = 0x%08x, size=%d bytes\n", id, dev->size);
 }
 
 /*
