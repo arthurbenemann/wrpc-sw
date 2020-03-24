@@ -83,9 +83,6 @@ static void wrc_initialize(void)
 
 	wrc_board_init();
 	
-	if (HAS_GENSDBFS)
-	storage_read_hdl_cfg();
-
 	net_rst();
 	ep_init();
 	/* Sleep for 1s to make sure WRS v4.2 always realizes that
