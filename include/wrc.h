@@ -18,7 +18,8 @@
 #include <util.h>
 #include <trace.h>
 #include <wrc-task.h>
-#define vprintf pp_vprintf
+#include <wrc-debug.h>
+
 #define sprintf pp_sprintf
 
 #ifndef min
