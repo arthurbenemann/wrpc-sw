@@ -277,3 +277,7 @@ $(addprefix $(DEFCONFIG_NAME),$(MAKEALL_COPY_LIST)):
 	@cp -f $(OUTPUT)$(suffix $@) $@
 
 makeall_copy: $(addprefix $(DEFCONFIG_NAME),$(MAKEALL_COPY_LIST))
+
+load: all
+		- killall -9 usb-bootloader.py
+		- ./tools/uart-bootloader/usb-bootloader.py -p $(PORT) wrc.bin
