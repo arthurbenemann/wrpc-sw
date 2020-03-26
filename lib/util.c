@@ -95,7 +95,7 @@ void cprintf(int color, const char *fmt, ...)
 	va_list ap;
 	pp_printf("\e[0%d;3%dm", color & C_DIM ? 2 : 1, color & 0x7f);
 	va_start(ap, fmt);
-	vprintf(fmt, ap);
+	pp_vprintf(fmt, ap);
 	va_end(ap);
 	pp_printf("\e[m");
 }
@@ -106,7 +106,7 @@ void pcprintf(int row, int col, int color, const char *fmt, ...)
 	pp_printf("\e[%d;%df", row, col);
 	pp_printf("\e[0%d;3%dm", color & C_DIM ? 2 : 1, color & 0x7f);
 	va_start(ap, fmt);
-	vprintf(fmt, ap);
+	pp_vprintf(fmt, ap);
 	va_end(ap);
 	pp_printf("\e[m");
 }
@@ -115,7 +115,7 @@ void __debug_printf(const char *fmt, ...)
 {
 	va_list ap;
 	va_start(ap, fmt);
-	vprintf(fmt, ap);
+	pp_vprintf(fmt, ap);
 	va_end(ap);
 }
 
