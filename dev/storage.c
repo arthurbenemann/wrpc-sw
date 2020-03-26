@@ -25,8 +25,6 @@
 #include <libsdbfs.h>
 #include <dev/fram.h>
 
-#define storage_dbg(...) pp_printf("[storage] " ); pp_printf(__VA_ARGS__)
-
 /*
  * This source file is a drop-in replacement of the legacy one: it manages
  * both i2c and w1 devices even if the interface is the old i2c-based one
