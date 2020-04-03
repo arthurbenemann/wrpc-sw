@@ -42,6 +42,7 @@
 #include "wrc_ptp.h"
 
 #include "ertm15_rf_distr.h"
+#include "rf_frame_transceiver.h"
 
 // allows the eRTM14 board to operate *without* the eRTM15 (no WR support, useful for IPMI testing)
 #undef CONFIG_ERTM14_WITHOUT_ERTM15
@@ -916,6 +917,10 @@ int ertm14_init(void)
 
     ertm_verbose("eRTM14/15 early init done\n");
 
+
+    ertm_verbose("Init RF transceiver\n");
+    wr_rf_frame_transceiver_create( &board.rf_xcvr, BASE_ERTM14_RF_FRAME_TRANSCEIVER );
+    
     ertm_init_complete = 1;
 
     return 0;
@@ -1111,6 +1116,23 @@ int wrc_board_init()
     return 0;
 }
 
+timeout_t streamer_tx_tmo;
+
+void streamers_init()
+{
+    tmo_init( &streamer_tx_tmo, 500 );
+}
+
+void streamers_poll()
+{
+    if (tmo_expired(&streamer_tx_tmo))
+    {
+        pp_printf("TxS\n");
+        wr_rf_frame_transceiver_send_single( &board.rf_xcvr );
+        tmo_restart(&streamer_tx_tmo);
+    }
+}
+
 extern int phy_calibration_poll();
 extern void phy_calibration_init();
 
@@ -1120,6 +1142,8 @@ int wrc_board_create_tasks()
     wrc_task_create( "clk-pps-sync", ertm14_clk_pps_sync_init, ertm14_clk_pps_sync_task );
     wrc_task_create( "ertm-config", NULL, ertm14_update_config_task );
     wrc_task_create( "phy-cal", phy_calibration_init, phy_calibration_poll );
+
+    wrc_task_create( "streamers", streamers_init, streamers_poll );
 
     return 0;
 }

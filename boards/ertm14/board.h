@@ -21,7 +21,7 @@
 #include "dev/spi_flash.h"
 #include "dev/bb_i2c.h"
 #include "dev/iuart.h"
-
+#include "rf_frame_transceiver.h"
 
 #define BOARD_MAX_CONSOLE_DEVICES 2
 
@@ -89,6 +89,9 @@ extern unsigned char *BASE_EP;
 #define BASE_ERTM14_DDS_SYNC_UNIT   (BASE_AUXWB + 0x300)
 #define BASE_CLOCK_MONITOR          (BASE_AUXWB + 0x100)
 #define BASE_ERTM14_10MHZ_ALIGN_UNIT       (BASE_AUXWB + 0x400)
+#define BASE_ERTM14_RF_FRAME_TRANSCEIVER       (BASE_AUXWB + 0x500)
+#define BASE_ERTM14_STREAMERS       (BASE_AUXWB + 0x600)
+
 
 #define ERTM14_RF_OUT_MIN_ID 4
 #define ERTM14_RF_OUT_MAX_ID 12
@@ -139,6 +142,7 @@ struct ertm14_board
     struct m24aa025_device m24_mac_ids[2];
     struct dds_sync_unit_device dds_sync_dev;
     struct iuart_device iuart_14;
+    struct wr_rf_frame_transceiver_device rf_xcvr;
 
     int mode;
 };
