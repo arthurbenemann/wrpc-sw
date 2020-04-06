@@ -5,6 +5,10 @@
 #include "dev/gpio.h"
 #include "dev/bb_i2c.h"
 #include "dev/clock_monitor.h"
+#include "dev/i2c_eeprom.h"
+#include "dev/syscon.h"
+#include "dev/bb_spi.h"
+#include "dev/spi_flash.h"
 
 #include "hw/si570_if_wb.h"
 
@@ -49,6 +53,7 @@ struct {
 	struct idt8v_clock_mux_device clk_mux;
 	struct pca9554_gpio_device gpio_rtm_main;
 	struct pca9554_gpio_device gpio_rtm_sfp;
+	struct i2c_eeprom_device mac_eeprom;
 } board;
 
 static void idt8v_read_regs( struct idt8v_clock_mux_device*dev )
@@ -505,10 +510,38 @@ void sfp_setup()
 }
 
 
+void afcz_read_persistent_mac()
+{
+	uint8_t mac_addr[6];
+
+	tca9548_select_channels( &board.si57x.master, 0x70, 1 << AFCZ_I2C_MUX_CHANNEL_RTM );
+	
+	i2c_eeprom_create( &board.mac_eeprom, &board.si57x.master, AFCZ_I2C_ADDR_MAC_EEPROM, 1 );
+	int n_read = i2c_eeprom_read( &board.mac_eeprom, AFCZ_I2C_EEPROM_MAC_OFFSET, mac_addr, 6);
+
+	if( n_read != 6 )
+	{
+		board_dbg("Failed to get MAC address from MAC EEPROM. Using fallback address.\n");
+		mac_addr[0] = 0x22;
+		mac_addr[1] = 0x33;
+		mac_addr[2] = 0x44;	/* fallback MAC if get_persistent_mac fails */
+		mac_addr[3] = 0x55;
+		mac_addr[4] = 0x66;
+		mac_addr[5] = 0x77;
+	}
+
+    ep_set_mac_addr( mac_addr );
+
+	board_dbg("Local MAC address: %02x:%02x:%02x:%02x:%02x:%02x\n",
+		mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3],
+		mac_addr[4], mac_addr[5]);
+}
+
 
 int wrc_board_early_init()
 {
 //	wb_gpio_create( &board.gpio_aux, 0x48000 );
+	board_dbg("WR Core AFCZ port starting up\n");    
 
 	wr_si57x_interface_init( &board.si57x, BASE_SI57X_INTERFACE, SI57X_I2C_ADDR );
 	tca9548_select_channels( &board.si57x.master, 0x70, 1 << AFCZ_I2C_MUX_CHANNEL_SI570 );
@@ -547,6 +580,8 @@ int wrc_board_early_init()
 
 	sfp_setup();
 
+	afcz_read_persistent_mac();
+
 	tca9548_select_channels( &board.si57x.master, 0x70, 1 << AFCZ_I2C_MUX_CHANNEL_SI570 );
 
 //	check_vco_freq( AFCZ_CM_CHANNEL_CLK_DMTD, AFCZ_CM_CHANNEL_CLK_SYS, set_dmtd_dac );
@@ -557,32 +592,24 @@ int wrc_board_early_init()
 
 int wrc_board_init()
 {
-	board_dbg("WR Core AFCZ port starting up\n");    
-
 	/* initialize I2C bus */
 	bb_i2c_init(&dev_i2c_fmc);
 
 	/* init storage (we use the SPI flash on eRTM14) */
-    //storage_spiflash_create( &wrc_storage_dev, &wrc_flash_dev );
-    //storage_mount( &wrc_storage_dev );
+	bb_spi_create( &spi_wrc_flash,
+		&pin_sysc_spi_ncs,
+		&pin_sysc_spi_mosi,
+		&pin_sysc_spi_miso,
+		&pin_sysc_spi_sclk, 10 );
 
-	uint8_t mac_addr[6];
+	spi_wrc_flash.rd_falling_edge = 1;
 
-	// fixme: take from MAC EEPROM
-	mac_addr[0] = 0x22;
-	mac_addr[1] = 0x33;
-	mac_addr[2] = 0x44;	/* fallback MAC if get_persistent_mac fails */
-	mac_addr[3] = 0x55;
-	mac_addr[4] = 0x66;
-	mac_addr[5] = 0x77;
-	
-    ep_set_mac_addr( mac_addr );
+	spi_flash_create( &wrc_flash_dev, &spi_wrc_flash );
 
-	board_dbg("Local MAC address: %02x:%02x:%02x:%02x:%02x:%02x\n",
-		mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3],
-		mac_addr[4], mac_addr[5]);
+	storage_spiflash_create( &wrc_storage_dev, &wrc_flash_dev );
+    storage_mount( &wrc_storage_dev );
 
-        return 0;
+    return 0;
 }
 
 int wrc_board_create_tasks()

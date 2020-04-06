@@ -39,6 +39,10 @@
 #define AFCZ_I2C_MUX_CHANNEL_SI570 2
 #define AFCZ_I2C_MUX_CHANNEL_RTM 7
 
+#define AFCZ_I2C_ADDR_MAC_EEPROM 0x59
+
+#define AFCZ_I2C_EEPROM_MAC_OFFSET 0x9a
+
 #define RTM_4SFP_MUX_SFP0 0
 #define RTM_4SFP_MUX_SFP1 1
 #define RTM_4SFP_MUX_SFP2 2
@@ -103,6 +107,9 @@ int board_update(void);
 #define SDB_ADDRESS 0x30000
 
 #define FMC_EEPROM_ADR 0x50
+
+#define SDBFS_REC 5
+ 
 
 void sdb_find_devices(void);
 void sdb_print_devices(void);
