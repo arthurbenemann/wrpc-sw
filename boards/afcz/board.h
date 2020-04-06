@@ -11,6 +11,12 @@
  */
 
 /* Fixed base addresses */
+
+#define BASE_UART                   0x20500
+#define BASE_SYSCON                 0x20400
+#define BASE_EP                     0x20100
+#define BASE_MINIC                  0x20000
+#define BASE_ONEWIRE                0x20600
 #define BASE_SOFTPLL 0x20200
 #define BASE_PPS_GEN 0x20300
 
@@ -95,13 +101,6 @@ int board_update(void);
 #define CONSOLE_UART_BAUDRATE 115200
 
 #define SDB_ADDRESS 0x30000
-
-extern unsigned char *BASE_MINIC;
-extern unsigned char *BASE_EP;
-extern unsigned char *BASE_SYSCON;
-extern unsigned char *BASE_UART;
-extern unsigned char *BASE_ONEWIRE;
-extern unsigned char *BASE_ETHERBONE_CFG;
 
 #define FMC_EEPROM_ADR 0x50
 
