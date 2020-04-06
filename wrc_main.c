@@ -82,7 +82,7 @@ static void wrc_initialize(void)
 	get_hw_name(wrc_hw_name);
 
 	wrc_board_init();
-	
+
 	net_rst();
 	ep_init();
 	/* Sleep for 1s to make sure WRS v4.2 always realizes that
@@ -92,6 +92,9 @@ static void wrc_initialize(void)
 
 	minic_init();
 	shw_pps_gen_init();
+
+	storage_load_calibration();
+
 	wrc_ptp_init();
 	/* try reading t24 phase transition from EEPROM */
 	calib_t24p(WRC_MODE_MASTER, &cal_phase_transition);
