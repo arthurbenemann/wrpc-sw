@@ -20,6 +20,7 @@ struct spi_flash_device
     struct spi_bus *bus;
     uint32_t sector_size;
     uint32_t size;
+    int use_4byte_addr;
 };
 
 

@@ -22,14 +22,21 @@ void spi_flash_create(struct spi_flash_device *dev, struct spi_bus *bus)
 
 	dev->bus = bus;
 	dev->sector_size = 16384;
-	
+	dev->use_4byte_addr = 0;
 
 	for(i=0;i < 10; i++)
 		(void) spi_flash_rsr( dev ); // make sure SPI bus is in known state
 
 	uint32_t id = spi_flash_read_id( dev );
 
-	dev->size = 1 << (( id >> 0 ) & 0xff);
+	if( (id & 0xff) == 0x20 )
+	{
+		dev->sector_size = 0x10000;
+		dev->use_4byte_addr = 1;
+		dev->size = 0x100000 * 64;
+	} else {
+		dev->size = 1 << (( id >> 0 ) & 0xff);
+	}
 
 	dev_dbg("spi_flash: device ID = 0x%08x, size=%d bytes\n", id, dev->size);
 }
@@ -103,8 +110,11 @@ void spi_flash_erase_sector(struct spi_flash_device *dev, uint32_t addr)
 	bb_spi_write(dev->bus, (addr & 0xFF), 8);
 	bb_spi_cs( dev->bus, 0 );
 
-	while (spi_flash_rsr(dev) & 0x01)
+	uint32_t rsr;
+
+	while (( rsr = spi_flash_rsr(dev) ) & 0x01)
 			;
+
 }
 
 int spi_flash_erase(struct spi_flash_device *dev, uint32_t addr, int count)
