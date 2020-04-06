@@ -109,13 +109,10 @@ int storage_init_erase(void);
 int storage_init_add(const char *args[]);
 int storage_init_show(void);
 int storage_init_readcmd(uint8_t *buf, uint8_t bufsize, uint8_t next);
-
+int storage_sdbfs_format( struct storage_device *dev, uint32_t base_addr );
+void storage_sdbfs_list();
 
 int storage_read_hdl_cfg(void);
 
-int storage_sdbfs_erase(int mem_type, uint32_t base_adr, uint32_t blocksize,
-	uint8_t i2c_adr);
-int storage_gensdbfs(int mem_type, uint32_t base_adr, uint32_t blocksize,
-	uint8_t i2c_adr);
 
 #endif
