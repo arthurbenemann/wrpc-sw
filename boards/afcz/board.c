@@ -1,10 +1,7 @@
 #include "board.h"
 
 #include "dev/syscon.h"
-#include "dev/flash.h"
 #include "dev/i2c.h"
-#include "dev/onewire.h"
-#include "dev/w1.h"
 #include "dev/gpio.h"
 #include "dev/bb_i2c.h"
 #include "dev/clock_monitor.h"
@@ -191,16 +188,19 @@ void si57x_get_xtal_frequency( struct wr_si57x_interface_device *dev, uint32_t* 
 	uint64_t n1 = ( ( (regs[0] & 0x1f) << 2) | (regs[1] >> 6) ) + 1;
 	uint64_t hs_div = (regs[0] >> 5) + 4;
 
-	pp_printf("RFREQ %08x %08x n1 %d hsdiv %d\n", (uint32_t) (rfreq >> 32), (uint32_t) rfreq, (int)n1, (int)hs_div );
+	board_dbg("Si57x: RFREQ %08x %08x n1 %d hsdiv %d\n", (uint32_t) (rfreq >> 32), (uint32_t) rfreq, (int)n1, (int)hs_div );
 
 	if( rfreq == 0 )
 	{
-		pp_printf("strange, rfreq == 0\n");
+		board_dbg("strange, rfreq == 0\n");
 		return;
 	}
 
 	uint64_t f0 = 100000000;
 	uint64_t f_xtal = (f0 * hs_div * n1 ) * ( 1ULL << 28 ) / rfreq;
+
+	
+	board_dbg("Si57x: xtal frequency = %d Hz\n", (int) f_xtal );
 
 	if( freq_hz )
 		*freq_hz = f_xtal;
@@ -268,17 +268,12 @@ int si57x_set_frequency( struct wr_si57x_interface_device *dev, uint32_t f_xtal,
 	dev->hsdiv = hsdiv;
 	dev->rfreq = rfreq;
 
-	pp_printf("n1 %d hsdiv %d %d\n", dev->n1, dev->hsdiv, hsdiv );
-
 	regs[12] = (dev->rfreq & 0xff);
 	regs[11] = ((dev->rfreq >> 8) & 0xff);
 	regs[10] = ((dev->rfreq >> 16) & 0xff);
 	regs[9] =  ((dev->rfreq >> 24) & 0xff);
 	regs[8] = ((dev->rfreq >>32) & 0x3f) | (((dev->n1-1) & 0xff) << 6);
 	regs[7] = (dev->hsdiv << 5) | ((dev->n1-1) >> 2);
-
-	for(i = 7; i <= 12 ; i++)
-		pp_printf("%02x ", regs[i]);
 
 	uint8_t r137, r135;
 
@@ -383,7 +378,6 @@ void pca9554_gpio_init( struct pca9554_gpio_device *dev, struct i2c_bus *bus, ui
 	dev->gpio.read_pin = pca9554_gpio_in;
 	dev->gpio.set_dir = pca9554_gpio_set_dir;
 	dev->gpio.set_out = pca9554_gpio_out;
-	pp_printf("GpioInit dev %p out %p\n", dev, dev->gpio.set_out );
 }
 
 void wr_si57x_interface_init( struct wr_si57x_interface_device *dev, void* base_addr, uint8_t i2c_addr )
@@ -472,7 +466,7 @@ const struct gpio_pin pin_rtm_4sfp_sfp_tx_disable = { &board.gpio_rtm_sfp.gpio, 
 
 void sfp_setup()
 {
-	pp_printf("Check RTM & init SFPs...\n");
+	board_dbg("Check RTM & init SFPs...\n");
 	//bb_i2c_scan( &board.si57x.master );
 	tca9548_select_channels( &board.si57x.master, 0x70, 1 << AFCZ_I2C_MUX_CHANNEL_RTM );
 	//bb_i2c_scan( &board.si57x.master );
@@ -562,39 +556,29 @@ int wrc_board_early_init()
 }
 
 int wrc_board_init()
-    {
-	pp_printf("WR Core AFCZ port starting up\n");    
+{
+	board_dbg("WR Core AFCZ port starting up\n");    
 
-/*initialize flash*/
-	flash_init();
-
-	/*initialize I2C bus*/
+	/* initialize I2C bus */
 	bb_i2c_init(&dev_i2c_fmc);
 
-	/*init storage (Flash / W1 EEPROM / I2C EEPROM*/
-	storage_init( &dev_i2c_fmc , FMC_EEPROM_ADR);
-
-        wrpc_w1_init();
-
-	wrpc_w1_bus.detail = ONEWIRE_PORT;
-	w1_scan_bus(&wrpc_w1_bus);
+	/* init storage (we use the SPI flash on eRTM14) */
+    //storage_spiflash_create( &wrc_storage_dev, &wrc_flash_dev );
+    //storage_mount( &wrc_storage_dev );
 
 	uint8_t mac_addr[6];
 
+	// fixme: take from MAC EEPROM
+	mac_addr[0] = 0x22;
+	mac_addr[1] = 0x33;
+	mac_addr[2] = 0x44;	/* fallback MAC if get_persistent_mac fails */
+	mac_addr[3] = 0x55;
+	mac_addr[4] = 0x66;
+	mac_addr[5] = 0x77;
+	
+    ep_set_mac_addr( mac_addr );
 
-	if (get_persistent_mac(ONEWIRE_PORT, mac_addr) == -1) {
-		pp_printf("Unable to determine MAC address\n");
-		mac_addr[0] = 0x22;
-		mac_addr[1] = 0x33;
-		mac_addr[2] = 0x44;	/* fallback MAC if get_persistent_mac fails */
-		mac_addr[3] = 0x55;
-		mac_addr[4] = 0x66;
-		mac_addr[5] = 0x77;
-	}
-
-        ep_set_mac_addr( mac_addr );
-
-	pp_printf("Local MAC address: %02x:%02x:%02x:%02x:%02x:%02x\n",
+	board_dbg("Local MAC address: %02x:%02x:%02x:%02x:%02x:%02x\n",
 		mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3],
 		mac_addr[4], mac_addr[5]);
 
