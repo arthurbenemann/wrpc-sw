@@ -20,57 +20,28 @@
 
 static int cmd_sdb(const char *args[])
 {
-	// fixme: rewrite...
-	#if 0
-	uint8_t i2c_adr = FMC_EEPROM_ADR;
 	int blocksize	= 1;
 
-	if (!args[0]) {
-		sdb_print_devices();
+	if (!args[0])
+	{
+		pp_printf("Command expected: format, ls");
 		return 0;
 	}
-	if (!args[1] || !HAS_GENSDBFS)
-		return -EINVAL;
+	
+	if (!strcasecmp(args[0], "format")) {
+		uint32_t base = 0;
+		if( !args[1] )
+			pp_printf("Formatting using default location\n");
+		else
+			base = atoi(args[1]);
 
-	/* interpret args[3] as i2c adr or blocksize depending on memory type */
-	if (args[3] && atoi(args[1]) == MEM_FLASH)
-		blocksize = atoi(args[3])*1024;
-	else if (args[3] && atoi(args[1]) == MEM_FRAM)
-		blocksize = atoi(args[3]);
-	else if (args[3])
-		i2c_adr = atoi(args[3]);
+		storage_sdbfs_format( &wrc_storage_dev, base );
+		return 0;
+	} else if ( !strcasecmp( args[0], "ls" )) {
+		storage_sdbfs_list();
+		return 0;
+	}
 
-	/* Writing SDBFS image */
-	if (!strcasecmp(args[0], "fs") && args[2]) {
-		/* if all the parameters were specified from the cmd line, we
-		 * use these */
-		storage_gensdbfs(atoi(args[1]), atoi(args[2]), blocksize,
-				i2c_adr);
-		return 0;
-	}
-	if (!strcasecmp(args[0], "fs") && storage_cfg.valid &&
-			(atoi(args[1]) == MEM_FLASH ||
-			 atoi(args[1]) == MEM_FRAM)) {
-		/* if available, we can also use Flash parameters specified with
-		 * HDL generics */
-		storage_gensdbfs(atoi(args[1]), storage_cfg.baseadr,
-				storage_cfg.blocksize, 0);
-		return 0;
-	}
-	/* Erasing SDBFS image */
-	if (!strcasecmp(args[0], "fse") && args[2]) {
-		storage_sdbfs_erase(atoi(args[1]), atoi(args[2]), blocksize,
-				i2c_adr);
-		return 0;
-	}
-	if (!strcasecmp(args[0], "fse") && storage_cfg.valid &&
-			(atoi(args[1]) == MEM_FLASH ||
-			 atoi(args[1]) == MEM_FRAM)) {
-		storage_sdbfs_erase(atoi(args[1]), storage_cfg.baseadr,
-				storage_cfg.blocksize, 0);
-		return 0;
-	}
-	#endif
 	return -EINVAL;
 }
 

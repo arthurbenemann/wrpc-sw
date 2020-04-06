@@ -32,13 +32,13 @@ static int cmd_calibration(const char *args[])
 		if (storage_phtrans(&trans, 0) > 0) {
 			pp_printf("Found phase transition in EEPROM: %dps\n",
 				trans);
-			cal_phase_transition = trans;
+
 			return 0;
 		} else {
 			pp_printf("Measuring t2/t4 phase transition...\n");
 			if (measure_t24p(&trans) < 0)
 				return -1;
-			cal_phase_transition = trans;
+
 			return storage_phtrans(&trans, 1);
 		}
 	}
