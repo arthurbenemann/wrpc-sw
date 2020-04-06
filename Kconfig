@@ -371,6 +371,12 @@ config TRACE_DEVICES_ENABLE
 	bool "Print device driver trace messages"
 	default n
 
+config TRACE_BOARD_ENABLE
+	depends on TRACE_MSGS
+	bool "Print board-specific trace messages"
+	default n
+
+
 config TRACE_ALL
 	int
 	default 1 if TRACE_ALL_ENABLE
@@ -391,6 +397,10 @@ config TRACE_DEVICES
 	default 1 if TRACE_DEVICES_ENABLE
 	default 0
 
+config TRACE_BOARD
+	int
+	default 1 if TRACE_BOARD_ENABLE
+	default 0
 
 comment "wrpc-sw is tainted if you change the following options"
 config DEVELOPER

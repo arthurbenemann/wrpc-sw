@@ -14,7 +14,7 @@
         {                                                                \
             va_list vargs;                                               \
             va_start(vargs, fmt);                                        \
-            pp_printf("[" #subsys_name "] ");                            \
+            pp_printf("[" subsys_name "] ");                            \
             pp_vprintf(fmt, vargs);                                      \
             va_end(vargs);                                               \
         }                                                                \
@@ -23,5 +23,6 @@
 WRC_DEFINE_TRACE_MSG(CONFIG_TRACE_MAIN, "main", main_dbg)
 WRC_DEFINE_TRACE_MSG(CONFIG_TRACE_STORAGE, "storage", storage_dbg)
 WRC_DEFINE_TRACE_MSG(CONFIG_TRACE_DEVICES, "dev", dev_dbg)
+WRC_DEFINE_TRACE_MSG(CONFIG_TRACE_BOARD, "board", board_dbg)
 
 #endif
