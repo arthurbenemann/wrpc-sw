@@ -15,8 +15,11 @@
 struct i2c_eeprom_device {
     struct i2c_bus *bus;
     uint8_t addr;
+    int offset_bytes;
 };
 
+
+int i2c_eeprom_create( struct i2c_eeprom_device *dev, struct i2c_bus *bus, uint8_t i2c_addr, int offset_bytes );
 int i2c_eeprom_read(struct i2c_eeprom_device *dev, int offset, void *buf, int count);
 int i2c_eeprom_write(struct i2c_eeprom_device *dev, int offset, void *buf, int count);
 int i2c_eeprom_erase(struct i2c_eeprom_device *dev, int offset, int count);
