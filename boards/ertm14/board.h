@@ -76,6 +76,8 @@ extern unsigned char *BASE_EP;
 
 #define FMC_EEPROM_ADR 0x50
 
+#define SDBFS_REC 5
+
 
 #define BASE_AUXWB                  0x48000
 #define BASE_SOFTPLL                0x40200
