@@ -18,11 +18,11 @@
 #define ASCII_TO_U32(a, b, c, d) ((((uint32_t)(a)&0xff) << 24) |     \
 									 (((uint32_t)(b)&0xff) << 16) | \
 									 (((uint32_t)(c)&0xff) << 8) |  \
-									 (((uint32_t)(d)&0xff) << 16))
+									 (((uint32_t)(d)&0xff) << 0))
 
 #define CAL_PARAM_T24P ASCII_TO_U32('t', '2', '4', 'p')
 #define CAL_PARAM_PHY_TARGET_TX_PHASE ASCII_TO_U32('l', 'p', 't', 'p')
-#define CAL_PARAM_DDS_LO_IOUPDATE_DELAY_PS ASCII_TO_U32('e', '1', '4', '0')
+#define CAL_PARAM_DDS_LO_IOUPDATE_DELAY_PS ASCII_TO_U32('e', '1', '4', '0')	
 #define CAL_PARAM_DDS_REF_IOUPDATE_DELAY_PS ASCII_TO_U32('e', '1', '4', '1')
 #define CAL_PARAM_CLKA_SYNC_DELAY_PS ASCII_TO_U32('e', '1', '4', '2')
 #define CAL_PARAM_CLKB_SYNC_DELAY_PS ASCII_TO_U32('e', '1', '4', '3')

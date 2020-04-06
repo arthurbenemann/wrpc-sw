@@ -709,6 +709,9 @@ int storage_set_calibration_parameter( int id, uint32_t val )
 	cal_data.params[cal_data.param_count].id = id;
 	cal_data.params[cal_data.param_count].value = val;
 	cal_data.param_count ++;
+
+
+	return storage_save_calibration();
 }
 
 wrc_cal_data_t* storage_get_calibration_data(void)
@@ -752,6 +755,9 @@ int storage_load_calibration(void)
 		goto out_close;
 	}
 
+
+	storage_dbg("Loaded %d calibration params, checksum = 0x%x\n", cal_data.param_count, cal_data.checksum );
+
 out_close:
 	sdbfs_close(&wrc_sdbfs);
 	return ret;
@@ -788,7 +794,7 @@ int storage_phtrans(uint32_t *valp, uint8_t write)
 	if( !write )
 		return storage_get_calibration_parameter( CAL_PARAM_T24P, valp );
 	else
-		return storage_set_calibration_parameter( CAL_PARAM_T24P, valp );
+		return storage_set_calibration_parameter( CAL_PARAM_T24P, *valp );
 }
 
 
@@ -907,7 +913,6 @@ static int sdbfs_read_callback(struct sdbfs *fs, int offset, void *buf, int coun
 static int sdbfs_write_callback(struct sdbfs *fs, int offset, void *buf, int count)
 {
 	struct storage_device *dev = (struct storage_device*) fs->drvdata;
-	pp_printf("write %x %d\n", offset, count );
 	return dev->rwops->write( dev, offset, buf, count );
 }
 
