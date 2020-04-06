@@ -41,6 +41,10 @@ config PPSI_FORCE_CONFIG
 	bool
 	default y
 
+config STACKSIZE
+	int
+	default 2048
+
 config PRINT_BUFSIZE
 	int
 	default 128
@@ -426,17 +430,17 @@ config HOST_PROCESS
 	depends on DEVELOPER
 	boolean "Build as a host process, to develop/debug network"
 
-config RAMSIZE
+config CUSTOM_RAMSIZE
 	depends on DEVELOPER && LM32
 	int "Size of the RAM in the FPGA for this program"
-	default 90112
+	default 131072
 	help
 	  The usual configuration for wrpc-sw is 0x16000 bytes
 	  (i.e. 88kB = 90112 bytes) but if your project has less or
 	  more features you may want to adjust the FPGA size and
 	  choose your preferred value here.
 
-config STACKSIZE
+config CUSTOM_STACKSIZE
 	depends on DEVELOPER && LM32
 	int "Size of the stack area needed by this program"
 	default 2048
@@ -445,7 +449,7 @@ config STACKSIZE
 	  we must also consider the stack, or the program will crash
 	  at run time. (However, we have a detector for overflows).
 
-config PRINT_BUFSIZE
+config CUSTOM_PRINT_BUFSIZE
 	depends on DEVELOPER
 	int "Size for the temporary output string of pp_printf"
 	default 128
