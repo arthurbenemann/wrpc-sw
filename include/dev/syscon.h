@@ -99,25 +99,15 @@ extern struct i2c_bus dev_i2c_fmc;
 extern struct i2c_bus dev_i2c_sfp;
 extern struct spi_flash_device wrc_flash_dev;
 
-#define WRPC_FMC_I2C  0
-#define WRPC_SFP_I2C  1
 #define FMC_I2C_DELAY 15
 #define SFP_I2C_DELAY 300
 
-struct s_i2c_if {
-	uint32_t scl;
-	uint32_t sda;
-	uint32_t loop_delay;
-};
-
-extern struct s_i2c_if i2c_if[2];
-
 void timer_init(uint32_t enable);
-
-
 
 extern volatile struct SYSCON_WB *syscon;
 
+extern struct spi_bus spi_wrc_flash;
+extern struct spi_flash_device wrc_flash_dev;
 
 static inline int sysc_get_memsize(void)
 {
