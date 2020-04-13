@@ -1111,6 +1111,8 @@ int wrc_board_early_init()
 
 int wrc_board_init()
 {
+    ertm14_shell_init();
+
     return 0;
 }
 
