@@ -164,8 +164,6 @@ struct ertm14_board
 
     int mode;
     int dds_resync_count;
-    int dds_resync_source;
-
 };
 
 struct ertm14_dds_config
@@ -176,6 +174,7 @@ struct ertm14_dds_config
     int amp_power;
     int ampl_factor;
     int sync_source;
+    int sync_count;
 };
 
 struct ertm14_board_config
@@ -199,5 +198,6 @@ int ertm14_apply_config(int config_id);
 int ertm14_get_current_config_id(void);
 int ertm14_is_config_ready(void);
 int ertm14_get_clkab_divider( int freq );
+void ertm14_shell_init(void);
 
 #endif /* __BOARD_WRC_H */
