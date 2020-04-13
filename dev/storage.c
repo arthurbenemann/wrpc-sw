@@ -49,23 +49,6 @@ uint8_t has_eeprom = 0;
 
 struct storage_device;
 
-struct storage_rwops
-{
-	int (*read)( struct storage_device*, int offset, void *buf, int count );
-	int (*write)( struct storage_device*, int offset, void *buf, int count );
-	int (*erase)( struct storage_device*, int offset, int count );
-};
-
-struct storage_device
-{
-	char *name;
-	void *priv;
-	uint32_t block_size;
-	uint32_t size;
-	int32_t *entry_points;
-	struct storage_rwops *rwops;
-	int flags;
-};
 
 
 struct storage_fram_priv
@@ -936,6 +919,7 @@ int storage_mount( struct storage_device *dev )
 	{
 		if( dev->entry_points[i] < dev->size )
 		{
+			storage_dbg("try entry point 0x%08x\n", dev->entry_points[i] );
 			dev->rwops->read( dev, dev->entry_points[i], (void *)&magic, sizeof(magic) );
 			if (magic == SDB_MAGIC)
 				break;
