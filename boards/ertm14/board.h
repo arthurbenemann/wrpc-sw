@@ -166,7 +166,7 @@ struct ertm14_board
     int dds_resync_count;
 };
 
-struct ertm14_dds_config
+struct ertm14_dds_state
 {
     uint32_t ftw;
     uint8_t out_state[ERTM14_RF_OUT_MAX_ID + 1];
@@ -177,11 +177,11 @@ struct ertm14_dds_config
     int sync_count;
 };
 
-struct ertm14_board_config
+struct ertm14_board_state
 {
     int valid;
-    struct ertm14_dds_config ref;
-    struct ertm14_dds_config lo;
+    struct ertm14_dds_state ref;
+    struct ertm14_dds_state lo;
     uint32_t clka_freq_hz[ERTM14_CLKAB_OUT_MAX_ID + 1];
     uint32_t clkb_freq_hz[ERTM14_CLKAB_OUT_MAX_ID + 1];
     uint32_t clka_enable_mask;
@@ -193,7 +193,7 @@ struct ertm14_board_config
 extern struct ertm14_board board;
 
 void ertm14_config_init(void);
-struct ertm14_board_config *ertm14_get_config(int config_id);
+struct ertm14_board_state *ertm14_get_state_for_config(int config_id);
 int ertm14_apply_config(int config_id);
 int ertm14_get_current_config_id(void);
 int ertm14_is_config_ready(void);

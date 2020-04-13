@@ -36,7 +36,7 @@ static const char *get_rf_out_state_string(int state)
 }
 
 
-static void dump_dds_state( const char *name, struct ertm14_dds_config *cfg ) 
+static void dump_dds_state( const char *name, struct ertm14_dds_state *cfg ) 
 {
     int i;
     pp_printf("%s DDS FTW:                0x%08x\n", name, cfg->ftw);
@@ -49,7 +49,7 @@ static void dump_dds_state( const char *name, struct ertm14_dds_config *cfg )
         );
 }
 
-static void dump_config( int id, struct ertm14_board_config *cfg )
+static void dump_config( int id, struct ertm14_board_state *cfg )
 {
     int i = 0;
 
@@ -97,12 +97,12 @@ static void set_dds_param(int param, const char *name, const char *value, const 
     int is_lo = !strcasecmp( name , "lo");
     int is_ref = !strcasecmp( name , "ref");
     
-    struct ertm14_board_config *cfg = ertm14_get_config(selected_config);
+    struct ertm14_board_state *cfg = ertm14_get_state_for_config(selected_config);
     cfg->valid = 1;
 
     if(is_lo || is_ref)
     {
-        struct ertm14_dds_config *dcfg = is_lo ? &cfg->lo : &cfg->ref;
+        struct ertm14_dds_state *dcfg = is_lo ? &cfg->lo : &cfg->ref;
 
         switch(param)
         {
@@ -131,7 +131,7 @@ static void set_clk_param(int param, const char *name, const char *channel, cons
     int is_clka = !strcasecmp( name , "clka");
     int is_clkb = !strcasecmp( name , "clkb");
     
-    struct ertm14_board_config *cfg = ertm14_get_config(selected_config);
+    struct ertm14_board_state *cfg = ertm14_get_state_for_config(selected_config);
     cfg->valid = 1;
 
     
@@ -282,7 +282,7 @@ static int cmd_ertm(const char *args[])
 
 
     } else if (!strcasecmp(args[0], "show-config") ) {
-        dump_config( i, ertm14_get_config( selected_config ) );
+        dump_config( i, ertm14_get_state_for_config( selected_config ) );
 
     } else if (!strcasecmp(args[0], "activate-config") ) {
         if( !args[1] )
@@ -291,7 +291,7 @@ static int cmd_ertm(const char *args[])
         }
         int id = atoi(args[1]);
         pp_printf("Activating configuration %d:\n", id );
-        dump_config( id, ertm14_get_config( id ) );
+        dump_config( id, ertm14_get_state_for_config( id ) );
 
         ertm14_apply_config( id );
 
