@@ -39,5 +39,6 @@ extern int shell_is_interacting;
 
 void shell_boot_script(void);
 void shell_show_build_init(void);
+void shell_register_command( struct wrc_shell_cmd* cmd );
 
 #endif

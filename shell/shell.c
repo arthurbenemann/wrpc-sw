@@ -362,7 +362,7 @@ void shell_show_build_init(void)
 }
 
 
-static void shell_register_command( struct wrc_shell_cmd* cmd )
+void shell_register_command( struct wrc_shell_cmd* cmd )
 {
 	if( n_cmds >= SHELL_MAX_COMMANDS )
 	{
@@ -387,5 +387,6 @@ static void shell_register_commands()
 	REGISTER_WRC_COMMAND(mac);
 	REGISTER_WRC_COMMAND(sdb);
 	REGISTER_WRC_COMMAND(calibration);
+	REGISTER_WRC_COMMAND(diag);
 }
 
