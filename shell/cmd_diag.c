@@ -9,7 +9,7 @@
 
 #include "shell.h"
 #include <wrc.h>
-#include <syscon.h>
+#include <dev/syscon.h>
 #include <string.h>
 #include <errno.h>
 
@@ -19,12 +19,30 @@ static int cmd_diag(const char *args[])
 	uint32_t addr, val;
 	int ret = 0;
 
+	diag_read_info(&id, &ver, &nrw, &nro);
+
 	if (!args[0]) {
-		diag_read_info(&id, &ver, &nrw, &nro);
 		pp_printf("Aux diagnostics info:\n");
 		pp_printf("id: %d.%d, r/w words: %d, r/o words: %d\n", id, ver,
 				nrw, nro);
 		return 0;
+	}
+
+	int all = strcasecmp(args[0], "all");
+
+	if (!strcasecmp(args[0], "all"))
+	{
+		int i;
+		for(i=0; i<nro; i++ )
+		{
+			ret = diag_read_word(i, DIAG_RO_BANK, &val);
+			pp_printf("RO word %-03d = 0x%08x\n", i, val );
+		}
+		for(i=0; i<nrw; i++ )
+		{
+			ret = diag_read_word(i, DIAG_RW_BANK, &val);
+			pp_printf("RW word %-03d = 0x%08x\n", i, val );
+		}
 	}
 
 	if (!strcasecmp(args[0], "ro") && args[1]) {
