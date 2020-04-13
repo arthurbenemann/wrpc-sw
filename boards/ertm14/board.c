@@ -41,6 +41,8 @@
 #include "storage.h"
 #include "wrc_ptp.h"
 
+#include <hw/wr_streamers.h>
+
 #include "ertm15_rf_distr.h"
 #include "rf_frame_transceiver.h"
 
@@ -59,16 +61,6 @@
 #define ERTM14_IUART_MSG_IPMI_SNMP_RESP 5
 
 #define ERTM14_PSYNC_DEBUG
-
-#ifdef ERTM14_PSYNC_DEBUG
-    #define psync_dbg(...) pp_printf("[psync-dbg]"__VA_ARGS__)
-#else
-    #define psync_dbg(...)
-#endif
-
-#define ertm_verbose(...) pp_printf("[ertm] "__VA_ARGS__)
-#define ertm_error(...) pp_printf("ERROR [ertm] "__VA_ARGS__)
-
 
 struct ertm14_board board;
 static struct ertm14_board_config ertm14_configs[ ERTM14_MAX_CONFIGS ];
@@ -207,7 +199,7 @@ static void ertm14_spll_setup(void)
 }
 
 
-static int ad9910_set_fine_delay( struct dds_sync_unit_channel *ch, int n_taps )
+static int ad9910_set_fine_delay( struct fine_pulse_gen_channel *ch, int n_taps )
 {
     struct ad9910_device *dev;
 
@@ -223,7 +215,7 @@ static int ad9910_set_fine_delay( struct dds_sync_unit_channel *ch, int n_taps )
 static void ertm14_dds_trigger_ioupdate( struct ad9910_device *dev )
 {
     int channel = (dev == &board.dds_ad9910_ref ? ERTM14_DDS_IOUPDATE_REF : ERTM14_DDS_IOUPDATE_LO);
-    dds_sync_force_pulse( &board.dds_sync_dev, channel );
+    fine_pulse_gen_force_pulse( &board.dds_sync_dev, channel );
 }
 
 static int ertm14_switch_sys_clock( int use_sys_from_pll )
@@ -267,24 +259,24 @@ static int ertm14_dds_sync_init(void)
         pp_printf("\n");
     }
 
-    dds_sync_unit_create( &board.dds_sync_dev, BASE_ERTM14_DDS_SYNC_UNIT );
+    fine_pulse_gen_create( &board.dds_sync_dev, BASE_ERTM14_DDS_SYNC_UNIT );
 
 // Sync_in: continuous waveform, use external delay line (inside AD9910)
     
     // produce a continuos sync clock for the DDSes
-    dds_sync_unit_setup_channel ( &board.dds_sync_dev, ERTM14_DDS_SYNC_LO, 1, ch_delays[ERTM14_DDS_SYNC_LO], 0, 1 );
-    dds_sync_unit_setup_channel ( &board.dds_sync_dev, ERTM14_DDS_SYNC_REF, 1, ch_delays[ERTM14_DDS_SYNC_REF], 0, 1 );
-    dds_sync_unit_set_external_fine_delay( &board.dds_sync_dev, ERTM14_DDS_SYNC_REF, 75, ad9910_set_fine_delay );
-    dds_sync_unit_set_external_fine_delay( &board.dds_sync_dev, ERTM14_DDS_SYNC_LO, 75, ad9910_set_fine_delay );
+    fine_pulse_gen_setup_channel ( &board.dds_sync_dev, ERTM14_DDS_SYNC_LO, 1, ch_delays[ERTM14_DDS_SYNC_LO], FINE_PULSE_GEN_CONTINUOUS );
+    fine_pulse_gen_setup_channel ( &board.dds_sync_dev, ERTM14_DDS_SYNC_REF, 1, ch_delays[ERTM14_DDS_SYNC_REF], FINE_PULSE_GEN_CONTINUOUS );
+    fine_pulse_gen_set_external_fine_delay( &board.dds_sync_dev, ERTM14_DDS_SYNC_REF, 75, ad9910_set_fine_delay );
+    fine_pulse_gen_set_external_fine_delay( &board.dds_sync_dev, ERTM14_DDS_SYNC_LO, 75, ad9910_set_fine_delay );
 
 // DDS IOupdate: internal delay line, single-shot mode, positive polarity
-    pp_printf("ref delay = %d lo delay = %d\n", ch_delays[ERTM14_DDS_IOUPDATE_REF], ch_delays[ERTM14_DDS_IOUPDATE_LO] );
-    dds_sync_unit_setup_channel ( &board.dds_sync_dev, ERTM14_DDS_IOUPDATE_LO, 1, ch_delays[ERTM14_DDS_IOUPDATE_LO], 0, 0 );
-    dds_sync_unit_setup_channel ( &board.dds_sync_dev, ERTM14_DDS_IOUPDATE_REF, 1, ch_delays[ERTM14_DDS_IOUPDATE_REF], 0, 0 );
+    board_dbg("ref delay = %d lo delay = %d\n", ch_delays[ERTM14_DDS_IOUPDATE_REF], ch_delays[ERTM14_DDS_IOUPDATE_LO] );
+    fine_pulse_gen_setup_channel ( &board.dds_sync_dev, ERTM14_DDS_IOUPDATE_LO, 1, ch_delays[ERTM14_DDS_IOUPDATE_LO], 0);
+    fine_pulse_gen_setup_channel ( &board.dds_sync_dev, ERTM14_DDS_IOUPDATE_REF, 1, ch_delays[ERTM14_DDS_IOUPDATE_REF], 0 );
 
 // CLKAB Sync: internal delay line, single-shot mode, negative polarity
-    dds_sync_unit_setup_channel ( &board.dds_sync_dev, ERTM14_PLL_SYNC_CLKA, 1, ch_delays[ERTM14_PLL_SYNC_CLKA], 1, 0 );
-    dds_sync_unit_setup_channel ( &board.dds_sync_dev, ERTM14_PLL_SYNC_CLKB, 1, ch_delays[ERTM14_PLL_SYNC_CLKB], 1, 0 );
+    fine_pulse_gen_setup_channel ( &board.dds_sync_dev, ERTM14_PLL_SYNC_CLKA, 1, ch_delays[ERTM14_PLL_SYNC_CLKA], FINE_PULSE_GEN_NEGATIVE );
+    fine_pulse_gen_setup_channel ( &board.dds_sync_dev, ERTM14_PLL_SYNC_CLKB, 1, ch_delays[ERTM14_PLL_SYNC_CLKB], FINE_PULSE_GEN_NEGATIVE );
     
     return 0;
 }
@@ -325,13 +317,13 @@ static void ertm14_dds_sync_calibrate(void)
     {
 //        pp_printf("Sync [fine %d]! ", fine);
 
-        dds_sync_unit_setup_channel ( &board.dds_sync_dev, ERTM14_DDS_SYNC_LO, 1, 100000 + fine, 0, 1 );
-        dds_sync_unit_setup_channel ( &board.dds_sync_dev, ERTM14_DDS_SYNC_REF, 1, 100000 + fine, 0, 1 );
-        dds_sync_unit_set_external_fine_delay( &board.dds_sync_dev, ERTM14_DDS_SYNC_REF, 75, ad9910_set_fine_delay );
-        dds_sync_unit_set_external_fine_delay( &board.dds_sync_dev, ERTM14_DDS_SYNC_LO, 75, ad9910_set_fine_delay );
+        fine_pulse_gen_setup_channel ( &board.dds_sync_dev, ERTM14_DDS_SYNC_LO, 1, 100000 + fine, FINE_PULSE_GEN_CONTINUOUS );
+        fine_pulse_gen_setup_channel ( &board.dds_sync_dev, ERTM14_DDS_SYNC_REF, 1, 100000 + fine, FINE_PULSE_GEN_CONTINUOUS );
+        fine_pulse_gen_set_external_fine_delay( &board.dds_sync_dev, ERTM14_DDS_SYNC_REF, 75, ad9910_set_fine_delay );
+        fine_pulse_gen_set_external_fine_delay( &board.dds_sync_dev, ERTM14_DDS_SYNC_LO, 75, ad9910_set_fine_delay );
 
-        dds_sync_unit_trigger( &board.dds_sync_dev, channel_mask, 1 );
-        while ( !dds_sync_unit_poll( &board.dds_sync_dev, channel_mask ) );
+        fine_pulse_gen_trigger( &board.dds_sync_dev, channel_mask, 1 );
+        while ( !fine_pulse_gen_is_triggered( &board.dds_sync_dev, channel_mask ) );
 
         windows[0].smp_err = !!gen_gpio_in( &pin_ad9910_lo_sync_smp_err );
         windows[1].smp_err = !!gen_gpio_in( &pin_ad9910_ref_sync_smp_err );
@@ -378,8 +370,8 @@ static void ertm14_dds_sync_calibrate(void)
         windows[1].best_start, windows[1].best_length, windows[1].setpoint
     );
 
-    dds_sync_unit_setup_channel ( &board.dds_sync_dev, ERTM14_DDS_SYNC_LO, 1, 100000 + windows[0].setpoint, 0, 1 );
-    dds_sync_unit_setup_channel ( &board.dds_sync_dev, ERTM14_DDS_SYNC_REF, 1, 100000 + windows[1].setpoint, 0, 1 );
+    fine_pulse_gen_setup_channel ( &board.dds_sync_dev, ERTM14_DDS_SYNC_LO, 1, 100000 + windows[0].setpoint, FINE_PULSE_GEN_CONTINUOUS );
+    fine_pulse_gen_setup_channel ( &board.dds_sync_dev, ERTM14_DDS_SYNC_REF, 1, 100000 + windows[1].setpoint, FINE_PULSE_GEN_CONTINUOUS );
 
     
         
@@ -389,34 +381,30 @@ static int ertm14_align_clocks(void)
 {
     uint32_t channel_mask = ( 1 << ERTM14_DDS_SYNC_LO ) | ( 1<< ERTM14_DDS_SYNC_REF );
 
-    dds_sync_unit_trigger( &board.dds_sync_dev, channel_mask, 1 );
-    while ( !dds_sync_unit_poll( &board.dds_sync_dev, channel_mask ) );
+    fine_pulse_gen_trigger( &board.dds_sync_dev, channel_mask, 1 );
+    while ( !fine_pulse_gen_is_triggered( &board.dds_sync_dev, channel_mask ) );
 
     int smp_err_lo = !!gen_gpio_in( &pin_ad9910_lo_sync_smp_err );
     int smp_err_ref = !!gen_gpio_in( &pin_ad9910_ref_sync_smp_err );
 
-    psync_dbg( "DDS SYNC complete: errLO=%d errREF=%d\n", smp_err_lo, smp_err_ref);
+    board_dbg( "DDS SYNC complete: errLO=%d errREF=%d\n", smp_err_lo, smp_err_ref);
     
 // now that we are done syncing DDS internal clocks, disable the fpga SYNC_CLK output
     ad9910_configure_sync( &board.dds_ad9910_ref, 0, 0 );
     ad9910_configure_sync( &board.dds_ad9910_lo, 0, 0 );
 
-//for(;;)
-{
     channel_mask = (1 << ERTM14_PLL_SYNC_CLKA) |
-                   (1 << ERTM14_PLL_SYNC_CLKB) |
-                   (1 << ERTM14_DDS_IOUPDATE_LO) |
-                   (1 << ERTM14_DDS_IOUPDATE_REF);
+                   (1 << ERTM14_PLL_SYNC_CLKB);
 
-    dds_sync_unit_setup_channel ( &board.dds_sync_dev, ERTM14_DDS_IOUPDATE_LO, 1, ch_delays[ERTM14_DDS_IOUPDATE_LO], 0, 0 );
+    fine_pulse_gen_setup_channel ( &board.dds_sync_dev, ERTM14_DDS_IOUPDATE_LO, 1, ch_delays[ERTM14_DDS_IOUPDATE_LO], 0 );
 
     //ch_delays[ERTM14_DDS_IOUPDATE_LO] += 200;
 
-    dds_sync_unit_trigger( &board.dds_sync_dev, channel_mask, 0 ); // trigger on PPS now
-    while ( !dds_sync_unit_poll( &board.dds_sync_dev, channel_mask ) );
+    fine_pulse_gen_trigger( &board.dds_sync_dev, channel_mask, 0 ); // trigger on PPS now
+    while ( !fine_pulse_gen_is_triggered( &board.dds_sync_dev, channel_mask ) );
 
-    psync_dbg( "DDS IOUPDATE & CLKAB sync complete\n");
-}
+    board_dbg( "CLKAB sync complete\n");
+
     return 0;
 }
 
@@ -542,7 +530,7 @@ static void ertm14_clk_pps_sync_task(void)
 
     if( mode != fsm->prev_mode )
     {
-        psync_dbg("mode changed, restarting sync fsm\n");
+        board_dbg("mode changed, restarting sync fsm\n");
         fsm->state = CLK_PPS_STATE_START;
     }
 
@@ -559,10 +547,10 @@ static void ertm14_clk_pps_sync_task(void)
             if( mode == WRC_MODE_MASTER || mode == WRC_MODE_GM )
             {
                 fsm->state = CLK_PPS_STATE_MASTER;
-                psync_dbg("master mode\n");
+                board_dbg("master mode\n");
             } else {
                 fsm->state = CLK_PPS_STATE_SLAVE;
-                psync_dbg("slave mode\n");
+                board_dbg("slave mode\n");
             }
         }
         break;
@@ -571,7 +559,7 @@ static void ertm14_clk_pps_sync_task(void)
         {
             if( spll_check_lock(0) )
             {
-                psync_dbg("pll locked\n");
+                board_dbg("pll locked\n");
                 fsm->state = CLK_PPS_STATE_RUN_SYNC;
             }
         }
@@ -583,7 +571,7 @@ static void ertm14_clk_pps_sync_task(void)
 
             if( ss->state == WR_TRACK_PHASE )
             {
-                psync_dbg("servo tracking phase, proceeding with sync\n");
+                board_dbg("servo tracking phase, proceeding with sync\n");
                 fsm->state = CLK_PPS_STATE_RUN_SYNC;
             }
         }
@@ -619,7 +607,7 @@ void ertm15_pll_init(void)
     // load default 'bootstrap' config and check what is the OCXO frequency
     ltc6950_configure(&board.ltc6950_pll, &pll_ertm15_bootstrap_config);
 
-    ertm_verbose("Probing OCXO frequency...");
+    board_dbg("Probing OCXO frequency...");
 
     // measure the OCXO freq
     wb_cm_restart(&board.ertm14_cmon);
@@ -685,8 +673,8 @@ int ertm14_init_clkab_distribution()
 
 // force a SYNC pulse to make sure the SYNC_N pins of the AD9520s are high
 // (so that any clock output is possible)    
-    dds_sync_force_pulse( &board.dds_sync_dev, ERTM14_PLL_SYNC_CLKA );
-    dds_sync_force_pulse( &board.dds_sync_dev, ERTM14_PLL_SYNC_CLKB );
+    fine_pulse_gen_force_pulse( &board.dds_sync_dev, ERTM14_PLL_SYNC_CLKA );
+    fine_pulse_gen_force_pulse( &board.dds_sync_dev, ERTM14_PLL_SYNC_CLKB );
 }
 
 int ertm14_init_ref_clock_distribution(void)
@@ -696,13 +684,13 @@ int ertm14_init_ref_clock_distribution(void)
 
     if( main_stat < 0 )
     {
-        ertm_error( "Failed to configure the main clock distribution AD9516 (chip not responding)\n ");
+        pp_printf( "Failed to configure the main clock distribution AD9516 (chip not responding)\n ");
         return -1;
     }
 
     if( ext_stat < 0 )
     {
-        ertm_error( "Failed to configure the external 10 MHz clock multiplier AD9516 (chip not responding)\n ");
+        pp_printf( "Failed to configure the external 10 MHz clock multiplier AD9516 (chip not responding)\n ");
         return -1;
     }
 
@@ -831,9 +819,9 @@ int ertm14_init(void)
         board.mode |= ERTM14_MODE_WITHOUT_ERTM15;
 
     if ( board.mode & ERTM14_MODE_WITHOUT_ERTM15 )
-        ertm_verbose( "Configuring board *WITHOUT* eRTM15 support (eRTM15 not found or disabled in software).\n");
+        board_dbg( "Configuring board *WITHOUT* eRTM15 support (eRTM15 not found or disabled in software).\n");
     else
-        ertm_verbose( "Configuring board WITH eRTM15 support.\n");
+        board_dbg( "Configuring board WITH eRTM15 support.\n");
     
 
     /* Initialize the clock monitor core - it monitors the frequencies of all clocks coming to the FPGA.
@@ -851,7 +839,7 @@ int ertm14_init(void)
     ertm14_init_ref_clock_distribution();
 
     /* At this point, we should have a stable CLK_REF coming from the PLL. Tell the FPGA to use it also as the system clock */
-    ertm_verbose("Switching system clock to CLK_SYS\n");
+    board_dbg("Switching system clock to CLK_SYS\n");
     ertm14_switch_sys_clock(1);
 
     /* Disable bit-banged OCXO control (used for debug) */
@@ -882,14 +870,14 @@ int ertm14_init(void)
 
     if( ! (board.mode & ERTM14_MODE_WITHOUT_ERTM15 ) )
     {
-        ertm_verbose("Initializing RF distribution\n");
+        board_dbg("Initializing RF distribution\n");
 
 
     /* RF distribution switches and shift registers controlling these (eRTM15 - IC26..28) */
         ertm15_rf_distr_init( &board.rf_distr, &board.pwrmon_adc );
 
     /* Now that the PLL clocks are ready, init the DDS synthesizers */
-        ertm_verbose("Initializing DDSes\n");
+        board_dbg("Initializing DDSes\n");
         ertm15_init_dds();
 
         /* Program the DDSes to some meaninfgul settings, say, 205 MHz */
@@ -903,22 +891,22 @@ int ertm14_init(void)
     if( ! (board.mode & ERTM14_MODE_WITHOUT_ERTM15 ) )
     {
         /* Init CLKA/CLKB distribution (AD9520s) */
-        ertm_verbose("Initializing CLKA/CLKB distribution...\n");
+        board_dbg("Initializing CLKA/CLKB distribution...\n");
         ertm14_init_clkab_distribution();
-        ertm_verbose("Calibrating DDS sync pulse...\n");
+        board_dbg("Calibrating DDS sync pulse...\n");
         ertm14_dds_sync_calibrate();
     }
 
     /* Initialize the IUART which is responsible for the communication with the MMC.
        Fixme: below is IUART14 which talks to the MMC on eRTM14. If eRTM15 is present, we need another IUART device. */
-    ertm_verbose("Init IUART14\n");
+    board_dbg("Init IUART14\n");
 
     iuart_init_bare( &board.iuart_14, BASE_IUART_14, 115200 );
 
-    ertm_verbose("eRTM14/15 early init done\n");
+    board_dbg("eRTM14/15 early init done\n");
 
 
-    ertm_verbose("Init RF transceiver\n");
+    board_dbg("Init RF transceiver\n");
     wr_rf_frame_transceiver_create( &board.rf_xcvr, BASE_ERTM14_RF_FRAME_TRANSCEIVER );
     
     ertm_init_complete = 1;
@@ -1087,14 +1075,24 @@ int ertm14_get_supported_clkab_freqs( int *freqs, int max_count )
 
 int wrc_board_early_init()
 {
+    int32_t flash_entry_points[64];
+    int i;
     /* initialize SPI flash */
 	flash_init();
 
 	/* initialize I2C bus */
 	bb_i2c_init( &dev_i2c_fmc );
    
+
+    for(i = 0; i < 32; i++)
+        flash_entry_points[i] = 0x800000 + 0x40000 * i;
+
+    flash_entry_points[i] = -1;
+
+    
     /* init storage (we use the SPI flash on eRTM14) */
     storage_spiflash_create( &wrc_storage_dev, &wrc_flash_dev );
+    wrc_storage_dev.entry_points = &flash_entry_points[0];
     storage_mount( &wrc_storage_dev );
 
     /* reset the networking part of the WRCore and start the WR Endpoint */
@@ -1116,20 +1114,19 @@ int wrc_board_init()
     return 0;
 }
 
-timeout_t streamer_tx_tmo;
+timeout_t rf_nco_sync_tmo;
 
-void streamers_init()
+static void rf_nco_sync_init()
 {
-    tmo_init( &streamer_tx_tmo, 500 );
+    tmo_init( &rf_nco_sync_tmo, 5 );
 }
 
-void streamers_poll()
+void rf_nco_sync_poll()
 {
-    if (tmo_expired(&streamer_tx_tmo))
+    if (tmo_expired(&rf_nco_sync_tmo))
     {
-        pp_printf("TxS\n");
-        wr_rf_frame_transceiver_send_single( &board.rf_xcvr );
-        tmo_restart(&streamer_tx_tmo);
+          tmo_restart(&rf_nco_sync_tmo);
+
     }
 }
 
@@ -1143,7 +1140,7 @@ int wrc_board_create_tasks()
     wrc_task_create( "ertm-config", NULL, ertm14_update_config_task );
     wrc_task_create( "phy-cal", phy_calibration_init, phy_calibration_poll );
 
-    wrc_task_create( "streamers", streamers_init, streamers_poll );
+    wrc_task_create( "rf_nco_sync", rf_nco_sync_init, rf_nco_sync_poll );
 
     return 0;
 }
