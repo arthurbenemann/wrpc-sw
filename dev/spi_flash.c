@@ -29,6 +29,9 @@ void spi_flash_create(struct spi_flash_device *dev, struct spi_bus *bus)
 
 	uint32_t id = spi_flash_read_id( dev );
 
+
+
+// hack: detect a 512 Mbit flash. probably we need a lookup table.
 	if( (id & 0xff) == 0x20 )
 	{
 		dev->sector_size = 0x10000;
@@ -41,6 +44,22 @@ void spi_flash_create(struct spi_flash_device *dev, struct spi_bus *bus)
 	dev_dbg("spi_flash: device ID = 0x%08x, size=%d bytes\n", id, dev->size);
 }
 
+static void spi_flash_write_addr(struct spi_flash_device *dev, uint32_t addr)
+{
+	if( dev->use_4byte_addr )
+	{
+		bb_spi_write(dev->bus, (addr & 0xFF000000) >> 24, 8);
+		bb_spi_write(dev->bus, (addr & 0xFF0000) >> 16, 8);
+		bb_spi_write(dev->bus, (addr & 0xFF00) >> 8, 8);
+		bb_spi_write(dev->bus, (addr & 0xFF), 8); // 8 dummy clock cycles (default)
+	} else {
+		bb_spi_write(dev->bus, (addr & 0xFF0000) >> 16, 8);
+		bb_spi_write(dev->bus, (addr & 0xFF00) >> 8, 8);
+		bb_spi_write(dev->bus, (addr & 0xFF), 8);
+		bb_spi_write(dev->bus, 0, 8); // 8 dummy clock cycles (default)
+	}
+}
+
 /*
  * Write data to flash chip
  */
@@ -49,16 +68,14 @@ int spi_flash_write(struct spi_flash_device *dev, uint32_t addr, uint8_t *buf, i
 	int i;
 
     bb_spi_cs( dev->bus, 1 );
-	bb_spi_write( dev->bus, 0x06, 8 );
+	bb_spi_write( dev->bus, 0x06, 8 ); // write enable
     bb_spi_cs( dev->bus, 0 );
 
     bb_spi_delay(dev->bus);
 
     bb_spi_cs( dev->bus, 1 );
-	bb_spi_write(dev->bus, 0x02, 8);
-	bb_spi_write(dev->bus, (addr & 0xFF0000) >> 16, 8);
-	bb_spi_write(dev->bus, (addr & 0xFF00) >> 8, 8);
-	bb_spi_write(dev->bus, (addr & 0xFF), 8);
+	bb_spi_write( dev->bus, dev->use_4byte_addr ? 0x12 : 0x02, 8 );
+	spi_flash_write_addr( dev, addr );
 	for (i = 0; i < count; i++) {
 		bb_spi_write(dev->bus, buf[i], 8);
 	}
@@ -80,11 +97,11 @@ int spi_flash_read(struct spi_flash_device *dev, uint32_t addr, uint8_t *buf, in
 	int i;
 
     bb_spi_cs( dev->bus, 1 );
-	bb_spi_write(dev->bus, 0x0b, 8);
-	bb_spi_write(dev->bus, (addr & 0xFF0000) >> 16, 8);
-	bb_spi_write(dev->bus, (addr & 0xFF00) >> 8, 8);
-	bb_spi_write(dev->bus, (addr & 0xFF), 8);
-	bb_spi_write(dev->bus, 0, 8);
+	
+	bb_spi_write( dev->bus, dev->use_4byte_addr ? 0x0c : 0x0b, 8 );
+	spi_flash_write_addr( dev, addr );
+	bb_spi_write( dev->bus, 0, 8 );
+
 	for (i = 0; i < count; i++) {
 		buf[i] = bb_spi_read(dev->bus, 8);
 	}
@@ -100,15 +117,13 @@ int spi_flash_read(struct spi_flash_device *dev, uint32_t addr, uint8_t *buf, in
 void spi_flash_erase_sector(struct spi_flash_device *dev, uint32_t addr)
 {
     bb_spi_cs( dev->bus, 1 );
-	bb_spi_write(dev->bus, 0x06, 8);
+	bb_spi_write(dev->bus, 0x06, 8); // write enable
 	bb_spi_cs( dev->bus, 0 );
 
     bb_spi_cs( dev->bus, 1 );
-	bb_spi_write(dev->bus, 0xD8, 8);
-	bb_spi_write(dev->bus, (addr & 0xFF0000) >> 16, 8);
-	bb_spi_write(dev->bus, (addr & 0xFF00) >> 8, 8);
-	bb_spi_write(dev->bus, (addr & 0xFF), 8);
-	bb_spi_cs( dev->bus, 0 );
+	bb_spi_write( dev->bus, dev->use_4byte_addr ? 0xdc : 0xd8, 8 );
+	spi_flash_write_addr( dev, addr );
+	bb_spi_write( dev->bus, 0, 8 );bb_spi_cs( dev->bus, 0 );
 
 	uint32_t rsr;
 
