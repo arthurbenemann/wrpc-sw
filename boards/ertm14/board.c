@@ -63,8 +63,8 @@
 #define ERTM14_PSYNC_DEBUG
 
 struct ertm14_board board;
-static struct ertm14_board_config ertm14_configs[ ERTM14_MAX_CONFIGS ];
-static struct ertm14_board_config *ertm14_current_config;
+static struct ertm14_board_state ertm14_configs[ ERTM14_MAX_CONFIGS ];
+static struct ertm14_board_state *ertm14_current_state;
 
 static struct gpio_pin pin_pll_main_cs_n = { &board.gpio_aux, 0 };
 static struct gpio_pin pin_pll_main_sdi = { &board.gpio_aux, 1 };
@@ -922,7 +922,7 @@ void ertm14_config_init()
 
     for(i = 0; i < ERTM14_MAX_CONFIGS; i++)
     {
-        struct ertm14_board_config *cfg = &ertm14_configs[i];
+        struct ertm14_board_state *cfg = &ertm14_configs[i];
 
         cfg->valid = 1;
         cfg->lo.ftw = 0x39374BC6;
@@ -947,7 +947,7 @@ void ertm14_config_init()
     }
 };
 
-struct ertm14_board_config *ertm14_get_config(int config_id)
+struct ertm14_board_state *ertm14_get_state_for_config(int config_id)
 {
     return &ertm14_configs[config_id];
 }
@@ -955,7 +955,7 @@ struct ertm14_board_config *ertm14_get_config(int config_id)
 
 int ertm14_apply_config(int config_id)
 {
-    ertm14_current_config = &ertm14_configs[config_id];
+    ertm14_current_state = &ertm14_configs[config_id];
     has_new_config = 1;
 }
 
@@ -964,13 +964,13 @@ int ertm14_get_current_config_id()
     int i;
 
     for(i = 0; i < ERTM14_MAX_CONFIGS; i++)
-        if( &ertm14_configs[i] == ertm14_current_config )
+    if( &ertm14_configs[i] == ertm14_current_state )
             return i;
 
     return -1;
 }
 
-static int ertm14_commit_config( struct  ertm14_board_config *cfg )
+static int ertm14_commit_config( struct  ertm14_board_state *cfg )
 {  
     int i;
         for( i = 0; i <= ERTM14_CLKAB_OUT_MAX_ID; i++)
@@ -1018,7 +1018,7 @@ static int ertm14_commit_config( struct  ertm14_board_config *cfg )
 
 static int ertm14_update_config_task(void)
 {
-    if (has_new_config && ertm_init_complete && ertm14_current_config->valid)
+    if (has_new_config && ertm_init_complete && ertm14_current_state->valid)
     {
         int i;
         pp_printf("New config detected, applying...\n");
@@ -1027,7 +1027,7 @@ static int ertm14_update_config_task(void)
 
         if (!(board.mode & ERTM14_MODE_WITHOUT_ERTM15))
         {
-            ertm14_commit_config(ertm14_current_config);
+            ertm14_commit_config(ertm14_current_state);
             ertm14_clk_pps_sync_restart();
         }
     }
