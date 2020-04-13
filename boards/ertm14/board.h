@@ -17,7 +17,7 @@
 #include "dev/24aa025.h"
 #include "dev/ad7888.h"
 #include "ertm15_rf_distr.h"
-#include "dds_sync_unit.h"
+#include "dev/fine_pulse_generator.h"
 #include "dev/spi_flash.h"
 #include "dev/bb_i2c.h"
 #include "dev/iuart.h"
@@ -116,6 +116,22 @@ extern unsigned char *BASE_EP;
 #define ERTM14_MODE_OCXO_10MHZ (1 << 1)
 #define ERTM14_MODE_OCXO_100MHZ (1 << 2)
 
+#define ERTM14_SYNC_SOURCE_PPS 0
+#define ERTM14_SYNC_SOURCE_RF_TRIGGER 1
+
+// sync unit channels
+// SYNC_IN(+/-) of AD9910
+#define ERTM14_DDS_SYNC_LO 0
+#define ERTM14_DDS_SYNC_REF 1 // fixme: inverted cannel order in HDL
+
+// SYNC_N inputs of the AD9520s (backplane clock distribution)
+#define ERTM14_PLL_SYNC_CLKA 2
+#define ERTM14_PLL_SYNC_CLKB 3
+
+// I/O_UPDATE(+/-) of AD9910
+#define ERTM14_DDS_IOUPDATE_LO 4
+#define ERTM14_DDS_IOUPDATE_REF 5
+
 struct ertm14_board
 {
     struct gpio_device gpio_aux;
@@ -142,11 +158,14 @@ struct ertm14_board
     struct ad9520_device dev_clkb_distr;
     struct i2c_bus i2c_mac_addr;
     struct m24aa025_device m24_mac_ids[2];
-    struct dds_sync_unit_device dds_sync_dev;
+    struct fine_pulse_gen_device dds_sync_dev;
     struct iuart_device iuart_14;
     struct wr_rf_frame_transceiver_device rf_xcvr;
 
     int mode;
+    int dds_resync_count;
+    int dds_resync_source;
+
 };
 
 struct ertm14_dds_config
@@ -156,6 +175,7 @@ struct ertm14_dds_config
     int out_power[ERTM14_RF_OUT_MAX_ID + 1];
     int amp_power;
     int ampl_factor;
+    int sync_source;
 };
 
 struct ertm14_board_config
