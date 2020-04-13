@@ -68,6 +68,9 @@
 #define HAS_GENSDBFS 0
 #endif
 
+
+struct storage_device;
+
 extern uint8_t has_eeprom;
 
 struct s_sfpinfo {
@@ -91,7 +94,24 @@ typedef struct
 } wrc_cal_data_t;
 
 struct spi_flash_device;
-struct storage_device;
+
+struct storage_rwops
+{
+	int (*read)( struct storage_device*, int offset, void *buf, int count );
+	int (*write)( struct storage_device*, int offset, void *buf, int count );
+	int (*erase)( struct storage_device*, int offset, int count );
+};
+
+struct storage_device
+{
+	char *name;
+	void *priv;
+	uint32_t block_size;
+	uint32_t size;
+	int32_t *entry_points;
+	struct storage_rwops *rwops;
+	int flags;
+};
 
 extern struct storage_device wrc_storage_dev;
 
