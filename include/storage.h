@@ -130,7 +130,13 @@ int storage_init_add(const char *args[]);
 int storage_init_show(void);
 int storage_init_readcmd(uint8_t *buf, uint8_t bufsize, uint8_t next);
 int storage_sdbfs_format( struct storage_device *dev, uint32_t base_addr );
-void storage_sdbfs_list();
+void storage_sdbfs_list(void);
+
+int storage_get_calibration_parameter( int id, uint32_t *valp );
+int storage_set_calibration_parameter( int id, uint32_t val );
+wrc_cal_data_t* storage_get_calibration_data(void);
+int storage_load_calibration(void);
+int storage_save_calibration(void);
 
 int storage_read_hdl_cfg(void);
 
