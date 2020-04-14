@@ -139,7 +139,7 @@ static int eeprom_write(uint8_t i2cif, uint8_t i2c_addr, uint32_t offset,
 	return size;
 }
 
-int32_t storage_sfpdb_erase(void)
+int storage_sfpdb_erase(void)
 {
 	sfpcount = 0;
 

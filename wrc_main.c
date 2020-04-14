@@ -240,17 +240,6 @@ DEFINE_WRC_TASK(wrx_Execute) = {
 	.job = wrx_Execute,
 };
 
-void wrx_Execute()
-{
-  wrxUpdate(link_status);
-  wrxExecute();
-}
-
-DEFINE_WRC_TASK(wrx_Execute) = {
-	.name = "wrx-exec",
-	.job = wrx_Execute,
-};
-
 static void task_time_normalize(struct wrc_task *t)
 {
 	if (t->nanos > 1000 * 1000 * 1000) {
