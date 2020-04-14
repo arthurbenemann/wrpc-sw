@@ -17,3 +17,4 @@ include/config
 include/generated
 size_db.txt
 size_info.txt
+.vscode
