@@ -11,8 +11,14 @@
  */
 
 /* Fixed base addresses */
-#define BASE_SOFTPLL 0x20200
-#define BASE_PPS_GEN 0x20300
+#define BASE_MINIC	0x20000
+#define BASE_EP		0x20100
+#define BASE_SOFTPLL 	0x20200
+#define BASE_PPS_GEN 	0x20300
+#define BASE_SYSCON	0x20400
+#define BASE_UART	0x20500
+#define BASE_ONEWIRE	0x20600
+//#define BASE_ETHERNOBE_CFG	0x20700
 
 /* Board-specific parameters */
 #define TICS_PER_SECOND 1000
@@ -21,7 +27,7 @@
 #define CPU_CLOCK 62500000ULL
 
 /* WR Reference clock period (picoseconds) and frequency (Hz) */
-#ifdef CONFIG_WR_NODE_PCS16
+#ifdef CONFIG_TARGET_GENERIC_PHY_16BIT
 #  define NS_PER_CLOCK 16
 #  define REF_CLOCK_PERIOD_PS 16000
 #  define REF_CLOCK_FREQ_HZ 62500000
@@ -43,11 +49,8 @@
 /* Number of auxillary clock channels - usually equal to the number of FMCs */
 #define NUM_AUX_CLOCKS 1
 
-int board_init(void);
-int board_update(void);
-
 /* spll parameter that are board-specific */
-#ifdef CONFIG_WR_NODE_PCS16
+#ifdef CONFIG_TARGET_GENERIC_PHY_16BIT
 #  define BOARD_DIVIDE_DMTD_CLOCKS	0
 #else
 #  define BOARD_DIVIDE_DMTD_CLOCKS	1
@@ -76,14 +79,9 @@ int board_update(void);
 
 #define SDB_ADDRESS 0x30000
 
-extern unsigned char *BASE_MINIC;
-extern unsigned char *BASE_EP;
-extern unsigned char *BASE_SYSCON;
-extern unsigned char *BASE_UART;
-extern unsigned char *BASE_ONEWIRE;
-extern unsigned char *BASE_ETHERBONE_CFG;
-
 #define FMC_EEPROM_ADR 0x50
+
+#define SDBFS_REC 4
 
 void sdb_find_devices(void);
 void sdb_print_devices(void);
