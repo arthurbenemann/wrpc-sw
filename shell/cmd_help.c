@@ -13,13 +13,8 @@
 
 static int cmd_help(const char *args[])
 {
-#if 0
-	struct wrc_shell_cmd *p;
-
 	pp_printf("Available commands:\n");
-	for (p = __cmd_begin; p < __cmd_end; p++)
-		pp_printf("  %s\n", p->name);
-#endif
+	shell_list_cmds();
 	return 0;
 }
 

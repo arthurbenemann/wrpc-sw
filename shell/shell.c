@@ -373,6 +373,16 @@ static void shell_register_command( struct wrc_shell_cmd* cmd )
 	n_cmds++;
 }
 
+void shell_list_cmds()
+{
+	int i;
+
+	for(i = 0; i < n_cmds; i++)
+	{
+		pp_printf("  %s\n", cmds[i]->name);
+	}
+}
+
 #define REGISTER_WRC_COMMAND(_name) \
 	{ extern struct wrc_shell_cmd __wrc_cmd_ ## _name; shell_register_command( &__wrc_cmd_ ## _name ); }
 
@@ -387,5 +397,6 @@ static void shell_register_commands()
 	REGISTER_WRC_COMMAND(mac);
 	REGISTER_WRC_COMMAND(sdb);
 	REGISTER_WRC_COMMAND(calibration);
+	REGISTER_WRC_COMMAND(help);
 }
 
