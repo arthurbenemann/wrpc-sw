@@ -138,13 +138,10 @@ int shell_exec(const char *cmd)
 	return i;
 }
 
-static void shell_register_commands();
-
 void shell_init()
 {
 	cmd_len = cmd_pos = 0;
 	state = SH_PROMPT;
-	shell_register_commands();
 }
 
 int shell_interactive()
@@ -386,7 +383,7 @@ void shell_list_cmds()
 #define REGISTER_WRC_COMMAND(_name) \
 	{ extern struct wrc_shell_cmd __wrc_cmd_ ## _name; shell_register_command( &__wrc_cmd_ ## _name ); }
 
-static void shell_register_commands()
+void shell_register_commands()
 {
 	REGISTER_WRC_COMMAND(gui);
 	REGISTER_WRC_COMMAND(ps);
