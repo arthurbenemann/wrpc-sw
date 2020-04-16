@@ -99,6 +99,7 @@ static void wrc_initialize(void)
 	/* try reading t24 phase transition from EEPROM */
 	calib_t24p(WRC_MODE_MASTER, &cal_phase_transition);
 	shell_init();
+	shell_register_commands();
 
 	wrc_ui_mode = UI_SHELL_MODE;
 	_endram = ENDRAM_MAGIC;
