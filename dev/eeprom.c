@@ -423,9 +423,10 @@ int get_persistent_mac(uint8_t portnum, uint8_t * mac)
 		if (class != 0x28 && class != 0x42)
 			continue;
 		rom = wrpc_w1_bus.devs[i].rom;
-		mac[0] = 0x22;
-		mac[1] = 0x33;
-		mac[2] = rom >> 32;
+    // XXX KM3NeT specific: Use old MAC format such that it is consistent with previous versions
+    mac[0] = 0x08;
+    mac[1] = 0x00;
+    mac[2] = 0x30;
 		mac[3] = rom >> 24;
 		mac[4] = rom >> 16;
 		mac[5] = rom >> 8;
