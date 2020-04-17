@@ -20,21 +20,27 @@
 #include <dev/endpoint.h>
 #include <hw/endpoint_regs.h>
 
-extern uint32_t _binary_rules_novlan_bin_start[];
-extern uint32_t _binary_rules_novlan_bin_end[];
-extern uint32_t _binary_rules_vlan_bin_start[];
-extern uint32_t _binary_rules_vlan_bin_end[];
+
+static const uint32_t pfilter_rules_novlan[] = 
+{
+	#include "dev/pfilter-rules-novlan.h"
+};
+
+static const uint32_t pfilter_rules_vlan[] =
+{
+	#include "dev/pfilter-rules-vlan.h"
+};
 
 struct rule_set {
-	uint32_t *ini;
-	uint32_t *end;
+	const uint32_t *ini;
+	int size;
 } rule_sets[2] = {
 	{
-		_binary_rules_novlan_bin_start,
-		_binary_rules_novlan_bin_end,
+		pfilter_rules_novlan, 
+		ARRAY_SIZE(pfilter_rules_novlan)
 	}, {
-		_binary_rules_vlan_bin_start,
-		_binary_rules_vlan_bin_end,
+		pfilter_rules_vlan,
+		ARRAY_SIZE(pfilter_rules_vlan)
 	}
 };
 
@@ -69,8 +75,10 @@ void pfilter_init_default(void)
 		pp_printf("no pfilter rule-set!\n");
 		return;
 	}
+
+	pp_printf("vini %p size %d\n", vini, s->size);
 	vini = s->ini;
-	vend = s->end;
+	vend = s->ini + s->size;
 
 	/*
 	 * The array of words starts with 0x11223344 so we
