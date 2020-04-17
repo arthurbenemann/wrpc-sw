@@ -50,16 +50,10 @@ obj-$(CONFIG_FAKE_TEMPERATURES) += dev/fake-temp.o
 # Filter rules are selected according to configuration, but we may
 # have more than one. Note: the filename is reflected in symbol names,
 # so they are hardwired in ../Makefile (and ../tools/pfilter-builder too)
-obj-y += $(pfilter-y:.bin=.o)
-
-rules-%.o: rules-%.bin
-	$(OBJCOPY) -I binary  $(OBJCOPY-TARGET-y) $< $@
-
-# sdbfs image
-obj-y += $(sdbfsimg-y:.bin=.o)
-
-sdbfs-default.o: tools/sdbfs-default.bin
-	$(OBJCOPY) -I binary  $(OBJCOPY-TARGET-y) $< $@
 
 $(pfilter-y): tools
-	tools/pfilter-builder
+	./tools/pfilter-builder include/dev/
+	sleep 1
+
+#dev/ep_pfilter.o: $(pfilter-y)
+	#@echo Building packet filter assemblies...
