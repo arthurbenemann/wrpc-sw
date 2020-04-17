@@ -945,10 +945,6 @@ int storage_mount( struct storage_device *dev )
 }
 
 
-
-extern uint32_t _binary_tools_sdbfs_default_bin_start[];
-extern uint32_t _binary_tools_sdbfs_default_bin_end[];
-
 static inline unsigned long SDB_ALIGN(unsigned long x, int blocksize)
 {
 	return (x + (blocksize - 1)) & ~(blocksize - 1);
@@ -958,9 +954,8 @@ static inline unsigned long SDB_ALIGN(unsigned long x, int blocksize)
 int storage_sdbfs_format( struct storage_device *dev, uint32_t base_addr )
 {
 	struct sdb_device *sdbfs =
-		(struct sdb_device *) _binary_tools_sdbfs_default_bin_start;
-	struct sdb_interconnect *sdbfs_dir = (struct sdb_interconnect *)
-		_binary_tools_sdbfs_default_bin_start;
+		 (struct sdb_device *) NULL; // fixme
+	struct sdb_interconnect *sdbfs_dir = (struct sdb_interconnect *) NULL;
 	struct sdb_device sdbfs_buf[SDBFS_REC];
 
 	int i;
