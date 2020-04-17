@@ -116,8 +116,15 @@ extern unsigned char *BASE_EP;
 #define ERTM14_MODE_OCXO_10MHZ (1 << 1)
 #define ERTM14_MODE_OCXO_100MHZ (1 << 2)
 
-#define ERTM14_SYNC_SOURCE_PPS 0
-#define ERTM14_SYNC_SOURCE_RF_TRIGGER 1
+#define ERTM14_SYNC_SOURCE_NONE 0
+#define ERTM14_SYNC_SOURCE_PPS 1
+#define ERTM14_SYNC_SOURCE_RF_TRIGGER 2
+
+#define ERTM14_SYNC_STATE_IDLE 0
+#define ERTM14_SYNC_STATE_WAIT_TRIGGER 1
+#define ERTM14_SYNC_STATE_DONE 2
+#define ERTM14_SYNC_STATE_OFF 3
+
 
 // sync unit channels
 // SYNC_IN(+/-) of AD9910
@@ -164,6 +171,8 @@ struct ertm14_board
 
     int mode;
     int dds_resync_count;
+
+    uint32_t dds_sync_delays[ 6 ];
 };
 
 struct ertm14_dds_state
@@ -175,6 +184,7 @@ struct ertm14_dds_state
     int ampl_factor;
     int sync_source;
     int sync_count;
+    int sync_state;
 };
 
 struct ertm14_board_state
