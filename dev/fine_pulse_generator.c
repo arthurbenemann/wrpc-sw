@@ -123,7 +123,7 @@ void fine_pulse_gen_trigger( struct fine_pulse_gen_device* dev, uint32_t mask, i
             
             uint32_t mask = coarse_ser; // 24/09 VHDL generates mask internally 
             
-            pp_printf("trigger: ch %d coarse %d %d flags %x\n", i, coarse_par, coarse_ser, ch->flags );
+            //pp_printf("trigger: ch %d coarse %d %d flags %x\n", i, coarse_par, coarse_ser, ch->flags );
 
             ocr = (coarse_par << FPG_OCR0_PPS_OFFS_SHIFT)
 	                | (mask << FPG_OCR0_MASK_SHIFT)
