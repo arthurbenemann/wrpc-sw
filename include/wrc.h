@@ -17,6 +17,7 @@
 #include <pp-printf.h>
 #include <util.h>
 #include <trace.h>
+#include <wrc-event.h>
 #include <wrc-task.h>
 #include <wrc-debug.h>
 
