@@ -154,3 +154,8 @@ int events_dispatch()
             eh->handler( queue_get( &eh->queue ));
     }
 }
+
+int event_listener_create( void )
+{
+    return event_handler_register( -1, 1, NULL );
+}
