@@ -155,7 +155,7 @@ int rxts_calibration_update(uint32_t *t24p_value)
 	if (cal_cur_phase >= CAL_SCAN_RANGE) {
 		if (det_rising.state != TD_DONE || det_falling.state != TD_DONE) 
 		{
-			wrc_verbose("RXTS calibration error.\n");
+			pp_printf("RXTS calibration error.\n");
 			return -1;
 		}
 
@@ -178,7 +178,7 @@ int rxts_calibration_update(uint32_t *t24p_value)
 		if(ttrans >= REF_CLOCK_PERIOD_PS) ttrans -= REF_CLOCK_PERIOD_PS;
 
 
-		wrc_verbose("RXTS calibration: R@%dps, F@%dps, transition@%dps\n",
+		phy_dbg("RXTS calibration: R@%dps, F@%dps, transition@%dps\n",
 			  det_rising.trans_phase, det_falling.trans_phase,
 			  ttrans);
 
@@ -224,7 +224,7 @@ static int calib_t24p_master(uint32_t *value)
 		pp_printf("Error %d while reading t24p from storage\n", rv);
 		return rv;
 	}
-	pp_printf("t24p read from storage: %d ps\n", *value);
+	phy_dbg("t24p read from storage: %d ps\n", *value);
 	return rv;
 }
 
@@ -253,9 +253,11 @@ static int calib_t24p_slave(uint32_t *value)
 	rv = storage_phtrans(&prev, 0 /* rd */);
 	if (rv < 0 || (prev < *value - 200) || (prev > *value + 200)) {
 		rv = storage_phtrans(value, 1);
-		pp_printf("Wrote new t24p value: %d ps (%s)\n", *value,
+		phy_dbg("Wrote new t24p value: %d ps (%s)\n", *value,
 			  rv < 0 ? "Failed" : "Success");
 	}
+
+	phy_dbg("Using t24p value = %d ps\n", *value );
 	return 0;
 }
 
