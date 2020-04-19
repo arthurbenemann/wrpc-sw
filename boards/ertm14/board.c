@@ -42,6 +42,7 @@
 #include "wrc_ptp.h"
 
 #include <hw/wr_streamers.h>
+#include <wrc-event.h>
 
 #include "ertm15_rf_distr.h"
 #include "rf_frame_transceiver.h"
@@ -167,7 +168,7 @@ static void ertm14_spll_setup(void)
 /* configure a suitable PI gain schedule for the SoftPLL: */
     spll_gain_schedule_t* gs=  &spll_main_ocxo_gain_sched;
 
-    gs->n_stages = 2;
+    gs->n_stages = 1;
 
 /* we start with ~100 Hz bandwidth to make it lock reasonably fast */
     gs->stages[0].kp = -4000 * 16;
@@ -198,7 +199,7 @@ static void ertm14_spll_setup(void)
     gs->stages[0].shift = 12;
 #endif
 
-	spll_set_gain_schedule( gs );
+	//spll_set_gain_schedule( gs );
 }
 
 
@@ -251,14 +252,7 @@ static int ertm14_dds_sync_init(void)
     {
         uint32_t val = board.dds_sync_delays[ params[i].channel ];
         int res = storage_get_calibration_parameter( params[i].id, &val );
-        pp_printf("Sync Unit channel '%s': delay = %d ps", params[i].name, val);
-
-        if (res < 0)
-        {
-            pp_printf("(default value)");
-        }
-
-        pp_printf("\n");
+        board_dbg("Sync Unit channel '%s': delay = %d ps\n", params[i].name, val);
     }
 
 // Sync_in: continuous waveform, use external delay line (inside AD9910)
@@ -269,7 +263,7 @@ static int ertm14_dds_sync_init(void)
     fine_pulse_gen_set_external_fine_delay( &board.dds_sync_dev, ERTM14_DDS_SYNC_REF, 75, ad9910_set_fine_delay );
     fine_pulse_gen_set_external_fine_delay( &board.dds_sync_dev, ERTM14_DDS_SYNC_LO, 75, ad9910_set_fine_delay );
 
-    pp_printf("ref delay = %d lo delay = %d\n", board.dds_sync_delays[ERTM14_DDS_IOUPDATE_REF], board.dds_sync_delays[ERTM14_DDS_IOUPDATE_LO] );
+    board_dbg("ref delay = %d lo delay = %d\n", board.dds_sync_delays[ERTM14_DDS_IOUPDATE_REF], board.dds_sync_delays[ERTM14_DDS_IOUPDATE_LO] );
     fine_pulse_gen_setup_channel ( &board.dds_sync_dev, ERTM14_DDS_IOUPDATE_LO, 1, board.dds_sync_delays[ERTM14_DDS_IOUPDATE_LO], 0  );
     fine_pulse_gen_setup_channel ( &board.dds_sync_dev, ERTM14_DDS_IOUPDATE_REF, 1, board.dds_sync_delays[ERTM14_DDS_IOUPDATE_REF], 0 );
 
@@ -363,10 +357,10 @@ static void ertm14_dds_sync_calibrate(void)
     }
     
 
-    pp_printf("DDS_LO SYNC start=%d ps length=%d ps setpoint=%d ps\n",
+    board_dbg("DDS_LO SYNC start=%d ps length=%d ps setpoint=%d ps\n",
         windows[0].best_start, windows[0].best_length, windows[0].setpoint
     );
-    pp_printf("DDS_REF SYNC start=%d ps length=%d ps setpoint=%d ps\n",
+    board_dbg("DDS_REF SYNC start=%d ps length=%d ps setpoint=%d ps\n",
         windows[1].best_start, windows[1].best_length, windows[1].setpoint
     );
 
@@ -452,7 +446,7 @@ static void iuart_14_poll(void)
 
     if( msg == START_INSN_CHAR_VAL )
     {
-        pp_printf("req %d %d %d\n",board.iuart_14.rx_buf, board.iuart_14.rx_csize, board.iuart_14.rx_csize );
+        board_dbg("req %d %d %d\n",board.iuart_14.rx_buf, board.iuart_14.rx_csize, board.iuart_14.rx_csize );
         handle_iuart_request( board.iuart_14.rx_buf, board.iuart_14.rx_csize );
     }
 }
@@ -491,6 +485,8 @@ static void ertm14_align_ref_out_to_pps(void)
         usleep(200000);
     }
 }
+
+#if 0
 
 
 
@@ -705,6 +701,26 @@ static void ertm14_clk_pps_sync_task(void)
 }
 
 
+#endif
+
+
+static int evth_clk_pps_sync;
+
+static void ertm14_clk_pps_sync_init(void)
+{
+    evth_clk_pps_sync = event_listener_create();
+}
+
+static void ertm14_clk_pps_sync_task(void)
+{
+    int evt = event_poll( evth_clk_pps_sync );
+
+    if ( evt )
+    {
+        board_dbg("[dds-trigger-rx] GOT EVENT: %d\n", evt );
+    }
+}
+
 
 // initializes the eRTM15 LTC6950 PLL & OCXO
 void ertm15_pll_init(void)
@@ -715,7 +731,7 @@ void ertm15_pll_init(void)
     
     if( id != 0x65 )
     {
-        pp_printf("Error initializing LTC6950 (read RevID: 0x%x, expected: 0x%x)\n", id, 0x65 );
+        board_dbg("Error initializing LTC6950 (read RevID: 0x%x, expected: 0x%x)\n", id, 0x65 );
     }
 
     // load default 'bootstrap' config and check what is the OCXO frequency
@@ -741,7 +757,7 @@ void ertm15_pll_init(void)
 
     if( ! (ocxo_100mhz || ocxo_10mhz) )
     {
-        pp_printf("Error: the OCXO has neither 10 nor 100 MHz center frequency. WTF?\n");
+        board_dbg("Error: the OCXO has neither 10 nor 100 MHz center frequency. WTF?\n");
     }
 
 
@@ -752,7 +768,7 @@ void ertm15_pll_init(void)
         board.mode |= ERTM14_MODE_OCXO_10MHZ;    
     } else if (ocxo_100mhz)
     {
-        pp_printf("Using 100 mhz ocxo\n");
+        board_dbg("Using 100 MHz OCXO\n");
         //ltc6950_write( &board.ltc6950_pll, 0x15, 4 ); // RDIVOUT = 0, output div = 50
         ltc6950_write( &board.ltc6950_pll, 0x8, 0x1 ); // reference divider = 1 
 
@@ -774,7 +790,7 @@ int ertm14_init_clkab_distribution()
     ad9520_init( &board.dev_clka_distr, &board.i2c_clka_distr, 0x5c );
     ad9520_init( &board.dev_clkb_distr, &board.i2c_clkb_distr, 0x5c );
 
-    pp_printf("Init CLKAB distribution\n");
+    board_dbg("Init CLKAB distribution\n");
     ad9520_configure( &board.dev_clka_distr, &clk_dist_ertm15_default_config);
     ad9520_configure( &board.dev_clkb_distr, &clk_dist_ertm15_default_config);
 
@@ -798,13 +814,13 @@ int ertm14_init_ref_clock_distribution(void)
 
     if( main_stat < 0 )
     {
-        pp_printf( "Failed to configure the main clock distribution AD9516 (chip not responding)\n ");
+        board_dbg( "Failed to configure the main clock distribution AD9516 (chip not responding)\n ");
         return -1;
     }
 
     if( ext_stat < 0 )
     {
-        pp_printf( "Failed to configure the external 10 MHz clock multiplier AD9516 (chip not responding)\n ");
+        board_dbg( "Failed to configure the external 10 MHz clock multiplier AD9516 (chip not responding)\n ");
         return -1;
     }
 
@@ -956,6 +972,7 @@ int ertm14_init(void)
     board_dbg("Switching system clock to CLK_SYS\n");
     ertm14_switch_sys_clock(1);
 
+    
     /* Disable bit-banged OCXO control (used for debug) */
     gen_gpio_out(&pin_ocxo_override, 0);
 
@@ -982,6 +999,15 @@ int ertm14_init(void)
 
     ad7888_create( &board.pwrmon_adc, &board.spi_ad7888 );
 
+    board_dbg("Init Fine Pulse Generator\n");
+
+    /* Initialize the Fine Pulse Generator - it MUST be done 
+       before we touch the DDSes as it drives the DDS IOUPDATE line.
+       For my own record: don't touch this, you've wasted time catching the null pointer to
+       FPG device already ;-) */
+
+    fine_pulse_gen_create( &board.dds_sync_dev, BASE_ERTM14_DDS_SYNC_UNIT );
+
     if( ! (board.mode & ERTM14_MODE_WITHOUT_ERTM15 ) )
     {
         board_dbg("Initializing RF distribution\n");
@@ -1002,9 +1028,6 @@ int ertm14_init(void)
     /* Setup the SoftPLL for the OCXO we have */
     ertm14_spll_setup();
 
-    board_dbg("Init Fine Pulse Generator\n");
-    /* Initialize the Fine Pulse Generator */
-    fine_pulse_gen_create( &board.dds_sync_dev, BASE_ERTM14_DDS_SYNC_UNIT );
 
     if( ! (board.mode & ERTM14_MODE_WITHOUT_ERTM15 ) )
     {
@@ -1107,8 +1130,8 @@ static int ertm14_commit_config( struct  ertm14_board_state *cfg )
             int enable_a = ( cfg->clka_enable_mask & (1<<i) ) ? 1 : 0;
             int enable_b = ( cfg->clkb_enable_mask & (1<<i) ) ? 1 : 0;
 
-            pp_printf("CLKA%d: freq=%d Hz, divider=%d, enable=%d\n", i, freq_a, div_a, enable_a);
-            pp_printf("CLKA%d: freq=%d Hz, divider=%d, enable=%d\n", i, freq_b, div_b, enable_b);
+            board_dbg("CLKA%d: freq=%d Hz, divider=%d, enable=%d\n", i, freq_a, div_a, enable_a);
+            board_dbg("CLKA%d: freq=%d Hz, divider=%d, enable=%d\n", i, freq_b, div_b, enable_b);
 
             ad9520_set_output_divider( &board.dev_clka_distr, i, div_a ); // divide by 4 -> 250 MHz
             ad9520_set_output_divider( &board.dev_clkb_distr, i, div_b );
@@ -1122,14 +1145,14 @@ static int ertm14_commit_config( struct  ertm14_board_state *cfg )
         ad9910_program(&board.dds_ad9910_lo, cfg->lo.ftw, 0, cfg->lo.ampl_factor );
         ad9910_program(&board.dds_ad9910_ref, cfg->ref.ftw, 0, cfg->ref.ampl_factor );
 
-        pp_printf("DDS LO: FTW=0x%08x, ampl=%d\n", cfg->lo.ftw, cfg->lo.ampl_factor );
-        pp_printf("DDS REF: FTW=0x%08x, ampl=%d\n", cfg->ref.ftw, cfg->ref.ampl_factor );
+        board_dbg("DDS LO: FTW=0x%08x, ampl=%d\n", cfg->lo.ftw, cfg->lo.ampl_factor );
+        board_dbg("DDS REF: FTW=0x%08x, ampl=%d\n", cfg->ref.ftw, cfg->ref.ampl_factor );
         
         for( i = ERTM14_RF_OUT_MIN_ID; i <= ERTM14_RF_OUT_MAX_ID; i++)
         {
             int st_lo = cfg->lo.out_state[i] == ERTM15_RF_OUT_ON ? 1 : 0;
             int st_ref = cfg->ref.out_state[i] == ERTM15_RF_OUT_ON ? 1 : 0;
-            pp_printf("i %d lo %x ref %x\n", i, st_lo, st_ref );
+            board_dbg("i %d lo %x ref %x\n", i, st_lo, st_ref );
 
             ertm15_rf_distr_output_enable( &board.rf_distr, ERTM15_RF_LO, i, st_lo );
             ertm15_rf_distr_output_enable( &board.rf_distr, ERTM15_RF_REF, i, st_ref );
@@ -1146,14 +1169,13 @@ static int ertm14_update_config_task(void)
     if (has_new_config && ertm_init_complete && ertm14_current_state->valid)
     {
         int i;
-        pp_printf("New config detected, applying...\n");
+        board_dbg("New config detected, applying...\n");
 
         has_new_config = 0;
 
         if (!(board.mode & ERTM14_MODE_WITHOUT_ERTM15))
         {
             ertm14_commit_config(ertm14_current_state);
-            ertm14_clk_pps_sync_restart();
         }
     }
 }
@@ -1222,14 +1244,6 @@ int wrc_board_early_init()
 
     /* reset the networking part of the WRCore and start the WR Endpoint */
    	net_rst();
-	ep_init();
-
-    /* Sleep for 1s to make sure WRS v4.2 always realizes that
-	 * the link is down */
-    // fixme: not sure this is necessary in eRTM14 but it doesn't hurt - TW
-	timer_delay_ms(200);
-	ep_enable(1, 1);
-	timer_delay_ms(200);
 
     return ertm14_init();
 }
