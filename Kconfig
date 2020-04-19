@@ -380,6 +380,16 @@ config TRACE_BOARD_ENABLE
 	bool "Print board-specific trace messages"
 	default n
 
+config TRACE_MAC_ENABLE
+	depends on TRACE_MSGS
+	bool "Print WR Endpoint/MAC/Minic trace messages"
+	default n
+
+config TRACE_PHY_ENABLE
+	depends on TRACE_MSGS
+	bool "Print PHY/PCS trace messages"
+	default n
+
 
 config TRACE_ALL
 	int
@@ -404,6 +414,16 @@ config TRACE_DEVICES
 config TRACE_BOARD
 	int
 	default 1 if TRACE_BOARD_ENABLE
+	default 0
+
+config TRACE_MAC
+	int
+	default 1 if TRACE_MAC_ENABLE
+	default 0
+
+config TRACE_PHY
+	int
+	default 1 if TRACE_PHY_ENABLE
 	default 0
 
 comment "wrpc-sw is tainted if you change the following options"
@@ -583,12 +603,6 @@ config PLL_VERBOSE
 	boolean "Verbose messages in softpll"
 	help
 	  Outputs additional debugging messages in the softpll. Off by default.
-
-config PFILTER_VERBOSE
-	depends on DEVELOPER
-	boolean "Verbose messages in packet filter setup"
-	help
-	  A debug tool for people changing the packet filter rules
 
 config WRC_VERBOSE
 	depends on DEVELOPER || TARGET_WR_SWITCH
