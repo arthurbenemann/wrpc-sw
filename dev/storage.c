@@ -682,7 +682,7 @@ int storage_set_calibration_parameter( int id, uint32_t val )
 		if ( id == cal_data.params[i].id )
 		{
 			cal_data.params[i].value = val;
-			return 0;
+			return storage_save_calibration();;
 		}
 	}
 
@@ -706,6 +706,8 @@ wrc_cal_data_t* storage_get_calibration_data(void)
 int storage_load_calibration(void)
 {
 	int ret = 0;
+	int i;
+
 	cal_data.param_count = 0;
 
 	if (sdbfs_open_id(&wrc_sdbfs, SDB_VENDOR, SDB_DEV_CALIB) < 0)
@@ -730,9 +732,11 @@ int storage_load_calibration(void)
 		goto out_close;
 	}
 
-	if( cal_data.checksum != calc_checksum( &cal_data ))
+	uint32_t cksum = calc_checksum( &cal_data );
+
+	if( cal_data.checksum != cksum )
 	{
-		storage_dbg("%s: invalid checksum\n", __FUNCTION__);
+		storage_dbg("%s: invalid checksum %x vs %x\n", __FUNCTION__, cal_data.checksum, cksum );
 		cal_data.param_count = 0;
 		ret = -1;
 		goto out_close;
@@ -740,6 +744,16 @@ int storage_load_calibration(void)
 
 
 	storage_dbg("Loaded %d calibration params, checksum = 0x%x\n", cal_data.param_count, cal_data.checksum );
+
+	for(i = 0; i < cal_data.param_count; i++)
+	{
+		storage_dbg( " - param %c%c%c%c = %d\n", 
+			((cal_data.params[i].id) >> 24) & 0xff,
+			((cal_data.params[i].id) >> 16) & 0xff,
+			((cal_data.params[i].id) >> 8) & 0xff,
+			((cal_data.params[i].id) >> 0) & 0xff,
+			  cal_data.params[i].value );
+	}
 
 out_close:
 	sdbfs_close(&wrc_sdbfs);
@@ -761,10 +775,12 @@ int storage_save_calibration(void)
 	cal_data.checksum = calc_checksum( &cal_data );
 
 	sdbfs_ferase(&wrc_sdbfs, 0, wrc_sdbfs.f_len);
-	
+
 	if (sdbfs_fwrite(&wrc_sdbfs, 0, &cal_data, sizeof(cal_data))
 	    != sizeof(cal_data))
 			goto out_close;
+
+	storage_dbg("saved %d bytes of calibration data\n", sizeof(cal_data ));
 
 out_close:
 	sdbfs_close(&wrc_sdbfs);
@@ -1037,7 +1053,7 @@ void storage_sdbfs_list()
 
 	while ((d = sdbfs_scan(fs, new)) != NULL) {
 		d->sdb_component.product.record_type = '\0';
-		pp_printf("file 0x%08x @ %4i, name %19s\n",
+		pp_printf("file 0x%08x @ 0x%08x, name %19s\n",
 			  (int)(d->sdb_component.product.device_id),
 			  (int)(d->sdb_component.addr_first),
 			  (char *)(d->sdb_component.product.name));
