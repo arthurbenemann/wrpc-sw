@@ -7,14 +7,14 @@ OBJDUMP =	$(CROSS_COMPILE)objdump
 OBJCOPY =	$(CROSS_COMPILE)objcopy
 SIZE =		$(CROSS_COMPILE)size
 
-CFLAGS = -Os -I../common -I.  -mmultiply-enabled -mbarrel-shift-enabled -ffunction-sections -fdata-sections
-OBJS = boot-crt0.o uart.o boot.o timer.o
+CFLAGS = -Os -I../common -I.  -mmultiply-enabled -mbarrel-shift-enabled -ffunction-sections -fdata-sections -I../../include -DCONFIG_ERTM14 -I../../pp_printf -DCONFIG_PRINT_BUFSIZE=128
+OBJS = boot-crt0.o boot.o timer.o ../../dev/bb_spi.o ../../dev/gpio.o ../../dev/spi_flash.o  ../../dev/simple_uart.o ../../pp_printf/printf.o ../../pp_printf/vsprintf-mini.o ../../pp_printf/div64.o
 LDS = boot.ld
-LDFLAGS =  -mmultiply-enabled -mbarrel-shift-enabled -Wl,--gc-sections
+LDFLAGS =  -Os -mmultiply-enabled -mbarrel-shift-enabled -Wl,--gc-sections
 OUTPUT=boot
 
 $(OUTPUT): $(LDS) $(OBJS)
-	${CC} -o $(OUTPUT).elf -nostartfiles $(OBJS) -T $(LDS) -lgcc -lc
+	${CC} -o $(OUTPUT).elf -nostartfiles $(LDFLAGS) $(OBJS) -T $(LDS) -lgcc -lc
 	${OBJCOPY} -O binary $(OUTPUT).elf $(OUTPUT).bin
 	${OBJDUMP} -D $(OUTPUT).elf > disasm.S
 	$(SIZE) $(OUTPUT).elf
