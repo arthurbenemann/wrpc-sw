@@ -211,7 +211,7 @@ void ertm15_update_rf_switches( struct ertm15_rf_distribution_device *dev )
 
         int enabled = ( p->path == ERTM15_RF_LO ? dev->lo_enabled : dev->ref_enabled ) & (1 << p->channel );
 
-        pp_printf("rf_distr: switch %s ch %d -> %s\n", p->path == ERTM15_RF_LO ? "LO" : "REF", p->channel, enabled ? "ON" : "OFF" );
+        board_dbg("rf_distr: switch %s ch %d -> %s\n", p->path == ERTM15_RF_LO ? "LO" : "REF", p->channel, enabled ? "ON" : "OFF" );
         rf_switch_set( p->path, p->channel, enabled ? ERTM15_RF_OUT_ON : ERTM15_RF_OUT_OFF );
     }
 }
