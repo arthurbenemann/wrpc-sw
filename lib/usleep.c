@@ -59,7 +59,7 @@ void usleep_init(void)
 		step /= 2;
 	}
 	usleep_lpj = lpj;
-	pp_printf("Loops per jiffy: %i\n", lpj);
+	main_dbg("calibrating usleep(): loops per jiffy = %i\n", lpj);
 }
 
 /* lpj is around 20800 on the spec: the above calculation overflows at 200ms */
