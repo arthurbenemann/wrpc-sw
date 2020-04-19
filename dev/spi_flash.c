@@ -51,12 +51,11 @@ static void spi_flash_write_addr(struct spi_flash_device *dev, uint32_t addr)
 		bb_spi_write(dev->bus, (addr & 0xFF000000) >> 24, 8);
 		bb_spi_write(dev->bus, (addr & 0xFF0000) >> 16, 8);
 		bb_spi_write(dev->bus, (addr & 0xFF00) >> 8, 8);
-		bb_spi_write(dev->bus, (addr & 0xFF), 8); // 8 dummy clock cycles (default)
+		bb_spi_write(dev->bus, (addr & 0xFF), 8);
 	} else {
 		bb_spi_write(dev->bus, (addr & 0xFF0000) >> 16, 8);
 		bb_spi_write(dev->bus, (addr & 0xFF00) >> 8, 8);
 		bb_spi_write(dev->bus, (addr & 0xFF), 8);
-		bb_spi_write(dev->bus, 0, 8); // 8 dummy clock cycles (default)
 	}
 }
 
@@ -120,10 +119,10 @@ void spi_flash_erase_sector(struct spi_flash_device *dev, uint32_t addr)
 	bb_spi_write(dev->bus, 0x06, 8); // write enable
 	bb_spi_cs( dev->bus, 0 );
 
-    bb_spi_cs( dev->bus, 1 );
+        bb_spi_cs( dev->bus, 1 );
 	bb_spi_write( dev->bus, dev->use_4byte_addr ? 0xdc : 0xd8, 8 );
 	spi_flash_write_addr( dev, addr );
-	bb_spi_write( dev->bus, 0, 8 );bb_spi_cs( dev->bus, 0 );
+	bb_spi_cs( dev->bus, 0 );
 
 	uint32_t rsr;
 
