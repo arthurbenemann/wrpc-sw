@@ -33,6 +33,8 @@
 
 #include <wrc_ptp.h>
 #include <system_checks.h>
+#include <ppsi/ppsi.h>
+
 
 #ifdef CONFIG_DAC_LOG
 #include "dev/dac_log.h"
@@ -81,8 +83,6 @@ static void wrc_initialize(void)
 	pp_printf("WR Core: starting up...\n");
 	get_hw_name(wrc_hw_name);
 
-	wrc_board_init();
-
 	net_rst();
 	ep_init();
 	/* Sleep for 1s to make sure WRS v4.2 always realizes that
@@ -100,6 +100,8 @@ static void wrc_initialize(void)
 	calib_t24p(WRC_MODE_MASTER, &cal_phase_transition);
 	shell_init();
 	shell_register_commands();
+
+	wrc_board_init();
 
 	wrc_ui_mode = UI_SHELL_MODE;
 	_endram = ENDRAM_MAGIC;
@@ -126,6 +128,7 @@ static int wrc_check_link(void)
 
 	if (!prev_state && state) {
 		wrc_verbose("Link up.\n");
+		event_post( WRC_EVENT_LINK_UP );
 		gen_gpio_out(&pin_sysc_led_link, 1);
 		sfp_match();
 		wrc_ptp_start();
@@ -133,6 +136,7 @@ static int wrc_check_link(void)
 		rv = 1;
 	} else if (prev_state && !state) {
 		wrc_verbose("Link down.\n");
+		event_post( WRC_EVENT_LINK_DOWN );
 		gen_gpio_out(&pin_sysc_led_link, 0);
 		link_status = LINK_WENT_DOWN;
 		wrc_ptp_stop();
@@ -200,6 +204,62 @@ static int update_uptime(void)
 	return 0;
 }
 
+// fixme: this probably deserves to be moved to another file...
+static int prev_ptp_mode;
+static int prev_ptp_state;
+static int prev_servo_state;
+
+static void wrc_dispatch_ptp_events_init(void)
+{
+	prev_ptp_mode = -1;
+	prev_ptp_state = -1;
+	prev_servo_state = -1;
+}
+
+static void wrc_dispatch_ptp_events_poll(void)
+{
+	extern struct pp_instance ppi_static;
+    struct pp_instance *ppi = &ppi_static;
+    struct wr_servo_state *ss = &((struct wr_data *)ppi->ext_data)->servo_state;
+
+    int mode = wrc_ptp_get_mode();
+
+    if( mode != prev_ptp_mode )
+    {
+        main_dbg("PTP mode changed.\n");
+        event_post( WRC_EVENT_PTP_MODE_CHANGED );
+    }
+
+	prev_ptp_mode = mode;
+
+	// observe the PTP state machine transitions and the servo state - and depending on the mode of 
+	// operation (master/slave), send the 'Timing up'/'Timing down' events.
+	if( mode == WRC_MODE_MASTER )
+	{
+		if( ppi->state == PPS_MASTER && prev_ptp_state != PPS_MASTER )
+			event_post( WRC_EVENT_TIMING_UP );
+		else if ( ppi->state != PPS_MASTER && prev_ptp_state == PPS_MASTER )
+			event_post( WRC_EVENT_TIMING_DOWN );
+	}
+	else if ( mode == WRC_MODE_SLAVE )
+	{
+		if( ppi->state == PPS_SLAVE )
+		{
+			if( ss->state == WR_TRACK_PHASE && prev_servo_state != WR_TRACK_PHASE )
+				event_post( WRC_EVENT_TIMING_UP );
+			else if( ss->state != WR_TRACK_PHASE && prev_servo_state == WR_TRACK_PHASE )
+				event_post( WRC_EVENT_TIMING_DOWN );
+		}
+		else if( ppi->state != PPS_SLAVE && prev_ptp_state == PPS_SLAVE )
+		{
+			event_post( WRC_EVENT_TIMING_DOWN );
+		}
+	}
+
+	prev_ptp_state = ppi->state;
+	prev_servo_state = ss->state;
+}
+
 extern void wrc_log_stats(void);
 
 static void create_tasks()
@@ -213,6 +273,7 @@ static void create_tasks()
 	wrc_task_create( "ptp", NULL, wrc_ptp_update);
 	wrc_task_create( "shell+gui", shell_boot_script, ui_update );
 	wrc_task_create( "spll-bh", NULL, spll_update );
+	wrc_task_create( "ptp-events", wrc_dispatch_ptp_events_init, wrc_dispatch_ptp_events_poll );
 	//wrc_task_create( "temperature", wrc_temp_init, wrc_temp_refresh );
 
 	t = wrc_task_create( "net-bh", NULL, net_bh_poll );
@@ -261,8 +322,10 @@ int main(void)
 	wrc_start_all_tasks();
 
 	for (;;) {
+		// run all pending tasks
 		wrc_poll_all_tasks();
-
+		// call all event handlers
+		events_dispatch();
 		/* better safe than sorry */
 		check_stack();
 	}
