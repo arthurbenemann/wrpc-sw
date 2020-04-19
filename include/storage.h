@@ -91,7 +91,7 @@ typedef struct
 		uint32_t id;
 		uint32_t value;
 	} params[CAL_MAX_PARAMS];
-} wrc_cal_data_t;
+} __attribute__ ((__packed__)) wrc_cal_data_t;
 
 struct spi_flash_device;
 
