@@ -72,11 +72,10 @@ void pfilter_init_default(void)
 	/* If vlan, use rule-set 1, else rule-set 0 */
 	s = rule_sets + (wrc_vlan_number != 0);
 	if (!s->ini) {
-		pp_printf("no pfilter rule-set!\n");
+		mac_dbg("no pfilter rule-set!\n");
 		return;
 	}
 
-	pp_printf("vini %p size %d\n", vini, s->size);
 	vini = s->ini;
 	vend = s->ini + s->size;
 
@@ -91,7 +90,7 @@ void pfilter_init_default(void)
 			*v = swap32(*v);
 	v = vini;
 	if (v[0] != 0x11223344) {
-		pp_printf("pfilter: wrong magic number (got 0x%x)\n", m);
+		mac_dbg("pfilter: wrong magic number (got 0x%x)\n", m);
 		return;
 	}
 	v++;
@@ -104,7 +103,7 @@ void pfilter_init_default(void)
 		if (   (((v[2] >> 13) & 0xffff) != 0x1234)
 		    || (((v[4] >> 13) & 0xffff) != 0x5678)
 		    || (((v[6] >> 13) & 0xffff) != 0x9abc)) {
-			pp_printf("pfilter: wrong rule-set, can't apply\n");
+			mac_dbg("pfilter: wrong rule-set, can't apply\n");
 			return;
 		}
 		inited++;
@@ -120,7 +119,7 @@ void pfilter_init_default(void)
 	v[2] |= ((mac[0] << 8) | mac[1]) << 13;
 	v[4] |= ((mac[2] << 8) | mac[3]) << 13;
 	v[6] |= ((mac[4] << 8) | mac[5]) << 13;
-	pfilter_verbose("fixing MAC adress in rule: use %s\n",
+	mac_dbg("fixing MAC adress in rule: use %s\n",
 			format_mac(buf, mac));
 
 	/*
@@ -132,7 +131,7 @@ void pfilter_init_default(void)
 	for (v = vini + 1; v < vend; v += 2) {
 		if (((*v >> 13) & 0xffff) == 0xcafe
 		    && (*v & 0x7) == OR) {
-			pfilter_verbose("fixing latency eth_type: use 0x%x\n",
+			mac_dbg("fixing latency eth_type: use 0x%x\n",
 					latency_ethtype);
 			*v &= ~(0xffff << 13);
 			*v |= latency_ethtype << 13;
@@ -143,7 +142,7 @@ void pfilter_init_default(void)
 	for (v = vini + 1; v < vend; v += 2) {
 		if (((*v >> 13) & 0xffff) == 0x0aaa
 		    && ((*v >> 7) & 0x1f) == 7) {
-			pfilter_verbose("fixing VLAN number in rule: use %i\n",
+			mac_dbg("fixing VLAN number in rule: use %i\n",
 					wrc_vlan_number);
 			v_vlan = v;
 			*v &= ~(0xffff << 13);
@@ -157,7 +156,7 @@ void pfilter_init_default(void)
 		uint32_t cr0, cr1;
 
 		cmd_word = v[0] | ((uint64_t)v[1] << 32);
-		pfilter_verbose("pfilter rule %02i: %x.%08x\n", i,
+		mac_dbg("pfilter rule %02i: %x.%08x\n", i,
 				(uint32_t)(cmd_word >> 32),
 				(uint32_t)(cmd_word));
 
