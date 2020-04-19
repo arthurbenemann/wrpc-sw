@@ -58,7 +58,7 @@ int ad9520_init(struct ad9520_device *dev, struct i2c_bus *bus, uint8_t addr)
     ad9520_write( dev, 0x232, 0x01);  // commit
 
     int id = ad9520_read( dev, 0x3 );
-    pp_printf("Init AD9520: ID = %x\n", id);
+    dev_dbg("Init AD9520: ID = %x (expected: 0x61)\n", id);
     return (id == 0x61 ? 0 : -1);
 }
 
