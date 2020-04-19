@@ -138,13 +138,10 @@ int shell_exec(const char *cmd)
 	return i;
 }
 
-static void shell_register_commands();
-
 void shell_init()
 {
 	cmd_len = cmd_pos = 0;
 	state = SH_PROMPT;
-	shell_register_commands();
 }
 
 int shell_interactive()
