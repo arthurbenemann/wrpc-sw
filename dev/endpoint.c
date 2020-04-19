@@ -126,7 +126,7 @@ int ep_enable(int enabled, int autoneg)
 	EP->ECR = 0;
 
 	if (!IS_WR_NODE_SIM)
-		pp_printf("ID: %x\n", EP->IDCODE);
+		mac_dbg("MAC/Endpoint ID: %x\n", EP->IDCODE);
 
 /* Load default packet classifier rules - see ep_pfilter.c for details */
 	pfilter_init_default();
@@ -215,6 +215,7 @@ int ep_cal_pattern_disable()
 
 int ep_timestamper_cal_pulse()
 {
+	//pp_printf("calPulse ep @ %p\n", EP);
 	EP->TSCR |= EP_TSCR_RX_CAL_START;
 	timer_delay_ms(1);
 	return EP->TSCR & EP_TSCR_RX_CAL_RESULT ? 1 : 0;

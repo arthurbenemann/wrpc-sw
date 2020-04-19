@@ -77,7 +77,7 @@ int ad9910_probe( struct ad9910_device *dev, struct spi_bus *bus, void (*trigger
     ad9910_trigger_update( dev );
 
     uint32_t id = ad9910_read( dev, AD9910_REG_CFR1, 32 );
-    pp_printf("AD9910 ID[%p]: 0x%x (expected 0x%x)\n", dev, id, AD9910_DEFAULT_CFR1 );
+    dev_dbg("AD9910 ID[%p]: 0x%x (expected 0x%x)\n", dev, id, AD9910_DEFAULT_CFR1 );
 
     return (id == AD9910_DEFAULT_CFR1) ? 0 : -1;
 }
@@ -92,7 +92,7 @@ int ad9910_program( struct ad9910_device *dev, uint64_t ftw_n, int phase, int fs
     uint64_t ftw = ftw_n;
     uint64_t prof0_cr = ftw | (0x8b5ULL << 48); 
 
-//    pp_printf("ad9910_program [%08x%08x] asf %d!\n", (uint32_t)(prof0_cr >> 32), (uint32_t)prof0_cr, asf );
+//    dev_dbg("ad9910_program [%08x%08x] asf %d!\n", (uint32_t)(prof0_cr >> 32), (uint32_t)prof0_cr, asf );
 
     for(i = 0; ad9910_default_config[i].addr >= 0; i++)
     {
