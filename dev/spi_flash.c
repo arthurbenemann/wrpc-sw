@@ -16,12 +16,12 @@ static uint8_t spi_flash_rsr(struct spi_flash_device *dev);
 /*
  * Init function (just set the SPI pins for idle)
  */
-void spi_flash_create(struct spi_flash_device *dev, struct spi_bus *bus)
+void spi_flash_create(struct spi_flash_device *dev, struct spi_bus *bus, uint32_t sector_size)
 {
 	int i;
 
 	dev->bus = bus;
-	dev->sector_size = 16384;
+	dev->sector_size = sector_size;
 	dev->use_4byte_addr = 0;
 
 	for(i=0;i < 10; i++)
