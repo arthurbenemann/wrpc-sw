@@ -426,6 +426,9 @@ int set_persistent_mac(uint8_t portnum, uint8_t *mac)
 	return 0;
 }
 
+#endif
+
+
 /*
  * The SFP section is placed somewhere inside EEPROM (W1 or I2C), using sdbfs.
  *
@@ -450,10 +453,10 @@ int storage_sfpdb_erase(void)
 
 	if (sdbfs_open_id(&wrc_sdbfs, SDB_VENDOR, SDB_DEV_SFP) < 0)
 		return -1;
-	ret = sdbfs_ferase(&wrc_sdbfs, 0, wrc_sdb.f_len);
-	if (ret == wrc_sdb.f_len)
+	ret = sdbfs_ferase(&wrc_sdbfs, 0, wrc_sdbfs.f_len);
+	if (ret == wrc_sdbfs.f_len)
 		ret = 1;
-	sdbfs_close(&wrc_sdb);
+	sdbfs_close(&wrc_sdbfs);
 	return ret == 1 ? 0 : -1;
 }
 
@@ -543,7 +546,7 @@ static int sfp_entry(struct s_sfpinfo *sfp, uint8_t oper, uint8_t pos)
 	}
 	ret = sfpcount;
 out:
-	sdbfs_close(&wrc_sdb);
+	sdbfs_close(&wrc_sdbfs);
 	return ret;
 }
 
@@ -607,11 +610,9 @@ int storage_get_sfp(struct s_sfpinfo *sfp, uint8_t oper, uint8_t pos)
 	pp_printf("Update existing SFP entry\n");
 	return storage_update_sfp(sfp);
 }
-#endif
 
 int storage_match_sfp(struct s_sfpinfo *sfp)
 {
-#if 0
 	uint8_t sfpcount = 1;
 	int8_t i;
 	struct s_sfpinfo dbsfp;
@@ -627,7 +628,6 @@ int storage_match_sfp(struct s_sfpinfo *sfp)
 			return 1;
 		}
 	}
-#endif
 	return 0;
 
 }
