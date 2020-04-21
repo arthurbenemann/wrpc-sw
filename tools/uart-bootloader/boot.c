@@ -119,7 +119,7 @@ void  boot_flash_init()
 		&boot_pin_sysc_spi_sclk, 10 );
 
 
-    spi_flash_create( &dev_flash, &spi_flash );
+    spi_flash_create( &dev_flash, &spi_flash, 16384 );
 }
 
 #endif
