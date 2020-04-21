@@ -396,5 +396,6 @@ void shell_register_commands()
 	REGISTER_WRC_COMMAND(calibration);
 	REGISTER_WRC_COMMAND(help);
 	REGISTER_WRC_COMMAND(diag);
+	REGISTER_WRC_COMMAND(init);
 }
 
