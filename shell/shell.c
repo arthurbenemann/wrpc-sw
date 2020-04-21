@@ -397,5 +397,6 @@ void shell_register_commands()
 	REGISTER_WRC_COMMAND(help);
 	REGISTER_WRC_COMMAND(diag);
 	REGISTER_WRC_COMMAND(init);
+	REGISTER_WRC_COMMAND(sfp);
 }
 
