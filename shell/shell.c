@@ -30,6 +30,7 @@
 #define SH_PROMPT 0
 #define SH_INPUT 1
 #define SH_EXEC 2
+#define SH_EXEC_UI 3
 
 #define ESCAPE_FLAG 0x10000
 
@@ -49,6 +50,7 @@ static struct wrc_shell_cmd *cmds[ SHELL_MAX_COMMANDS ];
 static int n_cmds = 0;
 
 int shell_is_interacting;
+int (*shell_ui_callback)();
 
 static int insert(char c)
 {
@@ -142,6 +144,7 @@ void shell_init()
 {
 	cmd_len = cmd_pos = 0;
 	state = SH_PROMPT;
+	shell_ui_callback = NULL;
 }
 
 int shell_interactive()
@@ -223,7 +226,21 @@ int shell_interactive()
 	case SH_EXEC:
 		cmd_buf[cmd_len] = 0;
 		_shell_exec();
+
+// fixme: ugly hack, we should manage the shell FSM state in a cleaner way.
+		if( state == SH_EXEC_UI )
+			return 1;
+
 		state = SH_PROMPT;
+		return 1;
+
+
+	case SH_EXEC_UI:
+		if( !shell_ui_callback || shell_ui_callback() < 0 || console_getc() == 27 )
+		{
+			cmd_buf[cmd_len] = 0;
+			state = SH_PROMPT;
+		}
 		return 1;
 	}
 	return 0;
@@ -378,6 +395,14 @@ void shell_list_cmds()
 	{
 		pp_printf("  %s\n", cmds[i]->name);
 	}
+}
+
+void shell_activate_ui_command( int (*callback)() )
+{
+	shell_ui_callback = callback;
+	state = SH_EXEC_UI;
+	pp_printf("Activateui: %p\n", callback );
+	cmd_len = 0;
 }
 
 #define REGISTER_WRC_COMMAND(_name) \

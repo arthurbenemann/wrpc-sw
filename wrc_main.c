@@ -56,9 +56,6 @@
 #include "lib/snmp.h"
 #endif
 
-int wrc_ui_mode = UI_SHELL_MODE;
-int wrc_ui_refperiod = TICS_PER_SECOND; /* 1 sec */
-int wrc_phase_tracking = 1;
 char wrc_hw_name[HW_NAME_LENGTH];
 
 uint32_t cal_phase_transition = 2389;
@@ -103,7 +100,6 @@ static void wrc_initialize(void)
 
 	wrc_board_init();
 
-	wrc_ui_mode = UI_SHELL_MODE;
 	_endram = ENDRAM_MAGIC;
 
 	wrc_ptp_set_mode(WRC_MODE_SLAVE);
@@ -154,18 +150,7 @@ static int wrc_check_link(void)
 
 static int ui_update(void)
 {
-	int ret;
-
-	if (wrc_ui_mode == UI_GUI_MODE) {
-		ret = wrc_mon_gui();
-		if ( console_getc() == 27 || wrc_ui_refperiod == 0) {
-			shell_init();
-			wrc_ui_mode = UI_SHELL_MODE;
-		}
-	} else {
-		ret = shell_interactive();
-	}
-	return ret;
+	return shell_interactive();
 }
 
 /* initialize functions to be called after reset in check_reset function */
