@@ -43,6 +43,10 @@ int tmo_init(timeout_t *tmo, uint32_t milliseconds);
 int tmo_restart(timeout_t *tmo);
 int tmo_expired(timeout_t *tmo);
 
+const char *fromhex(const char *hex, int *v);
+const char *fromhex64(const char *hex, int64_t *v);
+const char *fromdec(const char *dec, int *v);
+
 static inline int within_range(int x, int minval, int maxval, int wrap)
 {
     int rv;
