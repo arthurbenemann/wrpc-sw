@@ -763,6 +763,7 @@ out_close:
 int storage_save_calibration(void)
 {
 	int ret = 0;
+	int i;
 
 	cal_data.magic = CAL_FILE_MAGIC;
 
@@ -780,7 +781,18 @@ int storage_save_calibration(void)
 	    != sizeof(cal_data))
 			goto out_close;
 
-	storage_dbg("saved %d bytes of calibration data\n", sizeof(cal_data ));
+	storage_dbg("Saved %d bytes of calibration data:\n", sizeof(cal_data ));
+
+	for(i = 0; i < cal_data.param_count; i++)
+	{
+		storage_dbg( " - param %c%c%c%c = %d\n", 
+			((cal_data.params[i].id) >> 24) & 0xff,
+			((cal_data.params[i].id) >> 16) & 0xff,
+			((cal_data.params[i].id) >> 8) & 0xff,
+			((cal_data.params[i].id) >> 0) & 0xff,
+			  cal_data.params[i].value );
+	}
+
 
 out_close:
 	sdbfs_close(&wrc_sdbfs);
