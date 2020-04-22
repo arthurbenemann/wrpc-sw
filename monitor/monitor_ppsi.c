@@ -25,6 +25,8 @@
 #include "shell.h"
 #include "revision.h"
 
+
+#define WRC_MONITOR_REFRESH_PERIOD (1 * TICS_PER_SECOND)
 #define WRC_DIAG_REFRESH_PERIOD (1 * TICS_PER_SECOND)
 
 extern struct pp_servo servo;
@@ -108,8 +110,8 @@ int wrc_mon_gui(void)
 	int n_out, i;
 
 	if (!last_jiffies)
-		last_jiffies = timer_get_tics() - 1 -  wrc_ui_refperiod;
-	if (time_before(timer_get_tics(), last_jiffies + wrc_ui_refperiod)
+		last_jiffies = timer_get_tics() - 1 -  WRC_MONITOR_REFRESH_PERIOD;
+	if (time_before(timer_get_tics(), last_jiffies + WRC_MONITOR_REFRESH_PERIOD)
 		&& last_servo_count == s->update_count)
 		return 0;
 	last_jiffies = timer_get_tics();
@@ -192,7 +194,7 @@ int wrc_mon_gui(void)
 
 
 	if (wrc_mon_status() == 0)
-		return 1;
+		return 0;
 
 	cprintf(C_GREY, "Servo state:               ");
 	cprintf(C_WHITE, "%s\n", s->servo_state_name);
@@ -259,7 +261,7 @@ int wrc_mon_gui(void)
 	cprintf(C_GREY, "Update counter:");
 	cprintf(C_WHITE, "%27d\n", (int32_t) (s->update_count));
 
-	return 1;
+	return 0;
 }
 
 static inline void cprintf_time(int color, struct pp_time *time)
@@ -321,12 +323,12 @@ int wrc_log_stats(void)
 		return 0;
 
 	if (!last_jiffies)
-		last_jiffies = timer_get_tics() - 1 -  wrc_ui_refperiod;
+		last_jiffies = timer_get_tics() - 1 -  WRC_MONITOR_REFRESH_PERIOD;
 	/* stats update condition for Slave mode */
 	if (wrc_stats_last == s->update_count && ptp_mode==WRC_MODE_SLAVE)
 		return 0;
 	/* stats update condition for Master mode */
-	if (time_before(timer_get_tics(), last_jiffies + wrc_ui_refperiod) &&
+	if (time_before(timer_get_tics(), last_jiffies + WRC_MONITOR_REFRESH_PERIOD) &&
 			ptp_mode != WRC_MODE_SLAVE)
 		return 0;
 	last_jiffies = timer_get_tics();
