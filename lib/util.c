@@ -143,3 +143,58 @@ int tmo_expired(timeout_t *tmo)
 	return (timer_get_tics() - tmo->start_tics > tmo->timeout);
 }
 
+
+const char *fromhex64(const char *hex, int64_t *v)
+{
+	int64_t o = 0;
+	int sign = 1;
+
+	if (hex && *hex == '-') {
+		sign = -1;
+		hex++;
+	}
+	for (; hex && *hex; ++hex) {
+		if (*hex >= '0' && *hex <= '9') {
+			o = (o << 4) + (*hex - '0');
+		} else if (*hex >= 'A' && *hex <= 'F') {
+			o = (o << 4) + (*hex - 'A') + 10;
+		} else if (*hex >= 'a' && *hex <= 'f') {
+			o = (o << 4) + (*hex - 'a') + 10;
+		} else {
+			break;
+		}
+	}
+
+	*v = o * sign;
+	return hex;
+}
+
+const char *fromhex(const char *hex, int *v)
+{
+	const char *ret;
+	int64_t v64;
+
+	ret = fromhex64(hex, &v64);
+	*v = (int)v64;
+	return ret;
+}
+
+const char *fromdec(const char *dec, int *v)
+{
+	int o = 0, sign = 1;
+
+	if (dec && *dec == '-') {
+		sign = -1;
+		dec++;
+	}
+	for (; dec && *dec; ++dec) {
+		if (*dec >= '0' && *dec <= '9') {
+			o = (o * 10) + (*dec - '0');
+		} else {
+			break;
+		}
+	}
+
+	*v = o * sign;
+	return dec;
+}
