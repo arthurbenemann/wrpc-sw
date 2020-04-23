@@ -316,12 +316,54 @@ static int cmd_ertm(const char *args[])
     }
 }
 
+#define ERTM14_MON_REFRESH_PERIOD 1000 // ms
+
+static timeout_t ertm14_mon_timer;
+
+static int ertm14_monitor_ui()
+{
+    if( !tmo_expired( &ertm14_mon_timer ))
+        return 0;
+
+    uint32_t ret;
+    uint32_t val;
+
+    tmo_restart( &ertm14_mon_timer );
+
+    term_clear();
+
+	cprintf(C_BLUE, "eRTM14/15 Board Monitor");
+	cprintf(C_GREY, "\nEsc = exit\n\n");
+
+    ret = diag_read_word(8, DIAG_RO_BANK, &val);
+
+    cprintf(C_GREY, "Streamer RX Count: ");
+    cprintf(C_WHITE, "%d\n", val);
+
+
+
+    return 0;
+}
+
+static int cmd_ertm_ui(const char *args[])
+{
+    tmo_init( &ertm14_mon_timer, ERTM14_MON_REFRESH_PERIOD );
+	shell_activate_ui_command( ertm14_monitor_ui );
+	return 0;
+}
+
 DEFINE_WRC_COMMAND(ertm) = {
 	.name = "ertm",
 	.exec = cmd_ertm,
 };
 
+DEFINE_WRC_COMMAND(ertm_ui) = {
+	.name = "eu", // fixme
+	.exec = cmd_ertm_ui,
+};
+
 void ertm14_shell_init()
 {
     shell_register_command( &__wrc_cmd_ertm );
+    shell_register_command( &__wrc_cmd_ertm_ui );
 }
