@@ -44,9 +44,6 @@
 struct storage_device wrc_storage_dev;
 struct sdbfs wrc_sdbfs;
 
-// fixme: remove
-uint8_t has_eeprom = 0;
-
 struct storage_device;
 
 

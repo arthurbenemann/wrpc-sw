@@ -272,9 +272,6 @@ void shell_boot_script(void)
 {
 	uint8_t next = 0;
 
-	if (!has_eeprom)
-		return;
-
 	while (CONFIG_HAS_BUILD_INIT) {
 		cmd_len = build_init_readcmd((uint8_t *)cmd_buf,
 					SH_MAX_LINE_LEN);

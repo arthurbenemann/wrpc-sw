@@ -71,8 +71,6 @@
 
 struct storage_device;
 
-extern uint8_t has_eeprom;
-
 struct s_sfpinfo {
 	char pn[SFP_PN_LEN];
 	int32_t alpha;
