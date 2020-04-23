@@ -14,4 +14,6 @@
 #define WRC_EVENT_TIMING_DOWN  4
 #define WRC_EVENT_PTP_MODE_CHANGED  5
 
+#define WRC_EVENT_PRIVATE_START 16
+
 #endif /* __WRC_TASK_H__ */
