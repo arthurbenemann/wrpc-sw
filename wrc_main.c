@@ -62,6 +62,12 @@ uint32_t cal_phase_transition = 2389;
 
 int wrc_vlan_number = CONFIG_VLAN_NR;
 
+// fixme: this probably deserves to be moved to another file...
+static int prev_ptp_mode;
+static int prev_ptp_state;
+static int prev_servo_state;
+static int prev_timing_ok;
+
 static void wrc_initialize(void)
 {
 	uint8_t mac_addr[6];
@@ -132,6 +138,7 @@ static int wrc_check_link(void)
 		rv = 1;
 	} else if (prev_state && !state) {
 		wrc_verbose("Link down.\n");
+		prev_timing_ok = 0;
 		event_post( WRC_EVENT_LINK_DOWN );
 		gen_gpio_out(&pin_sysc_led_link, 0);
 		link_status = LINK_WENT_DOWN;
@@ -189,16 +196,17 @@ static int update_uptime(void)
 	return 0;
 }
 
-// fixme: this probably deserves to be moved to another file...
-static int prev_ptp_mode;
-static int prev_ptp_state;
-static int prev_servo_state;
+int wrc_is_timing_up()
+{
+	return prev_timing_ok;
+}
 
 static void wrc_dispatch_ptp_events_init(void)
 {
 	prev_ptp_mode = -1;
 	prev_ptp_state = -1;
 	prev_servo_state = -1;
+	prev_timing_ok = 0;
 }
 
 static void wrc_dispatch_ptp_events_poll(void)
@@ -212,6 +220,7 @@ static void wrc_dispatch_ptp_events_poll(void)
     if( mode != prev_ptp_mode )
     {
         main_dbg("PTP mode changed.\n");
+		prev_timing_ok = 0;
         event_post( WRC_EVENT_PTP_MODE_CHANGED );
     }
 
@@ -222,21 +231,34 @@ static void wrc_dispatch_ptp_events_poll(void)
 	if( mode == WRC_MODE_MASTER )
 	{
 		if( ppi->state == PPS_MASTER && prev_ptp_state != PPS_MASTER )
+		{
+			prev_timing_ok = 1;
 			event_post( WRC_EVENT_TIMING_UP );
+		}
 		else if ( ppi->state != PPS_MASTER && prev_ptp_state == PPS_MASTER )
+		{
+			prev_timing_ok = 0;
 			event_post( WRC_EVENT_TIMING_DOWN );
+		}
 	}
 	else if ( mode == WRC_MODE_SLAVE )
 	{
 		if( ppi->state == PPS_SLAVE )
 		{
 			if( ss->state == WR_TRACK_PHASE && prev_servo_state != WR_TRACK_PHASE )
+			{
+				prev_timing_ok = 1;
 				event_post( WRC_EVENT_TIMING_UP );
+			}
 			else if( ss->state != WR_TRACK_PHASE && prev_servo_state == WR_TRACK_PHASE )
+			{
+				prev_timing_ok = 0;
 				event_post( WRC_EVENT_TIMING_DOWN );
+			}
 		}
 		else if( ppi->state != PPS_SLAVE && prev_ptp_state == PPS_SLAVE )
 		{
+			prev_timing_ok = 0;
 			event_post( WRC_EVENT_TIMING_DOWN );
 		}
 	}
