@@ -145,6 +145,12 @@ void bb_spi_xfer(struct spi_bus *bus, uint64_t din, uint64_t *d_out, int n_bits)
 
 }
 
+/*
+ * Declare GPIOs for bitbanging SPI
+ * set initial state of outputs
+ * set SPI speed by configuring bit delay
+ */
+
 int bb_spi_create( struct spi_bus *bus, 
                     struct gpio_pin *pin_cs,
                     struct gpio_pin *pin_mosi,
