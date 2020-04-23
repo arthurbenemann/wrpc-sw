@@ -82,6 +82,11 @@ int ad9910_probe( struct ad9910_device *dev, struct spi_bus *bus, void (*trigger
     return (id == AD9910_DEFAULT_CFR1) ? 0 : -1;
 }
 
+uint64_t ad9910_frequency_to_ftw( struct ad9910_device *dev, uint64_t freq_hz )
+{
+    return  (1ULL << 32) * freq_hz / AD9910_REF_FREQ;
+}
+
 
 int ad9910_program( struct ad9910_device *dev, uint64_t ftw_n, int phase, int fs_current )
 {
@@ -91,6 +96,8 @@ int ad9910_program( struct ad9910_device *dev, uint64_t ftw_n, int phase, int fs
 
     uint64_t ftw = ftw_n;
     uint64_t prof0_cr = ftw | (0x8b5ULL << 48); 
+
+    dev_dbg("ad9910 FTW = %d\n", (uint32_t) ftw);
 
 //    dev_dbg("ad9910_program [%08x%08x] asf %d!\n", (uint32_t)(prof0_cr >> 32), (uint32_t)prof0_cr, asf );
 
