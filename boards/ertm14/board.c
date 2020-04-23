@@ -140,7 +140,6 @@ static struct ad95xx_config clk_dist_ertm15_default_config =
 
 static spll_gain_schedule_t spll_main_ocxo_gain_sched;
 
-static int has_new_config = 0;
 static int ertm_init_complete = 0;
 
 static int ertm14_update_config_task(void);
@@ -264,7 +263,7 @@ static int ertm14_dds_sync_init(void)
     fine_pulse_gen_set_external_fine_delay( &board.dds_sync_dev, ERTM14_DDS_SYNC_LO, 75, ad9910_set_fine_delay );
 
     board_dbg("ref delay = %d lo delay = %d\n", board.dds_sync_delays[ERTM14_DDS_IOUPDATE_REF], board.dds_sync_delays[ERTM14_DDS_IOUPDATE_LO] );
-    fine_pulse_gen_setup_channel ( &board.dds_sync_dev, ERTM14_DDS_IOUPDATE_LO, 1, board.dds_sync_delays[ERTM14_DDS_IOUPDATE_LO], 0  );
+    fine_pulse_gen_setup_channel ( &board.dds_sync_dev, ERTM14_DDS_IOUPDATE_LO, 1, board.dds_sync_delays[ERTM14_DDS_IOUPDATE_LO], 0 );
     fine_pulse_gen_setup_channel ( &board.dds_sync_dev, ERTM14_DDS_IOUPDATE_REF, 1, board.dds_sync_delays[ERTM14_DDS_IOUPDATE_REF], 0 );
 
 // CLKAB Sync: internal delay line, single-shot mode, negative polarity
@@ -489,14 +488,6 @@ static void ertm14_align_ref_out_to_pps(void)
 #if 0
 
 
-
-#define CLK_PPS_STATE_START 0
-#define CLK_PPS_STATE_MASTER 1
-#define CLK_PPS_STATE_WAIT_SERVO 2
-#define CLK_PPS_STATE_SLAVE 3
-#define CLK_PPS_STATE_DONE 4
-#define CLK_PPS_STATE_RUN_SYNC 5
-
 #define CLK_PPS_SYNC_MAX_HANDLERS 2
 
 struct ertm14_clk_pps_sync_handler {
@@ -704,20 +695,131 @@ static void ertm14_clk_pps_sync_task(void)
 #endif
 
 
-static int evth_clk_pps_sync;
+static int evth_dds_nco_sync;
 
-static void ertm14_clk_pps_sync_init(void)
+#define DDS_NCO_STATE_WAIT_TIMING 0
+#define DDS_NCO_STATE_RECONFIGURE 1
+#define DDS_NCO_STATE_ARM 2
+#define DDS_NCO_STATE_WAIT_TRIGGER 3
+
+static int dds_nco_sync_state = 0;
+
+static void ertm14_dds_nco_sync_init(void)
 {
-    evth_clk_pps_sync = event_listener_create();
+   dds_nco_sync_state = DDS_NCO_STATE_WAIT_TIMING;
 }
 
-static void ertm14_clk_pps_sync_task(void)
-{
-    int evt = event_poll( evth_clk_pps_sync );
 
-    if ( evt )
+static void rf_nco_sync_disable_channel( struct ertm14_dds_state *state, uint32_t ioupdate_channel )
+{
+    fine_pulse_gen_setup_channel ( &board.dds_sync_dev, ioupdate_channel, 1, board.dds_sync_delays[ioupdate_channel], 0  );
+    state->sync_count = 0;
+}
+
+static void rf_nco_sync_configure_channel( struct ertm14_dds_state *state, uint32_t ioupdate_channel )
+{
+    int flags = 0;
+
+    pp_printf("nco_sync: source=%d\n",state->sync_source);
+
+   if( state->sync_source == ERTM14_SYNC_SOURCE_RF_TRIGGER)
+        flags |= FINE_PULSE_GEN_USE_EXT_TRIGGER;
+
+    fine_pulse_gen_setup_channel ( &board.dds_sync_dev, ioupdate_channel, 1, board.dds_sync_delays[ioupdate_channel], flags  );
+    state->sync_count = 0;
+}
+
+static void rf_nco_sync_arm_channel( struct ertm14_dds_state *state, uint32_t ioupdate_channel )
+{
+    if( state->sync_source == ERTM14_SYNC_SOURCE_NONE)
+        return;
+
+    fine_pulse_gen_trigger ( &board.dds_sync_dev, (1 << ioupdate_channel), 0 );
+}
+
+
+static int rf_nco_sync_wait_trigger( struct ertm14_dds_state *state, uint32_t ioupdate_channel )
+{
+    // no sync? consider the channel always triggered
+    if( state->sync_source == ERTM14_SYNC_SOURCE_NONE)
+        return 1;
+
+    return fine_pulse_gen_is_triggered ( &board.dds_sync_dev, 1 << ioupdate_channel );
+}
+
+static void ertm14_dds_nco_sync_task(void)
+{
+    int evt = event_poll( evth_dds_nco_sync );
+    
+
+    if( evt > 0 )
+    pp_printf("**********ncosync %d\n", evt);
+
+    switch( evt )
     {
-        board_dbg("[dds-trigger-rx] GOT EVENT: %d\n", evt );
+        case WRC_ERTM14_EVENT_RECONFIGURED:
+            board_dbg("nco_sync: reconfig request\n");
+            dds_nco_sync_state = DDS_NCO_STATE_RECONFIGURE;
+            break;
+        case WRC_EVENT_LINK_DOWN:
+        case WRC_EVENT_LINK_UP:
+        case WRC_EVENT_TIMING_DOWN:
+        case WRC_EVENT_TIMING_UP:
+            board_dbg("link/timing status change, restarting nco_sync\n");
+            rf_nco_sync_disable_channel( &ertm14_current_state->ref, ERTM14_DDS_IOUPDATE_REF );
+            rf_nco_sync_disable_channel( &ertm14_current_state->lo, ERTM14_DDS_IOUPDATE_LO );
+            dds_nco_sync_state = DDS_NCO_STATE_WAIT_TIMING;
+            break;
+        default:
+            break;
+    }
+
+    
+
+    switch( dds_nco_sync_state )
+    {
+        case DDS_NCO_STATE_WAIT_TIMING:
+            if( evt == WRC_EVENT_TIMING_UP)
+            {
+                board_dbg("nco_sync: timing up, configuring FPGen\n");
+                dds_nco_sync_state = DDS_NCO_STATE_RECONFIGURE;
+            }
+            break;
+
+        case DDS_NCO_STATE_RECONFIGURE:
+            if( !wrc_is_timing_up() )
+            {
+                dds_nco_sync_state = DDS_NCO_STATE_WAIT_TIMING;
+            } else {
+                rf_nco_sync_configure_channel( &ertm14_current_state->ref, ERTM14_DDS_IOUPDATE_REF );
+                rf_nco_sync_configure_channel( &ertm14_current_state->lo, ERTM14_DDS_IOUPDATE_LO );
+            }
+            dds_nco_sync_state = DDS_NCO_STATE_ARM;
+            break;
+
+        case DDS_NCO_STATE_ARM:
+            board_dbg("(Arm!)\n");
+            rf_nco_sync_arm_channel( &ertm14_current_state->ref, ERTM14_DDS_IOUPDATE_REF );
+            rf_nco_sync_arm_channel( &ertm14_current_state->lo, ERTM14_DDS_IOUPDATE_LO );
+            dds_nco_sync_state = DDS_NCO_STATE_WAIT_TRIGGER;
+            break;
+        case DDS_NCO_STATE_WAIT_TRIGGER:
+        {
+            int trig_ref = rf_nco_sync_wait_trigger( &ertm14_current_state->ref, ERTM14_DDS_IOUPDATE_REF );
+            int trig_lo = rf_nco_sync_wait_trigger( &ertm14_current_state->lo, ERTM14_DDS_IOUPDATE_REF );
+
+
+            if( trig_ref && trig_lo )
+            {
+                board_dbg("(Trig!)\n");
+                dds_nco_sync_state = DDS_NCO_STATE_ARM;
+            }
+
+            break;
+        }
+
+        default:
+            break;
     }
 }
 
@@ -869,12 +971,11 @@ int ertm14_init_mac_eeprom(void)
     ep_set_mac_addr( mac );
 }
 
-int ertm14_init(void)
+int ertm14_low_level_init(void)
 {
     int i;
     uint32_t id;
 
-    has_new_config = 0;
     ertm_init_complete = 0;
 
     memset( &board, 0, sizeof( struct ertm14_board ));
@@ -1020,9 +1121,11 @@ int ertm14_init(void)
         board_dbg("Initializing DDSes\n");
         ertm15_init_dds();
 
+
+        uint64_t ftw = ad9910_frequency_to_ftw( &board.dds_ad9910_ref, ERTM14_DEFAULT_DDS_FREQUENCY_HZ );
         /* Program the DDSes to some meaninfgul settings, say, 205 MHz */
-        ad9910_program(&board.dds_ad9910_ref, 205000000ULL, 0, 0x0 );
-        ad9910_program(&board.dds_ad9910_lo, 205000000ULL, 0, 0x0 );
+        ad9910_program(&board.dds_ad9910_ref, ftw, 0, 0x0 );
+        ad9910_program(&board.dds_ad9910_lo, ftw, 0, 0x0 );
     }
 
     /* Setup the SoftPLL for the OCXO we have */
@@ -1076,10 +1179,9 @@ void ertm14_config_init()
     
         cfg->ref.sync_count = 0;
         cfg->lo.sync_count = 0;
-        cfg->ref.sync_source = ERTM14_SYNC_SOURCE_PPS;
-        cfg->lo.sync_source = ERTM14_SYNC_SOURCE_PPS;
-        cfg->ref.sync_state = ERTM14_SYNC_STATE_IDLE;
-        cfg->lo.sync_state = ERTM14_SYNC_STATE_IDLE;
+
+        cfg->ref.sync_source = ERTM14_SYNC_SOURCE_RF_TRIGGER;
+        cfg->lo.sync_source = ERTM14_SYNC_SOURCE_RF_TRIGGER;
 
         for(j = 0; j <= ERTM14_CLKAB_OUT_MAX_ID; j++)
         {
@@ -1100,8 +1202,9 @@ struct ertm14_board_state *ertm14_get_state_for_config(int config_id)
 
 int ertm14_apply_config(int config_id)
 {
+    board_dbg("Apply_config: %d\n", config_id );
     ertm14_current_state = &ertm14_configs[config_id];
-    has_new_config = 1;
+    event_post ( WRC_ERTM14_EVENT_APPLY_NEW_CONFIG );
 }
 
 int ertm14_get_current_config_id()
@@ -1158,24 +1261,32 @@ static int ertm14_commit_config( struct  ertm14_board_state *cfg )
             ertm15_rf_distr_output_enable( &board.rf_distr, ERTM15_RF_REF, i, st_ref );
         }
 
-        cfg->lo.sync_state = ERTM14_SYNC_STATE_IDLE;
-        cfg->ref.sync_state = ERTM14_SYNC_STATE_IDLE;
-
         ertm15_update_rf_switches( &board.rf_distr );
 }
 
-static int ertm14_update_config_task(void)
+static int evth_config_update_listener;
+
+static int ertm14_config_update_init(void)
 {
-    if (has_new_config && ertm_init_complete && ertm14_current_state->valid)
+}
+
+static int ertm14_config_update_task(void)
+{
+    //pp_printf("cutask %d\n", ertm_init_complete );
+    if (ertm_init_complete)
     {
-        int i;
-        board_dbg("New config detected, applying...\n");
+        int evt = event_poll( evth_config_update_listener );
 
-        has_new_config = 0;
-
-        if (!(board.mode & ERTM14_MODE_WITHOUT_ERTM15))
+        if(evt > 0)
         {
+            pp_printf("####################CUEvt %d\n", evt);
+        }
+
+        if( evt == WRC_ERTM14_EVENT_APPLY_NEW_CONFIG )
+        {
+            board_dbg("New config detected, applying...\n");
             ertm14_commit_config(ertm14_current_state);
+            event_post( WRC_ERTM14_EVENT_RECONFIGURED );
         }
     }
 }
@@ -1245,25 +1356,32 @@ int wrc_board_early_init()
     /* reset the networking part of the WRCore and start the WR Endpoint */
    	net_rst();
 
-    return ertm14_init();
-}
-
-int wrc_board_init()
-{
-    ertm14_shell_init();
-
-    return 0;
+    return ertm14_low_level_init();
 }
 
 extern int phy_calibration_poll();
 extern void phy_calibration_init();
 
+int wrc_board_init()
+{
+    ertm14_shell_init();
+
+    evth_dds_nco_sync = event_listener_create();
+    evth_config_update_listener = event_listener_create();
+
+    wrc_task_create( "iuart14", NULL, iuart_14_poll );
+    wrc_task_create( "rf-nco-sync", ertm14_dds_nco_sync_init, ertm14_dds_nco_sync_task );
+    wrc_task_create( "ertm-config", ertm14_config_update_init, ertm14_config_update_task );
+    wrc_task_create( "phy-cal", phy_calibration_init, phy_calibration_poll );
+
+    ertm14_apply_config( 0 );
+
+    return 0;
+}
+
+
 int wrc_board_create_tasks()
 {
-    wrc_task_create( "iuart14", NULL, iuart_14_poll );
-    wrc_task_create( "clk-pps-sync", ertm14_clk_pps_sync_init, ertm14_clk_pps_sync_task );
-    wrc_task_create( "ertm-config", NULL, ertm14_update_config_task );
-    wrc_task_create( "phy-cal", phy_calibration_init, phy_calibration_poll );
 
     return 0;
 }
