@@ -81,7 +81,7 @@
 
 #define FMC_EEPROM_ADR 0x50
 
-#define SDBFS_REC 4
+#define SDBFS_REC 5
 
 void sdb_find_devices(void);
 void sdb_print_devices(void);

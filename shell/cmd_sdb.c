@@ -24,7 +24,7 @@ static int cmd_sdb(const char *args[])
 
 	if (!args[0])
 	{
-		pp_printf("Command expected: format, ls");
+		pp_printf("Command expected: format, ls\n");
 		return 0;
 	}
 	

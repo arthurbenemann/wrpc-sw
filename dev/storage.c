@@ -41,6 +41,11 @@
 
 #define STORAGE_FLAG_DEVICE_OK (1<<0)
 
+static const uint32_t sdbfs_default_bin[] =
+{
+	#include "dev/sdbfs-default.h"
+};
+
 struct storage_device wrc_storage_dev;
 struct sdbfs wrc_sdbfs;
 
@@ -1090,8 +1095,9 @@ static inline unsigned long SDB_ALIGN(unsigned long x, int blocksize)
 int storage_sdbfs_format( struct storage_device *dev, uint32_t base_addr )
 {
 	struct sdb_device *sdbfs =
-		 (struct sdb_device *) NULL; // fixme
-	struct sdb_interconnect *sdbfs_dir = (struct sdb_interconnect *) NULL;
+		 (struct sdb_device *) sdbfs_default_bin;
+	struct sdb_interconnect *sdbfs_dir = (struct sdb_interconnect *)
+		sdbfs_default_bin;
 	struct sdb_device sdbfs_buf[SDBFS_REC];
 
 	int i;
@@ -1102,9 +1108,7 @@ int storage_sdbfs_format( struct storage_device *dev, uint32_t base_addr )
 	wrc_sdbfs.drvdata = dev;
 	wrc_sdbfs.blocksize = dev->block_size;
 
-	/* first file starts
-	
-	 after the SDBFS description */
+	/* first file starts after the SDBFS description */
 	cur_adr = base_addr + SDB_ALIGN(SDBFS_REC*sizeof(struct sdb_device),
 			wrc_sdbfs.blocksize );
 
@@ -1145,8 +1149,8 @@ int storage_sdbfs_format( struct storage_device *dev, uint32_t base_addr )
 	size = sizeof(struct sdb_device);
 
 	for (i = 0; i < SDBFS_REC; ++i) {
-			sdbfs_write_callback(&wrc_sdbfs, base_addr + i*size, &sdbfs[i],
-					size);
+		sdbfs_write_callback(&wrc_sdbfs, base_addr + i*size, &sdbfs[i],
+				size);
 	}
 
 	pp_printf("Verification...\n");
