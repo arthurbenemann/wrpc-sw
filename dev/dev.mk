@@ -53,6 +53,10 @@ obj-$(CONFIG_FAKE_TEMPERATURES) += dev/fake-temp.o
 
 dev/ep_pfilter.o: $(pfilter-y)
 
+dev/storage.o: $(sdbfsimg-y)
+
 $(pfilter-y): tools
 	./tools/pfilter-builder include/dev/
-	sleep 1
+
+$(sdbfsimg-y): tools
+	./tools/gensdbfs -c include/dev/sdbfs-default.h tools/sdbfs tools/sdbfs-default.bin

@@ -75,6 +75,10 @@ pfilter-y                     := include/dev/pfilter-rules-novlan.h
 pfilter-$(CONFIG_VLAN)        += include/dev/pfilter-rules-vlan.h
 export pfilter-y
 
+# sdbfs image
+sdbfsimg-y	:=	include/dev/sdbfs-default.h
+export sdbfsimg-y
+
 all:
 
 include boards/boards.mk
