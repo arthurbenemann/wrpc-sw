@@ -744,7 +744,13 @@ static int rf_nco_sync_wait_trigger( struct ertm14_dds_state *state, uint32_t io
     if( state->sync_source == ERTM14_SYNC_SOURCE_NONE)
         return 1;
 
-    return fine_pulse_gen_is_triggered ( &board.dds_sync_dev, 1 << ioupdate_channel );
+    if( fine_pulse_gen_is_triggered ( &board.dds_sync_dev, 1 << ioupdate_channel ) )
+    {
+        state->sync_count++;
+        return 1;
+    }
+
+    return 0;
 }
 
 static void ertm14_dds_nco_sync_task(void)
@@ -798,7 +804,7 @@ static void ertm14_dds_nco_sync_task(void)
             break;
 
         case DDS_NCO_STATE_ARM:
-            board_dbg("(Arm!)\n");
+            //board_dbg("(Arm!)\n");
             rf_nco_sync_arm_channel( &ertm14_current_state->ref, ERTM14_DDS_IOUPDATE_REF );
             rf_nco_sync_arm_channel( &ertm14_current_state->lo, ERTM14_DDS_IOUPDATE_LO );
             dds_nco_sync_state = DDS_NCO_STATE_WAIT_TRIGGER;
@@ -811,7 +817,7 @@ static void ertm14_dds_nco_sync_task(void)
 
             if( trig_ref && trig_lo )
             {
-                board_dbg("(Trig!)\n");
+                //board_dbg("(Trig!)\n");
                 dds_nco_sync_state = DDS_NCO_STATE_ARM;
             }
 

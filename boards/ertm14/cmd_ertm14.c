@@ -320,6 +320,18 @@ static int cmd_ertm(const char *args[])
 
 static timeout_t ertm14_mon_timer;
 
+static const char *nco_sync_source_to_string(int src)
+{
+    switch(src)
+    {
+        case ERTM14_SYNC_SOURCE_NONE: return "Off";
+        case ERTM14_SYNC_SOURCE_PPS: return "PPS";
+        case ERTM14_SYNC_SOURCE_RF_TRIGGER: return "RF Trigger";
+        default: return "?";
+    }
+}
+
+
 static int ertm14_monitor_ui()
 {
     if( !tmo_expired( &ertm14_mon_timer ))
@@ -337,8 +349,23 @@ static int ertm14_monitor_ui()
 
     ret = diag_read_word(8, DIAG_RO_BANK, &val);
 
-    cprintf(C_GREY, "Streamer RX Count: ");
+    int id = ertm14_get_current_config_id();
+    struct ertm14_board_state *st = ertm14_get_state_for_config(id);
+
+    if(!st)
+        return 0;
+
+    cprintf(C_WHITE, "NCO Sync Status:\n");
+    cprintf(C_GREY, "Streamer RX Message count: ");
     cprintf(C_WHITE, "%d\n", val);
+    cprintf(C_GREY, "LO DDS Sync Mode:          ");
+    cprintf(C_WHITE, "%s\n", nco_sync_source_to_string(st->lo.sync_source));
+    cprintf(C_GREY, "REF DDS Sync Mode:         ");
+    cprintf(C_WHITE, "%s\n", nco_sync_source_to_string(st->ref.sync_source));
+    cprintf(C_GREY, "LO DDS Sync Triggers:      ");
+    cprintf(C_WHITE, "%d\n", st->lo.sync_count);
+    cprintf(C_GREY, "REF DDS Sync Triggers:     ");
+    cprintf(C_WHITE, "%d\n", st->ref.sync_count);
 
 
 

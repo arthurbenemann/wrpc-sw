@@ -139,6 +139,11 @@ extern unsigned char *BASE_EP;
 #define ERTM14_DDS_IOUPDATE_LO 4
 #define ERTM14_DDS_IOUPDATE_REF 5
 
+#define ERTM14_DEFAULT_DDS_FREQUENCY_HZ 205000000ULL
+
+#define WRC_ERTM14_EVENT_APPLY_NEW_CONFIG (WRC_EVENT_PRIVATE_START+0)
+#define WRC_ERTM14_EVENT_RECONFIGURED     (WRC_EVENT_PRIVATE_START+1)
+
 struct ertm14_board
 {
     struct gpio_device gpio_aux;
@@ -184,7 +189,6 @@ struct ertm14_dds_state
     int ampl_factor;
     int sync_source;
     int sync_count;
-    int sync_state;
 };
 
 struct ertm14_board_state
