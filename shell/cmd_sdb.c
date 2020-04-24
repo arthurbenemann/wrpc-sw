@@ -33,11 +33,21 @@ static int cmd_sdb(const char *args[])
 		if( !args[1] ) {
 			pp_printf("Formatting using default location\n");
 			storage_sdbfs_format( &wrc_storage_dev, base, 0 );
-		}
-		else {
+		} else {
 			base = atoi(args[1]);
 			pp_printf("Formatting using custom location 0x%X\n", base);
 			storage_sdbfs_format( &wrc_storage_dev, base, 1 );
+		}
+		return 0;
+	} else if ( !strcasecmp( args[0], "fse")) {
+		uint32_t base = 0;
+		if( !args[1] ) {
+			pp_printf("Erasing using default location\n");
+			storage_sdbfs_erase( &wrc_storage_dev, base, 0 );
+		} else {
+			base = atoi(args[1]);
+			pp_printf("Erasing using custom location 0x%X\n", base);
+			storage_sdbfs_erase( &wrc_storage_dev, base, 1 );
 		}
 		return 0;
 	} else if ( !strcasecmp( args[0], "ls" )) {

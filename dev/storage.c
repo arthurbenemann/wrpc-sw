@@ -1092,6 +1092,26 @@ static inline unsigned long SDB_ALIGN(unsigned long x, int blocksize)
 	return (x + (blocksize - 1)) & ~(blocksize - 1);
 }
 
+int storage_sdbfs_erase( struct storage_device *dev, uint32_t addr, int force_base )
+{
+	int total_size = SDBFS_REC * wrc_sdbfs.blocksize;
+	int count = 0;
+	uint32_t base_addr;
+
+	if (force_base)
+		base_addr = addr;
+	else
+		base_addr = dev->cfg_entry;
+
+	wrc_sdbfs.drvdata = dev;
+	wrc_sdbfs.blocksize = dev->block_size;
+
+	while( count < total_size )
+	{
+		sdbfs_erase_callback( &wrc_sdbfs, base_addr + count, wrc_sdbfs.blocksize );
+		count +=  wrc_sdbfs.blocksize;
+	}
+}
 
 int storage_sdbfs_format( struct storage_device *dev, uint32_t addr, int force_base )
 {
@@ -1144,14 +1164,7 @@ int storage_sdbfs_format( struct storage_device *dev, uint32_t addr, int force_b
 	
 	pp_printf("Formatting SDBFS in %s (base 0x%08x, size 0x%08x)...\n", dev->name, base_addr, SDBFS_REC * wrc_sdbfs.blocksize );
 
-	int total_size = SDBFS_REC * wrc_sdbfs.blocksize;
-	int count = 0;
-
-	while( count < total_size )
-	{
-		sdbfs_erase_callback( &wrc_sdbfs, base_addr + count, wrc_sdbfs.blocksize );
-		count +=  wrc_sdbfs.blocksize;
-	}
+	storage_sdbfs_erase(dev, addr, force_base);
 
 	size = sizeof(struct sdb_device);
 

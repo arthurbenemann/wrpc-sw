@@ -128,6 +128,7 @@ int storage_init_erase(void);
 int storage_init_add(const char *args[]);
 int storage_init_show(void);
 int storage_init_readcmd(uint8_t *buf, uint8_t bufsize, uint8_t next);
+int storage_sdbfs_erase( struct storage_device *dev, uint32_t addr, int force_base );
 int storage_sdbfs_format( struct storage_device *dev, uint32_t addr, int force_base );
 void storage_sdbfs_list(void);
 
