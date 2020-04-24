@@ -51,9 +51,8 @@ obj-$(CONFIG_FAKE_TEMPERATURES) += dev/fake-temp.o
 # have more than one. Note: the filename is reflected in symbol names,
 # so they are hardwired in ../Makefile (and ../tools/pfilter-builder too)
 
+dev/ep_pfilter.o: $(pfilter-y)
+
 $(pfilter-y): tools
 	./tools/pfilter-builder include/dev/
 	sleep 1
-
-#dev/ep_pfilter.o: $(pfilter-y)
-	#@echo Building packet filter assemblies...
