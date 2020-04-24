@@ -123,6 +123,11 @@ static struct gpio_pin pin_ad9520_clkb_sda = {  &board.gpio_aux, 60 };
 static struct gpio_pin pin_sys_clk_sel_stb = {  &board.gpio_aux, 61 };
 static struct gpio_pin pin_sys_clk_sel_next = {  &board.gpio_aux, 62 };
 
+static struct gpio_pin pin_pps_out_mode0 = {  &board.gpio_aux, 63 };
+static struct gpio_pin pin_pps_out_mode1 = {  &board.gpio_aux, 64 };
+static struct gpio_pin pin_pps_out_mode2 = {  &board.gpio_aux, 65 };
+
+
 static struct ad95xx_config pll_ext_10mhz_config = 
 #include "configs/ertm_14_pll_ext_10mhz.h"
 
@@ -800,7 +805,6 @@ static void ertm14_dds_nco_sync_task(void)
                 rf_nco_sync_configure_channel( &ertm14_current_state->ref, ERTM14_DDS_IOUPDATE_REF );
                 rf_nco_sync_configure_channel( &ertm14_current_state->lo, ERTM14_DDS_IOUPDATE_LO );
             }
-            dds_nco_sync_state = DDS_NCO_STATE_ARM;
             break;
 
         case DDS_NCO_STATE_ARM:
@@ -975,6 +979,14 @@ int ertm14_init_mac_eeprom(void)
 
     m24aa025_read_mac( &board.m24_mac_ids[0], mac );
     ep_set_mac_addr( mac );
+}
+
+
+void ertm14_set_pps_out_mode(int mode)
+{
+    gen_gpio_out( &pin_pps_out_mode0, (mode & 0x1) ? 1 : 0);
+    gen_gpio_out( &pin_pps_out_mode1, (mode & 0x2) ? 1 : 0);
+    gen_gpio_out( &pin_pps_out_mode2, (mode & 0x4) ? 1 : 0);
 }
 
 int ertm14_low_level_init(void)
