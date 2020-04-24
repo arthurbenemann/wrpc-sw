@@ -804,6 +804,8 @@ static void ertm14_dds_nco_sync_task(void)
             } else {
                 rf_nco_sync_configure_channel( &ertm14_current_state->ref, ERTM14_DDS_IOUPDATE_REF );
                 rf_nco_sync_configure_channel( &ertm14_current_state->lo, ERTM14_DDS_IOUPDATE_LO );
+                ertm14_set_pps_out_mode( 3 ); // observe RF reset NCO triggers on PPS out
+                dds_nco_sync_state = DDS_NCO_STATE_ARM;
             }
             break;
 
