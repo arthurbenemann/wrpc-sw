@@ -106,6 +106,7 @@ struct storage_device
 	void *priv;
 	uint32_t block_size;
 	uint32_t size;
+	uint32_t cfg_entry;
 	int32_t *entry_points;
 	struct storage_rwops *rwops;
 	int flags;
@@ -127,7 +128,7 @@ int storage_init_erase(void);
 int storage_init_add(const char *args[]);
 int storage_init_show(void);
 int storage_init_readcmd(uint8_t *buf, uint8_t bufsize, uint8_t next);
-int storage_sdbfs_format( struct storage_device *dev, uint32_t base_addr );
+int storage_sdbfs_format( struct storage_device *dev, uint32_t addr, int force_base );
 void storage_sdbfs_list(void);
 
 int storage_get_calibration_parameter( int id, uint32_t *valp );

@@ -12,7 +12,7 @@ int wrc_board_early_init()
 int wrc_board_init()
 {
 	int memtype;
-	uint32_t sdbfs_addr;
+	uint32_t sdbfs_entry;
 	uint32_t sector_size;
 
 	/*
@@ -31,12 +31,12 @@ int wrc_board_init()
 	 * Read from gateware info about used memory. Currently only base
 	 * address and sector size for memtype flash is supported.
 	 */
-	get_storage_info(&memtype, &sdbfs_addr, &sector_size);
+	get_storage_info(&memtype, &sdbfs_entry, &sector_size);
 
 	/*
 	 * Initialize SPI flash and read its ID
 	 */
-	spi_flash_create( &wrc_flash_dev, &spi_wrc_flash, sector_size);
+	spi_flash_create( &wrc_flash_dev, &spi_wrc_flash, sector_size, sdbfs_entry);
 
 	/*
 	 * Initialize storage subsystem with newly created SPI Flash

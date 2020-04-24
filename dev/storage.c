@@ -184,6 +184,7 @@ void storage_spiflash_create(struct storage_device *dev, struct spi_flash_device
 	dev->priv = flash;
 	dev->rwops = &spi_flash_rwops;
 	dev->size = flash->size;
+	dev->cfg_entry = flash->cfg_entry;
 	dev->block_size = flash->sector_size;
 	dev->entry_points = spi_flash_default_entry_points;
 	dev->flags = STORAGE_FLAG_DEVICE_OK;
@@ -1092,7 +1093,7 @@ static inline unsigned long SDB_ALIGN(unsigned long x, int blocksize)
 }
 
 
-int storage_sdbfs_format( struct storage_device *dev, uint32_t base_addr )
+int storage_sdbfs_format( struct storage_device *dev, uint32_t addr, int force_base )
 {
 	struct sdb_device *sdbfs =
 		 (struct sdb_device *) sdbfs_default_bin;
@@ -1104,6 +1105,12 @@ int storage_sdbfs_format( struct storage_device *dev, uint32_t base_addr )
 	char buf[19] = {0};
 	int cur_adr, size;
 	uint32_t val;
+	uint32_t base_addr;
+
+	if (force_base)
+		base_addr = addr;
+	else
+		base_addr = dev->cfg_entry;
 
 	wrc_sdbfs.drvdata = dev;
 	wrc_sdbfs.blocksize = dev->block_size;

@@ -29,7 +29,7 @@ void	flash_init(void)
 		&pin_sysc_spi_miso,
 		&pin_sysc_spi_sclk, 10 );
 
-	spi_flash_create( &wrc_flash_dev, &spi_wrc_flash, 16384 );
+	spi_flash_create( &wrc_flash_dev, &spi_wrc_flash, 16384, 0 );
 
 	return 0;
 }

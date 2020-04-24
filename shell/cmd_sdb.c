@@ -28,14 +28,17 @@ static int cmd_sdb(const char *args[])
 		return 0;
 	}
 	
-	if (!strcasecmp(args[0], "format")) {
+	if (!strcasecmp(args[0], "format") || !strcasecmp(args[0], "fs")) {
 		uint32_t base = 0;
-		if( !args[1] )
+		if( !args[1] ) {
 			pp_printf("Formatting using default location\n");
-		else
+			storage_sdbfs_format( &wrc_storage_dev, base, 0 );
+		}
+		else {
 			base = atoi(args[1]);
-
-		storage_sdbfs_format( &wrc_storage_dev, base );
+			pp_printf("Formatting using custom location 0x%X\n", base);
+			storage_sdbfs_format( &wrc_storage_dev, base, 1 );
+		}
 		return 0;
 	} else if ( !strcasecmp( args[0], "ls" )) {
 		storage_sdbfs_list();
