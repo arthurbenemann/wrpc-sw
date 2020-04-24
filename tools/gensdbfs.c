@@ -35,6 +35,7 @@ static unsigned blocksize = 64;
 static unsigned long devsize = 0; /* unspecified */
 static unsigned long lastwritten = 0;
 static char *prgname;
+int verbose = 0;
 
 static struct sdbf *prepare_dir(char *name, struct sdbf *parent);
 
@@ -88,7 +89,8 @@ static int __fill_dir(struct sdbf *f)
 	struct sdb_component *c = &b->sdb_component;
 	struct sdb_product *p = &c->product;
 
-	printf("Fill-dir %p'\n", f );
+	if (verbose)
+		printf("Fill-dir %p'\n", f );
 	/* addr first and last filled later */
 	__fill_product(p, f->basename, f->stbuf.st_mtime, sdb_type_bridge);
 	f->subdir = prepare_dir(f->fullname, f->dot);
@@ -105,7 +107,8 @@ static int __fill_file(struct sdbf *f, char *dir, char *fname)
 	struct sdb_product *p = &c->product;
 	int flags;
 
-	printf("Fill-file '%s'\n", fname );
+	if (verbose)
+		printf("Fill-file '%s'\n", fname );
 
 	strcpy(fn, dir);
 	strcat(fn, "/");
@@ -165,7 +168,7 @@ static int parse_config_line(struct sdbf *tree, struct sdbf *current, int line,
 	unsigned long long int64;
 	int i;
 
-	//if (getenv("VERBOSE"))
+	if (verbose)
 		fprintf(stderr, "parse line %i for %s: %s\n", line,
 			current->fullname, t);
 
@@ -402,7 +405,7 @@ static struct sdbf *alloc_storage(struct sdbf *tree)
 		l = rpos + f->size - 1;
 		f->s_d.sdb_component.addr_last = htonll(l);
 		if (l > last) last = l;
-	//	if (s("VERBOSE"))
+		if (verbose)
 			fprintf(stderr, "allocated relative %s: %lx to %lx\n",
 				f->fullname, rpos, l);
 		rpos = SDB_ALIGN(rpos + f->size);
@@ -439,7 +442,8 @@ static struct sdbf *write_sdb(struct sdbf *tree, FILE *out)
 			tree[i].base = tree[0].base + tree[i].rstart;
 	}
 	
-	dump_tree(tree);
+	if(verbose)
+		dump_tree(tree);
 
 	/* then each file */
 	for (i = 1; i < n; i++) {
@@ -543,6 +547,7 @@ static int usage(char *prgname)
 	fprintf(stderr, "  -b <number> : block size (default 64)\n");
 	fprintf(stderr, "  -s <number> : device size (default: as needed)\n");
 	fprintf(stderr, "  -c <output header> : create C header file with the binary\n");
+	fprintf(stderr, "  -v          : print generation logs\n");
 	fprintf(stderr, "  a file called \"" CFG_NAME "\", in each "
 		"subdir is used as configuration file\n");
 	exit(1);
@@ -559,7 +564,7 @@ int main(int argc, char **argv)
 	char *h_filename;
 
 	prgname = argv[0];
-	while ( (c = getopt(argc, argv, "b:s:c:")) != -1) {
+	while ( (c = getopt(argc, argv, "b:s:c:v")) != -1) {
 		switch (c) {
 		case 'b':
 			blocksize = strtol(optarg, &rest, 0);
@@ -580,6 +585,9 @@ int main(int argc, char **argv)
 		case 'c':
 			h_filename = optarg;
 			gen_c = 1;
+			break;
+		case 'v':
+			verbose = 1;
 			break;
 		}
 	}
