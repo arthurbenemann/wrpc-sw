@@ -43,7 +43,7 @@
 
 static const uint32_t sdbfs_default_bin[] =
 {
-	#include "dev/sdbfs-default.h"
+	#include "generated/sdbfs-default.h"
 };
 
 struct storage_device wrc_storage_dev;

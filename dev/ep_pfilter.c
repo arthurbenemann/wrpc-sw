@@ -23,12 +23,12 @@
 
 static const uint32_t pfilter_rules_novlan[] = 
 {
-	#include "dev/pfilter-rules-novlan.h"
+	#include "generated/pfilter-rules-novlan.h"
 };
 
 static const uint32_t pfilter_rules_vlan[] =
 {
-	#include "dev/pfilter-rules-vlan.h"
+	#include "generated/pfilter-rules-vlan.h"
 };
 
 struct rule_set {

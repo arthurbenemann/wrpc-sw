@@ -56,7 +56,7 @@ dev/ep_pfilter.o: $(pfilter-y)
 dev/storage.o: $(sdbfsimg-y)
 
 $(pfilter-y): tools
-	./tools/pfilter-builder include/dev/
+	./tools/pfilter-builder include/generated/
 
 $(sdbfsimg-y): tools
-	./tools/gensdbfs -c include/dev/sdbfs-default.h tools/sdbfs tools/sdbfs-default.bin
+	./tools/gensdbfs -c include/generated/sdbfs-default.h tools/sdbfs tools/sdbfs-default.bin

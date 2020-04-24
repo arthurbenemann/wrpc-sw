@@ -71,12 +71,12 @@ arch-files-$(CONFIG_LM32) = $(OUTPUT).bram $(OUTPUT).vhd $(OUTPUT).mif
 
 
 # packet-filter rules: for CONFIG_VLAN we use both sets
-pfilter-y                     := include/dev/pfilter-rules-novlan.h
-pfilter-$(CONFIG_VLAN)        += include/dev/pfilter-rules-vlan.h
+pfilter-y                     := include/generated/pfilter-rules-novlan.h
+pfilter-$(CONFIG_VLAN)        += include/generated/pfilter-rules-vlan.h
 export pfilter-y
 
 # sdbfs image
-sdbfsimg-y	:=	include/dev/sdbfs-default.h
+sdbfsimg-y	:=	include/generated/sdbfs-default.h
 export sdbfsimg-y
 
 all:
