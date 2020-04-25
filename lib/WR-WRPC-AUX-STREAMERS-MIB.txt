@@ -17,7 +17,7 @@ wrpcAuxDiag MODULE-IDENTITY
     DESCRIPTION  "White Rabbit WRPC aux registers for WR Streamers
                  "
 
-    REVISION     "201706081000Z"
+    REVISION     "202004251000Z"
     DESCRIPTION
         "Second revision."
 
@@ -69,6 +69,12 @@ WrpcAuxDiag102RoEntry ::=
         wrpcAuxDiag102RoLatencyAccMsb      Unsigned32,
         wrpcAuxDiag102RoDbgWord            Unsigned32,
         wrpcAuxDiag102RoMagicNumber        Unsigned32
+        wrpcAuxDiag102RoStatMatchCntLsb    Unsigned32,
+        wrpcAuxDiag102RoStatMatchCntMsb    Unsigned32,
+        wrpcAuxDiag102RoStatLateCntLsb     Unsigned32,
+        wrpcAuxDiag102RoStatLateCntMsb     Unsigned32,
+        wrpcAuxDiag102RoStatTimeoutCntLsb  Unsigned32,
+        wrpcAuxDiag102RoStatTimeoutCntMsb  Unsigned32
     }
 
 wrpcAuxDiag102RoIndex          OBJECT-TYPE
@@ -317,6 +323,63 @@ wrpcAuxDiag102RoInputWord      OBJECT-TYPE
              0xDEADBEEF and in decimal 3735928559."
     ::= { wrpcAuxDiag102RoEntry 22 }
 
+wrpcAuxDiag102RoStatMatchCntLsb  OBJECT-TYPE
+    SYNTAX                     Unsigned32
+    MAX-ACCESS                 read-only
+    STATUS                     current
+    DESCRIPTION
+            "LSB of the umber of RX frames that missed their fixed-latency
+             deadline. Snapshot-able by setting bit 1 in
+             wrpcAuxDiag102RwControlRegister."
+    ::= { wrpcAuxDiag102RoEntry 23 }
+
+wrpcAuxDiag102RoStatMatchCntMsb  OBJECT-TYPE
+    SYNTAX                     Unsigned32
+    MAX-ACCESS                 read-only
+    STATUS                     current
+    DESCRIPTION
+            "MSB of the number of RX frames that missed their fixed-latency
+             deadline. Snapshot-able by setting bit 1 in
+             wrpcAuxDiag102RwControlRegister."
+    ::= { wrpcAuxDiag102RoEntry 24 }
+
+wrpcAuxDiag102RoStatLateCntLsb  OBJECT-TYPE
+    SYNTAX                     Unsigned32
+    MAX-ACCESS                 read-only
+    STATUS                     current
+    DESCRIPTION
+            "LSB of the number of RX frames that had their execution
+             timestamp too far in the future (timeout setting). Snapshot-able
+             by setting bit 1 in wrpcAuxDiag102RwControlRegister."
+    ::= { wrpcAuxDiag102RoEntry 25 }
+
+wrpcAuxDiag102RoStatLateCntMsb  OBJECT-TYPE
+    SYNTAX                     Unsigned32
+    MAX-ACCESS                 read-only
+    STATUS                     current
+    DESCRIPTION
+            "LSB of the number of RX frames that had their execution
+             timestamp too far in the future (timeout setting). Snapshot-able
+             by setting bit 1 in wrpcAuxDiag102RwControlRegister."
+    ::= { wrpcAuxDiag102RoEntry 26 }
+
+wrpcAuxDiag102RoStatTimeoutCntLsb  OBJECT-TYPE
+    SYNTAX                     Unsigned32
+    MAX-ACCESS                 read-only
+    STATUS                     current
+    DESCRIPTION
+            "LSB of the number of RX executed on time in the fixed latency mode.
+             Snapshot-able by setting bit 1 in wrpcAuxDiag102RwControlRegister."
+    ::= { wrpcAuxDiag102RoEntry 27 }
+
+wrpcAuxDiag102RoStatTimeoutCntMsb  OBJECT-TYPE
+    SYNTAX                     Unsigned32
+    MAX-ACCESS                 read-only
+    STATUS                     current
+    DESCRIPTION
+            "LSB of the number of RX executed on time in the fixed latency mode.
+             Snapshot-able by setting bit 1 in wrpcAuxDiag102RwControlRegister."
+    ::= { wrpcAuxDiag102RoEntry 28 }
 
 -- ****************************************************************************
 
