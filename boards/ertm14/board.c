@@ -55,13 +55,14 @@
 
 #define ERTM14_IUART_MAX_PAYLOAD 100
 
+/* IUART Request types */
 #define ERTM14_IUART_MSG_MMC_UPDATE 0
 #define ERTM14_IUART_MSG_IPMI_CONSOLE_REQ 2
 #define ERTM14_IUART_MSG_IPMI_SNMP_REQ 3
 #define ERTM14_IUART_MSG_IPMI_CONSOLE_RESP 4
 #define ERTM14_IUART_MSG_IPMI_SNMP_RESP 5
-
-#define ERTM14_PSYNC_DEBUG
+#define ERTM14_IUART_MSG_IPMI_REBOOT_FPGA 6
+#define ERTM14_IUART_MSG_PING 8
 
 struct ertm14_board board;
 static struct ertm14_board_state ertm14_configs[ ERTM14_MAX_CONFIGS ];
@@ -410,7 +411,7 @@ static int ertm14_align_clocks(void)
 
 extern struct console_device console_ipmi_dev;
 
-static void handle_iuart_request( uint8_t *buf, int size )
+static void handle_iuart_14_request( uint8_t *buf, int size )
 {
     uint8_t tx_buf[ERTM14_IUART_MAX_PAYLOAD];
     int n_tx;
@@ -421,6 +422,10 @@ static void handle_iuart_request( uint8_t *buf, int size )
 
     switch( type )
     {
+        case ERTM14_IUART_MSG_PING:
+            board_dbg("IUART14 pings from MMC!\n");
+            break;
+
         case ERTM14_IUART_MSG_IPMI_CONSOLE_REQ:
             n_tx = console_ipmi_process_request( &console_ipmi_dev, buf + 1, size - 1, tx_buf + 1, sizeof(tx_buf) - 1 );
 
@@ -450,8 +455,7 @@ static void iuart_14_poll(void)
 
     if( msg == START_INSN_CHAR_VAL )
     {
-        board_dbg("req %d %d %d\n",board.iuart_14.rx_buf, board.iuart_14.rx_csize, board.iuart_14.rx_csize );
-        handle_iuart_request( board.iuart_14.rx_buf, board.iuart_14.rx_csize );
+        handle_iuart_14_request( board.iuart_14.rx_buf, board.iuart_14.rx_csize );
     }
 }
 
@@ -725,9 +729,7 @@ static void rf_nco_sync_configure_channel( struct ertm14_dds_state *state, uint3
 {
     int flags = 0;
 
-    pp_printf("nco_sync: source=%d\n",state->sync_source);
-
-   if( state->sync_source == ERTM14_SYNC_SOURCE_RF_TRIGGER)
+    if( state->sync_source == ERTM14_SYNC_SOURCE_RF_TRIGGER)
         flags |= FINE_PULSE_GEN_USE_EXT_TRIGGER;
 
     fine_pulse_gen_setup_channel ( &board.dds_sync_dev, ioupdate_channel, 1, board.dds_sync_delays[ioupdate_channel], flags  );
@@ -761,10 +763,6 @@ static int rf_nco_sync_wait_trigger( struct ertm14_dds_state *state, uint32_t io
 static void ertm14_dds_nco_sync_task(void)
 {
     int evt = event_poll( evth_dds_nco_sync );
-    
-
-    if( evt > 0 )
-    pp_printf("**********ncosync %d\n", evt);
 
     switch( evt )
     {
@@ -776,7 +774,7 @@ static void ertm14_dds_nco_sync_task(void)
         case WRC_EVENT_LINK_UP:
         case WRC_EVENT_TIMING_DOWN:
         case WRC_EVENT_TIMING_UP:
-            board_dbg("link/timing status change, restarting nco_sync\n");
+            board_dbg("nco_sync: link/timing status change, restarting\n");
             rf_nco_sync_disable_channel( &ertm14_current_state->ref, ERTM14_DDS_IOUPDATE_REF );
             rf_nco_sync_disable_channel( &ertm14_current_state->lo, ERTM14_DDS_IOUPDATE_LO );
             dds_nco_sync_state = DDS_NCO_STATE_WAIT_TIMING;
@@ -1296,11 +1294,6 @@ static int ertm14_config_update_task(void)
     if (ertm_init_complete)
     {
         int evt = event_poll( evth_config_update_listener );
-
-        if(evt > 0)
-        {
-            pp_printf("####################CUEvt %d\n", evt);
-        }
 
         if( evt == WRC_ERTM14_EVENT_APPLY_NEW_CONFIG )
         {
