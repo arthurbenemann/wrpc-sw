@@ -4,6 +4,7 @@
 //#include "ptpd.h"
 //#include "ptpd_exports.h"
 #include "sfp.h"
+#include <string.h>
 #include <ppsi/ppsi.h>
 
 #include <hw/endpoint_regs.h>
@@ -138,13 +139,25 @@ int wrxExecute() {
     switch (cmd->code)
     {
     case WRX_COMMAND_NONE:
+    default:
         return 0;
+    case WRX_COMMAND_GET_TUNEINFO:
+        info->cmdreply.tuneInfo.tuneproc = WRX_TUNE_PROC_NONE;
+        info->cmdcode = WRX_COMMAND_GET_TUNEINFO;
+        break;
+    case WRX_COMMAND_GET_SFP_VENDOR_SN:
+        // get Serial number
+        memcpy(info->cmdreply.sfpVendorSN, sfp_pn, 16);
+        info->cmdcode = WRX_COMMAND_GET_SFP_VENDOR_SN;
+        break;
 /*
     case WRX_COMMAND_AUTONEG_OFF:
         pcs_write(MDIO_REG_MCR, 0x0160);
+        info->cmdcode = WRX_COMMAND_AUTONEG_OFF;
         break;
     case WRX_COMMAND_AUTONEG_ON:
         pcs_write(MDIO_REG_MCR, 0x1140);
+        info->cmdcode = WRX_COMMAND_AUTONEG_ON;
         break;
     case WRX_COMMAND_GET_TUNEINFO:
         // need 2 find transceiver type, and such...
