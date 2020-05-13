@@ -30,6 +30,7 @@ void init_hw_after_reset(void)
 int main(void)
 {
 	uint32_t start_tics = timer_get_tics();
+	int osc_freq=0;
 
 	check_reset();
 	stats.start_cnt++;
@@ -43,8 +44,11 @@ int main(void)
 	pp_printf("Start counter %d\n", stats.start_cnt);
 	/* Low-jitter Daughterboard detection */
 	ljd_present = gpio_in(GPIO_LJD_BOARD_DETECT);
+	osc_freq = gpio_in(GPIO_LJD_OSC_FREQ_0);
+	osc_freq += (gpio_in(GPIO_LJD_OSC_FREQ_1)<<1);
+	osc_freq += (gpio_in(GPIO_LJD_OSC_FREQ_2)<<2);
 	if (ljd_present) {
-		pp_printf("\n--- WRS Low jitter board detected. ---\n");
+		pp_printf("\n--- WRS Low jitter board detected. OSC FREQ is %d ---\n",osc_freq);
 		pp_printf("Allow 1 hour of warming up before starting measurements\n");
 	}
 	pp_printf("--\n");
@@ -54,7 +58,10 @@ int main(void)
 		/* for sure problem is in calling second time ad9516_init,
 		 * but not only */
 	}
-	ad9516_init(scb_ver, ljd_present);
+	if((ljd_present==1) && (osc_freq!=7))
+		ad9516_init(scb_ver, 1);
+	else
+		ad9516_init(scb_ver, 0);
 	rts_init();
 	rtipc_init();
 	spll_very_init();

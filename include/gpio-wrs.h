@@ -14,6 +14,9 @@
 #define GPIO_PLL_RESET_N	1
 #define GPIO_PERIPH_RESET_N	3
 #define GPIO_LJD_BOARD_DETECT	4
+#define GPIO_LJD_OSC_FREQ_0	5
+#define GPIO_LJD_OSC_FREQ_1	6
+#define GPIO_LJD_OSC_FREQ_2	7
 
 extern int ljd_present;
 
