@@ -25,13 +25,8 @@ CONFIG_W1=y
 CONFIG_LATENCY_ETHTYPE=291
 # CONFIG_P2P is not set
 # CONFIG_WR_NIC_CPU is not set
-CONFIG_IP=y
+# CONFIG_IP is not set
 # CONFIG_CMD_CONFIG is not set
-# CONFIG_SYSLOG is not set
-CONFIG_SNMP=y
-CONFIG_SNMP_SET=y
-CONFIG_SNMP_INIT=y
-CONFIG_SNMP_AUX_DIAG=y
 CONFIG_BUILD_INIT=y
 CONFIG_INIT_COMMAND="vlan off;ptp stop;sfp match;mode slave;ptp start"
 CONFIG_HAS_BUILD_INIT=1
@@ -43,7 +38,6 @@ CONFIG_LEGACY_EEPROM=y
 CONFIG_WR_DIAG=y
 # CONFIG_WR_NODE_SIM is not set
 CONFIG_ABSCAL=y
-CONFIG_LLDP=y
 
 #
 # wrpc-sw is tainted if you change the following options
