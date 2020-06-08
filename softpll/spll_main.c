@@ -39,7 +39,7 @@ void mpll_init(struct spll_main_state *s, int id_ref,
 		s->pi.ki = 30;			// / 2;
 	}
 #elif defined(CONFIG_WR_NODE)
-	s->pi.kp = -1100;		// / 2;
+	s->pi.kp = -5500;		// / 2;
 	s->pi.ki = -30;			// / 2;
 #else
 #error "Please set CONFIG for wr switch or wr node"
