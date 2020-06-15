@@ -314,7 +314,10 @@ void spll_init(int mode, int slave_ref_channel, int align_pps)
 
 	helper_init(&s->helper, helper_ref);
 	if (mode != SPLL_MODE_GRAND_MASTER)
+	{
 		mpll_init(&s->mpll, slave_ref_channel, spll_n_chan_ref, mode);
+		external_powerdown();
+	}
 
 	for (i = 0; i < spll_n_chan_out - 1; i++) {
 		mpll_init(&s->aux[i].pll.dmtd, slave_ref_channel, spll_n_chan_ref + i + 1, mode);
