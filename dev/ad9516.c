@@ -239,13 +239,16 @@ int ext_ad9516_locked (void)
 	return 0;
 }
 
-int ad9516_init(void)
+int ad9516_init(int scb_version)
 {
 
 	pp_printf("Initializing AD9516 PLL...\n");
 	oc_spi_init((void *)BASE_SPI);
 	
 	void *spi_base = (void *)BASE_SPI;
+
+	gpio_out(GPIO_EXT_PLL_RESET_N, 0);
+	timer_delay(10);
 
 	gpio_out(GPIO_SYS_CLK_SEL, 0); /* switch to the standby reference clock, since the PLL is off after reset */
 
@@ -264,11 +267,11 @@ int ad9516_init(void)
 		return -1;
 	}
 
-
-	 // During the development of the WRS LJ, several OXCOs were checked, with different input freqs.
-	 // This implies that every oscillator requires a different register set for the AD9516 config.
-	 // In ad9516_config.h there is a register set for 20, 50 and 125 MHz.
+	// During the development of the WRS LJ, several OXCOs were checked, with different input freqs.
+	// This implies that every oscillator requires a different register set for the AD9516 config.
+	// In ad9516_config.h there is a register set for 20, 50 and 125 MHz.
 	ad9516_load_regset(spi_base, ad9516_base_config_34_20, ARRAY_SIZE(ad9516_base_config_34_20), 0);
+	pp_printf("loaded for 34\n");
 
 	ad9516_load_regset(spi_base, ad9516_ref_tcxo_20, ARRAY_SIZE(ad9516_ref_tcxo_20), 1);
 	ad9516_wait_lock(spi_base);
@@ -278,17 +281,25 @@ int ad9516_init(void)
 	ad9516_set_output_divider(spi_base, 0, 8, 0);
 	ad9516_set_output_divider(spi_base, 1, 8, 0);
 
-	ad9516_set_output_divider(spi_base, 2, 8, 0);  	
+	ad9516_set_output_divider(spi_base, 2, 8, 0);
 	ad9516_set_output_divider(spi_base, 3, 8, 0);
 
-	ad9516_set_output_divider(spi_base, 4, 8, 0);  	
+	ad9516_set_output_divider(spi_base, 4, 8, 0);
 	ad9516_set_output_divider(spi_base, 5, 8, 0);
 
-	ad9516_set_output_divider(spi_base, 6, 2, 0);  	
+	ad9516_set_output_divider(spi_base, 6, 2, 0);
 	// ad9516_set_output_divider(spi_base, 7, 3, 0);
 
-	ad9516_set_output_divider(spi_base, 8, 20, 0);  	
+	ad9516_set_output_divider(spi_base, 8, 20, 0);
 	ad9516_set_output_divider(spi_base, 9, 20, 0);
+	/*The following PLL outputs have been configured through the ad9516_base_config_34 register,
+		 * so it doesn't need to replicate the configuration:
+		 *
+		 * Output 6 	=> 62.5 MHz
+		 * Output 7	=> 62.5 MHz
+		 * Output 8	=> 25 MHz
+		 * Output 9	=> 25 MHz
+		 */
 
 	ad9516_sync_outputs(spi_base);
 	ad9516_set_vco_divider(spi_base, 3); 

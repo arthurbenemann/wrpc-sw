@@ -16,6 +16,9 @@
 #include "gpio-wrs.h"
 #include "ext-board.h"
 
+
+int scb_ver = 11;		/* SCB version */
+
 extern struct spll_stats stats;
 
 /* initialize functions to be called after reset in check_reset function */
@@ -45,7 +48,7 @@ int main(void)
 		/* for sure problem is in calling second time ad9516_init,
 		 * but not only */
 	}
-	ad9516_init();
+	ad9516_init(scb_ver);
 	rts_init();
 	rtipc_init();
 	spll_very_init();

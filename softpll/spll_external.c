@@ -21,7 +21,7 @@
 
 #define EXT_PERIOD_NS 100
 #define EXT_FREQ_HZ 10000000
-#define EXT_PPS_LATENCY_PS 16000 // def 30000 please verify
+#define EXT_PPS_LATENCY_PS 16000
 
 
 void external_init(volatile struct spll_external_state *s, int ext_ref,
