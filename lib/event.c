@@ -107,7 +107,7 @@ int event_post( int event )
     for(i = 0; i < event_handler_count; i++ )
     {
         struct event_handler *eh = &handlers[i];
-        if (!eh->enabled || (eh->event_mask & event) == 0 )
+        if (!eh->enabled || (eh->event_mask & (1 << event)) == 0 )
             continue;
 
         queue_put(&eh->queue, event);
