@@ -23,13 +23,18 @@
 #include "spll_ptracker.h"
 #include "spll_external.h"
 
-
 /* Shortcut for 'channels' parameter in various API functions to perform operation on all channels */
 #define SPLL_ALL_CHANNELS 0xffffffff
 
+#define SPLL_AUX_MODE_SLAVE 0 /* Aux clock is disciplined from the local WR time base */
+#define SPLL_AUX_MODE_TRACKING_SOURCE 1 /* Aux clock is a tracking source for the local WR time base */
+
 /* Aux clock flags */
-#define SPLL_AUX_ENABLED (1<<0) /* Locking the particular aux channel to the WR reference is enabled */
-#define SPLL_AUX_LOCKED (1<<1)  /* The particular aux clock is already locked to WR reference */
+#define SPLL_AUX_SLAVE_ENABLED (1<<0) /* Locking the particular aux channel to the WR reference is enabled */
+#define SPLL_AUX_SLAVE_LOCKED (1<<1)  /* The particular aux clock is already locked to WR reference */
+#define SPLL_AUX_TRACKING_ENABLED (1<<2) /* The particilar aux clock is used as a tracking source for a WR reference */
+#define SPLL_AUX_TRACKING_READY (1<<3) /* The particilar aux clock is used as a tracking source for a WR reference */
+
 
 /* Channels for spll_measure_frequency() */
 #define SPLL_OSC_REF 0
@@ -47,6 +52,12 @@
    has at least one output channel, connected to the 125 / 62.5 MHz transceiver (WR) reference. This channel has always 
    index 0 and is compared against all reference channels by the phase tracking mechanism.
 */
+
+struct spll_aux_clock_status
+{
+	uint32_t flags;
+	int phase;
+};
 
 /* PUBLIC API */
 
@@ -96,7 +107,7 @@ int spll_read_ptracker(int ref_channel, int32_t *phase_ps, int *enabled);
 int spll_update(void);
 
 /* Returns the status of given aux clock output (SPLL_AUX_) */
-int spll_get_aux_status(int out_channel);
+struct spll_aux_clock_status spll_get_aux_status(int channel );
 
 /* Debug/testing functions */
 
@@ -119,16 +130,21 @@ void spll_set_ptracker_average_samples(int channel, int nsamples);
 int spll_get_debug_queue_samples( uint32_t *buf, int size, int undersample );
 void spll_debug_queue_purge(void);
 
+void spll_set_aux_mode( int channel, int mode );
+
 /*
  * Aux and main state:
  * used to be in .c file, but we need it here for memory dumping
  */
+
 /* NOTE: Please increment WRPC_SHMEM_VERSION if you change this structure */
 struct spll_aux_state {
+	int mode; /* SPLL_AUX_MODE* */
 	int seq_state;
-	int32_t phase_target;
+	int32_t phase_value;
 	union {
 		struct spll_main_state dmtd;
+		struct spll_ptracker_state tracker;
 		/* spll_external_state ch_bb */
 	} pll;
 };

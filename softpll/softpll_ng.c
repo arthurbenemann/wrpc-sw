@@ -84,10 +84,20 @@ static inline void start_ptrackers(struct softpll_state *s)
 
 static inline void update_ptrackers(struct softpll_state *s, int tag_value, int tag_source)
 {
-	if(tag_source > spll_n_chan_ref)
-		return;
-		
-	ptrackers_update(s->ptrackers, tag_value, tag_source);
+	int i;
+
+	if(tag_source <= spll_n_chan_ref)
+		ptrackers_update(s->ptrackers, tag_value, tag_source);
+
+	for( i = 0; i < spll_n_chan_out - 1; i++ )
+	{
+		struct spll_aux_state *aux = &s->aux[i];
+		if( aux->mode != SPLL_AUX_MODE_TRACKING_SOURCE )
+			continue;
+
+		if( tag_source == spll_n_chan_ref + i + 1)
+			ptrackers_update( &aux->pll.tracker, tag_value, 0 );
+	}
 }
 
 static inline void sequencing_fsm(struct softpll_state *s, int tag_value, int tag_source)
@@ -304,6 +314,8 @@ void spll_init(int mode, int slave_ref_channel, int flags)
 
 	spll_n_chan_ref = SPLL_CSR_N_REF_R(csr);
 	spll_n_chan_out = SPLL_CSR_N_OUT_R(csr);
+	if( spll_n_chan_out > 3 ) // fixme: bug in HDL?
+		spll_n_chan_out = 3;
 	spll_ljd_present = (flags & SPLL_FLAG_USE_LJD ? 1 : 0);
 
 	s->mode = mode;
@@ -454,7 +466,7 @@ void spll_set_phase_shift(int channel, int32_t value_picoseconds)
 	if (channel == SPLL_ALL_CHANNELS) {
 		set_phase_shift(0, value_picoseconds);
 		for (i = 0; i < spll_n_chan_out - 1; i++)
-			if (softpll.aux[i].seq_state == AUX_READY)
+			if (softpll.aux[i].seq_state == AUX_SLAVE_READY)
 				set_phase_shift(i + 1, value_picoseconds);
 	} else
 		set_phase_shift(channel, value_picoseconds);
@@ -508,6 +520,7 @@ void spll_set_ptracker_average_samples(int channel, int nsamples)
 
 void spll_get_num_channels(int *n_ref, int *n_out)
 {
+	pp_printf("NUM CHAN: %d %d %x\n\n", spll_n_chan_ref, spll_n_chan_out, SPLL->CSR );
 	if (n_ref)
 		*n_ref = spll_n_chan_ref;
 	if (n_out)
@@ -573,7 +586,7 @@ static int spll_update_aux_clocks(void)
 
 		if(s->seq_state != AUX_DISABLED && !aux_locking_enabled(ch))
 		{
-			pll_verbose("softpll: disabled aux channel %d\n", ch);
+			pp_printf("softpll: disabled aux channel %d\n", ch);
 			spll_stop_channel(ch);
 			set_channel_status(ch, 0);
 			s->seq_state = AUX_DISABLED;
@@ -583,10 +596,46 @@ static int spll_update_aux_clocks(void)
 		switch (s->seq_state) {
 			case AUX_DISABLED:
 				if (softpll.mpll.locked && aux_locking_enabled(ch)) {
-					pll_verbose("softpll: enabled aux channel %d\n", ch);
-					spll_start_channel(ch);
-					s->seq_state = AUX_LOCK_PLL;
+					if( s->mode == SPLL_AUX_MODE_SLAVE )
+					{
+						pll_verbose("softpll: enabled slave aux channel %d\n", ch);
+						spll_start_channel(ch);
+						s->seq_state = AUX_LOCK_PLL;
+						done_sth++;
+					}
+					else if ( s->mode == SPLL_AUX_MODE_TRACKING_SOURCE )
+					{
+						pll_verbose("softpll: enabled tracking aux channel %d\n", ch);
+						s->seq_state = AUX_WAIT_TRACKING_LOCK;
+						ptracker_init( &s->pll.tracker, ch + spll_n_chan_ref, PTRACKER_AVERAGE_SAMPLES );
+						ptracker_start( &s->pll.tracker );
+						done_sth++;
+
+					}
+				}
+				break;
+
+			case AUX_WAIT_TRACKING_LOCK:
+				if( s->pll.tracker.ready )
+				{
+					s->seq_state = AUX_TRACKING_READY;
+					s->phase_value = s->pll.tracker.phase_val;
+					set_channel_status(ch, 1);
 					done_sth++;
+					break;
+				}
+	
+			case AUX_TRACKING_READY:
+				if (!softpll.mpll.locked) 
+				{
+					pp_printf("softpll: aux tracking channel %d disabled due to PLL LOS\n", ch);
+					set_channel_status(ch, 0);
+					s->seq_state = AUX_DISABLED;
+					done_sth++;
+				}
+				else
+				{
+					s->phase_value = s->pll.tracker.phase_val;
 				}
 				break;
 
@@ -603,12 +652,12 @@ static int spll_update_aux_clocks(void)
 				if (!mpll_shifter_busy(&s->pll.dmtd)) {
 					pll_verbose("softpll: channel %d phase aligned\n", ch);
 					set_channel_status(ch, 1);
-					s->seq_state = AUX_READY;
+					s->seq_state = AUX_SLAVE_READY;
 					done_sth++;
 				}
 				break;
 
-			case AUX_READY:
+			case AUX_SLAVE_READY:
 				if (!softpll.mpll.locked || !s->pll.dmtd.ld.locked) {
 					pll_verbose("softpll: aux channel %d or mpll lost lock\n", ch);
 					set_channel_status(ch, 0); 
@@ -621,15 +670,33 @@ static int spll_update_aux_clocks(void)
 	return done_sth != 0;
 }
 
-int spll_get_aux_status(int channel)
+struct spll_aux_clock_status spll_get_aux_status(int channel )
 {
-	int rval = 0;
+	struct spll_aux_clock_status rval;
+	rval.flags = 0;
 
-	if (softpll.aux[channel].seq_state != AUX_DISABLED)
-		rval |= SPLL_AUX_ENABLED;
+	int state = softpll.aux[channel].seq_state;
 
-	if (softpll.aux[channel].seq_state == AUX_READY)
-		rval |= SPLL_AUX_LOCKED;
+	switch ( state )
+	{
+		case AUX_DISABLED:
+			rval.flags = 0;
+			break;
+		case AUX_LOCK_PLL:
+			rval.flags = SPLL_AUX_SLAVE_ENABLED;
+			break;
+		case AUX_WAIT_TRACKING_LOCK:
+			rval.flags = SPLL_AUX_TRACKING_ENABLED;
+			break;
+		case AUX_TRACKING_READY: 
+			rval.flags = SPLL_AUX_TRACKING_ENABLED | SPLL_AUX_TRACKING_READY;
+			break;
+		case AUX_SLAVE_READY:
+			rval.flags = SPLL_AUX_SLAVE_ENABLED | SPLL_AUX_SLAVE_LOCKED;
+			break;
+	}
+
+	rval.phase = softpll.aux[channel].phase_value;
 
 	return rval;
 }
@@ -818,3 +885,7 @@ int spll_get_debug_queue_samples( uint32_t *buf, int count, int undersample )
 	return n_ents;
 }
 
+void spll_set_aux_mode( int channel, int mode )
+{
+	softpll.aux[channel].mode = mode;
+}

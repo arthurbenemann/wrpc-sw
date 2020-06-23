@@ -99,7 +99,7 @@ int wrc_mon_gui(void)
 	static uint32_t last_servo_count;
 	struct hal_port_state state;
 	int tx, rx;
-	int aux_stat;
+	struct spll_aux_clock_status aux_stat;
 	uint64_t sec;
 	uint32_t nsec;
 	struct wr_servo_state *s =
@@ -209,16 +209,28 @@ int wrc_mon_gui(void)
 
 	spll_get_num_channels(NULL, &n_out);
 
-	for(i = 0; i < n_out; i++) {
+
+
+	for(i = 0; i < n_out - 1; i++) {
 		cprintf(C_GREY, "Aux clock %d status:        ", i);
 
 		aux_stat = spll_get_aux_status(i);
 
-		if (aux_stat & SPLL_AUX_ENABLED)
+		if (aux_stat.flags & SPLL_AUX_SLAVE_ENABLED)
 			cprintf(C_GREEN, "enabled");
 
-		if (aux_stat & SPLL_AUX_LOCKED)
+		if (aux_stat.flags & SPLL_AUX_TRACKING_ENABLED )
+			cprintf(C_GREEN, "tracking source");
+
+		if (aux_stat.flags & SPLL_AUX_SLAVE_LOCKED)
 			cprintf(C_GREEN, ", locked");
+
+		if( aux_stat.flags & SPLL_AUX_TRACKING_READY )
+		{
+			cprintf(C_GREEN, ", ready");
+			cprintf(C_WHITE, " (AUX-to-WR offset: %d ps)", aux_stat.phase );
+		}
+		
 		pp_printf("\n");
 
 	}
@@ -310,7 +322,7 @@ int wrc_log_stats(void)
 {
 	struct hal_port_state state;
 	int tx, rx;
-	int aux_stat;
+	struct spll_aux_clock_status aux_stat;
 	uint64_t sec;
 	uint32_t nsec;
 	struct wr_servo_state *s =
@@ -354,7 +366,7 @@ int wrc_log_stats(void)
 
 	for(i = 0; i < n_out; i++) {
 		aux_stat = spll_get_aux_status(i);
-		pp_printf("aux%d:%x ", i, aux_stat);
+		pp_printf("aux%d:%x %x", i, aux_stat.flags, aux_stat.phase);
 	}
 	
 	/* fixme: clock is not always 125 MHz */
@@ -486,7 +498,7 @@ int wrc_wr_diags(void)
 	spll_get_num_channels(NULL, &n_out);
 	if (n_out > 8) n_out = 8; /* hardware limit. */
 	for(i = 0; i < n_out; i++) {
-		aux_stat |= (0x1 & spll_get_aux_status(i)) << i;
+		aux_stat |= (( SPLL_AUX_SLAVE_LOCKED | SPLL_AUX_TRACKING_READY ) & spll_get_aux_status(i).flags) << i;
 	}
 	wdiags_write_aux_state(aux_stat);
 	
