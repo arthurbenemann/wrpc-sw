@@ -111,6 +111,27 @@ void ep_init()
 	EP->DMCR = EP_DMCR_EN | EP_DMCR_N_AVG_W(DMTD_AVG_SAMPLES);
 }
 
+void ep_reset_phy(void)
+{
+	uint32_t mcr;
+/* Reset the GTP Transceiver - it's important to do the GTP phase alignment every time
+   we start up the software, otherwise the calibration RX/TX deltas may not be correct */
+	ep_pcs_write(MDIO_REG_MCR, MDIO_MCR_PDOWN);	/* reset the PHY */
+	if (!IS_WR_NODE_SIM)
+		timer_delay_ms(200);
+	ep_pcs_write(MDIO_REG_MCR, MDIO_MCR_RESET);	/* reset the PHY */
+	ep_pcs_write(MDIO_REG_MCR, 0);	/* reset the PHY */
+
+/* Don't advertise anything - we don't want flow control */
+	ep_pcs_write(MDIO_REG_ADVERTISE, 0);
+
+	mcr = MDIO_MCR_SPEED1000_MASK | MDIO_MCR_FULLDPLX_MASK;
+	if (autoneg_enabled)
+		mcr |= MDIO_MCR_ANENABLE | MDIO_MCR_ANRESTART;
+
+	ep_pcs_write(MDIO_REG_MCR, mcr);
+}
+
 /* Enables/disables transmission and reception. When autoneg is set to 1,
    starts up 802.3 autonegotiation process */
 int ep_enable(int enabled, int autoneg)
@@ -136,22 +157,8 @@ int ep_enable(int enabled, int autoneg)
 
 	autoneg_enabled = autoneg;
 
-/* Reset the GTP Transceiver - it's important to do the GTP phase alignment every time
-   we start up the software, otherwise the calibration RX/TX deltas may not be correct */
-	ep_pcs_write(MDIO_REG_MCR, MDIO_MCR_PDOWN);	/* reset the PHY */
-	if (!IS_WR_NODE_SIM)
-		timer_delay_ms(200);
-	ep_pcs_write(MDIO_REG_MCR, MDIO_MCR_RESET);	/* reset the PHY */
-	ep_pcs_write(MDIO_REG_MCR, 0);	/* reset the PHY */
+	ep_reset_phy();
 
-/* Don't advertise anything - we don't want flow control */
-	ep_pcs_write(MDIO_REG_ADVERTISE, 0);
-
-	mcr = MDIO_MCR_SPEED1000_MASK | MDIO_MCR_FULLDPLX_MASK;
-	if (autoneg)
-		mcr |= MDIO_MCR_ANENABLE | MDIO_MCR_ANRESTART;
-
-	ep_pcs_write(MDIO_REG_MCR, mcr);
 	return 0;
 }
 

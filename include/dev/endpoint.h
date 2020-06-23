@@ -35,6 +35,7 @@ int ep_sfp_enable(int ena);
 
 uint16_t ep_pcs_read(int location);
 void ep_pcs_write(int location, int value);
+void ep_reset_phy(void);
 
 void pfilter_init_default(void);
 
