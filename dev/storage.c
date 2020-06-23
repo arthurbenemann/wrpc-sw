@@ -41,10 +41,14 @@
 
 #define STORAGE_FLAG_DEVICE_OK (1<<0)
 
+#ifndef BOARD_USE_CUSTOM_SDBFS
 static const uint32_t sdbfs_default_bin[] =
 {
 	#include "generated/sdbfs-default.h"
 };
+#else
+	extern const uint32_t sdbfs_default_bin[];
+#endif
 
 struct storage_device wrc_storage_dev;
 struct sdbfs wrc_sdbfs;
