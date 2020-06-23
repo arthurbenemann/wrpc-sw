@@ -25,7 +25,10 @@
 #  include "boards/afcz/board.h"
 #elif defined(CONFIG_TARGET_ERTM14)
 #  include "boards/ertm14/board.h"
+#elif defined(CONFIG_TARGET_SIS8300KU)
+#  include "boards/sis8300ku/board.h"
 #endif
+
 
 
 int wrc_board_early_init(void);

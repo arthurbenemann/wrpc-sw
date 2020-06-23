@@ -29,6 +29,11 @@ config TARGET_ERTM14
 	help
 	  eRTM14/15 MTCA.4 WR Receiver (Kintex-7)
 
+config TARGET_SIS8300KU
+	bool "Struck SIS8300KU MTCA.4 Card"
+	help
+	  Struck SIS8300KU MTCA.4 Card (Kintex Ultrascale)
+
 endchoice
 
 config WR_NODE
