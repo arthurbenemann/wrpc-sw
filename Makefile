@@ -29,6 +29,7 @@ LDS-$(CONFIG_HOST_PROCESS) =
 obj-$(CONFIG_WR_NODE)   += wrc_main.o
 obj-$(CONFIG_WR_SWITCH) += wrs_main.o
 obj-$(CONFIG_WR_SWITCH) += ipc/minipc-mem-server.o ipc/rt_ipc.o
+obj-$(CONFIG_WR_SWITCH) += gen10mhz/gen10mhz.o
 
 obj-y += dump-info.o
 # our linker script is preprocessed, so have a rule here

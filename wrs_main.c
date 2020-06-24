@@ -15,6 +15,7 @@
 #include "system_checks.h"
 #include "gpio-wrs.h"
 #include "ext-board.h"
+#include "gen10mhz/gen10mhz.h"
 
 
 int scb_ver = 11;		/* SCB version */
@@ -50,8 +51,11 @@ int main(void)
 	}
 	ad9516_init(scb_ver);
 	rts_init();
+	gen10mhz_init();
 	rtipc_init();
 	spll_very_init();
+	int test = gen10mhz_read();
+	pp_printf("Read %d delay",test);
 
 	for(;;)
 	{

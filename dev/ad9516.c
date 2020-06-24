@@ -301,6 +301,8 @@ int ad9516_init(int scb_version)
 		 * Output 9	=> 25 MHz
 		 */
 
+	ad9516_write_reg(spi_base, 0x19C, 0x22);
+
 	ad9516_sync_outputs(spi_base);
 	ad9516_set_vco_divider(spi_base, 3); 
 
