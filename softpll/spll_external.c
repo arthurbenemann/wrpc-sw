@@ -21,18 +21,13 @@
 
 #define EXT_PERIOD_NS 100
 #define EXT_FREQ_HZ 10000000
-#define EXT_PPS_LATENCY_PS 16000 // def 30000 please verify
+#define EXT_PPS_LATENCY_PS 16000
 
 
 void external_init(volatile struct spll_external_state *s, int ext_ref,
 			  int realign_clocks)
 {
     int idx = spll_n_chan_ref + spll_n_chan_out;
-
-    
-	/* Legacy from LJD */
-	// if (gpio_in(GPIO_EXT_BOARD_DETECT))
-    //  idx++;
 
     helper_init(s->helper, idx);
     mpll_init(s->main, idx, spll_n_chan_ref, SPLL_MODE_GRAND_MASTER);
@@ -126,7 +121,7 @@ int external_align_fsm(volatile struct spll_external_state *s)
 
 		case ALIGN_STATE_WAIT_PLOCK:
 			SPLL->ECCR &= (~SPLL_ECCR_EXT_REF_PLLRST);
-			if(/* !gpio_in(GPIO_EXT_BOARD_DETECT) && */ SPLL->ECCR & SPLL_ECCR_EXT_REF_STOPPED )
+			if(SPLL->ECCR & SPLL_ECCR_EXT_REF_STOPPED )
 				s->align_state = ALIGN_STATE_WAIT_CLKIN;
 			else if(ext_ad9516_locked())
 				{
@@ -228,4 +223,9 @@ int external_align_fsm(volatile struct spll_external_state *s)
 			break;
 	}
 	return done_sth != 0;
+}
+
+void external_powerdown(void)
+{
+	gpio_out(GPIO_EXT_PLL_RESET_N,0);
 }
