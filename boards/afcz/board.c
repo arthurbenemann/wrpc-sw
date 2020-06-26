@@ -604,7 +604,7 @@ int wrc_board_init()
 
 	spi_wrc_flash.rd_falling_edge = 1;
 
-	spi_flash_create( &wrc_flash_dev, &spi_wrc_flash, 16384 );
+	spi_flash_create( &wrc_flash_dev, &spi_wrc_flash, 0x10000, 0x1f00000 );
 
 	storage_spiflash_create( &wrc_storage_dev, &wrc_flash_dev );
     storage_mount( &wrc_storage_dev );
