@@ -68,6 +68,8 @@ static int prev_ptp_state;
 static int prev_servo_state;
 static int prev_timing_ok;
 
+int wrc_wr_diags(void); // fixme: move the header
+
 static void wrc_initialize(void)
 {
 	uint8_t mac_addr[6];
