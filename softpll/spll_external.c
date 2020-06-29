@@ -21,7 +21,7 @@
 #define EXT_FREQ_HZ 10000000
 // fixme: make configurable
 #define EXT_PPS_LATENCY_PS 30000	// for regular ext channel
-#define EXT_PPS_LATENCY_LJD_PS 63000	// for low-jitter daughterboard
+#define EXT_PPS_LATENCY_LJD_PS 111395	// for low-jitter daughterboard
 
 
 void external_init(volatile struct spll_external_state *s, int ext_ref,
