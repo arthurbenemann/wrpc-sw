@@ -15,15 +15,15 @@
  */
 
 /* Fixed base addresses */
-#define BASE_MINIC            0x20000
-#define BASE_EP               0x20100
-#define BASE_SOFTPLL          0x20200
-#define BASE_PPS_GEN          0x20300
-#define BASE_SYSCON           0x20400
-#define BASE_UART             0x20500
-#define BASE_ONEWIRE          0x20600
-//#define BASE_ETHERNOBE_CFG    0x20700
-#define BASE_AUXWB            0x28000
+#define BASE_MINIC            0x40000
+#define BASE_EP               0x40100
+#define BASE_SOFTPLL          0x40200
+#define BASE_PPS_GEN          0x40300
+#define BASE_SYSCON           0x40400
+#define BASE_UART             0x40500
+#define BASE_ONEWIRE          0x40600
+//#define BASE_ETHERNOBE_CFG    0x40700
+#define BASE_AUXWB            0x48000
 
 /* SPEC7 WB bus behind wr-cores Aux WB bus */
 #define BASE_GPIO            (BASE_AUXWB + 0x000)
