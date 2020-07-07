@@ -15,19 +15,19 @@
 #include <wrc.h>
 #include <wrpc.h>
 #include <string.h>
-#include <minic.h>
 #include <limits.h>
 
-#include "endpoint.h"
+#include "dev/endpoint.h"
+#include "dev/minic.h"
 #include "ipv4.h"
 #include "ptpd_netif.h"
-#include "pps_gen.h"
+#include "dev/pps_gen.h"
 #include "hw/etherbone-config.h"
 #include "revision.h"
 #include "softpll_ng.h"
 #include "temperature.h"
 #include "sfp.h"
-#include "syscon.h"
+#include "dev/syscon.h"
 
 #include "storage.h"
 
@@ -1442,6 +1442,7 @@ static int set_sdb(uint8_t *buf, struct snmp_oid *obj)
 
 	uint8_t i2c_adr = FMC_EEPROM_ADR;
 	int blocksize	= 1;
+	int forced_base = 0;
 
 	apply_mode = obj->p;
 	ret = set_value(buf, obj, apply_mode);
@@ -1449,24 +1450,27 @@ static int set_sdb(uint8_t *buf, struct snmp_oid *obj)
 		return ret;
 	snmp_verbose("%s enter\n", __func__);
 
-	if (sdb_mem_type == -1
-	    || sdb_base_addr == -1
-	    || sdb_param == -1) {
-		*apply_mode = applyFailedEmptyParam;
-		pp_printf("%s wrong params\n", __func__);
-		return ret;
-	}
+	//if (sdb_base_addr == -1
+	//    || sdb_param == -1) {
+	//	*apply_mode = applyFailedEmptyParam;
+	//	pp_printf("%s wrong params\n", __func__);
+	//	return ret;
+	//}
 
-	if (sdb_mem_type == MEM_FLASH)
-		blocksize = sdb_param * 1024;
-	else if (sdb_param)
-		i2c_adr = sdb_param;
+	//if (sdb_mem_type == MEM_FLASH)
+	//	blocksize = sdb_param * 1024;
+	//else if (sdb_param)
+	//	i2c_adr = sdb_param;
+	
+	if (sdb_base_addr == -1)
+		forced_base = 0;
+	else
+		forced_base = 1;
 
 	switch (*apply_mode) {
 	case writeToFlash:
 		snmp_verbose("%s writeToFlash\n", __func__);
-		if (storage_gensdbfs(sdb_mem_type, sdb_base_addr, blocksize,
-		    i2c_adr) < 0)
+		if (storage_sdbfs_format( &wrc_storage_dev, sdb_base_addr, forced_base) < 0)
 			*apply_mode = applyFailed;
 		else
 			*apply_mode = applySuccessful;
@@ -1474,8 +1478,7 @@ static int set_sdb(uint8_t *buf, struct snmp_oid *obj)
 
 	case eraseFlash:
 		snmp_verbose("%s eraseFlash\n", __func__);
-		if (storage_sdbfs_erase(sdb_mem_type, sdb_base_addr, blocksize,
-		    i2c_adr) < 0)
+		if (storage_sdbfs_erase( &wrc_storage_dev, sdb_base_addr, forced_base) < 0)
 			*apply_mode = applyFailed;
 		else
 			*apply_mode = applySuccessful;
