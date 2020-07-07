@@ -34,11 +34,15 @@ config TARGET_SIS8300KU
 	help
 	  Struck SIS8300KU MTCA.4 Card (Kintex Ultrascale)
 
+config TARGET_SPEC7
+	bool "SPEC7"
+	help
+	  Simple PCIe FMC carrier 7 (Zynq-7000)
+
 config TARGET_PXIE_FMC
 	bool "ZU7 PXIe FMC Carrier"
 	help
 	  PXIe FMC Carrier (Zynq Ultrascale+)
-
 endchoice
 
 config WR_NODE
