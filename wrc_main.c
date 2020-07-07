@@ -40,20 +40,12 @@
 #include "dev/dac_log.h"
 #endif
 
-#ifdef CONFIG_IP
-#include "lib/arp.h"
-#endif
-
 #ifdef CONFIG_LATENCY_PROBE
 #include "lib/latency.h"
 #endif
 
 #ifdef CONFIG_LLDP
 #include "lib/lldp.h"
-#endif
-
-#ifdef CONFIG_SNMP
-#include "lib/snmp.h"
 #endif
 
 char wrc_hw_name[HW_NAME_LENGTH];

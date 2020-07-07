@@ -67,6 +67,8 @@ int board_update(void);
 #define HAS_IP 0
 #endif
 
+#define HAS_EB 0
+
 #define ERTM14_MAX_CONFIGS 8
 
 extern unsigned char *BASE_MINIC;

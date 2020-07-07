@@ -10,7 +10,7 @@
 #include <wrpc.h>
 #include <string.h>
 
-#include "endpoint.h"
+#include "dev/endpoint.h"
 #include "ipv4.h"
 #include "ptpd_netif.h"
 
@@ -77,7 +77,7 @@ static int process_arp(uint8_t * buf, int len)
 	buf[ARP_OPER + 0] = 0;
 	buf[ARP_OPER + 1] = 2;
 	// my MAC+IP
-	get_mac_addr(buf + ARP_SHA);
+	ep_get_mac_addr(buf + ARP_SHA);
 	memcpy(buf + ARP_SPA, myIP, 4);
 	// his MAC+IP
 	memcpy(buf + ARP_THA, hisMAC, 6);

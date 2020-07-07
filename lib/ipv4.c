@@ -10,10 +10,10 @@
 #include <wrpc.h>
 #include <string.h>
 
-#include "endpoint.h"
+#include "dev/endpoint.h"
 #include "ipv4.h"
 #include "ptpd_netif.h"
-#include "pps_gen.h"
+#include "dev/pps_gen.h"
 #include "hw/etherbone-config.h"
 
 enum ip_status ip_status = IP_TRAINING;
@@ -109,7 +109,7 @@ static int bootp_poll(void)
 	if (len > 0)
 		ret = process_bootp(buf, len);
 
-	if (task_not_yet(&bootp_tics, TICS_PER_SECOND))
+	if (wrc_task_not_yet(&bootp_tics, TICS_PER_SECOND))
 		return ret;
 
 	len = prepare_bootp(&addr, buf, ++bootp_retry);
@@ -199,8 +199,10 @@ void setIP(unsigned char *IP)
 	memcpy(myIP, IP, 4);
 
 	ip = (myIP[0] << 24) | (myIP[1] << 16) | (myIP[2] << 8) | (myIP[3]);
-	while (*eb_ip != ip)
-		*eb_ip = ip;
+	if (HAS_EB) {
+		while (*eb_ip != ip)
+			*eb_ip = ip;
+	}
 
 	if (ip == 0)
 		ip_status = IP_TRAINING;

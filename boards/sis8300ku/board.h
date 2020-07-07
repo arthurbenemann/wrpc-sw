@@ -64,6 +64,8 @@
 #define HAS_ABSCAL 0
 #endif
 
+#define HAS_EB 0
+
 #define CONFIG_DISALLOW_LONG_DIVISION
 
 #define BOARD_MAX_CONSOLE_DEVICES 1

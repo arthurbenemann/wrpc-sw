@@ -8,7 +8,7 @@
  */
 #include <string.h>
 #include <wrc.h>
-#include "endpoint.h"
+#include "dev/endpoint.h"
 
 #include "ipv4.h"
 
@@ -40,7 +40,7 @@ int prepare_bootp(struct wr_sockaddr *addr, uint8_t * buf, int retry)
 	buf[BOOTP_HOPS] = 0;
 
 	/* A unique identifier for the request !!! FIXME */
-	get_mac_addr(buf + BOOTP_XID);
+	ep_get_mac_addr(buf + BOOTP_XID);
 	buf[BOOTP_XID + 0] ^= buf[BOOTP_XID + 4];
 	buf[BOOTP_XID + 1] ^= buf[BOOTP_XID + 5];
 	buf[BOOTP_XID + 2] ^= (retry >> 8) & 0xFF;
@@ -56,7 +56,7 @@ int prepare_bootp(struct wr_sockaddr *addr, uint8_t * buf, int retry)
 	memset(buf + BOOTP_GIADDR, 0, 4);
 
 	memset(buf + BOOTP_CHADDR, 0, 16);
-	get_mac_addr(buf + BOOTP_CHADDR);	/* own MAC address */
+	ep_get_mac_addr(buf + BOOTP_CHADDR);	/* own MAC address */
 
 	memset(buf + BOOTP_SNAME, 0, 64);	/* desired BOOTP server */
 	memset(buf + BOOTP_FILE, 0, 128);	/* desired BOOTP file */
@@ -81,7 +81,7 @@ int process_bootp(uint8_t * buf, int len)
 	uint8_t mac[6];
 	uint8_t ip[4];
 
-	get_mac_addr(mac);
+	ep_get_mac_addr(mac);
 
 	if (len != BOOTP_END)
 		return 0;

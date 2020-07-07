@@ -91,7 +91,7 @@ static void latency_report(struct wr_timestamp *lat)
 		unsigned char mac[6];
 
 		/* first time; pick a time in the future */
-		get_mac_addr(mac);
+		ep_get_mac_addr(mac);
 		nextj = jiffies + TICS_PER_SECOND * (10 + (mac[5] % 60));
 		pp_printf("%s: first sending at %li\n", __func__, nextj);
 	}
@@ -269,7 +269,7 @@ int latency_poll(void)
 		return latency_poll_rx();
 
 	/* Periodically send the frames */
-	if (task_not_yet(&lastt, latency_period_ms))
+	if (wrc_task_not_yet(&lastt, latency_period_ms))
 		return 0;
 	return latency_poll_tx();
 }

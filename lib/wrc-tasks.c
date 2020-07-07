@@ -147,3 +147,18 @@ void wrc_tasks_accounting_init()
 	/* get tics */
 	prev_ticks_for_profile = timer_get_tics();
 }
+
+int wrc_task_not_yet(uint32_t *lastt, unsigned period)
+{
+	uint32_t now = timer_get_tics();
+
+	if (!*lastt) {
+		*lastt = now;
+		return 0;
+	}
+	if (time_before(now, *lastt + period))
+		return 1; /* not yet */
+
+	*lastt += period;
+	return 0;
+}
