@@ -6,14 +6,10 @@
 
 int wrc_board_early_init()
 {
-	return 0;
-}
-
-int wrc_board_init()
-{
 	int memtype;
 	uint32_t sdbfs_entry;
 	uint32_t sector_size;
+	uint8_t mac_addr[6];
 
 	/*
 	 * declare GPIO pins and configure their directions for bit-banging SPI
@@ -47,6 +43,27 @@ int wrc_board_init()
 	 * Mount SDBFS filesystem from storage.
 	 */
 	storage_mount( &wrc_storage_dev );
+
+	/*
+	 * Try reading MAC addr stored in flash
+	 */
+	if (get_persistent_mac(0, mac_addr) == -1) {
+		board_dbg("Failed to get MAC address from the flash. Using fallback address.\n");
+		mac_addr[0] = 0x22;
+		mac_addr[1] = 0x33;
+		mac_addr[2] = 0x44;	/* fallback MAC if get_persistent_mac fails */
+		mac_addr[3] = 0x55;
+		mac_addr[4] = 0x66;
+		mac_addr[5] = 0x77;
+	}
+	ep_set_mac_addr(mac_addr);
+
+	return 0;
+}
+
+int wrc_board_init()
+{
+
 	return 0;
 }
 
