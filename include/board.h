@@ -25,6 +25,8 @@
 #  include "boards/afcz/board.h"
 #elif defined(CONFIG_TARGET_ERTM14)
 #  include "boards/ertm14/board.h"
+#elif defined(CONFIG_TARGET_SPEC7)
+#  include "boards/spec7/board.h"
 #endif
 
 
