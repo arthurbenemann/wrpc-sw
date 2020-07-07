@@ -29,6 +29,11 @@ config TARGET_ERTM14
 	help
 	  eRTM14/15 MTCA.4 WR Receiver (Kintex-7)
 
+config TARGET_SPEC7
+	bool "SPEC7"
+	help
+	  Simple PCIe FMC carrier 7 (Zynq-7000)
+
 endchoice
 
 config WR_NODE
