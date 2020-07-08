@@ -9,6 +9,8 @@
 #include "dev/syscon.h"
 #include "dev/bb_spi.h"
 #include "dev/spi_flash.h"
+#include "dev/endpoint.h"
+#include "softpll_ng.h"
 
 #include "hw/si570_if_wb.h"
 
@@ -137,7 +139,7 @@ static int si57x_gpio_in(const struct gpio_pin *pin)
 		return (gpsr & SI570_GPSR_SDA ? 1 : 0);
 }
 
-void tca9548_select_channels( struct i2c_bus *bus, uint8_t tca_address, uint8_t channel_mask )
+static void tca9548_select_channels( struct i2c_bus *bus, uint8_t tca_address, uint8_t channel_mask )
 {
 	bb_i2c_start( bus );
 	bb_i2c_put_byte( bus, tca_address << 1 );
@@ -145,7 +147,7 @@ void tca9548_select_channels( struct i2c_bus *bus, uint8_t tca_address, uint8_t 
 	bb_i2c_stop( bus );
 }
 
-void si57x_read( struct wr_si57x_interface_device *dev, uint8_t addr, uint8_t *data, int count )
+static void si57x_read( struct wr_si57x_interface_device *dev, uint8_t addr, uint8_t *data, int count )
 {
 	int i;
 
@@ -162,7 +164,7 @@ void si57x_read( struct wr_si57x_interface_device *dev, uint8_t addr, uint8_t *d
 }
 
 
-void si57x_write( struct wr_si57x_interface_device *dev, uint8_t addr, uint8_t *data, int count )
+static void si57x_write( struct wr_si57x_interface_device *dev, uint8_t addr, uint8_t *data, int count )
 {
 	int i;
 
@@ -178,7 +180,7 @@ void si57x_write( struct wr_si57x_interface_device *dev, uint8_t addr, uint8_t *
 	bb_i2c_stop( &dev->master );
 }
 
-void si57x_get_xtal_frequency( struct wr_si57x_interface_device *dev, uint32_t* freq_hz )
+static void si57x_get_xtal_frequency( struct wr_si57x_interface_device *dev, uint32_t* freq_hz )
 {
 	uint8_t regs[16];
 
@@ -212,7 +214,7 @@ void si57x_get_xtal_frequency( struct wr_si57x_interface_device *dev, uint32_t* 
 
 }
 
-int si57x_calc_frequency( uint32_t f_xtal, uint32_t freq_hz, uint64_t *rfreq_out, int* hsdiv_out, int* n1_out )
+static int si57x_calc_frequency( uint32_t f_xtal, uint32_t freq_hz, uint64_t *rfreq_out, int* hsdiv_out, int* n1_out )
 {
 	const uint8_t hsdiv_values[] = { 4, 5, 6, 7, 9, 11, 0 };
 	int hsdiv_idx, n1;
@@ -245,7 +247,7 @@ int si57x_calc_frequency( uint32_t f_xtal, uint32_t freq_hz, uint64_t *rfreq_out
 	return -1;
 }
 
-void si57x_reset(struct wr_si57x_interface_device *dev )
+static void si57x_reset(struct wr_si57x_interface_device *dev )
 {
 	uint8_t r135 = 1;
 
@@ -258,13 +260,12 @@ void si57x_reset(struct wr_si57x_interface_device *dev )
 }
 
 
-int si57x_set_frequency( struct wr_si57x_interface_device *dev, uint32_t f_xtal, uint32_t freq_hz )
+static int si57x_set_frequency( struct wr_si57x_interface_device *dev, uint32_t f_xtal, uint32_t freq_hz )
 {
 	uint8_t regs[16];
 	uint64_t rfreq;
 	int hsdiv;
 	int n1;
-	int i;
 	
 	if( si57x_calc_frequency ( f_xtal, freq_hz, &rfreq, &hsdiv, &n1 ) < 0 )
 		return -1;
@@ -368,14 +369,14 @@ static void pca9554_gpio_set_dir(const struct gpio_pin *pin, int dir)
 
 static int pca9554_gpio_in(const struct gpio_pin *pin)
 {
-	struct pca9554_gpio_device* dev = ( struct pca9554_gpio_device* ) pin->device->priv;
+	//struct pca9554_gpio_device* dev = ( struct pca9554_gpio_device* ) pin->device->priv;
 
 // fixme: implement
 	return 0;
 }
 
 
-void pca9554_gpio_init( struct pca9554_gpio_device *dev, struct i2c_bus *bus, uint8_t i2c_addr )
+static void pca9554_gpio_init( struct pca9554_gpio_device *dev, struct i2c_bus *bus, uint8_t i2c_addr )
 {
 	dev->bus = bus;
 	dev->i2c_addr = i2c_addr;
@@ -385,10 +386,10 @@ void pca9554_gpio_init( struct pca9554_gpio_device *dev, struct i2c_bus *bus, ui
 	dev->gpio.set_out = pca9554_gpio_out;
 }
 
-void wr_si57x_interface_init( struct wr_si57x_interface_device *dev, void* base_addr, uint8_t i2c_addr )
+static void wr_si57x_interface_init( struct wr_si57x_interface_device *dev, uint32_t base_addr, uint8_t i2c_addr )
 {
 
-	dev->base_addr = base_addr;
+	dev->base_addr = (void *) base_addr;
 	dev->gpio_i2c.priv = (void *) dev;
 	dev->gpio_i2c.read_pin = si57x_gpio_in;
 	dev->gpio_i2c.set_dir = si57x_gpio_set_dir;
@@ -453,12 +454,12 @@ static void check_vco_freq( int cm_channel, int cm_ref, void (*dac_setter)(int )
 }
 
 
-void set_dmtd_dac( int value )
+static void set_dmtd_dac( int value )
 {
 	spll_set_dac( -1, value );
 }
 
-void set_main_dac( int value )
+static void set_main_dac( int value )
 {
 	spll_set_dac( 0, value );
 }
@@ -469,7 +470,7 @@ const struct gpio_pin pin_rtm_4sfp_i2c_reset_n = { &board.gpio_rtm_main.gpio, 5 
 
 const struct gpio_pin pin_rtm_4sfp_sfp_tx_disable = { &board.gpio_rtm_sfp.gpio, 1 };
 
-void sfp_setup()
+static void sfp_setup(void)
 {
 	board_dbg("Check RTM & init SFPs...\n");
 	//bb_i2c_scan( &board.si57x.master );
@@ -510,7 +511,7 @@ void sfp_setup()
 }
 
 
-void afcz_read_persistent_mac()
+static void afcz_read_persistent_mac(void)
 {
 	uint8_t mac_addr[6];
 
@@ -530,7 +531,7 @@ void afcz_read_persistent_mac()
 		mac_addr[5] = 0x77;
 	}
 
-    ep_set_mac_addr( mac_addr );
+	ep_set_mac_addr( mac_addr );
 
 	board_dbg("Local MAC address: %02x:%02x:%02x:%02x:%02x:%02x\n",
 		mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3],
@@ -561,9 +562,8 @@ int wrc_board_early_init()
 	timer_delay_ms(10);
 
 	si57x_read( &board.si57x, 0, regs, 16 ); 
-	int i;
 
-	int32_t f_xtal;
+	uint32_t f_xtal = 0;
 
 
 	si57x_get_xtal_frequency( &board.si57x, &f_xtal );
@@ -607,9 +607,9 @@ int wrc_board_init()
 	spi_flash_create( &wrc_flash_dev, &spi_wrc_flash, 0x10000, 0x1f00000 );
 
 	storage_spiflash_create( &wrc_storage_dev, &wrc_flash_dev );
-    storage_mount( &wrc_storage_dev );
+	storage_mount( &wrc_storage_dev );
 
-    return 0;
+	return 0;
 }
 
 int wrc_board_create_tasks()
