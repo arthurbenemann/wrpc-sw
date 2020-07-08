@@ -92,6 +92,7 @@
 #  define PLL_WR_MODE_GM 3
  
 void spec7_set_pll_wr_mode(int pll_wr_mode);
+int  spec7_init(void);
 
 struct spec7_board
 {

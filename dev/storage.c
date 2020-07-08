@@ -68,6 +68,12 @@ struct storage_i2c_eeprom_priv
 	struct i2c_eeprom_device *dev;
 };
 
+/* Functions for I2C EEPROM access */
+const struct storage_rwops i2c_eeprom_rwops = {
+	i2c_eeprom_read,
+	i2c_eeprom_write,
+	i2c_eeprom_erase
+};
 
 /* Functions for Flash access */
 static int sdb_flash_read(struct storage_device *dev, int offset, void *buf, int count)
@@ -103,6 +109,14 @@ const int32_t spi_flash_default_entry_points[] =
 				0x170000,	/* after first FPGA bitstream */
 				0x2e0000,	/* after MultiBoot bitstream */
 				0x600000,	/* after SVEC AFPGA bitstream */
+				-1 };
+
+const int32_t i2c_eeprom_default_entry_points[] = 
+{
+				0x000000,	/* eeprom base */
+				0x100,		/* second page in eeprom */
+				0x200,		/* IPMI with MultiRecord */
+				0x300,		/* IPMI with larger MultiRecord */
 				-1 };
 
 /* Functions for FRAM access */
@@ -187,6 +201,19 @@ void storage_spiflash_create(struct storage_device *dev, struct spi_flash_device
 	dev->cfg_entry = flash->cfg_entry;
 	dev->block_size = flash->sector_size;
 	dev->entry_points = spi_flash_default_entry_points;
+	dev->flags = STORAGE_FLAG_DEVICE_OK;
+}
+
+void storage_i2c_eeprom_create(struct storage_device *dev, struct i2c_eeprom_device *eeprom)
+{
+	static const char* i2c_eeprom_str = "eeprom";
+	dev->name = (char *) i2c_eeprom_str;
+	dev->priv = eeprom;
+	dev->rwops = &i2c_eeprom_rwops;
+	dev->size = 8192;
+	dev->cfg_entry = 0;
+	dev->block_size = 1;
+	dev->entry_points = i2c_eeprom_default_entry_points;
 	dev->flags = STORAGE_FLAG_DEVICE_OK;
 }
 
