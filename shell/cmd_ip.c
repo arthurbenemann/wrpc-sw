@@ -14,6 +14,7 @@
 
 #include "softpll_ng.h"
 #include "shell.h"
+#include "dev/etherbone.h"
 
 void decode_ip(const char *str, unsigned char *ip)
 {
@@ -46,6 +47,9 @@ static int cmd_ip(const char *args[])
 		ip_status = IP_OK_STATIC;
 		decode_ip(args[1], ip);
 		setIP(ip);
+#if HAS_EB
+		eb_setIP(ip);
+#endif
 	} else {
 		return -EINVAL;
 	}

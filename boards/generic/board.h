@@ -71,7 +71,11 @@
 #define HAS_ABSCAL 0
 #endif
 
+#ifdef CONFIG_ETHERBONE
 #define HAS_EB 1
+#else
+#define HAS_EB 0
+#endif
 
 #define CONFIG_DISALLOW_LONG_DIVISION
 

@@ -192,18 +192,11 @@ void getIP(unsigned char *IP)
 
 void setIP(unsigned char *IP)
 {
-	volatile unsigned int *eb_ip =
-	    (unsigned int *)(BASE_ETHERBONE_CFG + EB_IPV4);
 	unsigned int ip;
 
 	memcpy(myIP, IP, 4);
 
 	ip = (myIP[0] << 24) | (myIP[1] << 16) | (myIP[2] << 8) | (myIP[3]);
-	if (HAS_EB) {
-		while (*eb_ip != ip)
-			*eb_ip = ip;
-	}
-
 	if (ip == 0)
 		ip_status = IP_TRAINING;
 	bootp_retry = 0;

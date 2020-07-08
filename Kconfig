@@ -195,6 +195,11 @@ config PUTS_SYSLOG
 	  Unfortunately, "stat" will reach syslog as several short strings,
 	  and "gui" is full of escape sequences.
 
+config ETHERBONE
+	depends on IP && !HOST_PROCESS
+	default n
+	boolean "Etherbone support"
+
 config SNMP
 	depends on IP && !HOST_PROCESS
 	default y
