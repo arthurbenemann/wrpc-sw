@@ -30,6 +30,7 @@
 #include <lib/ipv4.h>
 #include <dev/rxts_calibrator.h>
 #include <dev/flash.h>
+#include <dev/gpio.h>
 
 #include <wrc_ptp.h>
 #include <system_checks.h>
@@ -64,8 +65,6 @@ int wrc_wr_diags(void); // fixme: move the header
 
 static void wrc_initialize(void)
 {
-	uint8_t mac_addr[6];
-
 #ifdef CONFIG_USE_SDB
 	sdb_find_devices();
 #endif
@@ -111,7 +110,7 @@ static void wrc_initialize(void)
 
 int link_status;
 
-static int is_link_up()
+static int is_link_up(void)
 {
 	return link_status == LINK_UP;
 }
@@ -203,20 +202,20 @@ static void wrc_dispatch_ptp_events_init(void)
 	prev_timing_ok = 0;
 }
 
-static void wrc_dispatch_ptp_events_poll(void)
+static int wrc_dispatch_ptp_events_poll(void)
 {
 	extern struct pp_instance ppi_static;
-    struct pp_instance *ppi = &ppi_static;
-    struct wr_servo_state *ss = &((struct wr_data *)ppi->ext_data)->servo_state;
+	struct pp_instance *ppi = &ppi_static;
+	struct wr_servo_state *ss = &((struct wr_data *)ppi->ext_data)->servo_state;
 
-    int mode = wrc_ptp_get_mode();
+	int mode = wrc_ptp_get_mode();
 
-    if( mode != prev_ptp_mode )
-    {
-        main_dbg("PTP mode changed.\n");
+	if( mode != prev_ptp_mode )
+	{
+		main_dbg("PTP mode changed.\n");
 		prev_timing_ok = 0;
-        event_post( WRC_EVENT_PTP_MODE_CHANGED );
-    }
+		event_post( WRC_EVENT_PTP_MODE_CHANGED );
+	}
 
 	prev_ptp_mode = mode;
 
@@ -259,11 +258,11 @@ static void wrc_dispatch_ptp_events_poll(void)
 
 	prev_ptp_state = ppi->state;
 	prev_servo_state = ss->state;
+
+	return 1;
 }
 
-extern void wrc_log_stats(void);
-
-static void create_tasks()
+static void create_tasks(void)
 {
 	struct wrc_task *t;
 

@@ -50,7 +50,7 @@ static struct wrc_shell_cmd *cmds[ SHELL_MAX_COMMANDS ];
 static int n_cmds = 0;
 
 int shell_is_interacting;
-int (*shell_ui_callback)();
+int (*shell_ui_callback)(void);
 
 static int insert(char c)
 {
@@ -349,7 +349,7 @@ void shell_activate_ui_command( int (*callback)() )
 #define REGISTER_WRC_COMMAND(_name) \
 	{ extern struct wrc_shell_cmd __wrc_cmd_ ## _name; shell_register_command( &__wrc_cmd_ ## _name ); }
 
-void shell_register_commands()
+void shell_register_commands(void)
 {
 	REGISTER_WRC_COMMAND(gui);
 	REGISTER_WRC_COMMAND(ps);

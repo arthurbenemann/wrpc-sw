@@ -139,6 +139,7 @@ int storage_load_calibration(void);
 int storage_save_calibration(void);
 
 int storage_read_hdl_cfg(void);
+int storage_mount( struct storage_device *dev );
 
 
 #endif

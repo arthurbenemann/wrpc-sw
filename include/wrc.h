@@ -53,6 +53,7 @@
 extern int wrc_vlan_number;
 
 int wrc_mon_gui(void);
+int wrc_log_stats(void);
 void shell_init(void);
 
 /* Default width (in 8ns/16ns units) of the pulses on the PPS output */
