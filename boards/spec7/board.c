@@ -38,6 +38,10 @@ void spec7_init()
     // Use free running dmtd clock for bootstrapping
     gen_gpio_out( &pin_pll_clk_sel, 0);
 
+    // PLL reset and sync de-asserted
+    gen_gpio_out( &pin_pll_sync_o, 0);
+    gen_gpio_out( &pin_pll_reset_n_o, 1);
+
     /* initialize the SPI bus for the SPEC7 PLL (LTC6950 U66) */
     bb_spi_create( &board.spi_ltc6950,
         &pin_pll_cs_n_o,
@@ -48,6 +52,8 @@ void spec7_init()
 
     ltc6950_init(&board.ltc6950_pll, &board.spi_ltc6950);
 
+    // Reset the PLL (RES6950 clears itself)
+    ltc6950_write( &board.ltc6950_pll, 0x03, 4);
     int id = ltc6950_read( &board.ltc6950_pll, 0x16 );
     if( id != 0x65 )
     {
