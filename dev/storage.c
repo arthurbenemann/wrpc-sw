@@ -68,13 +68,6 @@ struct storage_i2c_eeprom_priv
 	struct i2c_eeprom_device *dev;
 };
 
-/* Functions for I2C EEPROM access */
-const struct storage_rwops i2c_eeprom_rwops = {
-	i2c_eeprom_read,
-	i2c_eeprom_write,
-	i2c_eeprom_erase
-};
-
 /* Functions for Flash access */
 static int sdb_flash_read(struct storage_device *dev, int offset, void *buf, int count)
 {
@@ -190,6 +183,12 @@ static int sdb_i2c_eeprom_erase(struct storage_device *dev, int offset, int coun
 	return i2c_eeprom_erase(priv->dev, offset, count);
 }
 
+/* Functions for I2C EEPROM access */
+const struct storage_rwops i2c_eeprom_rwops = {
+	sdb_i2c_eeprom_read,
+	sdb_i2c_eeprom_write,
+	sdb_i2c_eeprom_erase
+};
 
 void storage_spiflash_create(struct storage_device *dev, struct spi_flash_device *flash)
 {
