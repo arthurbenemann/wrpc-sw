@@ -39,6 +39,10 @@ void spec7_set_pll_wr_mode(int pll_wr_mode)
 
 int spec7_init()
 {
+    /* most of the I/Os of the slow peripherals (i2c, spi) are bitbanged. First, let's
+       initialize the GPIO controller they're connected to */
+    wb_gpio_create( &board.gpio_aux, BASE_GPIO );
+
     // Use free running dmtd clock for bootstrapping
     gen_gpio_out( &pin_pll_clk_sel, 0);
 
