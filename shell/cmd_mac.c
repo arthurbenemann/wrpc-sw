@@ -14,6 +14,7 @@
 
 #include "softpll_ng.h"
 #include "shell.h"
+#include "storage.h"
 #include "dev/onewire.h"
 #include "dev/endpoint.h"
 
@@ -49,14 +50,14 @@ static int cmd_mac(const char *args[])
 	} else if (!strcasecmp(args[0], "getp")) {
 		/* get persistent MAC */
 		ep_get_mac_addr(mac);
-		get_persistent_mac(ONEWIRE_PORT, mac);
+		storage_get_persistent_mac(mac);
 	} else if (!strcasecmp(args[0], "set") && args[1]) {
 		decode_mac(args[1], mac);
 		ep_set_mac_addr(mac);
 		pfilter_init_default();
 	} else if (!strcasecmp(args[0], "setp") && args[1]) {
 		decode_mac(args[1], mac);
-		set_persistent_mac(ONEWIRE_PORT, mac);
+		storage_set_persistent_mac(mac);
 	} else {
 		return -EINVAL;
 	}
