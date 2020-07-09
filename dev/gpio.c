@@ -72,7 +72,7 @@ int wb_gpio_create( struct gpio_device *device, uint32_t base_addr )
   device->set_out = wb_gpio_out;
   device->read_pin = wb_gpio_in;
 
-  return device;
+  return 1;
 };
 
 void gen_gpio_set_dir(const struct gpio_pin *pin, int dir)
