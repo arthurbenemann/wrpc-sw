@@ -34,13 +34,13 @@
 #include <hw/wb_insn_uart.h>
 #include <hw/wb_uart.h>
 
-void
+static void
 iuart_writel(struct iuart_device *dev, uint32_t val, uint32_t reg)
 {
     writel( val, (void*) (dev->base + reg) );
 }
 
-uint32_t 
+static uint32_t 
 iuart_readl(struct iuart_device *dev, uint32_t reg)
 {
     return readl( (void*) dev->base + reg );
@@ -61,7 +61,7 @@ iuart_fifo_space(struct iuart_device *dev, uint16_t fifo_size, uint16_t fifo_cnt
     return (fifo_size - fifo_cnt);
 }
 
-void 
+static void 
 iuart_uart_en(struct iuart_device *dev, uint8_t val)
 {
     iuart_writel(dev, val, IUART_REG_UART_EN);
@@ -290,7 +290,7 @@ iuart_da_cpl(struct iuart_device *dev, uint32_t cpldata)
 
 
 
-unsigned
+static unsigned
 iuart_rxd_start(uint8_t rxbyte, uint8_t pchar)
 {
     if (pchar != ESC_CHAR_VAL)
@@ -303,7 +303,7 @@ iuart_rxd_start(uint8_t rxbyte, uint8_t pchar)
 }
 
 
-unsigned
+static unsigned
 iuart_rxd_end(uint8_t rxbyte, uint8_t pchar)
 {
     if (pchar != ESC_CHAR_VAL)

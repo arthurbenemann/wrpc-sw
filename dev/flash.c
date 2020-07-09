@@ -21,7 +21,7 @@
 struct spi_bus spi_wrc_flash;
 struct spi_flash_device wrc_flash_dev;
 
-void	flash_init(void)
+void flash_init(void)
 {
 	bb_spi_create( &spi_wrc_flash,
 		&pin_sysc_spi_ncs,
@@ -30,6 +30,4 @@ void	flash_init(void)
 		&pin_sysc_spi_sclk, 10 );
 
 	spi_flash_create( &wrc_flash_dev, &spi_wrc_flash, 16384, 0 );
-
-	return 0;
 }

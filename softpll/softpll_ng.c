@@ -295,7 +295,7 @@ void spll_very_init()
 	PPSG->ESCR = 0;
 	PPSG->CR = PPSG_CR_CNT_EN | PPSG_CR_CNT_RST | PPSG_CR_PWIDTH_W(PPS_WIDTH);
 
-	memset( &softpll, 0, sizeof(struct softpll_state ));
+	memset( (void *) &softpll, 0, sizeof(struct softpll_state ));
 	softpll.mode = SPLL_MODE_DISABLED;
 }
 

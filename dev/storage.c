@@ -161,7 +161,7 @@ const struct storage_rwops spi_w1_rwops = {
 };
 
 
-/* The methods for W1 access */
+/* The methods for I2C access */
 static int sdb_i2c_eeprom_read(struct storage_device *dev, int offset, void *buf, int count)
 {
 	struct storage_i2c_eeprom_priv *priv = (struct storage_i2c_eeprom_priv* ) dev->priv;
@@ -180,17 +180,23 @@ static int sdb_i2c_eeprom_erase(struct storage_device *dev, int offset, int coun
 	return i2c_eeprom_erase(priv->dev, offset, count);
 }
 
+const struct storage_rwops i2c_eeprom_rwops = {
+	sdb_i2c_eeprom_read,
+	sdb_i2c_eeprom_write,
+	sdb_i2c_eeprom_erase
+};
+
 
 void storage_spiflash_create(struct storage_device *dev, struct spi_flash_device *flash)
 {
 	static const char* spi_flash_str = "spi-flash";
 	dev->name = (char *) spi_flash_str;
 	dev->priv = flash;
-	dev->rwops = &spi_flash_rwops;
+	dev->rwops = (struct storage_rwops *) &spi_flash_rwops;
 	dev->size = flash->size;
 	dev->cfg_entry = flash->cfg_entry;
 	dev->block_size = flash->sector_size;
-	dev->entry_points = spi_flash_default_entry_points;
+	dev->entry_points = (int32_t *) spi_flash_default_entry_points;
 	dev->flags = STORAGE_FLAG_DEVICE_OK;
 }
 
@@ -652,7 +658,7 @@ static wrc_cal_data_t cal_data;
 static int calc_checksum( wrc_cal_data_t* cal )
 {
 	int i;
-	uint32_t cksum;
+	uint32_t cksum = 0;
 	cksum += cal->magic;
 	cksum += cal->param_count;
 	for(i = 0; i < cal->param_count; i++)
@@ -821,8 +827,8 @@ int storage_phtrans(uint32_t *valp, uint8_t write)
 int storage_get_persistent_mac(uint8_t *mac)
 {
 	int ret = 0;
-	int i;
-	struct w1_dev *d;
+	//int i;
+	//struct w1_dev *d;
 
 	// fixme: we should mock entire storage in a host process, not put
 	// such compile-time ifs() in target code
@@ -1055,7 +1061,7 @@ static int sdbfs_erase_callback(struct sdbfs *fs, int offset, int count)
 int storage_mount( struct storage_device *dev )
 {
 	uint32_t magic = 0;
-	int i, ret;
+	int i;
 
 	/* Check if there is SDBFS in the memory */
 
@@ -1115,6 +1121,8 @@ int storage_sdbfs_erase( struct storage_device *dev, uint32_t addr, int force_ba
 		sdbfs_erase_callback( &wrc_sdbfs, base_addr + count, wrc_sdbfs.blocksize );
 		count +=  wrc_sdbfs.blocksize;
 	}
+
+	return 0;
 }
 
 int storage_sdbfs_format( struct storage_device *dev, uint32_t addr, int force_base )
@@ -1128,7 +1136,6 @@ int storage_sdbfs_format( struct storage_device *dev, uint32_t addr, int force_b
 	int i;
 	char buf[19] = {0};
 	int cur_adr, size;
-	uint32_t val;
 	uint32_t base_addr;
 
 	if (force_base)
@@ -1166,7 +1173,8 @@ int storage_sdbfs_format( struct storage_device *dev, uint32_t addr, int force_b
 	}
 
 	
-	pp_printf("Formatting SDBFS in %s (base 0x%08x, size 0x%08x)...\n", dev->name, base_addr, SDBFS_REC * wrc_sdbfs.blocksize );
+	pp_printf("Formatting SDBFS in %s (base 0x%08x, size 0x%08x)...\n", dev->name,
+			base_addr, (uint32_t) (SDBFS_REC * wrc_sdbfs.blocksize) );
 
 	storage_sdbfs_erase(dev, addr, force_base);
 

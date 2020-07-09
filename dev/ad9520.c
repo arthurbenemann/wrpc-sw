@@ -38,7 +38,7 @@ void ad9520_write(struct ad9520_device *dev, uint32_t reg, uint8_t value)
 uint8_t ad9520_read(struct ad9520_device *dev, uint32_t reg) {
     uint8_t rv;
     bb_i2c_start( dev->bus );
-    int ack = bb_i2c_put_byte( dev->bus, dev->addr << 1 );
+    bb_i2c_put_byte( dev->bus, dev->addr << 1 );
     bb_i2c_put_byte( dev->bus, reg >> 8);
     bb_i2c_put_byte( dev->bus, reg & 0xff);
     bb_i2c_repeat_start( dev->bus );

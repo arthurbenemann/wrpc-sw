@@ -43,7 +43,7 @@ struct fine_pulse_gen_channel {
 };
 
 struct fine_pulse_gen_device {
-    uint32_t base;
+    void *base;
     struct fine_pulse_gen_channel channels[FINE_PULSE_GEN_MAX_CHANNELS];
 };
 

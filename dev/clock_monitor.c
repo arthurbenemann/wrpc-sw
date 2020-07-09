@@ -21,11 +21,11 @@ void wb_cm_set_ref_frequency( struct wb_clock_monitor_device *dev, int ref_freq 
 
 int wb_cm_restart( struct wb_clock_monitor_device *dev )
 {
-    uint32_t cr = readl( dev->base + CM_REG_CR );
+    uint32_t cr = readl( (void *) (dev->base + CM_REG_CR) );
     cr |= CM_CR_CNT_RST;
     dev->freq_valid_mask = 0;
 
-    writel( cr, dev->base + CM_REG_CR );
+    writel( cr, (void *) (dev->base + CM_REG_CR) );
     return 0;
 }
 
@@ -37,8 +37,8 @@ int wb_cm_configure(  struct wb_clock_monitor_device *dev, int ref_sel, int pres
     dev->gate_freq = gate_freq;
 
      writel( (dev->ref_sel << CM_CR_REFSEL_SHIFT)
-     | (dev->prescaler << CM_CR_PRESC_SHIFT), dev->base + CM_REG_CR );
-     writel( dev->gate_freq, dev->base + CM_REG_REFDR );
+     | (dev->prescaler << CM_CR_PRESC_SHIFT), (void *) (dev->base + CM_REG_CR) );
+     writel( dev->gate_freq, (void *) (dev->base + CM_REG_REFDR) );
 
     return wb_cm_restart(dev);
 }
@@ -51,8 +51,8 @@ int wb_cm_read(struct wb_clock_monitor_device *dev)
     //pp_printf("CmRead\n");
     for(i = 0; i < dev->n_channels; i++)
     {
-        writel( i, dev->base + CM_REG_CNT_SEL );
-        rv = readl ( dev->base + CM_REG_CNT_VAL );
+        writel( i, (void *) (dev->base + CM_REG_CNT_SEL) );
+        rv = readl ( (void *) (dev->base + CM_REG_CNT_VAL) );
         if( rv & CM_CNT_VAL_VALID )
         {
       //      pp_printf("f%d %d\n", i, rv & 0x7fffffff);
@@ -60,7 +60,7 @@ int wb_cm_read(struct wb_clock_monitor_device *dev)
             dev->freq_valid_mask |= (1<<i);
             n_new++;
         }
-        writel( CM_CNT_VAL_VALID, dev->base + CM_REG_CNT_VAL );
+        writel( CM_CNT_VAL_VALID, (void *) (dev->base + CM_REG_CNT_VAL) );
     }
 
     //pp_printf("Nn %d\n", n_new );

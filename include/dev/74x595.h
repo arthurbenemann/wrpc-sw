@@ -21,6 +21,6 @@
 #ifndef __SN74x595_H
 #define __SN74x595_H
 
-int x595_gpio_create(struct gpio_device *device, int n_regs, const struct gpio_pin *pin_rclk, const struct gpio_pin *pin_srclk, const struct gpio_pin *pin_srclr_n, const struct gpio_pin *pin_ser);
+int x595_gpio_create(struct gpio_device *device, int n_regs, const struct gpio_pin *pin_rclk, const struct gpio_pin *pin_srclk, struct gpio_pin *pin_srclr_n, struct gpio_pin *pin_ser);
 
 #endif

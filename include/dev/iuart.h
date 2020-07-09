@@ -90,6 +90,7 @@ void     iuart_da_write_ctrl(struct iuart_device *dev, uint8_t val);
 void     iuart_da_write(struct iuart_device *dev, uint8_t *buf, uint32_t addr, uint32_t size);
 void     iuart_da_read(struct iuart_device *dev, uint32_t addr, uint32_t size);
 void     iuart_da_cpl(struct iuart_device *dev, uint32_t cpldata);
+void     iuart_da_read_ctrl(struct iuart_device *dev);
 
 int iuart_da_wait_completion( struct iuart_device *dev, uint8_t* data, int size );
 int iuart_da_read_blocking(struct iuart_device *dev, uint32_t addr, uint8_t *data, uint32_t size);

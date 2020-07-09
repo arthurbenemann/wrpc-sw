@@ -28,7 +28,7 @@ static int w1_reset(struct w1_bus *bus)
 	IOWR_SOCKIT_OWM_CTL(BASE_ONEWIRE, (portnum << SOCKIT_OWM_CTL_SEL_OFST)
 			    | (SOCKIT_OWM_CTL_CYC_MSK)
 			    | (SOCKIT_OWM_CTL_RST_MSK));
-	reg = __wait_cycle(BASE_ONEWIRE);
+	reg = __wait_cycle((void *) BASE_ONEWIRE);
 	/* return presence-detect pulse (1 if true) */
 	return (reg & SOCKIT_OWM_CTL_DAT_MSK) ? 0 : 1;
 }
@@ -41,7 +41,7 @@ static int w1_read_bit(struct w1_bus *bus)
 	IOWR_SOCKIT_OWM_CTL(BASE_ONEWIRE, (portnum << SOCKIT_OWM_CTL_SEL_OFST)
 			    | (SOCKIT_OWM_CTL_CYC_MSK)
 			    | (SOCKIT_OWM_CTL_DAT_MSK));
-	reg = __wait_cycle(BASE_ONEWIRE);
+	reg = __wait_cycle((void *) BASE_ONEWIRE);
 	return (reg & SOCKIT_OWM_CTL_DAT_MSK) ? 1 : 0;
 }
 
@@ -52,7 +52,7 @@ static void w1_write_bit(struct w1_bus *bus, int bit)
 	IOWR_SOCKIT_OWM_CTL(BASE_ONEWIRE, (portnum << SOCKIT_OWM_CTL_SEL_OFST)
 			    | (SOCKIT_OWM_CTL_CYC_MSK)
 			    | (bit ? SOCKIT_OWM_CTL_DAT_MSK : 0));
-	__wait_cycle(BASE_ONEWIRE);
+	__wait_cycle((void *) BASE_ONEWIRE);
 }
 
 struct w1_ops wrpc_w1_ops = {

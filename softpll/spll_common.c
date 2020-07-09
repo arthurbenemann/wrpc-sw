@@ -14,7 +14,7 @@
 #include <wrc.h>
 #include "softpll_ng.h"
 
-int gen_dither( int pi_shift )
+static int gen_dither( int pi_shift )
 {
 	static const uint32_t lcg_m = 1103515245;
 	static const uint32_t lcg_i = 12345;	

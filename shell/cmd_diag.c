@@ -34,13 +34,14 @@ static int cmd_diag(const char *args[])
 		for(i=0; i<nro; i++ )
 		{
 			ret = diag_read_word(i, DIAG_RO_BANK, &val);
-			pp_printf("RO word %-03d = 0x%08x\n", i, val );
+			pp_printf("RO word %-3d = 0x%08x\n", i, val );
 		}
 		for(i=0; i<nrw; i++ )
 		{
 			ret = diag_read_word(i, DIAG_RW_BANK, &val);
-			pp_printf("RW word %-03d = 0x%08x\n", i, val );
+			pp_printf("RW word %-3d = 0x%08x\n", i, val );
 		}
+		return ret;
 	}
 
 	if (!strcasecmp(args[0], "ro") && args[1]) {

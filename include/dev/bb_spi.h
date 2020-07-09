@@ -32,11 +32,11 @@ struct spi_bus
   int rd_falling_edge;
 };
 
-int bb_spi_create( struct spi_bus *bus, 
-                    struct gpio_pin *pin_cs,
-                    struct gpio_pin *pin_mosi,
-                    struct gpio_pin *pin_miso,
-                    struct gpio_pin *pin_sck,
+void bb_spi_create( struct spi_bus *bus, 
+                    const struct gpio_pin *pin_cs,
+                    const struct gpio_pin *pin_mosi,
+                    const struct gpio_pin *pin_miso,
+                    const struct gpio_pin *pin_sck,
                     int bit_delay
                     );
 

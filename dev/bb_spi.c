@@ -151,11 +151,11 @@ void bb_spi_xfer(struct spi_bus *bus, uint64_t din, uint64_t *d_out, int n_bits)
  * set SPI speed by configuring bit delay
  */
 
-int bb_spi_create( struct spi_bus *bus, 
-                    struct gpio_pin *pin_cs,
-                    struct gpio_pin *pin_mosi,
-                    struct gpio_pin *pin_miso,
-                    struct gpio_pin *pin_sck,
+void bb_spi_create( struct spi_bus *bus, 
+                    const struct gpio_pin *pin_cs,
+                    const struct gpio_pin *pin_mosi,
+                    const struct gpio_pin *pin_miso,
+                    const struct gpio_pin *pin_sck,
                     int bit_delay
                     )
 {

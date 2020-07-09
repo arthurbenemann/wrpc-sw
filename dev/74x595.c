@@ -22,6 +22,7 @@
 
 #include "board.h"
 #include "dev/gpio.h"
+#include "dev/74x595.h"
 
 #define X595_GPIO_MAX 2
 

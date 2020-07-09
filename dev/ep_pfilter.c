@@ -76,8 +76,8 @@ void pfilter_init_default(void)
 		return;
 	}
 
-	vini = s->ini;
-	vend = s->ini + s->size;
+	vini = (uint32_t *) s->ini;
+	vend = (uint32_t *) (s->ini + s->size);
 
 	/*
 	 * The array of words starts with 0x11223344 so we
