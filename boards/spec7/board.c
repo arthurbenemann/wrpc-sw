@@ -46,9 +46,11 @@ int spec7_init()
     // Use free running dmtd clock for bootstrapping
     gen_gpio_out( &pin_pll_clk_sel, 0);
 
-    // PLL reset and sync de-asserted
-    gen_gpio_out( &pin_pll_sync_o, 0);
+    // PLL reset (although not connected at top level) de-asserted
     gen_gpio_out( &pin_pll_reset_n_o, 1);
+
+    // PLL sync de-asserted
+    gen_gpio_out( &pin_pll_sync_o, 0);
 
     /* initialize the SPI bus for the SPEC7 PLL (LTC6950 U66) */
     bb_spi_create( &board.spi_ltc6950,
@@ -62,6 +64,8 @@ int spec7_init()
 
     // Reset the PLL (RES6950 clears itself)
     ltc6950_write( &board.ltc6950_pll, 0x03, 4);
+    timer_delay_ms(1);
+
     int id = ltc6950_read( &board.ltc6950_pll, 0x16 );
     if( id != 0x65 )
     {
@@ -78,7 +82,7 @@ int spec7_init()
     board_dbg("Switch clk_sys source from free running clk_dmtd to ltc6950 output.\n");
     /* ltc6950 now initialized so switch clk_sys from free running clk_dmtd to ltc6950 output */
     gen_gpio_out( &pin_pll_clk_sel, 1);
-    timer_delay(1000);
+    timer_delay_ms(10);
     board_dbg("now running on ref clock.\n");
 
     return 0;
@@ -95,8 +99,8 @@ int wrc_board_init()
     // int memtype;
     // uint32_t sdbfs_entry;
     // uint32_t sector_size;
-    struct i2c_bus            bus_i2c_eeprom;
-    struct i2c_eeprom_device  dev_i2c_eeprom;
+    struct i2c_bus            dev_i2c_eeprom;
+    struct i2c_eeprom_device  wrc_eeprom_dev;
 
     /*
      * declare GPIO pins and configure their directions for bit-banging SPI
@@ -111,14 +115,14 @@ int wrc_board_init()
     //spi_wrc_flash.rd_falling_edge = 1;
 
     /* create and initialize eeprom I2C bus */
-    bb_i2c_create(&bus_i2c_eeprom,
+    bb_i2c_create(&dev_i2c_eeprom,
          &pin_eeprom_scl,
          &pin_eeprom_sda );
-    bb_i2c_init(&bus_i2c_eeprom);
+    bb_i2c_init(&dev_i2c_eeprom);
 
-    i2c_eeprom_create(&dev_i2c_eeprom, &bus_i2c_eeprom, 0x50, 0x00);
+    i2c_eeprom_create(&wrc_eeprom_dev, &dev_i2c_eeprom, 0x50, 0x00);
 
-    storage_i2c_eeprom_create( &wrc_storage_dev, &dev_i2c_eeprom );
+    storage_i2c_eeprom_create( &wrc_storage_dev, &wrc_eeprom_dev );
 
     /*
      * Read from gateware info about used memory. Currently only base
