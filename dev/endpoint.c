@@ -8,6 +8,7 @@
  */
 
 #include <stdio.h>
+#include <string.h>
 #include <wrc.h>
 
 #include "board.h"
@@ -136,8 +137,6 @@ void ep_reset_phy(void)
    starts up 802.3 autonegotiation process */
 int ep_enable(int enabled, int autoneg)
 {
-	uint16_t mcr;
-
 	if (!enabled) {
 		EP->ECR = 0;
 		return 0;

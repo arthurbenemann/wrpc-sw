@@ -193,7 +193,7 @@ int puts(const char *s)
         return con_uart_put_string( &console_uart_dev, s );
     }
 
-    int i, rv;
+    int i, rv = 0;
 
     for(i = 0; i < BOARD_MAX_CONSOLE_DEVICES; i++)
     {
@@ -225,7 +225,7 @@ int console_getc()
     return -1;
 }
 
-void console_register_device( struct console_device *dev )
+static void console_register_device( struct console_device *dev )
 {
     int i;
     for(i = 0; i < BOARD_MAX_CONSOLE_DEVICES; i++)

@@ -2,6 +2,7 @@
 #include "dev/bb_spi.h"
 #include "dev/spi_flash.h"
 #include "dev/syscon.h"
+#include "dev/endpoint.h"
 #include "storage.h"
 
 int wrc_board_early_init()

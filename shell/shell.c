@@ -338,7 +338,7 @@ void shell_list_cmds()
 	}
 }
 
-void shell_activate_ui_command( int (*callback)() )
+void shell_activate_ui_command( int (*callback)(void) )
 {
 	shell_ui_callback = callback;
 	state = SH_EXEC_UI;

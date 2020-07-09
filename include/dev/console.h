@@ -20,6 +20,7 @@ extern struct console_device *console;
 void console_set_device( struct console_device *dev );
 
 void console_uart_write_bytes( uint8_t *buf, int count );
+void console_uart_set_crlf_mode(int on);
 void console_init(void);
 int console_getc(void);
 

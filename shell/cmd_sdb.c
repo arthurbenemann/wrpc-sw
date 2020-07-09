@@ -20,8 +20,6 @@
 
 static int cmd_sdb(const char *args[])
 {
-	int blocksize	= 1;
-
 	if (!args[0])
 	{
 		pp_printf("Command expected: format, ls\n");

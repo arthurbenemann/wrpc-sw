@@ -72,7 +72,7 @@ static inline int queue_full(struct event_queue *buf)
     return buf->size == buf->count;
 }
 
-static inline int queue_purge(struct event_queue *buf)
+static inline void queue_purge(struct event_queue *buf)
 {
     buf->head = buf->tail = buf->count = 0;
 }
@@ -128,7 +128,7 @@ int event_poll( int handler )
     return queue_get( &eh->queue );
 }
 
-int events_init()
+void events_init(void)
 {
     int i;
 
@@ -138,7 +138,7 @@ int events_init()
         handlers[i].enabled = 0;
 }
 
-int events_dispatch()
+void events_dispatch(void)
 {
     int i;
 

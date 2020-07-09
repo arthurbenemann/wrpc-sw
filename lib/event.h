@@ -15,7 +15,7 @@ int event_listener_create( void );
 int event_handler_enable( int id, int enable );
 int event_post( int event );
 int event_poll( int handler );
-int events_init(void);
-int events_dispatch(void);
+void events_init(void);
+void events_dispatch(void);
 
 #endif

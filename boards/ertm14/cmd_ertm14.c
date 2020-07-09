@@ -332,7 +332,7 @@ static const char *nco_sync_source_to_string(int src)
 }
 
 
-static int ertm14_monitor_ui()
+static int ertm14_monitor_ui(void)
 {
     if( !tmo_expired( &ertm14_mon_timer ))
         return 0;

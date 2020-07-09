@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdint.h>
+#include <string.h>
 
 #include "wrc.h"
 #include "wrc-task.h"
@@ -80,7 +81,7 @@ static void wrc_run_task(struct wrc_task *t)
 	account_task(t, done_sth);
 }
 
-struct wrc_task* wrc_task_create( const char *name, void (*init)(), int (*job)() )
+struct wrc_task* wrc_task_create( const char *name, void (*init)(void), int (*job)(void) )
 {
 	struct wrc_task *t = NULL;
 	int i;
@@ -97,9 +98,9 @@ struct wrc_task* wrc_task_create( const char *name, void (*init)(), int (*job)()
 	t->used = 1;
 	t->init = init;
 	t->job = job;
-    t->enabled = NULL;
-	
-    strncpy(t->name, name, 16);
+	t->enabled = NULL;
+
+	strncpy(t->name, name, 16);
 
 	return t;
 }
@@ -109,7 +110,7 @@ struct wrc_task *wrc_task_get(int tid)
     return &tasks[tid];
 }
 
-void wrc_task_set_enable( struct wrc_task* task, int (*enabled)() )
+void wrc_task_set_enable( struct wrc_task* task, int (*enabled)(void) )
 {
     task->enabled = enabled;
 }

@@ -28,8 +28,6 @@ static int cmd_diag(const char *args[])
 		return 0;
 	}
 
-	int all = strcasecmp(args[0], "all");
-
 	if (!strcasecmp(args[0], "all"))
 	{
 		int i;

@@ -1440,8 +1440,8 @@ static int set_sdb(uint8_t *buf, struct snmp_oid *obj)
 	int ret;
 	int32_t *apply_mode;
 
-	uint8_t i2c_adr = FMC_EEPROM_ADR;
-	int blocksize	= 1;
+	//uint8_t i2c_adr = FMC_EEPROM_ADR;
+	//int blocksize	= 1;
 	int forced_base = 0;
 
 	apply_mode = obj->p;
