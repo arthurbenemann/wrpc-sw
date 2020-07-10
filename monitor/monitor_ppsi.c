@@ -366,7 +366,7 @@ int wrc_log_stats(void)
 
 	for(i = 0; i < n_out; i++) {
 		aux_stat = spll_get_aux_status(i);
-		pp_printf("aux%d:%x %x", i, aux_stat.flags, aux_stat.phase);
+		pp_printf("aux%d:%08x%08x ", i, aux_stat.flags, aux_stat.phase);
 	}
 	
 	/* fixme: clock is not always 125 MHz */
@@ -389,7 +389,9 @@ int wrc_log_stats(void)
 		pp_printf("cko:%d ", (int32_t) (s->offset));
 		pp_printf("setp:%d ", (int32_t) (s->cur_setpoint));
 		pp_printf("ucnt:%d ", (int32_t) s->update_count);
+		pp_printf("bslide:%d ", ep_get_bitslide());
 	}
+	
 	pp_printf("hd:%d md:%d ad:%d ", spll_get_dac(-1), spll_get_dac(0),
 		spll_get_dac(1));
 
@@ -433,7 +435,7 @@ int wrc_wr_diags(void)
 	if (time_before(timer_get_tics(), last_jiffies + WRC_DIAG_REFRESH_PERIOD))
 		return 0;
 	last_jiffies = timer_get_tics();
-	
+
 	/* ***************** lock data from reading by user **************** */
 	wdiag_set_valid(0);
 	
