@@ -94,13 +94,14 @@ int wrc_board_early_init()
     return 0;
 }
 
+struct i2c_bus            dev_i2c_eeprom;
+struct i2c_eeprom_device  wrc_eeprom_dev;
+
 int wrc_board_init()
 {
     // int memtype;
     // uint32_t sdbfs_entry;
     // uint32_t sector_size;
-    struct i2c_bus            dev_i2c_eeprom;
-    struct i2c_eeprom_device  wrc_eeprom_dev;
 
     /*
      * declare GPIO pins and configure their directions for bit-banging SPI
