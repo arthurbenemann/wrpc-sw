@@ -60,6 +60,7 @@
  * value found experimentally */
 #define CALIB_RETRIES 1000
 
+#define CALIB_T24P_RECALIBRATE_THRESHOLD 2000
 
 /* state of transition detector */
 struct trans_detect_state {
@@ -251,7 +252,7 @@ static int calib_t24p_slave(uint32_t *value)
 	 * accept a 200ps difference, otherwise rewrite eeprom
 	 */
 	rv = storage_phtrans(&prev, 0 /* rd */);
-	if (rv < 0 || (prev < *value - 200) || (prev > *value + 200)) {
+	if (rv < 0 || (prev < *value - CALIB_T24P_RECALIBRATE_THRESHOLD) || (prev > *value + CALIB_T24P_RECALIBRATE_THRESHOLD)) {
 		rv = storage_phtrans(value, 1);
 		phy_dbg("Wrote new t24p value: %d ps (%s)\n", *value,
 			  rv < 0 ? "Failed" : "Success");
