@@ -520,7 +520,6 @@ void spll_set_ptracker_average_samples(int channel, int nsamples)
 
 void spll_get_num_channels(int *n_ref, int *n_out)
 {
-	pp_printf("NUM CHAN: %d %d %x\n\n", spll_n_chan_ref, spll_n_chan_out, SPLL->CSR );
 	if (n_ref)
 		*n_ref = spll_n_chan_ref;
 	if (n_out)
