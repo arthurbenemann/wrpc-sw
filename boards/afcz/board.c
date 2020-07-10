@@ -434,20 +434,23 @@ static int calc_apr(int meas_min, int meas_max, int f_center )
 static void check_vco_freq( int cm_channel, int cm_ref, void (*dac_setter)(int ))
 {
 	int f_min, f_max;
-	
-	wb_cm_configure( &board.clk_mon, cm_ref, 2, 10000000 );
+
+	wb_cm_configure( &board.clk_mon, cm_ref, 5, 1000000 );
 	wb_cm_set_ref_frequency( &board.clk_mon, CPU_CLOCK );
 
 	dac_setter( 0 );
-	timer_delay_ms( 10 );
+	timer_delay_ms(1);
 	wb_cm_restart( &board.clk_mon );
 	while( ! (wb_cm_read( &board.clk_mon ) & ( 1<< cm_channel) ) );
 	f_min = board.clk_mon.freqs[ cm_channel ];
 	dac_setter( 65535 );
-	timer_delay_ms( 10 );
+	timer_delay_ms( 1 );
 	wb_cm_restart( &board.clk_mon );
 	while( ! (wb_cm_read( &board.clk_mon ) & ( 1<< cm_channel) ) );
 	f_max = board.clk_mon.freqs[ cm_channel ];
+
+	dac_setter( 32768 );
+	timer_delay(1);
 
 	pp_printf("VCO ch %d:  Low=%d Hz Hi=%d Hz, APR = %d ppm.\n", cm_channel, f_min, f_max, calc_apr(f_min, f_max, 62500000) );
 }
@@ -584,9 +587,16 @@ int wrc_board_early_init()
 
 	tca9548_select_channels( &board.si57x.master, 0x70, 1 << AFCZ_I2C_MUX_CHANNEL_SI570 );
 
-//	check_vco_freq( AFCZ_CM_CHANNEL_CLK_DMTD, AFCZ_CM_CHANNEL_CLK_SYS, set_dmtd_dac );
-//check_vco_freq( AFCZ_CM_CHANNEL_CLK_REF, AFCZ_CM_CHANNEL_CLK_SYS, set_main_dac );
+#if 1
+	set_dmtd_dac(32767);
+	set_main_dac(32767);
 
+// cross-check the REF and DDMTD clocks
+	pp_printf("Checking DDMTD and REF clock frequencies:\n");
+	check_vco_freq( AFCZ_CM_CHANNEL_CLK_DMTD, AFCZ_CM_CHANNEL_CLK_REF, set_dmtd_dac );
+	check_vco_freq( AFCZ_CM_CHANNEL_CLK_REF, AFCZ_CM_CHANNEL_CLK_DMTD, set_main_dac );
+
+#endif
 	return 0;
 }
 
