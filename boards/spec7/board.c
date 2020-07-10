@@ -111,14 +111,15 @@ void spec7debug2(struct storage_device *dev)
    pp_printf("dbug2: bus->pin_sda: 0x%x\n", dev_i2c->bus->pin_sda);
 }
 
+struct i2c_bus            dev_i2c_eeprom;
+struct i2c_eeprom_device  wrc_eeprom_dev;
+
 int wrc_board_init()
 {
     // int memtype;
     // uint32_t sdbfs_entry;
     // uint32_t sector_size;
-    struct i2c_bus            dev_i2c_eeprom;
-    struct i2c_eeprom_device  wrc_eeprom_dev;
-
+    
     /*
      * declare GPIO pins and configure their directions for bit-banging SPI
      * limit SPI speed to 10MHz by setting bit_delay = CPU_CLOCK / 10^6
@@ -138,14 +139,12 @@ int wrc_board_init()
     bb_i2c_init(&dev_i2c_eeprom);
     
     i2c_eeprom_create(&wrc_eeprom_dev, &dev_i2c_eeprom, 0x50, 0x00);
-
+    
     spec7debug(&wrc_eeprom_dev);
  
     storage_i2c_eeprom_create( &wrc_storage_dev, &wrc_eeprom_dev );
-
+    
     spec7debug2(&wrc_storage_dev);
-
-    timer_delay_ms(5000);
     
     /*
      * Read from gateware info about used memory. Currently only base
