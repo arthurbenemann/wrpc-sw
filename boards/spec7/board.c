@@ -94,6 +94,23 @@ int wrc_board_early_init()
     return 0;
 }
 
+void spec7debug(struct i2c_eeprom_device *dev)
+{
+   pp_printf("dbug1: addr: 0x%x\n", dev->addr);
+   pp_printf("dbug1: bus->pin_scl: 0x%x\n", dev->bus->pin_scl);
+   pp_printf("dbug1: bus->pin_sda: 0x%x\n", dev->bus->pin_sda);
+}
+
+void spec7debug2(struct storage_device *dev)
+{
+   struct i2c_eeprom_device *dev_i2c;
+   
+   pp_printf("dbug2: name: %s\n", dev->name);
+   dev_i2c = dev->priv;
+   pp_printf("dbug2: bus->pin_scl: 0x%x\n", dev_i2c->bus->pin_scl);
+   pp_printf("dbug2: bus->pin_sda: 0x%x\n", dev_i2c->bus->pin_sda);
+}
+
 int wrc_board_init()
 {
     // int memtype;
@@ -119,11 +136,17 @@ int wrc_board_init()
          &pin_eeprom_scl,
          &pin_eeprom_sda );
     bb_i2c_init(&dev_i2c_eeprom);
-
+    
     i2c_eeprom_create(&wrc_eeprom_dev, &dev_i2c_eeprom, 0x50, 0x00);
 
+    spec7debug(&wrc_eeprom_dev);
+ 
     storage_i2c_eeprom_create( &wrc_storage_dev, &wrc_eeprom_dev );
 
+    spec7debug2(&wrc_storage_dev);
+
+    timer_delay_ms(5000);
+    
     /*
      * Read from gateware info about used memory. Currently only base
      * address and sector size for memtype flash is supported.

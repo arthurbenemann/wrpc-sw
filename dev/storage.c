@@ -163,24 +163,46 @@ const struct storage_rwops spi_w1_rwops = {
 	sdb_w1_erase
 };
 
+void spec7debug3(struct storage_device *dev)
+{
+   struct i2c_eeprom_device *dev_i2c;
+   
+   pp_printf("dbug3: %s\n", dev->name);
+   dev_i2c = dev->priv;
+   pp_printf("dbug3: bus->pin_scl: 0x%x\n", dev_i2c->bus->pin_scl);
+   pp_printf("dbug3: bus->pin_sda: 0x%x\n", dev_i2c->bus->pin_sda);
+}
+
+void spec7debug4(struct i2c_eeprom_device *dev)
+{
+   pp_printf("dbug4: addr: 0x%x\n", dev->addr);
+}
+void spec7debug5(struct i2c_bus *bus)
+{
+   pp_printf("dbug5: pin_slc: 0x%x\n", bus->pin_scl);
+   pp_printf("dbug5: pin_sda: 0x%x\n", bus->pin_sda);
+}
 
 /* The methods for W1 access */
 static int sdb_i2c_eeprom_read(struct storage_device *dev, int offset, void *buf, int count)
 {
-	struct storage_i2c_eeprom_priv *priv = (struct storage_i2c_eeprom_priv* ) dev->priv;
-	return i2c_eeprom_read(priv->dev, offset, buf, count);
+    spec7debug3(dev);
+	struct i2c_eeprom_device *priv = (struct i2c_eeprom_device* ) dev->priv;
+	//struct i2c_eeprom_device *priv = dev->priv;
+    //spec7debug5(priv->bus);
+	return i2c_eeprom_read(priv->bus, offset, buf, count);
 }
 
 static int sdb_i2c_eeprom_write(struct storage_device *dev, int offset, void *buf, int count)
 {
-	struct storage_i2c_eeprom_priv *priv = (struct storage_i2c_eeprom_priv* ) dev->priv;
-	return i2c_eeprom_read(priv->dev, offset, buf, count);
+	struct i2c_eeprom_device *priv = (struct i2c_eeprom_device* ) dev->priv;
+	return i2c_eeprom_read(priv->bus, offset, buf, count);
 }
 
 static int sdb_i2c_eeprom_erase(struct storage_device *dev, int offset, int count)
 {
-	struct storage_i2c_eeprom_priv *priv = (struct storage_i2c_eeprom_priv* ) dev->priv;
-	return i2c_eeprom_erase(priv->dev, offset, count);
+	struct i2c_eeprom_device *priv = (struct i2c_eeprom_device* ) dev->priv;
+	return i2c_eeprom_erase(priv->bus, offset, count);
 }
 
 /* Functions for I2C EEPROM access */

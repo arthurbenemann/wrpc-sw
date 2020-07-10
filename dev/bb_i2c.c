@@ -26,6 +26,8 @@ void bb_i2c_delay(uint32_t delay)
 
 void bb_i2c_start(struct i2c_bus *bus)
 {
+	pp_printf("i2c_bus sda: 0x%x\n",bus->pin_sda);
+	pp_printf("i2c_bus scl: 0x%x\n",bus->pin_scl);
 	M_SDA_OUT(0);
 	M_SCL_OUT(0);
 }
