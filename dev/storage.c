@@ -190,19 +190,19 @@ static int sdb_i2c_eeprom_read(struct storage_device *dev, int offset, void *buf
 	struct i2c_eeprom_device *priv = (struct i2c_eeprom_device* ) dev->priv;
 	//struct i2c_eeprom_device *priv = dev->priv;
     //spec7debug5(priv->bus);
-	return i2c_eeprom_read(priv->bus, offset, buf, count);
+	return i2c_eeprom_read(priv, offset, buf, count);
 }
 
 static int sdb_i2c_eeprom_write(struct storage_device *dev, int offset, void *buf, int count)
 {
 	struct i2c_eeprom_device *priv = (struct i2c_eeprom_device* ) dev->priv;
-	return i2c_eeprom_read(priv->bus, offset, buf, count);
+	return i2c_eeprom_read(priv, offset, buf, count);
 }
 
 static int sdb_i2c_eeprom_erase(struct storage_device *dev, int offset, int count)
 {
 	struct i2c_eeprom_device *priv = (struct i2c_eeprom_device* ) dev->priv;
-	return i2c_eeprom_erase(priv->bus, offset, count);
+	return i2c_eeprom_erase(priv, offset, count);
 }
 
 /* Functions for I2C EEPROM access */
