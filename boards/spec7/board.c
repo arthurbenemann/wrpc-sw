@@ -121,7 +121,7 @@ int wrc_board_init()
          &pin_eeprom_sda );
     bb_i2c_init(&dev_i2c_eeprom);
 
-    i2c_eeprom_create(&wrc_eeprom_dev, &dev_i2c_eeprom, 0x50, 0x00);
+    i2c_eeprom_create(&wrc_eeprom_dev, &dev_i2c_eeprom, 0x50, 2);
 
     storage_i2c_eeprom_create( &wrc_storage_dev, &wrc_eeprom_dev );
 
