@@ -174,7 +174,7 @@ static int sdb_i2c_eeprom_read(struct storage_device *dev, int offset, void *buf
 static int sdb_i2c_eeprom_write(struct storage_device *dev, int offset, void *buf, int count)
 {
 	struct storage_i2c_eeprom_priv *priv = (struct storage_i2c_eeprom_priv* ) dev->priv;
-	return i2c_eeprom_read(priv, offset, buf, count);
+	return i2c_eeprom_write(priv, offset, buf, count);
 }
 
 static int sdb_i2c_eeprom_erase(struct storage_device *dev, int offset, int count)
