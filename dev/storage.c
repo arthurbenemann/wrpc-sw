@@ -107,9 +107,9 @@ const int32_t spi_flash_default_entry_points[] =
 const int32_t i2c_eeprom_default_entry_points[] = 
 {
 				0x000000,	/* eeprom base */
-				0x100,		/* second page in eeprom */
-				0x200,		/* IPMI with MultiRecord */
-				0x300,		/* IPMI with larger MultiRecord */
+//				0x100,		/* second page in eeprom */
+//				0x200,		/* IPMI with MultiRecord */
+//				0x300,		/* IPMI with larger MultiRecord */
 				-1 };
 
 /* Functions for FRAM access */
@@ -211,7 +211,7 @@ void storage_i2c_eeprom_create(struct storage_device *dev, struct i2c_eeprom_dev
 	dev->rwops = &i2c_eeprom_rwops;
 	dev->size = 8192;
 	dev->cfg_entry = 0;
-	dev->block_size = 1;
+	dev->block_size = 32;
 	dev->entry_points = i2c_eeprom_default_entry_points;
 	dev->flags = STORAGE_FLAG_DEVICE_OK;
 }
