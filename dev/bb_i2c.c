@@ -97,7 +97,9 @@ void bb_i2c_get_byte(struct i2c_bus *bus, uint8_t *data, uint8_t last)
 	*data = indata;
 }
 
-void bb_i2c_create(struct i2c_bus *bus,  struct gpio_pin *pin_scl, struct gpio_pin *pin_sda )
+void bb_i2c_create( struct i2c_bus *bus,
+		    const struct gpio_pin *pin_scl,
+		    const struct gpio_pin *pin_sda )
 {
 	bus->pin_scl = pin_scl;
 	bus->pin_sda = pin_sda;

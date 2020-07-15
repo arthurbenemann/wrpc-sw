@@ -11,6 +11,9 @@
 #include "dev/bb_i2c.h"
 #include "dev/i2c_eeprom.h"
 
+struct i2c_bus i2c_wrc_eeprom;
+struct i2c_eeprom_device wrc_eeprom_dev;
+
 int i2c_eeprom_create( struct i2c_eeprom_device *dev, struct i2c_bus *bus, uint8_t i2c_addr, int offset_bytes )
 {
 	dev->bus = bus;

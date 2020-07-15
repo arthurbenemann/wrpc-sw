@@ -115,6 +115,7 @@ struct storage_device
 extern struct storage_device wrc_storage_dev;
 
 void storage_spiflash_create(struct storage_device *dev, struct spi_flash_device *flash);
+void storage_i2ceeprom_create(struct storage_device *dev, struct i2c_eeprom_device *eeprom);
 
 void storage_init( struct i2c_bus *bus, int i2c_addr);
 

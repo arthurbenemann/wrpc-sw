@@ -108,6 +108,8 @@ extern volatile struct SYSCON_WB *syscon;
 
 extern struct spi_bus spi_wrc_flash;
 extern struct spi_flash_device wrc_flash_dev;
+extern struct i2c_bus i2c_wrc_eeprom;
+extern struct i2c_eeprom_device wrc_eeprom_dev;
 
 static inline int sysc_get_memsize(void)
 {

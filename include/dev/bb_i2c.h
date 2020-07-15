@@ -10,13 +10,13 @@
 
 struct i2c_bus
 {
-    struct gpio_pin *pin_scl;
-    struct gpio_pin *pin_sda;
+    const struct gpio_pin *pin_scl;
+    const struct gpio_pin *pin_sda;
     int loop_delay;
 };
 
 uint8_t bb_i2c_devprobe(struct i2c_bus *bus, uint8_t i2c_addr);
-void bb_i2c_create(struct i2c_bus *bus, struct gpio_pin *pin_scl, struct gpio_pin *pin_sda );
+void bb_i2c_create(struct i2c_bus *bus, const struct gpio_pin *pin_scl, const struct gpio_pin *pin_sda );
 void bb_i2c_init(struct i2c_bus *bus);
 void bb_i2c_start(struct i2c_bus *bus);
 void bb_i2c_repeat_start(struct i2c_bus *bus);
