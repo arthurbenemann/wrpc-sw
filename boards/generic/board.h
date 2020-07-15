@@ -89,6 +89,8 @@
 
 #define SDBFS_REC 5
 
+#define EEPROM_STORAGE 0
+
 void sdb_find_devices(void);
 void sdb_print_devices(void);
 
