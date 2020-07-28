@@ -469,6 +469,8 @@ static void set_main_dac( int value )
 
 const struct gpio_pin pin_rtm_4sfp_led_orange = { &board.gpio_rtm_main.gpio, 3 };
 const struct gpio_pin pin_rtm_4sfp_i2c_reset_n = { &board.gpio_rtm_main.gpio, 5 };
+const struct gpio_pin pin_rtm_4sfp_i2c_enable_n = { &board.gpio_rtm_main.gpio, 6 };
+const struct gpio_pin pin_rtm_4sfp_i2c_pgood_n = { &board.gpio_rtm_main.gpio, 4 };
 
 
 const struct gpio_pin pin_rtm_4sfp_sfp_tx_disable = { &board.gpio_rtm_sfp.gpio, 1 };
@@ -483,9 +485,27 @@ static void sfp_setup(void)
 	pca9554_gpio_init( &board.gpio_rtm_main, &board.si57x.master, 0x20 ); // fixme : constants
 	pca9554_gpio_init( &board.gpio_rtm_sfp, &board.si57x.master, 0x22 ); // fixme : constants
 
+	gen_gpio_set_dir( &pin_rtm_4sfp_i2c_enable_n, 1);
+	gen_gpio_set_dir( &pin_rtm_4sfp_i2c_reset_n, 1);
+
+	gen_gpio_out( &pin_rtm_4sfp_i2c_enable_n, 0 );
 	gen_gpio_out( &pin_rtm_4sfp_i2c_reset_n, 0 );
 	gen_gpio_out( &pin_rtm_4sfp_i2c_reset_n, 1 );
 
+	gen_gpio_set_dir( &pin_rtm_4sfp_i2c_pgood_n, 0 );
+
+	int i;
+
+	for(i=0;i<5;i++)
+	{
+		pp_printf("blinky...\n");
+		gen_gpio_out( &pin_rtm_4sfp_led_orange, 1 );
+		timer_delay_ms(100);
+		gen_gpio_out( &pin_rtm_4sfp_led_orange, 0 );
+		timer_delay_ms(100);
+	}
+
+	pp_printf("Power_good_n: %d]n", gen_gpio_in( &pin_rtm_4sfp_i2c_pgood_n ) );
 
 	const int sfp_busses [] = 
 	{
@@ -498,15 +518,20 @@ static void sfp_setup(void)
 		RTM_4SFP_MUX_SFP6,
 		-1
 	};
-	int i;
 
 	for( i = 0; sfp_busses[i] >= 0; i++ )
 	{
 		// select SFPx
 		tca9548_select_channels( &board.si57x.master, 0x74, 1 << sfp_busses[i] );
 
+	
 		gen_gpio_set_dir( &pin_rtm_4sfp_sfp_tx_disable, 1 );
 		gen_gpio_out( &pin_rtm_4sfp_sfp_tx_disable, 0 );
+
+		int rv_pca = bb_i2c_devprobe( &board.si57x.master, 0x22 );
+		int rv_sfp = bb_i2c_devprobe( &board.si57x.master, 0xa0 >> 1 );
+
+		pp_printf("Probe/init SFP%d: SFP found=%d PCA found=%d\n", sfp_busses[i], rv_sfp, rv_pca );
 	}
 
 
@@ -591,12 +616,50 @@ int wrc_board_early_init()
 	set_dmtd_dac(32767);
 	set_main_dac(32767);
 
+	ep_reset_phy();
+	afcz_check_clocks();
+
 // cross-check the REF and DDMTD clocks
-	pp_printf("Checking DDMTD and REF clock frequencies:\n");
-	check_vco_freq( AFCZ_CM_CHANNEL_CLK_DMTD, AFCZ_CM_CHANNEL_CLK_REF, set_dmtd_dac );
-	check_vco_freq( AFCZ_CM_CHANNEL_CLK_REF, AFCZ_CM_CHANNEL_CLK_DMTD, set_main_dac );
+
+/*	wb_cm_configure( &board.clk_mon, AFCZ_CM_CHANNEL_CLK_DMTD, 5, 1000000 );
+	wb_cm_set_ref_frequency( &board.clk_mon, CPU_CLOCK );
+	wb_cm_restart( &board.clk_mon );
+	timer_delay_ms(4000);
+	wb_cm_read(  &board.clk_mon );
+	wb_cm_show(  &board.clk_mon );
+	}*/
 
 #endif
+	return 0;
+}
+
+#define AFCZ_CLOCK_MON_TIMEOUT_MS 4000
+
+int afcz_check_clocks()
+{
+	wb_cm_configure( &board.clk_mon, AFCZ_CM_CHANNEL_CLK_SYS, 5, 10000000 );
+	wb_cm_set_ref_frequency( &board.clk_mon, CPU_CLOCK );
+	wb_cm_restart(&board.clk_mon);
+	int timeout_cntr = 0;
+
+	while( ! (wb_cm_read( &board.clk_mon ) & ( 1<< AFCZ_CM_CHANNEL_CLK_RX) ) )
+	{
+		timer_delay_ms(100);
+		timeout_cntr+=100;
+		if( timeout_cntr > AFCZ_CLOCK_MON_TIMEOUT_MS )
+		{
+			pp_printf("Can't get the PHY RX clock measurement. Aborting oscillator test.\n");
+			return -1;
+		}
+	}
+
+
+	pp_printf("Checking clocks: RX clock freq = %d Hz\n", board.clk_mon.freqs[ AFCZ_CM_CHANNEL_CLK_RX ]);
+	
+	pp_printf("Checking DDMTD and REF clock frequencies:\n");
+	check_vco_freq( AFCZ_CM_CHANNEL_CLK_DMTD, AFCZ_CM_CHANNEL_CLK_RX, set_dmtd_dac );
+	check_vco_freq( AFCZ_CM_CHANNEL_CLK_REF,  AFCZ_CM_CHANNEL_CLK_RX, set_main_dac );
+
 	return 0;
 }
 
