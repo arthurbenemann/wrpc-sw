@@ -31,10 +31,10 @@ ENTRY(_start)
 
 MEMORY
 {
-    ram   : ORIGIN = 0x0000, LENGTH = 0x6800
-    stats : ORIGIN = 0x6800, LENGTH = 0x0800
-    mbox  : ORIGIN = 0x7000, LENGTH = 0x1000
-    stack : ORIGIN = 0x8000, LENGTH = 0x8000
+    ram   : ORIGIN = 0x0000, LENGTH = 0xA800
+    stats : ORIGIN = 0xA800, LENGTH = 0x0800
+    mbox  : ORIGIN = 0xB000, LENGTH = 0x1000
+    stack : ORIGIN = 0xC000, LENGTH = 0x3000
 }
 
 SECTIONS
@@ -83,7 +83,7 @@ SECTIONS
 	PROVIDE(_endram = ORIGIN(stack));
 
 	/* First location in stack is highest address in RAM (stack area) */
-	PROVIDE(_fstack = ORIGIN(stack) + LENGTH(stack) - 4);
+	PROVIDE(_fstack = ORIGIN(ram) + LENGTH(ram) - 4);
 
 	/* We have no ppi_static nor fifo_log in wrs builds */
 	PROVIDE(ppi_static = 0);

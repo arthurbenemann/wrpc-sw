@@ -23,7 +23,7 @@ config PRINTF_XINT
 
 config RAMSIZE
 	int
-	default 65536 if WR_SWITCH
+	default 131072 if WR_SWITCH
 	default 131072
 
 config TEMP_POLL_INTERVAL
