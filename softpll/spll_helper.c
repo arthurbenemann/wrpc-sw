@@ -17,9 +17,14 @@ void helper_init(struct spll_helper_state *s, int ref_channel)
 	/* Phase branch PI controller */
 	s->pi.y_min = 5;
 	s->pi.y_max = (1 << DAC_BITS) - 5;
-#if defined(CONFIG_WR_NODE)
+#if defined(CONFIG_WR_NODE) && !defined(CONFIG_TARGET_SPEC7)
 	s->pi.kp = -150;//(int)(0.3 * 32.0 * 16.0);	// / 2;
 	s->pi.ki = -2;//(int)(0.03 * 32.0 * 3.0);	// / 2;
+#elif defined(CONFIG_WR_NODE) && defined(CONFIG_TARGET_SPEC7)
+//	s->pi.kp = -800;	// / 2;
+//	s->pi.ki = -10;     // / 2;
+	s->pi.kp = -750;	// / 2;
+	s->pi.ki = -2;      // / 2;
 #else
 	s->pi.kp = 150;
 	s->pi.ki = 2;
@@ -32,6 +37,7 @@ void helper_init(struct spll_helper_state *s, int ref_channel)
 	s->ld.lock_samples = 10000;
 	s->ld.delock_samples = 100;
 	s->ref_src = ref_channel;
+	board_dbg("Helper PLL PI Values: Kp %i\t Ki%i\n",s->pi.kp,s->pi.ki);
 }
 
 int helper_update(struct spll_helper_state *s, int tag,

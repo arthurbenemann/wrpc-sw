@@ -39,8 +39,13 @@ void mpll_init(struct spll_main_state *s, int id_ref,
 		s->pi.kp = 1100;		// / 2;
 		s->pi.ki = 30;			// / 2;
 	}
-#elif defined(CONFIG_WR_NODE)
+#elif defined(CONFIG_WR_NODE) && !defined(CONFIG_TARGET_SPEC7)
 	s->pi.kp = -1100;		// / 2;
+	s->pi.ki = -30;			// / 2;
+#elif defined(CONFIG_WR_NODE) && defined(CONFIG_TARGET_SPEC7)
+//	s->pi.kp = -800;		// / 2;
+//	s->pi.ki = -10;			// / 2;
+	s->pi.kp = -5500;		// / 2;
 	s->pi.ki = -30;			// / 2;
 #else
 #error "Please set CONFIG for wr switch or wr node"
@@ -54,6 +59,7 @@ void mpll_init(struct spll_main_state *s, int id_ref,
 	s->id_ref = id_ref;
 	s->id_out = id_out;
 	s->dac_index = id_out - spll_n_chan_ref;
+	board_dbg("Main PLL PI Values:   Kp %i\t Ki%i\n",s->pi.kp,s->pi.ki);
 
 	if( s->gain_sched )
 	{
