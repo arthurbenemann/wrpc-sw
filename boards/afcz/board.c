@@ -287,7 +287,7 @@ static int si57x_set_frequency( struct wr_si57x_interface_device *dev, uint32_t 
 
 	writel( (uint32_t) ( rfreq & 0xffffffffULL), dev->base_addr + SI570_REG_RFREQL );
 	writel( (uint32_t) ( rfreq >> 32) | (((n1-1) & 0xff) << 6), dev->base_addr + SI570_REG_RFREQH );
-	writel( SI570_CR_ENABLE | SI570_CR_CLK_DIV_W(100) | SI570_CR_I2C_ADDR_W ( ( dev->i2c_addr << 1 ) ) | SI570_CR_GAIN_W(10), dev->base_addr + SI570_REG_CR );
+	writel( SI570_CR_ENABLE | SI570_CR_CLK_DIV_W(100) | SI570_CR_I2C_ADDR_W ( ( dev->i2c_addr << 1 ) ) | SI570_CR_GAIN_W(2), dev->base_addr + SI570_REG_CR );
 
 	si57x_read( dev, 135, &r135, 1 );
 	si57x_read( dev, 137, &r137, 1 );
@@ -435,20 +435,39 @@ static int calc_apr(int meas_min, int meas_max, int f_center )
 static void check_vco_freq( int cm_channel, int cm_ref, void (*dac_setter)(int ))
 {
 	int f_min, f_max;
+	int tune_min = 0;
+	int tune_max = 65535;
+	int tune_step = 5000;
 
 	wb_cm_configure( &board.clk_mon, cm_ref, 5, 1000000 );
 	wb_cm_set_ref_frequency( &board.clk_mon, CPU_CLOCK );
 
-	dac_setter( 0 );
-	timer_delay_ms(1);
-	wb_cm_restart( &board.clk_mon );
-	while( ! (wb_cm_read( &board.clk_mon ) & ( 1<< cm_channel) ) );
-	f_min = board.clk_mon.freqs[ cm_channel ];
-	dac_setter( 65535 );
-	timer_delay_ms( 1 );
-	wb_cm_restart( &board.clk_mon );
-	while( ! (wb_cm_read( &board.clk_mon ) & ( 1<< cm_channel) ) );
-	f_max = board.clk_mon.freqs[ cm_channel ];
+	int tune = tune_min;
+	
+	for(;;)
+	{
+
+		dac_setter( tune );
+		timer_delay_ms(1);
+		wb_cm_restart( &board.clk_mon );
+		while( ! (wb_cm_read( &board.clk_mon ) & ( 1<< cm_channel) ) );
+		
+		int f = board.clk_mon.freqs[ cm_channel ];
+
+		if( tune == tune_min )
+			f_min = f;
+		else if ( tune == tune_max )
+			f_max = f;
+		
+		if(tune == tune_max)
+			break;
+
+		pp_printf("Tune: %d f = %d Hz (deltaF = %d Hz)\n", tune, f, f - 62500000 );
+
+		tune += tune_step;
+		if( tune > tune_max )
+			tune = tune_max;
+	}
 
 	dac_setter( 32768 );
 	timer_delay(1);
@@ -617,7 +636,7 @@ int wrc_board_early_init()
 	set_main_dac(32767);
 
 	ep_reset_phy();
-	afcz_check_clocks();
+	//afcz_check_clocks();
 
 // cross-check the REF and DDMTD clocks
 
