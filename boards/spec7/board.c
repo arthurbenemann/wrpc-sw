@@ -22,6 +22,7 @@ static struct gpio_pin pin_pll_clk_sel       = { &board.gpio_aux, 10 };
 static struct gpio_pin pin_eeprom_scl        = { &board.gpio_aux, 11 };
 static struct gpio_pin pin_eeprom_sda        = { &board.gpio_aux, 12 };
 
+#include "configs/ltc6950_defs.h" 
 static struct ltc6950_config ltc6950_base_config =
 #include "configs/ltc6950_base_config.h" 
 static struct ltc6950_config ltc6950_ext_10mhz_config =
@@ -71,10 +72,19 @@ int spec7_init()
     {
         board_dbg("detect LTC6950: ID %x should be %x\n", id, 0x65 );
     } else {
-        // Configuration for the SPEC7: Forward 125 MHz VCXO_REFCLK at CLK input to outputs 0, 1, 2
-        ltc6950_configure(&board.ltc6950_pll, &ltc6950_base_config);
         // Set clock multiplexers (U63, U64) depending on WR mode
         spec7_set_pll_wr_mode(pll_wr_mode);
+
+        if (pll_wr_mode == PLL_WR_MODE_MASTER | pll_wr_mode == PLL_WR_MODE_GM ) {
+            // External 10 MHZ In (Bulls-Eye B03/B04) => 125 MHz (PLL_WR_MODE_GM) OR
+            // 10 MHZ from TCXO (PLL_WR_MODE_MASTER) on outputs 0, 1, 2
+            ltc6950_configure(&board.ltc6950_pll, &ltc6950_ext_10mhz_config);
+            while ((ltc6950_read(&board.ltc6950_pll,  0x00) & LTC6950_LOCK) == 0);
+            board_dbg("ltc6950 locked.\n");
+        } else {
+            // Forward 125 MHz VCXO_REFCLK at CLK input to outputs 0, 1, 2
+            ltc6950_configure(&board.ltc6950_pll, &ltc6950_base_config);
+        }
     }
 
     //while ((ltc6950_read( &board.ltc6950_pll, 0x16 ) &4) == 0);
