@@ -5,6 +5,7 @@
 #include "dev/i2c_eeprom.h"
 #include "dev/syscon.h"
 #include "storage.h"
+#include <wrc_ptp.h>
 
 struct spec7_board board;
 
@@ -28,14 +29,49 @@ static struct ltc6950_config ltc6950_base_config =
 static struct ltc6950_config ltc6950_ext_10mhz_config =
 #include "configs/ltc6950_ext_10mhz_config.h" 
 
-//int pll_wr_mode = PLL_WR_MODE_MASTER;
-int pll_wr_mode = PLL_WR_MODE_SLAVE;
-//int pll_wr_mode = PLL_WR_MODE_GM;
-
-void spec7_set_pll_wr_mode(int pll_wr_mode)
+void spec7_set_pll_wr_mode(int wrc_ptp_mode)
 {
+    int pll_wr_mode;
+    int hpsec = 0;
+
+    // Set clock multiplexers (U63, U64) depending on wrc_ptp_mode
+    switch(wrc_ptp_mode) {
+        case WRC_MODE_GM || WRC_MODE_ABSCAL:
+            if (hpsec)
+                // HPSEC locks to external 10 MHz via LTC6950
+                pll_wr_mode = PLL_WR_MODE_GM;
+            else
+                // Default reference design locks local VCXO to external 10 MHz
+                pll_wr_mode = PLL_WR_MODE_SLAVE;
+            break;
+        case WRC_MODE_MASTER:
+            pll_wr_mode = PLL_WR_MODE_MASTER;
+            break;
+        default:
+            pll_wr_mode = PLL_WR_MODE_SLAVE;
+    }
+
     gen_gpio_out( &pin_pll_wr_mode0_o, (pll_wr_mode & 0x1) ? 1 : 0);
     gen_gpio_out( &pin_pll_wr_mode1_o, (pll_wr_mode & 0x2) ? 1 : 0);
+    board_dbg("wr_mode: %d\n", pll_wr_mode);
+
+    // ltc6950 initialization depending on wrc_ptp_mode
+    board_dbg("Initialize ltc6950.\n");
+    if (wrc_ptp_mode == WRC_MODE_MASTER | (hpsec && wrc_ptp_mode == WRC_MODE_GM)) {
+        // 10 MHZ from TCXO (WRC_MODE_MASTER) on outputs 0, 1, 2
+        // or (for HPSEC in WRC_MODE GM) External 10 MHZ In (Bulls-Eye B03/B04) => 125 MHz
+        ltc6950_configure(&board.ltc6950_pll, &ltc6950_ext_10mhz_config);
+        while ((ltc6950_read(&board.ltc6950_pll,  0x00) & LTC6950_LOCK) == 0);
+        board_dbg("ltc6950 locked.\n");
+    } else {
+        // Forward 125 MHz VCXO_REFCLK at CLK input to outputs 0, 1, 2
+        ltc6950_configure(&board.ltc6950_pll, &ltc6950_base_config);
+    }
+
+    board_dbg("Select ltc6950 output as clk_sys source.\n");
+    /* ltc6950 now initialized so switch clk_sys from free running clk_dmtd to ltc6950 output */
+    gen_gpio_out( &pin_pll_clk_sel, 1);
+    timer_delay_ms(10);
 }
 
 int spec7_init()
@@ -46,6 +82,7 @@ int spec7_init()
 
     // Use free running dmtd clock for bootstrapping
     gen_gpio_out( &pin_pll_clk_sel, 0);
+    board_dbg("Use free running dmtd clock for bootstrapping.\n");
 
     // PLL reset (although not connected at top level) de-asserted
     gen_gpio_out( &pin_pll_reset_n_o, 1);
@@ -72,28 +109,8 @@ int spec7_init()
     {
         board_dbg("detect LTC6950: ID %x should be %x\n", id, 0x65 );
     } else {
-        // Set clock multiplexers (U63, U64) depending on WR mode
-        spec7_set_pll_wr_mode(pll_wr_mode);
-
-        if (pll_wr_mode == PLL_WR_MODE_MASTER | pll_wr_mode == PLL_WR_MODE_GM ) {
-            // External 10 MHZ In (Bulls-Eye B03/B04) => 125 MHz (PLL_WR_MODE_GM) OR
-            // 10 MHZ from TCXO (PLL_WR_MODE_MASTER) on outputs 0, 1, 2
-            ltc6950_configure(&board.ltc6950_pll, &ltc6950_ext_10mhz_config);
-            while ((ltc6950_read(&board.ltc6950_pll,  0x00) & LTC6950_LOCK) == 0);
-            board_dbg("ltc6950 locked.\n");
-        } else {
-            // Forward 125 MHz VCXO_REFCLK at CLK input to outputs 0, 1, 2
-            ltc6950_configure(&board.ltc6950_pll, &ltc6950_base_config);
-        }
+        spec7_set_pll_wr_mode(WRC_MODE_SLAVE);
     }
-
-    //while ((ltc6950_read( &board.ltc6950_pll, 0x16 ) &4) == 0);
-
-    board_dbg("Switch clk_sys source from free running clk_dmtd to ltc6950 output.\n");
-    /* ltc6950 now initialized so switch clk_sys from free running clk_dmtd to ltc6950 output */
-    gen_gpio_out( &pin_pll_clk_sel, 1);
-    timer_delay_ms(10);
-    board_dbg("now running on ref clock.\n");
 
     return 0;
 }
