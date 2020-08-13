@@ -174,6 +174,19 @@ int console_ipmi_process_request(struct console_device* dev,  uint8_t *req, int 
     return i;
 }
 
+static void console_register_device( struct console_device *dev )
+{
+    int i;
+    for(i = 0; i < BOARD_MAX_CONSOLE_DEVICES; i++)
+    {
+        if ( console_devs[i] == NULL )
+        {
+            console_devs[i] = dev;
+            return;
+        }
+    }
+}
+
 void console_ipmi_init( )
 {
     console_ipmi_dev.priv = &console_ipmi_priv;
@@ -225,18 +238,6 @@ int console_getc()
     return -1;
 }
 
-static void console_register_device( struct console_device *dev )
-{
-    int i;
-    for(i = 0; i < BOARD_MAX_CONSOLE_DEVICES; i++)
-    {
-        if ( console_devs[i] == NULL )
-        {
-            console_devs[i] = dev;
-            return;
-        }
-    }
-}
 
 void console_init()
 {
