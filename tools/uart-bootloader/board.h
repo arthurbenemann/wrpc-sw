@@ -25,6 +25,8 @@
 #include <stdint.h>
 
 #define BASE_CLOCK 62500000 // Xtal frequency
+#define CPU_CLOCK 62500000 // Xtal frequency
+#define CONSOLE_UART_BAUDRATE 921600 // Xtal frequency
 
 #define BASE_UART 0x20500
 #define BASE_SYSCON 0x20400
