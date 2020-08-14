@@ -22,7 +22,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#define CONFIG_ERTM14_FLASH
+#undef CONFIG_ERTM14_FLASH
 
 #include "board.h"
 
@@ -79,6 +79,8 @@ struct gpio_device gpio_aux;
 struct spi_bus spi_flash;
 struct spi_flash_device dev_flash;
 
+void start_user();
+
 static void boot_sysc_gpio_set_dir(const struct gpio_pin *pin, int dir)
 {
 }
@@ -119,7 +121,7 @@ void  boot_flash_init()
 		&boot_pin_sysc_spi_sclk, 10 );
 
 
-    spi_flash_create( &dev_flash, &spi_flash, 16384 );
+    spi_flash_create( &dev_flash, &spi_flash, 16384, 0x0 );
 }
 
 #endif
@@ -398,8 +400,10 @@ void boot_fsm()
 #define ERTM14_FLASH_PAGE_SIZE 65536
 #define ERTM14_FLASH_SIZE 16777216
 #define ERTM14_FIRMWARE_MAGIC 0xf1dee41a
+
 void try_flash_boot()
 {
+#ifdef CONFIG_ERTM14_FLASH
     uint8_t buf[512];
     uint32_t offset;
     for(offset = 0; offset < ERTM14_FLASH_SIZE; offset += ERTM14_FLASH_PAGE_SIZE)
@@ -415,6 +419,7 @@ void try_flash_boot()
             start_user();
         }
     }
+#endif
 }
 
 
