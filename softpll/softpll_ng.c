@@ -33,7 +33,7 @@ volatile struct PPSG_WB *PPSG;
 
 int spll_n_chan_ref, spll_n_chan_out;
 
-
+uint32_t time_init, time_start_ho, timer_ho;
 
 #define MAIN_CHANNEL (spll_n_chan_ref)
 
@@ -288,6 +288,7 @@ void spll_init(int mode, int slave_ref_channel, int align_pps)
 
 	SPLL->DAC_HPLL = 0;
 	SPLL->DAC_MAIN = 0;
+	SPLL->DAC_HO   = 0;
 
 	SPLL->CSR = 0;
 	SPLL->OCER = 0;
@@ -468,12 +469,12 @@ void spll_show_stats()
 
 	if (softpll.mode > 0)
 		    pp_printf("softpll: irqs %d seq %s mode %d "
-		     "alignment_state %d HL%d ML%d HY=%d MY=%d EH=%d EM=%d sp:%d tar=%d\n",
+		     "alignment_state %d HL%d ML%d HY=%d MY=%d EH=%d EM=%d ho=%d\n",
 		      s->irq_count, stringlist_lookup(seq_states, s->seq_state),
 			      s->mode, s->ext.align_state,
 			      s->helper.ld.locked, s->mpll.ld.locked,
 			      s->helper.pi.y, s->mpll.pi.y,
-			      s->helper.pi.x, s->mpll.pi.x ,s->mpll.phase_shift_current, s->mpll.phase_shift_target);
+			      s->helper.pi.x, s->mpll.pi.x , s->mpll.ld.ho_active);
 }
 
 int spll_shifter_busy(int channel)
@@ -624,6 +625,8 @@ int spll_update()
 {
 	int ret = 0;
 
+	struct softpll_state *s = (struct softpll_state *)&softpll;
+
 	switch(softpll.mode) {
 		case SPLL_MODE_GRAND_MASTER:
 			ret = external_align_fsm(&softpll.ext);
@@ -644,6 +647,22 @@ int spll_update()
 	stats.del_cnt = softpll.delock_count;
 	stats.sequence++;
 
+	if((SPLL->HO_CR & SPLL_HO_CR_HO_ACTIVE) > 0)
+	{
+		softpll.mpll.ld.ho_active = 1;
+		disable_irq();
+		mpll_update(&s->mpll, -1, -1);
+	}else
+	{
+		softpll.mpll.ld.ho_active = 0;
+		enable_irq();
+	}
+
+	softpll.mpll.ho_buf_div = SPLL->HO_RATE;
+
+	softpll.mpll.ho_lrn_active = (SPLL->HO_CR & SPLL_HO_CR_LRN_ACTIVE) >> 4; 
+
+	softpll.mpll.ho_func_sel = SPLL_HO_CR_FUNC_SEL_R(SPLL->HO_CR);	
 
 	return ret != 0;
 }

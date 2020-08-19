@@ -65,6 +65,16 @@ void pi_init(spll_pi_t *pi)
  */
 int ld_update(spll_lock_det_t *ld, int y)
 {
+	if(ld->ho_active==1)
+	{
+	//	ld->ho_active_prev = ld->ho_active;
+		return 1;
+	}//else
+	//{
+	//	if(ld->ho_active_prev=1)
+	//	return -1;
+	//}
+	
 	ld->lock_changed = 0;
 
 	if (abs(y) <= ld->threshold) {
@@ -95,6 +105,8 @@ void ld_init(spll_lock_det_t *ld)
 	ld->locked = 0;
 	ld->lock_cnt = 0;
 	ld->lock_changed = 0;
+	ld->ho_active = 0;
+	ld->ho_active_prev = 0;
 }
 
 void lowpass_init(spll_lowpass_t *lp, int alpha)

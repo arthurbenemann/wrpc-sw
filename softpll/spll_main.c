@@ -25,8 +25,8 @@ void mpll_init(struct spll_main_state *s, int id_ref,
 		      int id_out, int mode)
 {
 	/* Frequency branch PI controller */
-	s->pi.y_min = 5;
-	s->pi.y_max = 65530;
+	s->pi.y_min = 50;
+	s->pi.y_max = 65485;
 	s->pi.anti_windup = 1;
 	s->pi.bias = 30000;
 
@@ -62,6 +62,20 @@ void mpll_init(struct spll_main_state *s, int id_ref,
 	s->id_ref = id_ref;
 	s->id_out = id_out;
 	s->dac_index = id_out - spll_n_chan_ref;
+	s->ld.ho_active = 0;
+
+	s->ho_buf_y.buffer = s->ho_buf_y.dataspace;
+	s->ho_buf_y.tail = 0;
+	s->ho_buf_y.head=0;
+	s->ho_buf_y.max_length=HO_BUF_LEN;
+
+	s->ho_buf_x.buffer = s->ho_buf_x.dataspace;
+	s->ho_buf_x.tail = 0;
+	s->ho_buf_x.head=0;
+	s->ho_buf_x.max_length=HO_BUF_LEN;
+
+	s->ho_buf_div=256;
+	SPLL->HO_RATE=256;
 
 	pll_verbose("mpll_init: ref %d out %d idx %x \n", s->id_ref, s->id_out, s->dac_index);
 
@@ -161,8 +175,24 @@ int mpll_update(struct spll_main_state *s, int tag, int source)
 		}
 
 		y = pi_update((spll_pi_t *)&s->pi, err);
-		SPLL->DAC_MAIN = SPLL_DAC_MAIN_VALUE_W(y)
-			| SPLL_DAC_MAIN_DAC_SEL_W(s->dac_index);
+		// SPLL->DAC_MAIN = SPLL_DAC_MAIN_VALUE_W(y)
+		// 	| SPLL_DAC_MAIN_DAC_SEL_W(s->dac_index);
+		if(s->ld.ho_active){
+			if( !(s->sample_n % s->ho_buf_div) )
+				y = ho_update(s);
+			// ho_buf_pop(&s->ho_buf, &ho_value);
+			//s->pi.y=ho_value;
+			SPLL->DAC_HO = SPLL_DAC_HO_VALUE_W(y);
+		}else{
+			if( !(s->sample_n % s->ho_buf_div) && s->ho_lrn_active )
+			{
+				ho_buf_push(&s->ho_buf_y, y);
+				ho_buf_push(&s->ho_buf_x, err);
+			}
+
+			SPLL->DAC_HO = (y & 0xffff);
+		}
+
 
 		spll_debug(DBG_MAIN | DBG_REF, s->tag_ref, 0); // + s->adder_ref, 0);
 		spll_debug(DBG_MAIN | DBG_TAG, s->tag_out, 0); // + s->adder_out, 0);
@@ -263,4 +293,76 @@ int mpll_set_pi(struct spll_main_state *s, int param, int value)
 		return 0;
 	}
 	return -1;
+}
+
+int ho_buf_push(holdover_buffer_t *buf, int data)
+{
+	int next;
+
+	next = buf->head + 1;
+	if(next >= buf->max_length)
+		next = 0;
+
+	buf->buffer[buf->head] = data;
+	buf->head = next;
+	return 0;
+}
+
+int ho_buf_pop(holdover_buffer_t *buf, int *data)
+{
+	int next;
+
+	next = buf->tail + 1;
+	if(next >= buf->max_length)
+		next=0;
+
+	*data = buf->buffer[buf->tail];
+	buf->tail = next;
+	return 0;
+}
+
+int ho_update(struct spll_main_state *s)
+{
+	switch (s->ho_func_sel)
+	{
+	case 0:
+		return ho_update_0(s);
+
+	case 1:
+		return ho_update_1(s);
+
+	case 2:
+		return ho_update_2(s);
+
+	case 3:
+		return ho_update_3(s);
+	
+	default:
+		return ho_update_0(s);
+	}
+
+	return 30000;
+
+}
+
+int ho_update_0(struct spll_main_state *s)
+{
+	return 36500;
+}
+
+int ho_update_1(struct spll_main_state *s)
+{
+	int y;
+	ho_buf_pop(&s->ho_buf_y, &y);
+	return y;
+}
+
+int ho_update_2(struct spll_main_state *s)
+{
+	return 30000;
+}
+
+int ho_update_3(struct spll_main_state *s)
+{
+	return 30000;
 }

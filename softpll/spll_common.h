@@ -48,6 +48,8 @@ typedef struct {
 	int threshold;		/* Error threshold */
 	int locked;		/* Non-zero: we are locked */
 	int lock_changed;
+	int ho_active; /* Holdover active flag */
+	int ho_active_prev;
 } spll_lock_det_t;
 
 /* simple, 1st-order lowpass filter */

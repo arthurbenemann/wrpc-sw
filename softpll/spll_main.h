@@ -13,12 +13,30 @@
 #ifndef __SPLL_MAIN_H
 #define __SPLL_MAIN_H
 
+#include "spll_common.h"
+
+#define HO_BUF_LEN 128
+
+typedef struct{
+	int dataspace[HO_BUF_LEN];
+	int * buffer;
+	int head;
+	int tail;
+	int max_length;
+} holdover_buffer_t;
+
 /* State of the Main PLL */
 struct spll_main_state {
 	int state;
 
 	spll_pi_t pi;
 	spll_lock_det_t ld;
+
+	holdover_buffer_t ho_buf_y; // corrections sent to DAC
+	holdover_buffer_t ho_buf_x; // error measured by the DMTD
+	int ho_buf_div;
+	int ho_func_sel;
+	int ho_lrn_active; 
 
 	int adder_ref, adder_out, tag_ref, tag_out, tag_ref_d, tag_out_d;
 
@@ -49,5 +67,23 @@ int mpll_set_phase_shift(struct spll_main_state *s,
 				int desired_shift_ps);
 
 int mpll_shifter_busy(struct spll_main_state *s);
+
+int mpll_get_pi(struct spll_main_state *s, int param);
+
+int mpll_set_pi(struct spll_main_state *s, int param, int value);
+
+int ho_buf_push(holdover_buffer_t *buf, int data);
+
+int ho_buf_pop(holdover_buffer_t *buf, int *data);
+
+int ho_update(struct spll_main_state *s);
+
+int ho_update_0(struct spll_main_state *s);
+
+int ho_update_1(struct spll_main_state *s);
+
+int ho_update_2(struct spll_main_state *s);
+
+int ho_update_3(struct spll_main_state *s);
 
 #endif // __SPLL_MAIN_H
