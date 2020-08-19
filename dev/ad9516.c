@@ -77,7 +77,7 @@ struct ad9516_reg {
 #define CS_PLL	0 /* AD9516 on SPI CS0 */
 
 
-
+extern int with_ho;
 
 static void *oc_spi_base;
 
@@ -176,7 +176,7 @@ static int ad9516_set_output_divider(void *spi_base, int output, int ratio, int 
 			
 		uint16_t base = ((output - 6) / 2) * 0x5 + 0x199;
 
-		pp_printf("Output [divider %d]: %d ratio: %d base %x lc %d hc %d\n", secondary, output, ratio, base, lcycles ,hcycles);
+		// pp_printf("Output [divider %d]: %d ratio: %d base %x lc %d hc %d\n", secondary, output, ratio, base, lcycles ,hcycles);
 
 		if(!secondary)
 		{
@@ -267,16 +267,26 @@ int ad9516_init(int scb_version)
 		return -1;
 	}
 
-	// During the development of the WRS LJ, several OXCOs were checked, with different input freqs.
-	// This implies that every oscillator requires a different register set for the AD9516 config.
-	// In ad9516_config.h there is a register set for 20, 50 and 125 MHz.
-	ad9516_load_regset(spi_base, ad9516_base_config_34_20, ARRAY_SIZE(ad9516_base_config_34_20), 0);
-	pp_printf("loaded for 34\n");
+	if( with_ho != 1 )
+	{ 
+		ad9516_load_regset(spi_base, ad9516_base_config_34_20, ARRAY_SIZE(ad9516_base_config_34_20), 0);
+		pp_printf("loaded w/o ho\n");
 
-	ad9516_load_regset(spi_base, ad9516_ref_tcxo_20, ARRAY_SIZE(ad9516_ref_tcxo_20), 1);
-	ad9516_wait_lock(spi_base);
+		ad9516_load_regset(spi_base, ad9516_ref_tcxo_20, ARRAY_SIZE(ad9516_ref_tcxo_20), 1);
+		ad9516_wait_lock(spi_base);
 
-	ad9516_sync_outputs(spi_base);
+		ad9516_sync_outputs(spi_base);
+
+	}else{
+
+		ad9516_load_regset(spi_base, ad9516_base_config_34_ho, ARRAY_SIZE(ad9516_base_config_34_ho), 0);
+		pp_printf("loaded with ho\n");
+
+		ad9516_load_regset(spi_base, ad9516_ref_tcxo_ho, ARRAY_SIZE(ad9516_ref_tcxo_ho), 1);
+		ad9516_wait_lock(spi_base);
+
+		ad9516_sync_outputs(spi_base);
+	}
 
 	ad9516_set_output_divider(spi_base, 0, 8, 0);
 	ad9516_set_output_divider(spi_base, 1, 8, 0);
@@ -300,8 +310,6 @@ int ad9516_init(int scb_version)
 		 * Output 8	=> 25 MHz
 		 * Output 9	=> 25 MHz
 		 */
-
-	ad9516_write_reg(spi_base, 0x19C, 0x22);
 
 	ad9516_sync_outputs(spi_base);
 	ad9516_set_vco_divider(spi_base, 3); 

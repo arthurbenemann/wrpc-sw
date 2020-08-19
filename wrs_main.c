@@ -17,8 +17,8 @@
 #include "ext-board.h"
 #include "gen10mhz/gen10mhz.h"
 
-
 int scb_ver = 11;		/* SCB version */
+int with_ho = 1;		/* 1 by default is preferable by now */
 
 extern struct spll_stats stats;
 
@@ -37,25 +37,34 @@ int main(void)
 	stats.start_cnt++;
 	_endram = ENDRAM_MAGIC;
 	uart_init_hw();
-	pp_printf("\n");
-	pp_printf("WR Switch Real Time Subsystem (c) CERN 2011 - 2014\n");
-	pp_printf("Low jitter version.\n");
-	pp_printf("Revision: %s, built: %s %s.\n",
-	      build_revision, build_date, build_time);
-	pp_printf("Start counter %d\n", stats.start_cnt);
 
-	if (stats.start_cnt > 1) {
-		pp_printf("!!spll does not work after restart!!\n");
-		/* for sure problem is in calling second time ad9516_init,
-		 * but not only */
+	if (with_ho == 1)
+	{
+		gpio_out(GPIO_MAIN_VCO_ENABLE, 0);
 	}
+	else
+	{
+		gpio_out(GPIO_MAIN_VCO_ENABLE, 1);
+	}
+
+	 pp_printf("\n");
+	 pp_printf("WR Switch Real Time Subsystem (c) CERN 2011 - 2014\n");
+	 pp_printf("Low jitter version.\n");
+	 pp_printf("Revision: %s, built: %s %s.\n",
+	    build_revision, build_date, build_time);
+	 pp_printf("Start counter %d\n", stats.start_cnt);
+
+	 if (stats.start_cnt > 1) {
+	 	pp_printf("!!spll does not work after restart!!\n");
+	 	/* for sure problem is in calling second time ad9516_init,
+	 	 * but not only */
+	 }
+
 	ad9516_init(scb_ver);
 	rts_init();
 	gen10mhz_init();
 	rtipc_init();
 	spll_very_init();
-	int test = gen10mhz_read();
-	pp_printf("Read %d delay",test);
 
 	for(;;)
 	{
