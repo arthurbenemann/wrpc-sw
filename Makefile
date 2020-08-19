@@ -107,7 +107,7 @@ WRC-O-FLAGS-$(CONFIG_LM32) = --gc-sections -e _start
 OBJS = $(obj-y)
 
 OUTPUT-$(CONFIG_WR_NODE)   = wrc
-OUTPUT-$(CONFIG_WR_SWITCH) = rt_cpu
+OUTPUT-$(CONFIG_WR_SWITCH) = rt_cpu_exp
 OUTPUT := $(OUTPUT-y)
 
 GIT_VER = $(shell git describe --always --dirty | sed  's;^wr-switch-sw-;;')
