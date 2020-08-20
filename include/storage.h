@@ -108,7 +108,7 @@ struct storage_device
 	uint32_t size;
 	uint32_t cfg_entry;
 	int32_t *entry_points;
-	struct storage_rwops *rwops;
+	const struct storage_rwops *rwops;
 	int flags;
 };
 
