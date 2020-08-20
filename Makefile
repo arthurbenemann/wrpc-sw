@@ -104,7 +104,7 @@ obj-$(CONFIG_WR_NODE) += sdb-lib/libsdbfs.a
 cflags-$(CONFIG_WR_NODE) += -Isdb-lib
 
 CFLAGS = $(cflags-y) -Wall -Wstrict-prototypes \
-	-ffunction-sections -fdata-sections -Os -Wmissing-prototypes \
+	-ffunction-sections -fdata-sections -Os \
 	-include include/wrc.h -ggdb
 
 # Assembler Flags
