@@ -16,6 +16,8 @@
 #include <softpll_ng.h>
 #include <ptpd_netif.h>
 
+#include <board.h>
+
 struct wrs_shm_head *ppsi_head;
 
 /* Following code from ptp-noposix/libposix/freestanding-wrapper.c */
@@ -45,14 +47,14 @@ int wrpc_get_port_state(struct hal_port_state *port, const char *port_name)
 		port->mode = HEXP_PORT_MODE_WR_MASTER;
 
 	/* all deltas are added anyway */
-	ep_get_deltas(&port->calib.delta_tx_board,
+	ep_get_deltas(&wrc_endpoint_dev, &port->calib.delta_tx_board,
 		      &port->calib.delta_rx_board);
 	port->calib.delta_tx_phy = 0;
 	port->calib.delta_rx_phy = 0;
 	port->calib.sfp.delta_tx_ps = 0;
 	port->calib.sfp.delta_rx_ps = 0;
 	read_phase_val(port);
-	port->state = ep_link_up(NULL);
+	port->state = ep_link_up(&wrc_endpoint_dev, NULL);
 	port->calib.tx_calibrated = 1;
 	port->calib.rx_calibrated = 1;
 	port->locked = spll_check_lock(0);
@@ -61,7 +63,7 @@ int wrpc_get_port_state(struct hal_port_state *port, const char *port_name)
 	port->clock_period  = REF_CLOCK_PERIOD_PS;
 	port->t2_phase_transition = cal_phase_transition;
 	port->t4_phase_transition = cal_phase_transition;
-	ep_get_mac_addr(port->hw_addr);
+	ep_get_mac_addr(&wrc_endpoint_dev, port->hw_addr);
 	port->hw_index      = 0;
 
 	return 0;

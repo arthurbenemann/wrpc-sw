@@ -844,7 +844,7 @@ int storage_get_persistent_mac(uint8_t *mac)
 	// such compile-time ifs() in target code
 	if (IS_HOST_PROCESS) {
 		/* we don't have sdb working, so get the real eth address */
-		ep_get_mac_addr(mac);
+		ep_get_mac_addr(&wrc_endpoint_dev, mac);
 		return 0;
 	}
 

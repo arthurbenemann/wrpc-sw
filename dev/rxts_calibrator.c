@@ -147,7 +147,7 @@ int rxts_calibration_update(uint32_t *t24p_value)
 
 	/* generate a fake RX timestamp and check if falling edge counter is
 	   ahead of rising edge counter */
-	int flip = ep_timestamper_cal_pulse();
+	int flip = ep_timestamper_cal_pulse(&wrc_endpoint_dev);
 
 	/* look for transitions (with deglitching) */
 	lookup_transition(&det_rising, flip, cal_cur_phase, 1);
@@ -199,7 +199,7 @@ int measure_t24p(uint32_t *value)
 {
 	int rv;
 	pp_printf("Waiting for link...\n");
-	while (!ep_link_up(NULL))
+	while (!ep_link_up(&wrc_endpoint_dev, NULL))
 		timer_delay_ms(100);
 
 	spll_init(SPLL_MODE_SLAVE, 0, 0);
@@ -238,7 +238,7 @@ static int calib_t24p_slave(uint32_t *value)
 	int retries = 0;
 
 	while (!(rv = rxts_calibration_update(value))) {
-		if (retries > CALIB_RETRIES || ep_link_up(NULL) == LINK_DOWN)
+		if (retries > CALIB_RETRIES || ep_link_up(&wrc_endpoint_dev, NULL) == LINK_DOWN)
 			return -1;
  		retries++;
 	}
