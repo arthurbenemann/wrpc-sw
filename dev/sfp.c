@@ -66,12 +66,12 @@ static int sfp_read_part_id(char *part_id)
 	return -1;
 }
 
-int sfp_match(void)
+int sfp_match(int force)
 {
 	struct s_sfpinfo sfp;
 
 	sfp_pn[0] = '\0';
-	if (!sfp_present()) {
+	if (!force && !sfp_present()) {
 		return -ENODEV;
 	}
 	if (sfp_read_part_id(sfp_pn)) {

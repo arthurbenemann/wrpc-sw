@@ -1365,7 +1365,7 @@ static int set_ptp_config(uint8_t *buf, struct snmp_oid *obj)
 			break;
 		}
 		/* perform a sfp match */
-		temp = sfp_match();
+		temp = sfp_match(0);
 		if (temp) {
 			snmp_verbose("%s: Match error (%d)\n", __func__, temp);
 			*apply_mode = applySuccessfulMatchFailed;

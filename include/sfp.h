@@ -24,6 +24,6 @@ extern int32_t sfp_deltaTx;
 extern int32_t sfp_deltaRx;
 
 /* Match plugged SFP with a DB entry */
-int sfp_match(void);
+int sfp_match(int force);
 
 #endif

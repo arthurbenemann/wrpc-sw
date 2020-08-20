@@ -88,7 +88,11 @@ static int cmd_sfp(const char *args[])
 		}
 		return 0;
 	} else if (!strcasecmp(args[0], "match")) {
-		ret = sfp_match();
+		if (args[1] && !strcasecmp(args[1], "force")) {
+			ret = sfp_match(1);
+		} else {
+			ret = sfp_match(0);
+		}
 		if (ret == -ENODEV) {
 			pp_printf("No SFP.\n");
 			return ret;
