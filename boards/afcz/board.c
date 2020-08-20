@@ -9,6 +9,8 @@
 #include "dev/syscon.h"
 #include "dev/bb_spi.h"
 #include "dev/spi_flash.h"
+#include "dev/endpoint.h"
+#include "softpll_ng.h"
 
 #include "hw/si570_if_wb.h"
 
@@ -264,8 +266,7 @@ int si57x_set_frequency( struct wr_si57x_interface_device *dev, uint32_t f_xtal,
 	uint64_t rfreq;
 	int hsdiv;
 	int n1;
-	int i;
-	
+
 	if( si57x_calc_frequency ( f_xtal, freq_hz, &rfreq, &hsdiv, &n1 ) < 0 )
 		return -1;
 
@@ -311,13 +312,20 @@ int si57x_set_frequency( struct wr_si57x_interface_device *dev, uint32_t f_xtal,
 static uint8_t pca9554_read_reg( struct pca9554_gpio_device *dev, uint8_t reg )
 {
 	uint8_t rv;
+	int err;
 	bb_i2c_start(dev->bus);
-	bb_i2c_put_byte(dev->bus, dev->i2c_addr << 1);
+	err |= bb_i2c_put_byte(dev->bus, dev->i2c_addr << 1);
 	bb_i2c_put_byte(dev->bus,  reg );
 	bb_i2c_repeat_start(dev->bus );
-	bb_i2c_put_byte(dev->bus,  (dev->i2c_addr << 1) | 1);
+	err |= bb_i2c_put_byte(dev->bus,  (dev->i2c_addr << 1) | 1);
 	bb_i2c_get_byte(dev->bus, &rv, 1 );
 	bb_i2c_stop(dev->bus);
+
+	if( err )
+	{
+		board_dbg("pca9554 ERROR [addr = 0x%x]!\n", dev->i2c_addr );
+	}
+
 	return rv;
 }
 
@@ -368,7 +376,7 @@ static void pca9554_gpio_set_dir(const struct gpio_pin *pin, int dir)
 
 static int pca9554_gpio_in(const struct gpio_pin *pin)
 {
-	struct pca9554_gpio_device* dev = ( struct pca9554_gpio_device* ) pin->device->priv;
+//	struct pca9554_gpio_device* dev = ( struct pca9554_gpio_device* ) pin->device->priv;
 
 // fixme: implement
 	return 0;
@@ -493,12 +501,15 @@ const struct gpio_pin pin_rtm_4sfp_i2c_pgood_n = { &board.gpio_rtm_main.gpio, 4 
 
 const struct gpio_pin pin_rtm_4sfp_sfp_tx_disable = { &board.gpio_rtm_sfp.gpio, 1 };
 
-void sfp_setup()
+void sfp_setup(void)
 {
 	board_dbg("Check RTM & init SFPs...\n");
-	//bb_i2c_scan( &board.si57x.master );
+//	board_dbg("Devices @ AMC\n");
+//	bb_i2c_scan( &board.si57x.master );
+
+//	board_dbg("Devices @ RTM\n");
 	tca9548_select_channels( &board.si57x.master, 0x70, 1 << AFCZ_I2C_MUX_CHANNEL_RTM );
-	//bb_i2c_scan( &board.si57x.master );
+//	bb_i2c_scan( &board.si57x.master );
 
 	pca9554_gpio_init( &board.gpio_rtm_main, &board.si57x.master, 0x20 ); // fixme : constants
 	pca9554_gpio_init( &board.gpio_rtm_sfp, &board.si57x.master, 0x22 ); // fixme : constants
@@ -512,8 +523,15 @@ void sfp_setup()
 
 	gen_gpio_set_dir( &pin_rtm_4sfp_i2c_pgood_n, 0 );
 
+	uint8_t p_out = pca9554_read_reg( &board.gpio_rtm_main, PCA9554_REG_OUT );
+	uint8_t p_in = pca9554_read_reg( &board.gpio_rtm_main, PCA9554_REG_IN );
+	uint8_t p_cfg = pca9554_read_reg( &board.gpio_rtm_main, PCA9554_REG_CONFIG );
+
+	pp_printf("PCA9554 (RTM MAIN GPIO) regs: out=%02x in=%02x cfg=%02x\n", p_out, p_in, p_cfg );
+
 	int i;
 
+#if 0
 	for(i=0;i<5;i++)
 	{
 		pp_printf("blinky...\n");
@@ -522,8 +540,9 @@ void sfp_setup()
 		gen_gpio_out( &pin_rtm_4sfp_led_orange, 0 );
 		timer_delay_ms(100);
 	}
+#endif
 
-	pp_printf("Power_good_n: %d]n", gen_gpio_in( &pin_rtm_4sfp_i2c_pgood_n ) );
+	pp_printf("Power_good_n: %d] \n", gen_gpio_in( &pin_rtm_4sfp_i2c_pgood_n ) );
 
 	const int sfp_busses [] = 
 	{
@@ -542,7 +561,6 @@ void sfp_setup()
 		// select SFPx
 		tca9548_select_channels( &board.si57x.master, 0x74, 1 << sfp_busses[i] );
 
-	
 		gen_gpio_set_dir( &pin_rtm_4sfp_sfp_tx_disable, 1 );
 		gen_gpio_out( &pin_rtm_4sfp_sfp_tx_disable, 0 );
 
@@ -552,12 +570,10 @@ void sfp_setup()
 		pp_printf("Probe/init SFP%d: SFP found=%d PCA found=%d\n", sfp_busses[i], rv_sfp, rv_pca );
 	}
 
-
-
 }
 
 
-void afcz_read_persistent_mac()
+void afcz_read_persistent_mac(void)
 {
 	uint8_t mac_addr[6];
 
@@ -577,7 +593,7 @@ void afcz_read_persistent_mac()
 		mac_addr[5] = 0x77;
 	}
 
-    ep_set_mac_addr( mac_addr );
+    ep_set_mac_addr( &wrc_endpoint_dev, mac_addr );
 
 	board_dbg("Local MAC address: %02x:%02x:%02x:%02x:%02x:%02x\n",
 		mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3],
@@ -590,15 +606,15 @@ int wrc_board_early_init()
 //	wb_gpio_create( &board.gpio_aux, 0x48000 );
 	board_dbg("WR Core AFCZ port starting up\n");    
 
-	wr_si57x_interface_init( &board.si57x, BASE_SI57X_INTERFACE, SI57X_I2C_ADDR );
+	wr_si57x_interface_init( &board.si57x, (void *) BASE_SI57X_INTERFACE, SI57X_I2C_ADDR );
 	tca9548_select_channels( &board.si57x.master, 0x70, 1 << AFCZ_I2C_MUX_CHANNEL_SI570 );
 
 	net_rst();
-	ep_init();
+	ep_init( &wrc_endpoint_dev, (void *) BASE_EP );
 	/* Sleep for 1s to make sure WRS v4.2 always realizes that
 	 * the link is down */
 	timer_delay_ms(200);
-	ep_enable(1, 1);
+	ep_enable( &wrc_endpoint_dev, 1, 1);
 	timer_delay_ms(200);
 
 	uint8_t regs[16];
@@ -608,10 +624,8 @@ int wrc_board_early_init()
 	timer_delay_ms(10);
 
 	si57x_read( &board.si57x, 0, regs, 16 ); 
-	int i;
 
-	int32_t f_xtal;
-
+	uint32_t f_xtal;
 
 	si57x_get_xtal_frequency( &board.si57x, &f_xtal );
 	si57x_set_frequency( &board.si57x, f_xtal, 125000000 );
@@ -627,7 +641,7 @@ int wrc_board_early_init()
 
 	sfp_setup();
 
-	afcz_read_persistent_mac();
+	//afcz_read_persistent_mac();
 
 	tca9548_select_channels( &board.si57x.master, 0x70, 1 << AFCZ_I2C_MUX_CHANNEL_SI570 );
 
@@ -635,7 +649,7 @@ int wrc_board_early_init()
 	set_dmtd_dac(32767);
 	set_main_dac(32767);
 
-	ep_reset_phy();
+	ep_reset_phy(&wrc_endpoint_dev);
 	//afcz_check_clocks();
 
 // cross-check the REF and DDMTD clocks
@@ -684,6 +698,8 @@ int afcz_check_clocks()
 
 int wrc_board_init()
 {
+    int32_t flash_entry_points[2];
+
 	/* initialize I2C bus */
 	bb_i2c_init(&dev_i2c_fmc);
 
@@ -695,10 +711,26 @@ int wrc_board_init()
 		&pin_sysc_spi_sclk, 10 );
 
 	spi_wrc_flash.rd_falling_edge = 1;
+	int retries = 100;
+	uint32_t id;
+	
+	flash_entry_points[0] = 0x1f00000;
+    flash_entry_points[1] = -1;
 
-	spi_flash_create( &wrc_flash_dev, &spi_wrc_flash, 0x10000, 0x1f00000 );
+    
+    /* init storage (we use the SPI flash on eRTM14) */
+    storage_spiflash_create( &wrc_storage_dev, &wrc_flash_dev );
 
+	do {
+		spi_flash_create( &wrc_flash_dev, &spi_wrc_flash, 0x10000, 0x1f00000 );
+		retries--;
+		id = spi_flash_read_id( &wrc_flash_dev );
+
+	} while ( retries && (id == 0 || id == 0xffffff) );
+
+	
 	storage_spiflash_create( &wrc_storage_dev, &wrc_flash_dev );
+    wrc_storage_dev.entry_points = &flash_entry_points[0];
     storage_mount( &wrc_storage_dev );
 
     return 0;
