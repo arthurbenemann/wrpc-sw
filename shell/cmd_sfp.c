@@ -112,7 +112,7 @@ static int cmd_sfp(const char *args[])
 			sfp_deltaTx, sfp_deltaRx, sfp_alpha);
 		return ret;
 	} else if (args[1] && !strcasecmp(args[0], "ena")) {
-		ep_sfp_enable(atoi(args[1]));
+		ep_sfp_enable(&wrc_endpoint_dev, atoi(args[1]));
 		return 0;
 	} else {
 		pp_printf("Wrong parameter\n");

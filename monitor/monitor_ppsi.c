@@ -18,6 +18,7 @@
 #include <dev/syscon.h>
 #include <dev/pps_gen.h>
 #include <dev/onewire.h>
+#include <dev/endpoint.h>
 #include <temperature.h>
 #include "wrc_ptp.h"
 #include "hal_exports.h"
@@ -389,7 +390,7 @@ int wrc_log_stats(void)
 		pp_printf("cko:%d ", (int32_t) (s->offset));
 		pp_printf("setp:%d ", (int32_t) (s->cur_setpoint));
 		pp_printf("ucnt:%d ", (int32_t) s->update_count);
-		pp_printf("bslide:%d ", ep_get_bitslide());
+		pp_printf("bslide:%d ", ep_get_bitslide(&wrc_endpoint_dev));
 	}
 	
 	pp_printf("hd:%d md:%d ad:%d ", spll_get_dac(-1), spll_get_dac(0),

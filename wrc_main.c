@@ -20,6 +20,8 @@
 #include <dev/endpoint.h>
 #include <dev/minic.h>
 #include <dev/pps_gen.h>
+#include <dev/gpio.h>
+#include <dev/simple_uart.h>
 #include <ptpd_netif.h>
 #include <dev/i2c.h>
 #include <storage.h>
@@ -35,6 +37,7 @@
 #include <system_checks.h>
 #include <ppsi/ppsi.h>
 
+#include "board.h"
 
 #ifdef CONFIG_DAC_LOG
 #include "dev/dac_log.h"
@@ -68,12 +71,12 @@ static int prev_ptp_state;
 static int prev_servo_state;
 static int prev_timing_ok;
 
+struct wr_endpoint_device wrc_endpoint_dev;
+
 int wrc_wr_diags(void); // fixme: move the header
 
 static void wrc_initialize(void)
 {
-	uint8_t mac_addr[6];
-
 #ifdef CONFIG_USE_SDB
 	sdb_find_devices();
 #endif
@@ -89,11 +92,11 @@ static void wrc_initialize(void)
 	get_hw_name(wrc_hw_name);
 
 	net_rst();
-	ep_init();
+	ep_init( &wrc_endpoint_dev, (void *) BASE_EP );
 	/* Sleep for 1s to make sure WRS v4.2 always realizes that
 	 * the link is down */
 	timer_delay_ms(200);
-	ep_enable(1, 1);
+	ep_enable( &wrc_endpoint_dev, 1, 1 );
 
 	minic_init();
 	shw_pps_gen_init();
@@ -119,7 +122,7 @@ static void wrc_initialize(void)
 
 int link_status;
 
-static int is_link_up()
+static int is_link_up(void)
 {
 	return link_status == LINK_UP;
 }
@@ -127,7 +130,7 @@ static int is_link_up()
 static int wrc_check_link(void)
 {
 	static int prev_state = 0;
-	int state = ep_link_up(NULL);
+	int state = ep_link_up( &wrc_endpoint_dev, NULL);
 	int rv = 0;
 
 	if (!prev_state && state) {
@@ -169,7 +172,7 @@ void init_hw_after_reset(void)
 #ifdef CONFIG_USE_SDB
 	sdb_find_devices();
 #endif
-	uart_init_hw();
+	console_init();
 	timer_init(1);
 }
 
@@ -211,7 +214,7 @@ static void wrc_dispatch_ptp_events_init(void)
 	prev_timing_ok = 0;
 }
 
-static void wrc_dispatch_ptp_events_poll(void)
+static int wrc_dispatch_ptp_events_poll(void)
 {
 	extern struct pp_instance ppi_static;
     struct pp_instance *ppi = &ppi_static;
@@ -267,11 +270,12 @@ static void wrc_dispatch_ptp_events_poll(void)
 
 	prev_ptp_state = ppi->state;
 	prev_servo_state = ss->state;
+	return 0;
 }
 
-extern void wrc_log_stats(void);
+extern int wrc_log_stats(void);
 
-static void create_tasks()
+static void create_tasks(void)
 {
 	struct wrc_task *t;
 

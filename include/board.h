@@ -29,7 +29,7 @@
 #  include "boards/sis8300ku/board.h"
 #endif
 
-
+extern struct wr_endpoint_device wrc_endpoint_dev;
 
 int wrc_board_early_init(void);
 int wrc_board_init(void);
