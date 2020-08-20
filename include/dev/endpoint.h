@@ -6,6 +6,7 @@
 #ifndef __ENDPOINT_H
 #define __ENDPOINT_H
 
+#include <hw/rawmem.h>
 #include <stdint.h>
 
 typedef enum {
@@ -19,24 +20,43 @@ typedef enum {
 	NOT = 7
 } pfilter_op_t;
 
-void ep_init(void);
-void ep_set_mac_addr(uint8_t *addr);
-void ep_get_mac_addr(uint8_t *addr);
-int ep_is_mac_addr_set(void);
-int ep_enable(int enabled, int autoneg);
-int ep_link_up(uint16_t * lpa);
-int ep_get_bitslide(void);
-int ep_get_deltas(uint32_t * delta_tx, uint32_t * delta_rx);
-int ep_get_psval(int32_t * psval);
-int ep_cal_pattern_enable(void);
-int ep_cal_pattern_disable(void);
-int ep_timestamper_cal_pulse(void);
-int ep_sfp_enable(int ena);
+#define EP_DEV_MAC_ADDR_SET ( 1<<0 )
+#define EP_DEV_AUTONEG_ENABLED ( 1<<1 )
 
-uint16_t ep_pcs_read(int location);
-void ep_pcs_write(int location, int value);
-void ep_reset_phy(void);
+struct wr_endpoint_device
+{
+	uint8_t mac_addr[6];
+	int flags;
+	void *base;
+};
 
-void pfilter_init_default(void);
+static inline void ep_write( struct wr_endpoint_device* dev, uint32_t addr, uint32_t data)
+{
+	writel( data, addr + dev->base );
+}
+
+static inline uint32_t ep_read( struct wr_endpoint_device* dev, uint32_t addr)
+{
+	return readl( addr + dev->base );
+}
+
+void ep_init(struct wr_endpoint_device* dev, void *base_addr);
+void ep_set_mac_addr(struct wr_endpoint_device* dev, uint8_t *addr);
+void ep_get_mac_addr(struct wr_endpoint_device* dev,uint8_t *addr);
+int ep_is_mac_addr_set(struct wr_endpoint_device* dev);
+int ep_enable(struct wr_endpoint_device* dev, int enabled, int autoneg);
+int ep_link_up(struct wr_endpoint_device* dev, uint16_t * lpa);
+int ep_get_bitslide(struct wr_endpoint_device* dev);
+int ep_get_deltas(struct wr_endpoint_device* dev,uint32_t * delta_tx, uint32_t * delta_rx);
+int ep_cal_pattern_enable(struct wr_endpoint_device* dev);
+int ep_cal_pattern_disable(struct wr_endpoint_device* dev);
+int ep_timestamper_cal_pulse(struct wr_endpoint_device* dev);
+int ep_sfp_enable(struct wr_endpoint_device* dev, int ena);
+
+uint16_t ep_pcs_read(struct wr_endpoint_device* dev, int location);
+void ep_pcs_write(struct wr_endpoint_device* dev, int location, int value);
+void ep_reset_phy(struct wr_endpoint_device* dev);
+
+void ep_pfilter_init_default(struct wr_endpoint_device* dev);
 
 #endif

@@ -22,173 +22,162 @@
    from the serdes bitslip value */
 #define PICOS_PER_SERIAL_BIT 800
 
-/* Number of raw phase samples averaged by the DMTD detector in the Endpoint during single phase measurement.
-   The bigger, the better precision, but slower rate */
-#define DMTD_AVG_SAMPLES 256
 
-static int autoneg_enabled;
-volatile struct EP_WB *EP;
 
 /* functions for accessing PCS (MDIO) registers */
-uint16_t ep_pcs_read(int location)
+uint16_t ep_pcs_read(struct wr_endpoint_device *dev, int location)
 {
-	EP->MDIO_CR = EP_MDIO_CR_ADDR_W(location >> 2);
-	while ((EP->MDIO_ASR & EP_MDIO_ASR_READY) == 0) ;
-	return EP_MDIO_ASR_RDATA_R(EP->MDIO_ASR) & 0xffff;
+	ep_write( dev, EP_REG_MDIO_CR, EP_MDIO_CR_ADDR_W(location >> 2) );
+	while (( ep_read(dev, EP_REG_MDIO_ASR) & EP_MDIO_ASR_READY) == 0) ;
+	return EP_MDIO_ASR_RDATA_R(ep_read(dev, EP_REG_MDIO_ASR)) & 0xffff;
 }
 
-void ep_pcs_write(int location, int value)
+void ep_pcs_write(struct wr_endpoint_device *dev, int location, int value)
 {
-	EP->MDIO_CR = EP_MDIO_CR_ADDR_W(location >> 2)
+	ep_write(dev, EP_REG_MDIO_CR, EP_MDIO_CR_ADDR_W(location >> 2)
 	    | EP_MDIO_CR_DATA_W(value)
-	    | EP_MDIO_CR_RW;
+	    | EP_MDIO_CR_RW );
 
-	while ((EP->MDIO_ASR & EP_MDIO_ASR_READY) == 0) ;
+	while (( ep_read(dev, EP_REG_MDIO_ASR) & EP_MDIO_ASR_READY) == 0) ;
 }
 
 
-void ep_get_mac_addr(uint8_t *dev_addr)
+void ep_get_mac_addr(struct wr_endpoint_device *dev, uint8_t *dev_addr)
 {
-	dev_addr[5] = (EP->MACL & 0x000000ff);
-	dev_addr[4] = (EP->MACL & 0x0000ff00) >> 8;
-	dev_addr[3] = (EP->MACL & 0x00ff0000) >> 16;
-	dev_addr[2] = (EP->MACL & 0xff000000) >> 24;
-	dev_addr[1] = (EP->MACH & 0x000000ff);
-	dev_addr[0] = (EP->MACH & 0x0000ff00) >> 8;
+	uint32_t macl = ep_read(dev, EP_REG_MACL);
+	uint32_t mach = ep_read(dev, EP_REG_MACH);
+	dev_addr[5] = (macl & 0x000000ff);
+	dev_addr[4] = (macl & 0x0000ff00) >> 8;
+	dev_addr[3] = (macl & 0x00ff0000) >> 16;
+	dev_addr[2] = (macl & 0xff000000) >> 24;
+	dev_addr[1] = (mach & 0x000000ff);
+	dev_addr[0] = (mach & 0x0000ff00) >> 8;
 }
 
-static uint8_t ep_mac_addr[6];
-static int is_mac_addr_set = 0;
 
-void ep_set_mac_addr(uint8_t *addr)
+void ep_set_mac_addr(struct wr_endpoint_device* dev, uint8_t *addr)
 {
-	EP = (volatile struct EP_WB *)BASE_EP;
 
-	memcpy(ep_mac_addr, addr, 6);
+	memcpy(dev->mac_addr, addr, 6);
 
-	EP->MACL = ((uint32_t) ep_mac_addr[2] << 24)
-	    | ((uint32_t) ep_mac_addr[3] << 16)
-	    | ((uint32_t) ep_mac_addr[4] << 8)
-	    | ((uint32_t) ep_mac_addr[5]);
+	ep_write(dev, EP_REG_MACL, ((uint32_t) dev->mac_addr[2] << 24)
+	    | ((uint32_t) dev->mac_addr[3] << 16)
+	    | ((uint32_t) dev->mac_addr[4] << 8)
+	    | ((uint32_t) dev->mac_addr[5]) );
 
-	EP->MACH = ((uint32_t) ep_mac_addr[0] << 8)
-	    | ((uint32_t) ep_mac_addr[1]);
+	ep_write(dev, EP_REG_MACH, ((uint32_t) dev->mac_addr[0] << 8)
+	    | ((uint32_t) dev->mac_addr[1]) );
 
-	is_mac_addr_set = 1;
+	dev->flags |= EP_DEV_MAC_ADDR_SET;
 }
 
-int ep_is_mac_addr_set()
+int ep_is_mac_addr_set(struct wr_endpoint_device* dev)
 {
-	return is_mac_addr_set;
+	return (dev->flags & EP_DEV_MAC_ADDR_SET) ? 1 : 0;
 }
 
 /* Initializes the endpoint and sets its local MAC address */
-void ep_init()
+void ep_init(struct wr_endpoint_device* dev, void *base_addr)
 {
-	EP = (volatile struct EP_WB *)BASE_EP;
+	dev->base = base_addr;
+	dev->flags = 0;
 
-	EP->MACL = ((uint32_t) ep_mac_addr[2] << 24)
-	    | ((uint32_t) ep_mac_addr[3] << 16)
-	    | ((uint32_t) ep_mac_addr[4] << 8)
-	    | ((uint32_t) ep_mac_addr[5]);
+	ep_sfp_enable(dev, 1);
 
-	EP->MACH = ((uint32_t) ep_mac_addr[0] << 8)
-	    | ((uint32_t) ep_mac_addr[1]);
-
-	ep_sfp_enable(1);
-
+#if 0
 	if (!IS_WR_NODE_SIM){
 		*(unsigned int *)(0x62000) = 0x2;	// reset network stuff (cleanup required!)
 		*(unsigned int *)(0x62000) = 0;
 	}
+#endif
 
-	EP->ECR = 0;		/* disable Endpoint */
-	EP->VCR0 = EP_VCR0_QMODE_W(3);	/* disable VLAN unit - not used by WRPC */
-	EP->RFCR = EP_RFCR_MRU_W(1518);	/* Set the max RX packet size */
-	EP->TSCR = EP_TSCR_EN_TXTS | EP_TSCR_EN_RXTS;	/* Enable timestamping */
-
-/* Configure DMTD phase tracking */
-	EP->DMCR = EP_DMCR_EN | EP_DMCR_N_AVG_W(DMTD_AVG_SAMPLES);
+	ep_write(dev, EP_REG_ECR, 0);		/* disable Endpoint */
+	ep_write(dev, EP_REG_VCR0, EP_VCR0_QMODE_W(3));	/* disable VLAN unit - not used by WRPC */
+	ep_write(dev, EP_REG_RFCR, EP_RFCR_MRU_W(1518));	/* Set the max RX packet size */
+	ep_write(dev, EP_REG_TSCR, EP_TSCR_EN_TXTS | EP_TSCR_EN_RXTS);	/* Enable timestamping */
 }
 
-void ep_reset_phy(void)
+void ep_reset_phy(struct wr_endpoint_device* dev)
 {
 	uint32_t mcr;
 /* Reset the GTP Transceiver - it's important to do the GTP phase alignment every time
    we start up the software, otherwise the calibration RX/TX deltas may not be correct */
-	ep_pcs_write(MDIO_REG_MCR, MDIO_MCR_PDOWN);	/* reset the PHY */
+	ep_pcs_write(dev, MDIO_REG_MCR, MDIO_MCR_PDOWN);	/* reset the PHY */
 	if (!IS_WR_NODE_SIM)
 		timer_delay_ms(200);
-	ep_pcs_write(MDIO_REG_MCR, MDIO_MCR_RESET);	/* reset the PHY */
-	ep_pcs_write(MDIO_REG_MCR, 0);	/* reset the PHY */
+	ep_pcs_write(dev, MDIO_REG_MCR, MDIO_MCR_RESET);	/* reset the PHY */
+	ep_pcs_write(dev, MDIO_REG_MCR, 0);	/* reset the PHY */
 
 /* Don't advertise anything - we don't want flow control */
-	ep_pcs_write(MDIO_REG_ADVERTISE, 0);
+	ep_pcs_write(dev, MDIO_REG_ADVERTISE, 0);
 
 	mcr = MDIO_MCR_SPEED1000_MASK | MDIO_MCR_FULLDPLX_MASK;
-	if (autoneg_enabled)
+	if (dev->flags & EP_DEV_AUTONEG_ENABLED)
 		mcr |= MDIO_MCR_ANENABLE | MDIO_MCR_ANRESTART;
 
-	ep_pcs_write(MDIO_REG_MCR, mcr);
+	ep_pcs_write(dev, MDIO_REG_MCR, mcr);
 }
 
 /* Enables/disables transmission and reception. When autoneg is set to 1,
    starts up 802.3 autonegotiation process */
-int ep_enable(int enabled, int autoneg)
+int ep_enable(struct wr_endpoint_device* dev, int enabled, int autoneg)
 {
 	uint16_t mcr;
 
 	if (!enabled) {
-		EP->ECR = 0;
+		ep_write(dev, EP_REG_ECR, 0);
 		return 0;
 	}
 
 /* Disable the endpoint */
-	EP->ECR = 0;
+	ep_write(dev, EP_REG_ECR, 0);
 
 	if (!IS_WR_NODE_SIM)
-		mac_dbg("MAC/Endpoint ID: %x\n", EP->IDCODE);
+		mac_dbg("MAC/Endpoint ID: %x\n", ep_read(dev, EP_REG_IDCODE) );
 
 /* Load default packet classifier rules - see ep_pfilter.c for details */
-	pfilter_init_default();
+	ep_pfilter_init_default( dev );
 
 /* Enable TX/RX paths, reset RMON counters */
-	EP->ECR = EP_ECR_TX_EN | EP_ECR_RX_EN | EP_ECR_RST_CNT;
+	ep_write(dev, EP_REG_ECR, EP_ECR_TX_EN | EP_ECR_RX_EN | EP_ECR_RST_CNT );
 
-	autoneg_enabled = autoneg;
+	if(autoneg)
+		dev->flags |= EP_DEV_AUTONEG_ENABLED;
+	else
+		dev->flags &= ~EP_DEV_AUTONEG_ENABLED;
 
-	ep_reset_phy();
+	ep_reset_phy(dev);
 
 	return 0;
 }
 
 /* Checks the link status. If the link is up, returns non-zero
    and stores the Link Partner Ability (LPA) autonegotiation register at *lpa */
-int ep_link_up(uint16_t * lpa)
+int ep_link_up(struct wr_endpoint_device* dev, uint16_t * lpa)
 {
 	uint16_t flags = MDIO_MSR_LSTATUS;
 	volatile uint16_t msr;
 
-	if (autoneg_enabled)
+	if (dev->flags & EP_DEV_AUTONEG_ENABLED)
 		flags |= MDIO_MSR_ANEGCOMPLETE;
 
-	msr = ep_pcs_read(MDIO_REG_MSR);
-	msr = ep_pcs_read(MDIO_REG_MSR);	/* Read this flag twice to make sure the status is updated */
+	msr = ep_pcs_read(dev, MDIO_REG_MSR);
+	msr = ep_pcs_read(dev, MDIO_REG_MSR);	/* Read this flag twice to make sure the status is updated */
 
 	if (lpa)
-		*lpa = ep_pcs_read(MDIO_REG_LPA);
+		*lpa = ep_pcs_read(dev, MDIO_REG_LPA);
 
 	return (msr & flags) == flags ? 1 : 0;
 }
 
-int ep_get_bitslide()
+int ep_get_bitslide(struct wr_endpoint_device* dev)
 {
 	return PICOS_PER_SERIAL_BIT *
-	    MDIO_WR_SPEC_BSLIDE_R(ep_pcs_read(MDIO_REG_WR_SPEC));
+	    MDIO_WR_SPEC_BSLIDE_R(ep_pcs_read(dev, MDIO_REG_WR_SPEC));
 }
 
 /* Returns the TX/RX latencies. They are valid only when the link is up. */
-int ep_get_deltas(uint32_t * delta_tx, uint32_t * delta_rx)
+int ep_get_deltas(struct wr_endpoint_device* dev, uint32_t * delta_tx, uint32_t * delta_rx)
 {
 	/* fixme: these values should be stored in calibration block in the EEPROM on the FMC. Also, the TX/RX delays of a particular SFP
 	   should be added here */
@@ -196,47 +185,48 @@ int ep_get_deltas(uint32_t * delta_tx, uint32_t * delta_rx)
 	*delta_rx =
 	    sfp_deltaRx +
 	    PICOS_PER_SERIAL_BIT *
-	    MDIO_WR_SPEC_BSLIDE_R(ep_pcs_read(MDIO_REG_WR_SPEC));
+	    MDIO_WR_SPEC_BSLIDE_R(ep_pcs_read(dev, MDIO_REG_WR_SPEC));
 	return 0;
 }
 
-int ep_cal_pattern_enable()
+int ep_cal_pattern_enable(struct wr_endpoint_device* dev)
 {
 	uint32_t val;
-	val = ep_pcs_read(MDIO_REG_WR_SPEC);
+	val = ep_pcs_read(dev, MDIO_REG_WR_SPEC);
 	val |= MDIO_WR_SPEC_TX_CAL;
-	ep_pcs_write(MDIO_REG_WR_SPEC, val);
+	ep_pcs_write(dev, MDIO_REG_WR_SPEC, val);
 
 	return 0;
 }
 
-int ep_cal_pattern_disable()
+int ep_cal_pattern_disable(struct wr_endpoint_device* dev)
 {
 	uint32_t val;
-	val = ep_pcs_read(MDIO_REG_WR_SPEC);
+	val = ep_pcs_read(dev, MDIO_REG_WR_SPEC);
 	val &= (~MDIO_WR_SPEC_TX_CAL);
-	ep_pcs_write(MDIO_REG_WR_SPEC, val);
+	ep_pcs_write(dev, MDIO_REG_WR_SPEC, val);
 
 	return 0;
 }
 
-int ep_timestamper_cal_pulse()
+int ep_timestamper_cal_pulse(struct wr_endpoint_device* dev)
 {
-	//pp_printf("calPulse ep @ %p\n", EP);
-	EP->TSCR |= EP_TSCR_RX_CAL_START;
+	ep_write(dev, EP_REG_TSCR, ep_read(dev, EP_REG_TSCR) | EP_TSCR_RX_CAL_START );
 	timer_delay_ms(1);
-	return EP->TSCR & EP_TSCR_RX_CAL_RESULT ? 1 : 0;
+	return ep_read(dev, EP_REG_TSCR) & EP_TSCR_RX_CAL_RESULT ? 1 : 0;
 }
 
-int ep_sfp_enable(int ena)
+int ep_sfp_enable(struct wr_endpoint_device* dev, int ena)
 {
 	uint32_t val;
-	val = ep_pcs_read(MDIO_REG_ECTRL);
+
+	val = ep_pcs_read(dev, MDIO_REG_ECTRL);
 	if(ena)
 		val &= (~MDIO_ECTRL_SFP_TX_DISABLE);
 	else
 		val |= MDIO_ECTRL_SFP_TX_DISABLE;
-	ep_pcs_write(MDIO_REG_ECTRL, val);
+	
+	ep_pcs_write(dev, MDIO_REG_ECTRL, val);
 
 	return 0;
 }

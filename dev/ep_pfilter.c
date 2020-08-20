@@ -44,9 +44,6 @@ struct rule_set {
 	}
 };
 
-
-extern volatile struct EP_WB *EP;
-
 static uint32_t swap32(uint32_t v)
 {
 	uint32_t res;
@@ -58,7 +55,7 @@ static uint32_t swap32(uint32_t v)
 	return res;
 }
 
-void pfilter_init_default(void)
+void ep_pfilter_init_default(struct wr_endpoint_device *dev)
 {
 	struct rule_set *s;
 	uint8_t mac[6];
@@ -112,7 +109,7 @@ void pfilter_init_default(void)
 	 * Patch the local MAC address in place,
 	 * in the first three instructions after NOP
 	 */
-	ep_get_mac_addr(mac);
+	ep_get_mac_addr(dev, mac);
 	v[2] &= ~(0xffff << 13);
 	v[4] &= ~(0xffff << 13);
 	v[6] &= ~(0xffff << 13);
@@ -150,7 +147,7 @@ void pfilter_init_default(void)
 		}
 	}
 
-	EP->PFCR0 = 0;		// disable pfilter
+	ep_write( dev, EP_REG_PFCR0, 0);		// disable pfilter
 
 	for (i = 0, v = vini + 1; v < vend; v += 2, i++) {
 		uint32_t cr0, cr1;
@@ -164,8 +161,8 @@ void pfilter_init_default(void)
 		cr0 = EP_PFCR0_MM_ADDR_W(i) | EP_PFCR0_MM_DATA_MSB_W(cmd_word >> 12) |
 		    EP_PFCR0_MM_WRITE_MASK;
 
-		EP->PFCR1 = cr1;
-		EP->PFCR0 = cr0;
+		ep_write( dev, EP_REG_PFCR1, cr1 );
+		ep_write( dev, EP_REG_PFCR0, cr0 );
 	}
 
 	/* Restore the 0xaaa vlan number, so we can re-patch next time */
@@ -184,5 +181,5 @@ void pfilter_init_default(void)
 	v[4] |= 0x5678 << 13;
 	v[6] |= 0x9abc << 13;
 
-	EP->PFCR0 = EP_PFCR0_ENABLE;
+	ep_write( dev, EP_REG_PFCR0, EP_PFCR0_ENABLE);
 }
