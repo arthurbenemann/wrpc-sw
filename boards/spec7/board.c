@@ -22,6 +22,7 @@ static struct gpio_pin pin_pll_wr_mode1_o    = { &board.gpio_aux, 9 };
 static struct gpio_pin pin_pll_clk_sel       = { &board.gpio_aux, 10 };
 static struct gpio_pin pin_eeprom_scl        = { &board.gpio_aux, 11 };
 static struct gpio_pin pin_eeprom_sda        = { &board.gpio_aux, 12 };
+static struct gpio_pin pin_pll_sync_done_i   = { &board.gpio_aux, 13 };
 
 #include "configs/ltc6950_defs.h" 
 static struct ltc6950_config ltc6950_base_config =
@@ -29,8 +30,12 @@ static struct ltc6950_config ltc6950_base_config =
 static struct ltc6950_config ltc6950_ext_10mhz_config =
 #include "configs/ltc6950_ext_10mhz_config.h" 
 
-//#define CONFIG_HPSEC_GM
-#undef CONFIG_HPSEC_GM
+#define PLL_SYNC_TIMEOUT_MS 4000
+
+timeout_t pll_sync_timeout;
+
+#define CONFIG_HPSEC_GM
+//#undef CONFIG_HPSEC_GM
 
 void spec7_set_pll_wr_mode(int wrc_ptp_mode)
 {
@@ -75,6 +80,10 @@ void spec7_set_pll_wr_mode(int wrc_ptp_mode)
         ltc6950_configure(&board.ltc6950_pll, &ltc6950_ext_10mhz_config);
         while ((ltc6950_read(&board.ltc6950_pll,  0x00) & LTC6950_LOCK) == 0);
         board_dbg("ltc6950 locked.\n");
+#if defined(CONFIG_HPSEC_GM)
+        pll_sync();
+        board_dbg("PLL external 10MHz/1PPS sync sequence complete.\n");
+#endif
     } else {
         // Forward 125 MHz VCXO_REFCLK at CLK input to outputs 0, 1, 2
         ltc6950_configure(&board.ltc6950_pll, &ltc6950_base_config);
@@ -84,6 +93,27 @@ void spec7_set_pll_wr_mode(int wrc_ptp_mode)
     /* ltc6950 now initialized so switch clk_sys from free running clk_dmtd to ltc6950 output */
     gen_gpio_out( &pin_pll_clk_sel, 1);
     timer_delay_ms(10);
+}
+
+int pll_sync()
+{
+    // Used in HPSEC Grand Master mode where external 10MHz generates 125MHz.
+    // 125MHz is not an integer multiple of 10MHz so it has two lock modes: even/odd.
+    // The generated 125MHz must be even/odd alligned with the external 10MHz/1PPS.
+    
+    // Trigger PLL sync sequence
+    gen_gpio_out( &pin_pll_sync_o, 1);
+    gen_gpio_out( &pin_pll_sync_o, 0);
+
+    tmo_init(&pll_sync_timeout, PLL_SYNC_TIMEOUT_MS);
+    // Wait for sync sequence done
+    while (gen_gpio_in( &pin_pll_sync_done_i ) == 0) {
+        if ( tmo_expired(&pll_sync_timeout)) {
+            pp_printf("External 10MHz/1PPS PLL Sync => timeout\n");
+            return 0;
+        }
+    }
+    return 1;
 }
 
 int spec7_init()
