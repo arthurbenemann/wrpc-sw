@@ -27,6 +27,8 @@
 #  include "boards/ertm14/board.h"
 #elif defined(CONFIG_TARGET_SIS8300KU)
 #  include "boards/sis8300ku/board.h"
+#elif defined(CONFIG_TARGET_PXIE_FMC)
+#  include "boards/pxie-fmc/board.h"
 #endif
 
 
