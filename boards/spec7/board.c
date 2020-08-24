@@ -22,7 +22,8 @@ static struct gpio_pin pin_pll_wr_mode1_o    = { &board.gpio_aux, 9 };
 static struct gpio_pin pin_pll_clk_sel       = { &board.gpio_aux, 10 };
 static struct gpio_pin pin_eeprom_scl        = { &board.gpio_aux, 11 };
 static struct gpio_pin pin_eeprom_sda        = { &board.gpio_aux, 12 };
-static struct gpio_pin pin_pll_sync_done_i   = { &board.gpio_aux, 13 };
+static struct gpio_pin pin_pll_even_odd_n_i  = { &board.gpio_aux, 13 };
+static struct gpio_pin pin_pll_sync_done_i   = { &board.gpio_aux, 14 };
 
 #include "configs/ltc6950_defs.h" 
 static struct ltc6950_config ltc6950_base_config =
@@ -30,8 +31,10 @@ static struct ltc6950_config ltc6950_base_config =
 static struct ltc6950_config ltc6950_ext_10mhz_config =
 #include "configs/ltc6950_ext_10mhz_config.h" 
 
+#define PLL_EVEN_ODD_TIMEOUT_MS 4000
 #define PLL_SYNC_TIMEOUT_MS 4000
 
+timeout_t pll_even_odd_timeout;
 timeout_t pll_sync_timeout;
 
 #define CONFIG_HPSEC_GM
@@ -101,7 +104,22 @@ int pll_sync()
     // 125MHz is not an integer multiple of 10MHz so it has two lock modes: even/odd.
     // The generated 125MHz must be even/odd alligned with the external 10MHz/1PPS.
     
-    // Trigger PLL sync sequence
+    tmo_init(&pll_even_odd_timeout, PLL_EVEN_ODD_TIMEOUT_MS);
+    while (gen_gpio_in( &pin_pll_even_odd_n_i ) == 0) {
+        // Reset the PLL (RES6950 clears itself)
+        board_dbg("Reset ltc6950...\n");
+        ltc6950_write( &board.ltc6950_pll, 0x03, 4);
+        timer_delay_ms(1);
+        ltc6950_configure(&board.ltc6950_pll, &ltc6950_ext_10mhz_config);
+        while ((ltc6950_read(&board.ltc6950_pll,  0x00) & LTC6950_LOCK) == 0);
+        if ( tmo_expired(&pll_even_odd_timeout)) {
+            pp_printf("External 10MHz/1PPS lock to \"even\" 125MHz clock cycle => timeout\n");
+            return 0;
+        }
+    }
+    board_dbg("External 10MHz/1PPS lock achieved on \"even\" 125MHz clock cycle\n");
+
+    // Trigger a clk_ref_125m to clk_ref_62m5 divider synchronisation
     gen_gpio_out( &pin_pll_sync_o, 1);
     gen_gpio_out( &pin_pll_sync_o, 0);
 
@@ -109,10 +127,11 @@ int pll_sync()
     // Wait for sync sequence done
     while (gen_gpio_in( &pin_pll_sync_done_i ) == 0) {
         if ( tmo_expired(&pll_sync_timeout)) {
-            pp_printf("External 10MHz/1PPS PLL Sync => timeout\n");
+            pp_printf("clk_ref_125m to clk_ref_62m5 divider synchronization => timeout\n");
             return 0;
         }
     }
+    board_dbg("clk_ref_125m to clk_ref_62m5 divider synchronization done\n");
     return 1;
 }
 
@@ -129,7 +148,7 @@ int spec7_init()
     // PLL reset (although not connected at top level) de-asserted
     gen_gpio_out( &pin_pll_reset_n_o, 1);
 
-    // PLL sync de-asserted
+    // Do not (yet) sync the clk_ref_125m to clk_ref_62m5 divider
     gen_gpio_out( &pin_pll_sync_o, 0);
 
     /* initialize the SPI bus for the SPEC7 PLL (LTC6950 U66) */
