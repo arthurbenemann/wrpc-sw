@@ -31,7 +31,7 @@ static struct ltc6950_config ltc6950_base_config =
 static struct ltc6950_config ltc6950_ext_10mhz_config =
 #include "configs/ltc6950_ext_10mhz_config.h" 
 
-#define PLL_EVEN_ODD_TIMEOUT_MS 4000
+#define PLL_EVEN_ODD_TIMEOUT_MS 10000
 #define PLL_SYNC_TIMEOUT_MS 4000
 
 timeout_t pll_even_odd_timeout;
@@ -112,8 +112,9 @@ int pll_sync()
         timer_delay_ms(1);
         ltc6950_configure(&board.ltc6950_pll, &ltc6950_ext_10mhz_config);
         while ((ltc6950_read(&board.ltc6950_pll,  0x00) & LTC6950_LOCK) == 0);
+        timer_delay_ms(1000);  // wait for next PPS
         if ( tmo_expired(&pll_even_odd_timeout)) {
-            pp_printf("External 10MHz/1PPS lock to \"even\" 125MHz clock cycle => timeout\n");
+            pp_printf("TIMEOUT: External 10MHz/1PPS lock to \"even\" 125MHz clock cycle.\n");
             return 0;
         }
     }
@@ -127,11 +128,12 @@ int pll_sync()
     // Wait for sync sequence done
     while (gen_gpio_in( &pin_pll_sync_done_i ) == 0) {
         if ( tmo_expired(&pll_sync_timeout)) {
-            pp_printf("clk_ref_125m to clk_ref_62m5 divider synchronization => timeout\n");
+            pp_printf("TIMEOUT: clk_ref_125m to clk_ref_62m5 divider synchronization.\n");
             return 0;
         }
     }
     board_dbg("clk_ref_125m to clk_ref_62m5 divider synchronization done\n");
+    phy_calibration_init();
     return 1;
 }
 
