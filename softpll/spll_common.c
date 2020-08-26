@@ -17,7 +17,7 @@
 static int gen_dither( int pi_shift )
 {
 	static const uint32_t lcg_m = 1103515245;
-	static const uint32_t lcg_i = 12345;	
+	static const uint32_t lcg_i = 12345;
   	static uint32_t seed = 0;
 
 	seed *= lcg_m;
@@ -29,18 +29,22 @@ static int gen_dither( int pi_shift )
 		return -d;
 	else
 		return d;
-	
+
 }
 
 
 int pi_update(spll_pi_t *pi, int x)
 {
-	int64_t i_new;
+	int64_t i_new,d_new;
 	int y;
+	int d;
 	pi->x = x;
-	i_new = pi->integrator + (int64_t) pi->ki * x;
+	pi->d = d;
 
-	int64_t y_preround = (i_new + (int64_t) x * pi->kp) + ( 1 << (pi->shift - 1) );
+	i_new = pi->integrator + (int64_t) pi->ki * x;
+    //d_new = pi->derivative
+	d_new   = (x-pi->derivative);
+	int64_t y_preround = (i_new + (int64_t) x * pi->kp)  + pi->kd*d_new+ ( 1 << (pi->shift - 1) );
 
 	int dither = pi->dithered ? gen_dither( pi->shift ) : 0;
 	y = ( (y_preround + dither) >> pi->shift) + pi->bias;
@@ -77,7 +81,7 @@ void pi_init(spll_pi_t *pi)
    if it's withing an acceptable range (i.e. <-ld.threshold,
    ld.threshold>. If it has been inside the range for
    (ld.lock_samples) cyckes, the FSM assumes the PLL is locked.
-   
+
    Return value:
    0: PLL not locked
    1: PLL locked
@@ -117,7 +121,7 @@ void ld_init(spll_lock_det_t *ld)
 	ld->lock_changed = 0;
 }
 
-/* Enables/disables DDMTD tag generation on a given (channel). 
+/* Enables/disables DDMTD tag generation on a given (channel).
 
 Channels (0 ... splL_n_chan_ref - 1) are the reference channels
 	(e.g. transceivers' RX clocks or a local reference)
@@ -147,4 +151,3 @@ void spll_enable_tagger(int channel, int enable)
 
 	pll_verbose("%s: ch %d, OCER 0x%x, RCER 0x%x\n", __FUNCTION__, channel, SPLL->OCER, SPLL->RCER);
 }
-

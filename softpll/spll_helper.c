@@ -25,6 +25,7 @@ void helper_init(struct spll_helper_state *s, int ref_channel)
 //	s->pi.ki = -10;     // / 2;
 	s->pi.kp = -750;	// / 2;
 	s->pi.ki = -2;      // / 2;
+	s->pi.kd =0;
 #else
 	s->pi.kp = 150;
 	s->pi.ki = 2;

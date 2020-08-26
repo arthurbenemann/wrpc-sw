@@ -364,7 +364,7 @@ void shell_register_commands(void)
 	REGISTER_WRC_COMMAND(diag);
 	REGISTER_WRC_COMMAND(init);
 	REGISTER_WRC_COMMAND(sfp);
+  REGISTER_WRC_COMMAND(tune);
 	if (HAS_IP)
 		REGISTER_WRC_COMMAND(ip);
 }
-

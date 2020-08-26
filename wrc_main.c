@@ -36,6 +36,7 @@
 #include <system_checks.h>
 #include <ppsi/ppsi.h>
 
+#include <TuneGuido.h>
 
 #ifdef CONFIG_DAC_LOG
 #include "dev/dac_log.h"
@@ -52,6 +53,11 @@
 char wrc_hw_name[HW_NAME_LENGTH];
 
 uint32_t cal_phase_transition = 2389;
+
+// dirty Hack
+
+
+
 
 int wrc_vlan_number = CONFIG_VLAN_NR;
 
@@ -77,6 +83,8 @@ static void wrc_initialize(void)
 	wrc_board_early_init();
 
 	pp_printf("WR Core: starting up...\n");
+	Kphpsec=&pguido;
+	pp_printf("Val of %d\n",*Kphpsec);
 	get_hw_name(wrc_hw_name);
 
 	net_rst();
@@ -219,7 +227,7 @@ static int wrc_dispatch_ptp_events_poll(void)
 
 	prev_ptp_mode = mode;
 
-	// observe the PTP state machine transitions and the servo state - and depending on the mode of 
+	// observe the PTP state machine transitions and the servo state - and depending on the mode of
 	// operation (master/slave), send the 'Timing up'/'Timing down' events.
 	if( mode == WRC_MODE_MASTER )
 	{
@@ -328,5 +336,7 @@ int main(void)
 		events_dispatch();
 		/* better safe than sorry */
 		check_stack();
+		// dirty Hack
+
 	}
 }

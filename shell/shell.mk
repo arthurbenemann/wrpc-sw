@@ -7,6 +7,7 @@ obj-$(CONFIG_WR_NODE) += \
 	shell/cmd_ps.o \
 	shell/cmd_uptime.o \
 	shell/cmd_refresh.o \
+	shell/cmd_tune.o \
 	shell/cmd_diag.o
 
 obj-$(CONFIG_EMBEDDED_NODE) += \

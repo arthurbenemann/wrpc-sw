@@ -22,6 +22,8 @@
 #include <wrc-debug.h>
 
 #define sprintf pp_sprintf
+//static int32_t pguido=-201,iguido=-11;
+//static int32_t *Kphpsec,*Kpihpsec;
 
 #ifndef min
 #define min(a, b) \

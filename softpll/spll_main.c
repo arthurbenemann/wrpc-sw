@@ -11,6 +11,7 @@
 
 #include <wrc.h>
 #include "softpll_ng.h"
+#include <TuneGuido.h>
 
 #define MPLL_TAG_WRAPAROUND 100000000
 
@@ -45,8 +46,10 @@ void mpll_init(struct spll_main_state *s, int id_ref,
 #elif defined(CONFIG_WR_NODE) && defined(CONFIG_TARGET_SPEC7)
 //	s->pi.kp = -800;		// / 2;
 //	s->pi.ki = -10;			// / 2;
-	s->pi.kp = -5500;		// / 2;
-	s->pi.ki = -30;			// / 2;
+	s->pi.kp = -200;		// / 2;
+	s->pi.ki = -10;			// / 2;
+	s->pi.kd =  0;
+
 #else
 #error "Please set CONFIG for wr switch or wr node"
 #endif
@@ -213,7 +216,13 @@ int mpll_update(struct spll_main_state *s, int tag, int source)
 
 #endif
 
+//s->pi.kp = Kphpsec;
+//s->pi.ki = Kpihpsec;
+//s->pi.kd =  0;
+    s->pi.kp = *Kphpsec;
+		s->pi.ki = *Kihpsec;
 		y = pi_update((spll_pi_t *)&s->pi, err);
+	//	pp_printf("DAC VAL %i\n",y);
 		SPLL->DAC_MAIN = SPLL_DAC_MAIN_VALUE_W(y)
 			| SPLL_DAC_MAIN_DAC_SEL_W(s->dac_index);
 		if (s->dac_index == 0)
@@ -254,7 +263,7 @@ int mpll_update(struct spll_main_state *s, int tag, int source)
 		}
 
 		ld_update((spll_lock_det_t *)&s->ld, err);
-		if( s->ld.lock_changed) 
+		if( s->ld.lock_changed)
 			spll_debug(DBG_EVENT | DBG_MAIN, DBG_EVT_LOCKED, 1);
 
 		mpll_handle_gain_schedule(s);
@@ -301,4 +310,3 @@ int mpll_shifter_busy(struct spll_main_state *s)
 {
 	return s->phase_shift_target != s->phase_shift_current;
 }
-
