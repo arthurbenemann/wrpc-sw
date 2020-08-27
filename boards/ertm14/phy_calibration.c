@@ -132,7 +132,7 @@ static int tx_fsm_update()
         if( spll_check_lock( 0 ) )
         {
             spll_enable_ptracker(0, 0);
-            ep_pcs_write(MDIO_DBG1, MDIO_DBG1_RESET_RX | MDIO_DBG1_DMTD_SOURCE_TXOUTCLK);
+            ep_pcs_write( &wrc_endpoint_dev, MDIO_DBG1, MDIO_DBG1_RESET_RX | MDIO_DBG1_DMTD_SOURCE_TXOUTCLK);
             fsm->state = TX_SETUP_STATE_RESET_PCS;
 
             tmo_init( &fsm->refresh_timeout, FSM_DEBUG_REFRESH_PERIOD_MS );
@@ -147,24 +147,24 @@ static int tx_fsm_update()
         spll_enable_ptracker(0, 0);
         
         // reset the QPLL
-        ep_pcs_write(MDIO_DBG1, dbg1 );
+        ep_pcs_write(&wrc_endpoint_dev, MDIO_DBG1, dbg1 );
         dbg1 &= ~MDIO_DBG1_GTX_QPLL_RESET;
-        ep_pcs_write(MDIO_DBG1, dbg1 );
+        ep_pcs_write(&wrc_endpoint_dev, MDIO_DBG1, dbg1 );
 
 //        pp_printf("Qpll: ");
         // wait for lock
-        while( !( ep_pcs_read(MDIO_DBG0) & MDIO_DBG0_GTX_QPLL_LOCKED ) )
+        while( !( ep_pcs_read(&wrc_endpoint_dev, MDIO_DBG0) & MDIO_DBG0_GTX_QPLL_LOCKED ) )
             usleep(1);
         
         //pp_printf("QPLL OK\n"); 
 
         // QPLL ok: un-reset TX path (+ UsrClk PLL)
         dbg1 &= ~MDIO_DBG1_RESET_TX;
-        ep_pcs_write(MDIO_DBG1, dbg1 );
+        ep_pcs_write(&wrc_endpoint_dev, MDIO_DBG1, dbg1 );
 
         usleep(100);
         dbg1 &= ~MDIO_DBG1_GTX_TXUSRPLL_RESET;
-        ep_pcs_write(MDIO_DBG1, dbg1 );
+        ep_pcs_write(&wrc_endpoint_dev, MDIO_DBG1, dbg1 );
 
         fsm->state = TX_SETUP_STATE_WAIT_LOCK;
         tmo_init( &fsm->phy_lock_timeout, FSM_PHY_LOCK_TIMEOUT_MS );
@@ -174,7 +174,7 @@ static int tx_fsm_update()
 
     case TX_SETUP_STATE_WAIT_LOCK:
     {
-        uint32_t dbg0 = ep_pcs_read(MDIO_DBG0);
+        uint32_t dbg0 = ep_pcs_read(&wrc_endpoint_dev, MDIO_DBG0);
         if (dbg0 & MDIO_DBG0_RESET_TX_DONE)
         {
             fsm->attempts++;
@@ -277,7 +277,7 @@ static int tx_fsm_update()
         spll_enable_ptracker(0, 0);
 
         // enable the PCS on the port
-        ep_pcs_write(MDIO_DBG1, MDIO_DBG1_TX_ENABLE | MDIO_DBG1_DMTD_SOURCE_RXRECCLK);
+        ep_pcs_write(&wrc_endpoint_dev, MDIO_DBG1, MDIO_DBG1_TX_ENABLE | MDIO_DBG1_DMTD_SOURCE_RXRECCLK);
 
         if( !fsm->cal_saved_phase_valid )
         {
@@ -292,7 +292,7 @@ static int tx_fsm_update()
 
     case TX_SETUP_DONE:
     {
-    	int early_link_up = ep_pcs_read(MDIO_DBG0) & MDIO_DBG0_LINK_UP;
+    	int early_link_up = ep_pcs_read(&wrc_endpoint_dev, MDIO_DBG0) & MDIO_DBG0_LINK_UP;
 
         return 1;
         break;
@@ -318,7 +318,7 @@ static int rx_fsm_update(  )
 	struct wrc_port_rx_setup_state* fsm = &rx_state;
 	struct wrc_port_tx_setup_state* fsm_tx = &tx_state;
 
-	int early_link_up = ep_pcs_read(MDIO_DBG0) & MDIO_DBG0_LINK_UP;
+	int early_link_up = ep_pcs_read(&wrc_endpoint_dev, MDIO_DBG0) & MDIO_DBG0_LINK_UP;
 
 
 	if( fsm_tx->state != TX_SETUP_DONE )
@@ -331,7 +331,7 @@ static int rx_fsm_update(  )
 	{
 		case RX_SETUP_STATE_INIT:
 		{
-			ep_pcs_write( MDIO_DBG1, MDIO_DBG1_TX_ENABLE | MDIO_DBG1_DMTD_SOURCE_RXRECCLK | MDIO_DBG1_COMMA_TARGET_POS(DEFAULT_COMMA_POS) );
+			ep_pcs_write(&wrc_endpoint_dev,  MDIO_DBG1, MDIO_DBG1_TX_ENABLE | MDIO_DBG1_DMTD_SOURCE_RXRECCLK | MDIO_DBG1_COMMA_TARGET_POS(DEFAULT_COMMA_POS) );
 			
 			if (early_link_up) {
 				if ( fsm_tx->state == TX_SETUP_DONE )
@@ -353,9 +353,9 @@ static int rx_fsm_update(  )
             {
 				fsm->state = RX_SETUP_STATE_WAIT_LOCK;
 
-				ep_pcs_write( MDIO_DBG1, MDIO_DBG1_RESET_RX | MDIO_DBG1_TX_ENABLE | MDIO_DBG1_DMTD_SOURCE_RXRECCLK | MDIO_DBG1_COMMA_TARGET_POS(DEFAULT_COMMA_POS)  );
+				ep_pcs_write(&wrc_endpoint_dev,  MDIO_DBG1, MDIO_DBG1_RESET_RX | MDIO_DBG1_TX_ENABLE | MDIO_DBG1_DMTD_SOURCE_RXRECCLK | MDIO_DBG1_COMMA_TARGET_POS(DEFAULT_COMMA_POS)  );
 				usleep(1);
-				ep_pcs_write( MDIO_DBG1, MDIO_DBG1_TX_ENABLE | MDIO_DBG1_DMTD_SOURCE_RXRECCLK | MDIO_DBG1_COMMA_TARGET_POS(DEFAULT_COMMA_POS)  );
+				ep_pcs_write(&wrc_endpoint_dev,  MDIO_DBG1, MDIO_DBG1_TX_ENABLE | MDIO_DBG1_DMTD_SOURCE_RXRECCLK | MDIO_DBG1_COMMA_TARGET_POS(DEFAULT_COMMA_POS)  );
                 usleep(10000);
 				fsm->attempts++;
 
@@ -367,7 +367,7 @@ static int rx_fsm_update(  )
 
 		case RX_SETUP_STATE_WAIT_LOCK:
 		{
-			uint16_t dbg0 = ep_pcs_read( MDIO_DBG0);
+			uint16_t dbg0 = ep_pcs_read(&wrc_endpoint_dev,  MDIO_DBG0);
 
 			int rx_up = dbg0 & MDIO_DBG0_LINK_UP;
 			int rx_aligned = dbg0 & MDIO_DBG0_LINK_ALIGNED;
@@ -421,7 +421,7 @@ static int rx_fsm_update(  )
             if( !tmo_expired( &fsm->stabilize_timeout ))
                 return 0;
                 
-			uint16_t dbg0 = ep_pcs_read( MDIO_DBG0);
+			uint16_t dbg0 = ep_pcs_read(&wrc_endpoint_dev,  MDIO_DBG0);
 
 
             int rx_up = dbg0 & MDIO_DBG0_LINK_UP;
@@ -431,10 +431,10 @@ static int rx_fsm_update(  )
 
 			if ( rx_up && rx_aligned && rx_comma_valid && (rx_comma_pos == DEFAULT_COMMA_POS) )
 			{
-    			uint16_t dbg0 = ep_pcs_read( MDIO_DBG0);
+    			uint16_t dbg0 = ep_pcs_read(&wrc_endpoint_dev,  MDIO_DBG0);
        			int rx_comma_pos = (dbg0 >> 7) & 0x7f;
-				ep_pcs_write( MDIO_DBG1, MDIO_DBG1_RX_ENABLE | MDIO_DBG1_TX_ENABLE | MDIO_DBG1_DMTD_SOURCE_RXRECCLK | MDIO_DBG1_COMMA_TARGET_POS(DEFAULT_COMMA_POS) );
-				ep_pcs_write( MDIO_REG_MCR, MDIO_MCR_SPEED1000_MASK | MDIO_MCR_FULLDPLX_MASK | MDIO_MCR_ANENABLE | MDIO_MCR_ANRESTART  );
+				ep_pcs_write(&wrc_endpoint_dev,  MDIO_DBG1, MDIO_DBG1_RX_ENABLE | MDIO_DBG1_TX_ENABLE | MDIO_DBG1_DMTD_SOURCE_RXRECCLK | MDIO_DBG1_COMMA_TARGET_POS(DEFAULT_COMMA_POS) );
+				ep_pcs_write(&wrc_endpoint_dev,  MDIO_REG_MCR, MDIO_MCR_SPEED1000_MASK | MDIO_MCR_FULLDPLX_MASK | MDIO_MCR_ANENABLE | MDIO_MCR_ANRESTART  );
 				phy_dbg("RX calibration complete (after %d attempts) comma @ %d taps.\n", fsm->attempts, rx_comma_pos );
 				spll_enable_ptracker( 0, 0 );
                 spll_set_ptracker_average_samples( 0, PTRACKER_AVERAGE_SAMPLES );
@@ -453,8 +453,8 @@ static int rx_fsm_update(  )
 
 		case RX_SETUP_DONE:
 		{
-			uint16_t dbg0 = ep_pcs_read( MDIO_DBG0);
-            int link_up = ep_link_up(NULL);
+			uint16_t dbg0 = ep_pcs_read(&wrc_endpoint_dev,  MDIO_DBG0);
+            int link_up = ep_link_up(&wrc_endpoint_dev, NULL);
 
 
 			if( ! (dbg0 & MDIO_DBG0_LINK_UP ) /*|| ( ( fsm->prev_link_up && !link_up ) )*/ )
@@ -487,10 +487,10 @@ int phy_calibration_poll()
 void phy_calibration_init()
 {
     phy_dbg("Initializing PHY calibrator...\n");
-    ep_pcs_write(MDIO_REG_MCR, MDIO_MCR_PDOWN);	/* reset the PHY */
+    ep_pcs_write(&wrc_endpoint_dev, MDIO_REG_MCR, MDIO_MCR_PDOWN);	/* reset the PHY */
 	timer_delay_ms(200);
-	ep_pcs_write(MDIO_REG_MCR, MDIO_MCR_RESET);	/* reset the PHY */
-	ep_pcs_write(MDIO_REG_MCR, 0);	/* reset the PHY */
+	ep_pcs_write(&wrc_endpoint_dev, MDIO_REG_MCR, MDIO_MCR_RESET);	/* reset the PHY */
+	ep_pcs_write(&wrc_endpoint_dev, MDIO_REG_MCR, 0);	/* reset the PHY */
 
  	spll_init( SPLL_MODE_FREE_RUNNING_MASTER, 0, 0 );
     spll_set_ptracker_average_samples( 0, 10 );

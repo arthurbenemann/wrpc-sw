@@ -149,6 +149,7 @@ static spll_gain_schedule_t spll_main_ocxo_gain_sched;
 static int ertm_init_complete = 0;
 
 static int ertm14_update_config_task(void);
+void ertm14_set_pps_out_mode(int mode);
 
 static timeout_t rf_nco_sync_tmo;
 
@@ -256,7 +257,7 @@ static int ertm14_dds_sync_init(void)
     for( i = 0; i < n_params; i++ )
     {
         uint32_t val = board.dds_sync_delays[ params[i].channel ];
-        int res = storage_get_calibration_parameter( params[i].id, &val );
+        storage_get_calibration_parameter( params[i].id, &val );
         board_dbg("Sync Unit channel '%s': delay = %d ps\n", params[i].name, val);
     }
 
@@ -423,7 +424,7 @@ static void handle_iuart_14_request( uint8_t *buf, int size )
     switch( type )
     {
         case ERTM14_IUART_MSG_PING:
-            board_dbg("IUART14 pings from MMC!\n");
+            //board_dbg("IUART14 pings from MMC!\n");
             break;
 
         case ERTM14_IUART_MSG_IPMI_CONSOLE_REQ:
@@ -481,8 +482,8 @@ static void ertm14_align_ref_out_to_pps(void)
 
     for(i=0;i<10;)
     {
-        writel( TAU_CSR_TRIG, TAU_REG_CSR + BASE_ERTM14_10MHZ_ALIGN_UNIT );
-        uint32_t csr = readl( TAU_REG_CSR + BASE_ERTM14_10MHZ_ALIGN_UNIT);
+        writel( TAU_CSR_TRIG, (void*) TAU_REG_CSR + BASE_ERTM14_10MHZ_ALIGN_UNIT );
+        uint32_t csr = readl( (void*) TAU_REG_CSR + BASE_ERTM14_10MHZ_ALIGN_UNIT);
         pp_printf("csr %x tau %x\n", csr, TAU_REG_CSR + BASE_ERTM14_10MHZ_ALIGN_UNIT );
         if (csr & TAU_CSR_DONE)
         {
@@ -768,7 +769,7 @@ int ertm14_init_mac_eeprom(void)
     uint8_t mac[6];
 
     m24aa025_read_mac( &board.m24_mac_ids[0], mac );
-    ep_set_mac_addr( mac );
+    ep_set_mac_addr( &wrc_endpoint_dev, mac );
 }
 
 
@@ -1158,6 +1159,8 @@ int wrc_board_early_init()
 
     /* reset the networking part of the WRCore and start the WR Endpoint */
    	net_rst();
+
+    
 
     return ertm14_low_level_init();
 }
