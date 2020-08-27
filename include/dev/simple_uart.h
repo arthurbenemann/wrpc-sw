@@ -9,7 +9,6 @@
 
 struct simple_uart_device {
 	void* base;
-    uint8_t crlf_mode;
 };
 
 #define SUART_CALC_BAUD(baudrate) \

@@ -28,22 +28,17 @@ static inline uint32_t suart_calc_baud( int baudrate )
 void suart_init(struct simple_uart_device *dev, uint32_t base_addr, int baudrate)
 {
 	dev->base = (void*) base_addr;
-	dev->crlf_mode = 0;
 	writel( suart_calc_baud(baudrate), dev->base + UART_REG_BCR );
 }
 
 void suart_init_default_baudrate(struct simple_uart_device *dev, uint32_t base_addr)
 {
 	dev->base = (void*) base_addr;
-	dev->crlf_mode = 0;
 	writel( suart_calc_baud(CONSOLE_UART_BAUDRATE), dev->base + UART_REG_BCR );
 }
 
 void suart_write_byte(struct simple_uart_device *dev, int b)
 {
-	if (b == '\n' && dev->crlf_mode)
-		suart_write_byte(dev, '\r');
-
 	while (readl(dev->base + UART_REG_SR) & UART_SR_TX_BUSY)
 		;
 
@@ -60,14 +55,47 @@ int suart_write_string(struct simple_uart_device *dev, const char *s)
 
 int suart_poll(struct simple_uart_device *dev)
 {
-	return readl( dev->base + UART_REG_SR) & UART_SR_RX_RDY;
+	if( suart_is_fifo_supported( dev ) )
+	{
+		return suart_get_rx_fifo_count( dev );
+	}
+	
+	return readl( dev->base + UART_REG_SR) & UART_SR_RX_RDY ? 1 : 0;
 }
 
 int suart_read_byte(struct simple_uart_device *dev)
 {
-	if (!suart_poll(dev))
+	if (suart_poll(dev) < 0)
 		return -1;
 
 	return readl(dev->base + UART_REG_RDR) & 0xff;
 }
 
+int suart_get_tx_fifo_count( struct simple_uart_device *dev )
+{
+	// fixme
+	return -1;
+}
+
+int suart_get_rx_fifo_count( struct simple_uart_device *dev )
+{
+	uint32_t r = readl( dev->base + UART_REG_SR );
+	return UART_SR_RX_FIFO_BYTES_R(r);
+}
+
+int suart_purge_tx_fifo( struct simple_uart_device *dev )
+{
+	// fixme
+	return -1;
+}
+
+int suart_purge_rx_fifo( struct simple_uart_device *dev )
+{
+	// fixme
+	return -1;
+}
+
+int suart_is_fifo_supported( struct simple_uart_device *dev )
+{
+	return (readl( dev->base + UART_REG_SR) & UART_SR_TX_FIFO_SUPPORTED) ? 1 : 0 ;
+}
