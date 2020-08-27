@@ -10,20 +10,22 @@
  * when wrpc-sw is build for wrc (node) -- as opposed to wrs (switch)
  */
 
+#define BOARD_HAS_CUSTOM_NETWORK_INIT 1
+
 /* Fixed base addresses */
 
 #define BASE_UART                   0x20500
 #define BASE_SYSCON                 0x20400
-#define BASE_EP                     0x20100
+#define BASE_WR_ENDPOINT_MAIN       0x20100
 #define BASE_MINIC                  0x20000
 #define BASE_ONEWIRE                0x20600
 #define BASE_SOFTPLL 0x20200
 #define BASE_PPS_GEN 0x20300
 
 #define BASE_AUXWB 0x20700
-#define BASE_STREAMERS (BASE_AUXWB + 0x0)
 #define BASE_SI57X_INTERFACE (BASE_AUXWB + 0x80)
 #define BASE_CLOCK_MONITOR (BASE_AUXWB + 0xc0)
+#define BASE_WR_ENDPOINT_BTRAIN     (BASE_AUXWB + 0x00)
 
 #define AFCZ_CM_CHANNEL_CLK_PCB 0
 #define AFCZ_CM_CHANNEL_CLK_SYS 3

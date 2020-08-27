@@ -10,6 +10,7 @@
 #include "dev/bb_spi.h"
 #include "dev/spi_flash.h"
 #include "dev/endpoint.h"
+#include "dev/netif.h"
 #include "softpll_ng.h"
 
 #include "hw/si570_if_wb.h"
@@ -56,6 +57,8 @@ struct {
 	struct pca9554_gpio_device gpio_rtm_main;
 	struct pca9554_gpio_device gpio_rtm_sfp;
 	struct i2c_eeprom_device mac_eeprom;
+	// 2nd endpoint for the B-Train
+	struct wr_endpoint_device ep_btrain;
 } board;
 
 static void idt8v_read_regs( struct idt8v_clock_mux_device*dev )
@@ -323,7 +326,7 @@ static uint8_t pca9554_read_reg( struct pca9554_gpio_device *dev, uint8_t reg )
 
 	if( err )
 	{
-		board_dbg("pca9554 ERROR [addr = 0x%x]!\n", dev->i2c_addr );
+		board_dbg("pca9554 not responding [addr = 0x%x]!\n", dev->i2c_addr );
 	}
 
 	return rv;
@@ -527,22 +530,8 @@ static void sfp_setup(void)
 	uint8_t p_in = pca9554_read_reg( &board.gpio_rtm_main, PCA9554_REG_IN );
 	uint8_t p_cfg = pca9554_read_reg( &board.gpio_rtm_main, PCA9554_REG_CONFIG );
 
-	pp_printf("PCA9554 (RTM MAIN GPIO) regs: out=%02x in=%02x cfg=%02x\n", p_out, p_in, p_cfg );
-
-	int i;
-
-#if 0
-	for(i=0;i<5;i++)
-	{
-		pp_printf("blinky...\n");
-		gen_gpio_out( &pin_rtm_4sfp_led_orange, 1 );
-		timer_delay_ms(100);
-		gen_gpio_out( &pin_rtm_4sfp_led_orange, 0 );
-		timer_delay_ms(100);
-	}
-#endif
-
-	pp_printf("Power_good_n: %d] \n", gen_gpio_in( &pin_rtm_4sfp_i2c_pgood_n ) );
+	board_dbg("RTM PCA9554 (RTM MAIN GPIO) regs: out=%02x in=%02x cfg=%02x\n", p_out, p_in, p_cfg );
+	board_dbg("RTM Power_good_n: %d\n", gen_gpio_in( &pin_rtm_4sfp_i2c_pgood_n ) );
 
 	const int sfp_busses [] = 
 	{
@@ -556,6 +545,8 @@ static void sfp_setup(void)
 		-1
 	};
 
+	int i;
+
 	for( i = 0; sfp_busses[i] >= 0; i++ )
 	{
 		// select SFPx
@@ -567,7 +558,7 @@ static void sfp_setup(void)
 		int rv_pca = bb_i2c_devprobe( &board.si57x.master, 0x22 );
 		int rv_sfp = bb_i2c_devprobe( &board.si57x.master, 0xa0 >> 1 );
 
-		pp_printf("Probe/init SFP%d: SFP found=%d PCA found=%d\n", sfp_busses[i], rv_sfp, rv_pca );
+		board_dbg("Probe/init SFP%d: SFP found=%d PCA found=%d\n", sfp_busses[i], rv_sfp, rv_pca );
 	}
 
 }
@@ -593,11 +584,21 @@ static void afcz_read_persistent_mac(void)
 		mac_addr[5] = 0x77;
 	}
 
-	ep_set_mac_addr( &wrc_endpoint_dev, mac_addr );
 
-	board_dbg("Local MAC address: %02x:%02x:%02x:%02x:%02x:%02x\n",
+	board_dbg("Local MAC address from AT25E48: %02x:%02x:%02x:%02x:%02x:%02x\n",
 		mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3],
 		mac_addr[4], mac_addr[5]);
+	ep_set_mac_addr( &wrc_endpoint_dev, mac_addr );
+	
+	/* ugly hack, but what can I do about this crappy card (with 8 network interfaces)
+	   having a single MAC address chip? */
+
+	mac_addr[2] += 1;
+
+	board_dbg("B-Train MAC address from AT25E48: %02x:%02x:%02x:%02x:%02x:%02x\n",
+		mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3],
+		mac_addr[4], mac_addr[5]);
+	ep_set_mac_addr( &board.ep_btrain, mac_addr );
 }
 
 
@@ -608,14 +609,6 @@ int wrc_board_early_init()
 
 	wr_si57x_interface_init( &board.si57x, (void *) BASE_SI57X_INTERFACE, SI57X_I2C_ADDR );
 	tca9548_select_channels( &board.si57x.master, 0x70, 1 << AFCZ_I2C_MUX_CHANNEL_SI570 );
-
-	net_rst();
-	ep_init( &wrc_endpoint_dev, (void *) BASE_EP );
-	/* Sleep for 1s to make sure WRS v4.2 always realizes that
-	 * the link is down */
-	timer_delay_ms(200);
-	ep_enable( &wrc_endpoint_dev, 1, 1);
-	timer_delay_ms(200);
 
 	uint8_t regs[16];
 
@@ -641,7 +634,20 @@ int wrc_board_early_init()
 
 	sfp_setup();
 
-	//afcz_read_persistent_mac();
+	afcz_read_persistent_mac();
+
+	net_rst();
+	ep_init( &wrc_endpoint_dev, (void *) BASE_WR_ENDPOINT_MAIN );
+	ep_init( &board.ep_btrain, (void *) BASE_WR_ENDPOINT_BTRAIN );
+	netif_register_device( "wru0", "default", &wrc_endpoint_dev );
+	netif_register_device( "wru1", "btrain", &board.ep_btrain );
+
+	/* Sleep for 1s to make sure WRS v4.2 always realizes that
+	 * the link is down */
+	timer_delay_ms(200);
+	ep_enable( &wrc_endpoint_dev, 1, 1);
+	ep_enable( &board.ep_btrain, 1, 1);
+	timer_delay_ms(200);
 
 	tca9548_select_channels( &board.si57x.master, 0x70, 1 << AFCZ_I2C_MUX_CHANNEL_SI570 );
 
