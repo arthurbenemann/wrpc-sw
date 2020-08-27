@@ -19,6 +19,7 @@
 
 #include "dev/syscon.h"
 #include "dev/endpoint.h"
+#include "dev/netif.h"
 #include "dev/rxts_calibrator.h"
 
 /* New calibrator for the transition phase value. A major pain in the ass for
@@ -238,7 +239,7 @@ static int calib_t24p_slave(uint32_t *value)
 	int retries = 0;
 
 	while (!(rv = rxts_calibration_update(value))) {
-		if (retries > CALIB_RETRIES || ep_link_up(&wrc_endpoint_dev, NULL) == LINK_DOWN)
+		if (retries > CALIB_RETRIES || ep_link_up(&wrc_endpoint_dev, NULL) == NETIF_LINK_DOWN)
 			return -1;
  		retries++;
 	}
