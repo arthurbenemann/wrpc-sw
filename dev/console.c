@@ -1,12 +1,14 @@
 /*
  * This work is part of the White Rabbit project
  *
- * Copyright (C) 2012-2019 CERN (www.cern.ch)
+ * Copyright (C) 2012-2020 CERN (www.cern.ch)
  *
  * Released according to the GNU GPL, version 2 or any later version.
  */
 
 #include <stdio.h>
+#include <stdint.h>
+#include <errno.h>
 
 #include "board.h"
 #include "dev/simple_uart.h"
@@ -14,39 +16,109 @@
 
 static int puts_direct = 0;
 
+#define CON_STATE_IDLE 0
+#define CON_STATE_ESC_PENDING 1 // previous char was escape, waiting for control code
+#define CON_STATE_ESC_FLUSH 2  // previous char was an unrecognized escape sequence, pass both to the user
+
 struct console_uart_priv_data
 {
     struct simple_uart_device uart_dev;
+    uint8_t state;
+    uint8_t prev_char;
 };
 
 static struct console_uart_priv_data console_uart_priv;
 struct console_device console_uart_dev;
-
 struct console_device* console_devs[BOARD_MAX_CONSOLE_DEVICES];
+
+#define CON_ESCAPE_CODE 0x1b
+#define CON_SWITCH_BINARY_CODE 'B'
+#define CON_SWITCH_TEXT_CODE 'T'
+
+static int con_rx_internal(struct console_device* dev)
+{
+    struct console_uart_priv_data* priv = (struct console_uart_priv_data*) dev->priv;
+
+    if ( priv->state == CON_STATE_ESC_FLUSH )
+    {
+        priv->state = CON_STATE_IDLE;
+        return priv->prev_char;
+    }
+
+    int rx_char = suart_read_byte( &priv->uart_dev );
+
+    if( rx_char < 0 )
+        return rx_char;
+
+    if( priv->state == CON_STATE_IDLE )
+    {
+        if( rx_char == CON_ESCAPE_CODE )
+        {
+            priv->state = CON_STATE_ESC_PENDING;
+            return -1;
+        }
+    }
+    else if( priv->state == CON_STATE_ESC_PENDING )
+    {
+        switch( rx_char )
+        {
+            case CON_ESCAPE_CODE: // double escape = actual esc
+                return CON_ESCAPE_CODE;
+            case CON_SWITCH_TEXT_CODE: // switch to tty mode
+                dev->flags &= ~CONSOLE_FLAGS_MODE_BINARY;
+                dev->flags |= CONSOLE_FLAGS_MODE_TTY;
+                return -1;
+            case CON_SWITCH_BINARY_CODE: // switch to binary mode
+                dev->flags &= ~CONSOLE_FLAGS_MODE_TTY;
+                dev->flags |= CONSOLE_FLAGS_MODE_BINARY;
+                return -1;
+            default:
+                priv->state = CON_STATE_ESC_FLUSH;
+                priv->prev_char = rx_char;
+                return CON_ESCAPE_CODE;
+        }
+        priv->state = CON_STATE_IDLE;
+    }
+}
 
 static int con_uart_put_string(struct console_device* dev, const char *s)
 {
     struct console_uart_priv_data* priv = (struct console_uart_priv_data*) dev->priv;
-	return suart_write_string(&priv->uart_dev, s);
+    char c;
+    int count = 0;
+
+    // binary mode uses different API
+    if( dev->flags & CONSOLE_FLAGS_MODE_BINARY )
+        return 0;
+
+    while ( c = *s++ )
+    {
+	    if( (dev->flags & CONSOLE_FLAGS_INSERT_CRLF) &&  c == '\n')
+    		suart_write_byte(&priv->uart_dev, '\r');
+
+        suart_write_byte(&priv->uart_dev, c);
+        count++;
+    }
+
+    return count;
 }
 
 static int con_uart_getc(struct console_device* dev)
 {
     struct console_uart_priv_data* priv = (struct console_uart_priv_data*) dev->priv;
-    return suart_read_byte(&priv->uart_dev);
-}
 
-void console_uart_write_bytes( uint8_t *buf, int count )
-{
-    int i;
-    for(i=0;i<count;i++)
-        suart_write_byte( &console_uart_priv.uart_dev, buf[i] );
+    //if( dev->flags & CONSOLE_FLAGS_MODE_BINARY )
+        //return 0;
 
+    return con_rx_internal( dev );
 }
 
 void console_uart_set_crlf_mode(int on)
 {
-    console_uart_priv.uart_dev.crlf_mode = on;
+    if(on)
+        console_uart_dev.flags |= CONSOLE_FLAGS_INSERT_CRLF;
+    else
+        console_uart_dev.flags &= ~CONSOLE_FLAGS_INSERT_CRLF;
 }
 
 static void console_register_device( struct console_device *dev )
@@ -247,14 +319,77 @@ void console_init()
         console_devs[i] = NULL;
 
     suart_init( &console_uart_priv.uart_dev, BASE_UART, CONSOLE_UART_BAUDRATE );
-	console_uart_priv.uart_dev.crlf_mode = 1;
+
+    console_uart_dev.flags = CONSOLE_FLAGS_MODE_TTY | CONSOLE_FLAGS_INSERT_CRLF;
     console_uart_dev.priv = &console_uart_priv;
     console_uart_dev.get_char = con_uart_getc;
     console_uart_dev.put_string = con_uart_put_string;
-
+    
+    console_uart_priv.prev_char = 0;
+    console_uart_priv.state = CON_STATE_IDLE;
+    
+    
     console_register_device( &console_uart_dev );
 
 #ifdef CONFIG_IPMI_CONSOLE
     console_ipmi_init();
 #endif
+
+    pp_printf("Console UART FIFO:: %d\n", suart_is_fifo_supported( &console_uart_dev ) );
 }
+
+void console_force_mode( struct console_device *dev, int mode )
+{
+    struct console_uart_priv_data* priv = (struct console_uart_priv_data*) dev->priv;
+
+    dev->flags &= ~( CONSOLE_FLAGS_MODE_BINARY | CONSOLE_FLAGS_MODE_TTY );
+    dev->flags |= mode;
+    priv->state = CON_STATE_IDLE;
+}
+
+int console_get_mode( struct console_device *dev )
+{
+    return dev->flags & ( CONSOLE_FLAGS_MODE_BINARY | CONSOLE_FLAGS_MODE_TTY );
+}
+
+int console_binary_send( struct console_device *dev, void *buf, int size )
+{
+    struct console_uart_priv_data* priv = (struct console_uart_priv_data*) dev->priv;
+
+    int has_fifo = suart_is_fifo_supported( &priv->uart_dev );
+
+    if( !has_fifo )
+        return -ENODEV;
+
+    // fixme: FIFO threshold check?
+
+    uint8_t *ptr = (uint8_t*) buf;
+    int i;
+    for(i = 0; i< size; i++)
+        suart_write_byte( &priv->uart_dev, ptr[i] );
+
+    return size;
+}
+
+int console_binary_recv( struct console_device *dev, void *buf, int size )
+{
+    struct console_uart_priv_data* priv = (struct console_uart_priv_data*) dev->priv;
+
+    int has_fifo = suart_is_fifo_supported( &priv->uart_dev );
+
+    if( !has_fifo )
+        return -ENODEV;
+
+    int rx_count = suart_poll( &priv->uart_dev );
+
+    if( rx_count < size )
+        return -EAGAIN;
+
+    uint8_t *ptr = (uint8_t*) buf;
+    int i;
+    for(i = 0; i< size; i++)
+        ptr[i] = suart_read_byte(&priv->uart_dev );
+
+    return size;
+}
+
