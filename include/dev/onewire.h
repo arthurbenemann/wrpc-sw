@@ -6,8 +6,6 @@
 #ifndef PERSISTENT_MAC_H
 #define PERSISTENT_MAC_H
 
-#define ONEWIRE_PORT 0
-#define EEPROM_MAC_PAGE 0
 #define MAX_DEV1WIRE 8
 
 #define FOUND_DS18B20 0x01
