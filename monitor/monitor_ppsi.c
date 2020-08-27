@@ -19,6 +19,7 @@
 #include <dev/pps_gen.h>
 #include <dev/onewire.h>
 #include <dev/endpoint.h>
+#include <dev/netif.h>
 #include <temperature.h>
 #include "wrc_ptp.h"
 #include "hal_exports.h"
@@ -132,15 +133,25 @@ int wrc_mon_gui(void)
 	wrpc_get_port_state(&state, NULL);
 	cprintf(C_BLUE, "\n\nLink status:");
 
-	cprintf(C_WHITE, "\n%s: ", "wru1");
-	if (state.state)
-		cprintf(C_GREEN, "Link up   ");
-	else
-		cprintf(C_RED,   "Link down ");
+	int ndevs = netif_get_device_count();
 
-	minic_get_stats(&tx, &rx);
-	cprintf(C_GREY, "(RX: %d, TX: %d)", rx, tx);
+	for( i = 0 ; i < ndevs; i++ )
+	{
+		struct wrc_netif_device *ndev = netif_get_device( i );
+		cprintf(C_WHITE, "\n%-5s: ", ndev->name );
+		if ( ndev->link_state == NETIF_LINK_UP )
+			cprintf(C_GREEN, "Link up   ");
+		else
+			cprintf(C_RED,   "Link down ");
 
+		if( i == 0 ) // fixme: independent rx/tx stats for each interface
+		{
+			minic_get_stats(&tx, &rx);
+			cprintf(C_GREY, "(RX: %d, TX: %d)", rx, tx);
+		}
+	}
+
+	
 	if (!state.state) {
 		return 1;
 	}

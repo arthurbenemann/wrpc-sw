@@ -238,7 +238,7 @@ static int calib_t24p_slave(uint32_t *value)
 	int retries = 0;
 
 	while (!(rv = rxts_calibration_update(value))) {
-		if (retries > CALIB_RETRIES || ep_link_up(&wrc_endpoint_dev, NULL) == LINK_DOWN)
+		if (retries > CALIB_RETRIES || ep_link_up(&wrc_endpoint_dev, NULL) == 0)
 			return -1;
  		retries++;
 	}

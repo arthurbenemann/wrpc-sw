@@ -153,9 +153,9 @@ void ep_pfilter_init_default(struct wr_endpoint_device *dev)
 		uint32_t cr0, cr1;
 
 		cmd_word = v[0] | ((uint64_t)v[1] << 32);
-		mac_dbg("pfilter rule %02i: %x.%08x\n", i,
-				(uint32_t)(cmd_word >> 32),
-				(uint32_t)(cmd_word));
+		//mac_dbg("pfilter rule %02i: %x.%08x\n", i,
+		//		(uint32_t)(cmd_word >> 32),
+		//		(uint32_t)(cmd_word));
 
 		cr1 = EP_PFCR1_MM_DATA_LSB_W(cmd_word & 0xfff);
 		cr0 = EP_PFCR0_MM_ADDR_W(i) | EP_PFCR0_MM_DATA_MSB_W(cmd_word >> 12) |

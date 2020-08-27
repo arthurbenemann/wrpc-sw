@@ -22,6 +22,7 @@
 #include <dev/pps_gen.h>
 #include <dev/gpio.h>
 #include <dev/simple_uart.h>
+#include <dev/netif.h>
 #include <ptpd_netif.h>
 #include <dev/i2c.h>
 #include <storage.h>
@@ -85,21 +86,26 @@ static void wrc_initialize(void)
 	timer_init(1);
 	spll_very_init();
 	usleep_init();
+	netif_init();
 
 	wrc_board_early_init();
 
 	pp_printf("WR Core: starting up...\n");
 	get_hw_name(wrc_hw_name);
 
+#ifndef BOARD_HAS_CUSTOM_NETWORK_INIT
 	net_rst();
 	ep_init( &wrc_endpoint_dev, (void *) BASE_EP );
 	/* Sleep for 1s to make sure WRS v4.2 always realizes that
 	 * the link is down */
 	timer_delay_ms(200);
 	ep_enable( &wrc_endpoint_dev, 1, 1 );
+#endif
 
 	minic_init();
 	shw_pps_gen_init();
+
+	wrc_board_init();
 
 	storage_load_calibration();
 
@@ -109,7 +115,6 @@ static void wrc_initialize(void)
 	shell_init();
 	shell_register_commands();
 
-	wrc_board_init();
 
 	_endram = ENDRAM_MAGIC;
 
@@ -124,7 +129,7 @@ int link_status;
 
 static int is_link_up(void)
 {
-	return link_status == LINK_UP;
+	return link_status == NETIF_LINK_UP;
 }
 
 static int wrc_check_link(void)
@@ -139,14 +144,14 @@ static int wrc_check_link(void)
 		gen_gpio_out(&pin_sysc_led_link, 1);
 		sfp_match();
 		wrc_ptp_start();
-		link_status = LINK_WENT_UP;
+		link_status = NETIF_LINK_WENT_UP;
 		rv = 1;
 	} else if (prev_state && !state) {
 		wrc_verbose("Link down.\n");
 		prev_timing_ok = 0;
 		event_post( WRC_EVENT_LINK_DOWN );
 		gen_gpio_out(&pin_sysc_led_link, 0);
-		link_status = LINK_WENT_DOWN;
+		link_status = NETIF_LINK_WENT_DOWN;
 		wrc_ptp_stop();
 		rv = 1;
 		/* special case */
@@ -154,7 +159,8 @@ static int wrc_check_link(void)
 		shw_pps_gen_enable_output(0);
 
 	} else
-		link_status = (state ? LINK_UP : LINK_DOWN);
+		link_status = (state ? NETIF_LINK_UP : NETIF_LINK_DOWN);
+
 	prev_state = state;
 
 	return rv;
