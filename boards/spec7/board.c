@@ -6,6 +6,9 @@
 #include "dev/syscon.h"
 #include "storage.h"
 #include <wrc_ptp.h>
+#include "spll_defs.h"
+#include "spll_common.h"
+#include "hw/pps_gen_regs.h"
 
 struct spec7_board board;
 
@@ -39,6 +42,8 @@ timeout_t pll_sync_timeout;
 
 //#define CONFIG_HPSEC_GM
 #undef CONFIG_HPSEC_GM
+
+//volatile struct softpll_state softpll;
 
 void spec7_set_pll_wr_mode(int wrc_ptp_mode)
 {
@@ -85,7 +90,6 @@ void spec7_set_pll_wr_mode(int wrc_ptp_mode)
         board_dbg("ltc6950 locked.\n");
 #if defined(CONFIG_HPSEC_GM)
         pll_sync();
-        board_dbg("PLL external 10MHz/1PPS sync sequence complete.\n");
 #endif
     } else {
         // Forward 125 MHz VCXO_REFCLK at CLK input to outputs 0, 1, 2
@@ -118,7 +122,7 @@ int pll_sync()
             return 0;
         }
     }
-    board_dbg("External 10MHz/1PPS lock achieved on \"even\" 125MHz clock cycle\n");
+    board_dbg("HPSEC_GM mode: External 10MHz/1PPS lock achieved on \"even\" 125MHz clock cycle\n");
 
     // Trigger a clk_ref_125m to clk_ref_62m5 divider synchronisation
     gen_gpio_out( &pin_pll_sync_o, 1);
@@ -132,10 +136,50 @@ int pll_sync()
             return 0;
         }
     }
-    board_dbg("clk_ref_125m to clk_ref_62m5 divider synchronization done\n");
+    board_dbg("HPSEC_GM mode: clk_ref_125m to clk_ref_62m5 divider synchronization done\n");
+
+/*
+    PPSG->ESCR = PPSG_ESCR_SYNC;
+    tmo_init(&pll_sync_timeout, PLL_SYNC_TIMEOUT_MS);
+    // Wait for PPS sync sequence done
+    while (PPSG->ESCR & PPSG_ESCR_SYNC == 0) {
+        if ( tmo_expired(&pll_sync_timeout)) {
+            pp_printf("TIMEOUT: External PPS alignment.\n");
+            return 0;
+        }
+    }
+    board_dbg("HPSEC_GM mode: synced to external PPS.\n");
+*/
     phy_calibration_init();
+    while (!phy_calibration_done()) {
+        phy_calibration_poll();
+    }
+
     return 1;
 }
+
+int post_pll_lock(int wrc_ptp_mode)
+{
+#if defined(CONFIG_HPSEC_GM)
+    // Sync external PPS when in HPSEC_GM mode
+    PPSG->ESCR = PPSG_ESCR_SYNC;
+    tmo_init(&pll_sync_timeout, PLL_SYNC_TIMEOUT_MS);
+    // Wait for PPS sync sequence done
+    while (PPSG->ESCR & PPSG_ESCR_SYNC == 0) {
+        if ( tmo_expired(&pll_sync_timeout)) {
+            pp_printf("TIMEOUT: External PPS alignment.\n");
+            return 0;
+        }
+    }
+    board_dbg("HPSEC_GM mode: synced to external PPS.\n");
+#endif
+
+    if (wrc_ptp_mode == WRC_MODE_MASTER)
+        //phy_calibration_init();
+
+    return 1;
+}
+
 
 int spec7_init()
 {

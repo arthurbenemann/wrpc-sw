@@ -482,7 +482,11 @@ int phy_calibration_poll()
     return 0;
 }
 
-
+int phy_calibration_done()
+{
+    struct wrc_port_rx_setup_state *fsm_rx = &rx_state;
+    return (fsm_rx->state == RX_SETUP_DONE);
+}
 
 void phy_calibration_init()
 {
