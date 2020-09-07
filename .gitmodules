@@ -1,3 +1,6 @@
 [submodule "ppsi"]
 	path = ppsi
 	url = https://ohwr.org/project/ppsi.git
+[submodule "shared"]
+	path = shared
+	url = git@git.km3net.de:clb/shared.git
