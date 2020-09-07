@@ -56,7 +56,7 @@ cflags-$(CONFIG_PPSI) += \
 cflags-y += \
 	-I$(PPSI)/arch-wrpc/include \
 	-I$(PPSI)/include \
-  -I../shared
+  -Ishared/wrx
    
 obj-ppsi = $(PPSI)/ppsi.o
 obj-$(CONFIG_PPSI) += $(obj-ppsi)
