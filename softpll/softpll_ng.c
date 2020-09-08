@@ -889,3 +889,51 @@ void spll_set_aux_mode( int channel, int mode )
 {
 	softpll.aux[channel].mode = mode;
 }
+
+// Guido's heel smerig manier om er data in te proppem
+
+void spll_set_pi(int kp, int ki)
+{
+        
+	    //A=softpll.mpll.pi.y;
+	    //pp_printf("output PI Y %i\n",softpll.mpll.pi.y);
+		softpll.mpll.pi.kp=kp;
+	    softpll.mpll.pi.ki=ki;
+		spll_show_kpki();
+        //pp_printf("setted Kp %i\t Ki %i\n",softpll.mpll.pi.kp,softpll.mpll.pi.ki);
+		
+}
+
+void spll_set_pi_solo_kp(int kp)
+{
+        softpll.mpll.pi.kp=kp;
+        spll_show_kpki();
+}
+
+
+
+void spll_set_vtune_off(int control)
+{
+		int A=0;
+		softpll.mpll.pi.disablecontrol=control;
+		A=softpll.mpll.pi.disablecontrol;
+		pp_printf("PI bypass? %i\n",A);
+		pp_printf("OUTATIME\n");
+}
+void spll_set_pi_solo_ki(int ki)
+{
+        softpll.mpll.pi.ki=ki;
+        spll_show_kpki();
+}
+
+
+void spll_show_kpki()
+
+{
+		// to display actual Kp Ki
+		pp_printf("setted Kp %i\t	Ki %i\n",softpll.mpll.pi.kp,softpll.mpll.pi.ki);
+		pp_printf("PI bypass? %i\n",softpll.mpll.pi.disablecontrol);
+
+}
+
+

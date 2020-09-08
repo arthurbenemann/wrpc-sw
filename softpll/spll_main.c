@@ -46,13 +46,17 @@ void mpll_init(struct spll_main_state *s, int id_ref,
 #elif defined(CONFIG_WR_NODE) && defined(CONFIG_TARGET_SPEC7)
 //	s->pi.kp = -800;		// / 2;
 //	s->pi.ki = -10;			// / 2;
-	s->pi.kp = -200;		// / 2;
+	s->pi.kp = -3000;		// / 2;
 	s->pi.ki = -10;			// / 2;
-	s->pi.kd =  0;
-
+	s->pi.kd =  0;          // is not nessary...
+  
 #else
 #error "Please set CONFIG for wr switch or wr node"
 #endif
+    //pp_printf("Main PLL PI Values enter:   Kp %i\t Ki%i\n",A,B);
+	s->pi.disablecontrol=1; // Only for testing added.
+	pp_printf("Main PLL PI Values:   Kp %i\t Ki%i\n",s->pi.kp,s->pi.ki);	
+	
 	s->enabled = 0;
 
 	/* Freqency branch lock detection */
@@ -62,9 +66,8 @@ void mpll_init(struct spll_main_state *s, int id_ref,
 	s->id_ref = id_ref;
 	s->id_out = id_out;
 	s->dac_index = id_out - spll_n_chan_ref;
-	pp_printf("Main PLL PI Values:   Kp %i\t Ki%i\n",s->pi.kp,s->pi.ki);
 
-	if( s->gain_sched )
+    if( s->gain_sched )
 	{
 		s->gain_sched->current_stage = 0;
 		s->gain_sched->locked_d = 0;
@@ -216,13 +219,31 @@ int mpll_update(struct spll_main_state *s, int tag, int source)
 
 #endif
 
-//s->pi.kp = Kphpsec;
-//s->pi.ki = Kpihpsec;
-//s->pi.kd =  0;
-    s->pi.kp = *Kphpsec;
-		s->pi.ki = *Kihpsec;
+
+
+    if ( s->pi.disablecontrol == 0)
+    {
+			y=VtuneHoldVal;
+	}
+		else
+    {
 		y = pi_update((spll_pi_t *)&s->pi, err);
-	//	pp_printf("DAC VAL %i\n",y);
+	    VtuneHoldVal=y;
+	//	for (k=0; k<15; k++)
+	//	{
+	//	ring_buffer[15]=y;
+	//	}
+
+		
+	 //  k=0;
+    }
+	  
+	// 	for 
+	//	Y = (coeffsLPF[k])*(ring_buffer[(k+rb_idx)%FilterSize]);
+
+
+	
+
 		SPLL->DAC_MAIN = SPLL_DAC_MAIN_VALUE_W(y)
 			| SPLL_DAC_MAIN_DAC_SEL_W(s->dac_index);
 		if (s->dac_index == 0)

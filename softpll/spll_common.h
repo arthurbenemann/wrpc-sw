@@ -39,6 +39,7 @@ typedef struct {
 	int y_max;
 	int x, y,d;		/* Current input (x) and output value (y) */
 	int dithered;		/* Enable dithering of DAC output */
+	int disablecontrol; /* only for testing.*/
 } spll_pi_t;
 
 /* lock detector state */

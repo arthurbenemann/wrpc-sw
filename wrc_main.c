@@ -47,16 +47,13 @@
 #endif
 
 #ifdef CONFIG_LLDP
+
 #include "lib/lldp.h"
 #endif
 
 char wrc_hw_name[HW_NAME_LENGTH];
 
 uint32_t cal_phase_transition = 2389;
-
-// dirty Hack
-
-
 
 
 int wrc_vlan_number = CONFIG_VLAN_NR;
@@ -74,6 +71,9 @@ static void wrc_initialize(void)
 #ifdef CONFIG_USE_SDB
 	sdb_find_devices();
 #endif
+    // dirty Hack
+    // Kphpsec=&pguido;
+    // Kihpsec=&iguido;
 
 	console_init();
 	timer_init(1);
@@ -81,11 +81,10 @@ static void wrc_initialize(void)
 	usleep_init();
 
 	wrc_board_early_init();
-
-	pp_printf("WR Core: starting up...\n");
-	Kphpsec=&pguido;
-	pp_printf("Val of %d\n",*Kphpsec);
+    pp_printf("WR Core: starting up...\n");
+	pp_printf("Val of %d\t %d\n n",Kphpsec,Kihpsec);
 	get_hw_name(wrc_hw_name);
+
 
 	net_rst();
 	ep_init();
@@ -201,7 +200,7 @@ int wrc_is_timing_up()
 {
 	return prev_timing_ok;
 }
-
+ 
 static void wrc_dispatch_ptp_events_init(void)
 {
 	prev_ptp_mode = -1;

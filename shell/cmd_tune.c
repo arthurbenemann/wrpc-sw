@@ -4,8 +4,6 @@
  * Released according to the GNU GPL, version 2 or any later version.
  */
 
-
-
  #include <stdlib.h>
  #include <string.h>
  #include <errno.h>
@@ -13,35 +11,58 @@
  #include "softpll_ng.h"
  #include "shell.h"
  #include "spll_common.h"
-
-#include <TuneGuido.h>
+ #include <TuneGuido.h>
+ #include "softpll_ng.h"
 
 struct  spll_main_state *s;
 
  static int cmd_tune(const char *args[])
  {
- 	int cur, tgt,GuidoTemp;
- pp_printf("Tuning the world\n");
- pp_printf("Val of %d\n",*Kphpsec);
- if (!strcasecmp(args[0], "hello hal")){
-   if (!args[1])
+ 	int GuidoTemp=0,A=0,B=0;
+ //pp_printf("Tuning the world\n");
+ if (!strcasecmp(args[0], "val")){
+   if (!args[0])
     return -EINVAL;
-    pp_printf("Hello dave\n");
-  }else if (!strcasecmp(args[0], "KpKi")){
+    }else if (!strcasecmp(args[0], "kpki")){
     if (!args[2])
      return -EINVAL;
-     GuidoTemp=(atoi(args[1]));
-     *Kphpsec = GuidoTemp;
-     GuidoTemp=(atoi(args[2]));
-     *Kihpsec = GuidoTemp;
-     pp_printf("Kp %d\n",*Kphpsec);
-     pp_printf("Ki %d\n",*Kihpsec);
-     //pp_printf("test GuidoTemp %d\n",GuidoTemp);
-  }
-
-
-    //pp_printf("%d\n", spll_check_lock(atoi(args[1])));
- else
+     A=(atoi(args[1]));
+     Kphpsec = &A;
+	 pp_printf("A:%i\t Aptr: %i\n",A,*Kphpsec);
+     B=(atoi(args[2]));
+	 Kihpsec = &B;
+	 pp_printf("B:%i\t Bptr: %i\n",B,*Kihpsec);
+     pp_printf("Entered Kp:%i\t Ki: %i\n",*Kphpsec,*Kihpsec);
+	 spll_set_pi(*Kphpsec,*Kihpsec);
+    }else if(!strcasecmp(args[0], "kp")){
+	 if (!args[1])
+     return -EINVAL;
+	 A=(atoi(args[1]));
+	 Kihpsec = &A;
+	 //pp_printf("A:%i\t Aptr: %i\n",A,*Kphpsec);
+	 spll_set_pi_solo_kp(A);
+	}else if(!strcasecmp(args[0], "ki")){
+	 if (!args[1])
+     return -EINVAL;
+	B=(atoi(args[1]));
+	Kihpsec = &B;
+    //pp_printf("A:%i\t Aptr: %i\n",B,*Kihpsec);
+	spll_set_pi_solo_ki(B);
+	}else if(!strcasecmp(args[0], "show")){
+    if (!args[0])
+     return -EINVAL;
+     spll_show_kpki();
+	}else if(!strcasecmp(args[0], "init")){
+    if (!args[0])
+     return -EINVAL;
+     spll_init(3, 0, 0);
+	}else if(!strcasecmp(args[0], "picontrol")){
+	if (!args[1])
+     return -EINVAL;
+     spll_set_vtune_off(atoi(args[1])); 
+}
+    
+else
    return -EINVAL;
 
  	return 0;
