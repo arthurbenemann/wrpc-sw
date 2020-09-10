@@ -30,7 +30,7 @@ extern volatile struct PPSG_WB *PPSG;
 
 /* PI regulator state */
 typedef struct {
-	int ki, kp,kd;		/* integral and proportional gains (1<<PI_FRACBITS == 1.0f) */
+	int ki, kp;		/* integral and proportional gains (1<<PI_FRACBITS == 1.0f) */
 	int shift;		/* fractional bits shift factor (defaults to PI_FRACBITS) */
 	int64_t integrator,derivative;		/* current integrator value */
 	int bias;		/* DC offset always added to the output */
