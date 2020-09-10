@@ -50,8 +50,6 @@ void mpll_init(struct spll_main_state *s, int id_ref,
 	s->pi.kp    = -4000 * 16;;		// / 2;
 	s->pi.ki    = -5 * 16;;			// / 2;
 	s->pi.shift = 20;
- 	s->pi.setblock=0;
-	
 #else
 #error "Please set CONFIG for wr switch or wr node"
 #endif
