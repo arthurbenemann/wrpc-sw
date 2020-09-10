@@ -42,7 +42,7 @@
 #endif
 
 #ifdef CONFIG_LATENCY_PROBE
-#include "lib/latency.h"
+//#include "lib/latency.h"
 #endif
 
 #ifdef CONFIG_LLDP
@@ -160,7 +160,7 @@ void init_hw_after_reset(void)
 #ifdef CONFIG_USE_SDB
 	sdb_find_devices();
 #endif
-	uart_init_hw();
+	console_init();
 	timer_init(1);
 }
 

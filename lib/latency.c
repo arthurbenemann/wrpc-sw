@@ -11,7 +11,7 @@
 #include <ptpd_netif.h>
 #include <shell.h>
 #include "ipv4.h"
-#include <endpoint.h> /* get_mac_addr() */
+#include <dev/endpoint.h> /* get_mac_addr() */
 #include <ppsi/jiffies.h> /* time_before() */
 
 #define jiffies timer_get_tics()

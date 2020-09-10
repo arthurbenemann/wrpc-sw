@@ -27,9 +27,9 @@
 #include <inttypes.h>
 
 #include "system_checks.h"
-#include "endpoint.h"
-#include "minic.h"
-#include "pps_gen.h"
+#include "dev/endpoint.h"
+#include "dev/minic.h"
+#include "dev/pps_gen.h"
 #include "softpll_ng.h"
 #include <wrpc.h> /*needed for htons()*/
 

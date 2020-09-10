@@ -2,10 +2,10 @@
 #include <wrc.h>
 #include <wrpc.h>
 #include <temperature.h>
-#include "endpoint.h"
-#include "minic.h"
+#include "dev/endpoint.h"
+#include "dev/minic.h"
 #include "shell.h"
-#include "pps_gen.h"
+#include "dev/pps_gen.h"
 
 #include "ipv4.h"
 

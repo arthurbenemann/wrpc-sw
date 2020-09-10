@@ -9,7 +9,7 @@
 #include <wrc.h>
 #include <shell.h>
 #include <storage.h>
-#include <endpoint.h>
+#include <dev/endpoint.h>
 #include <ppsi/ppsi.h>
 #include "wr-api.h"
 

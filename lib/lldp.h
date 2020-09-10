@@ -12,7 +12,7 @@
 #ifndef __LLDP_H
 #define __LLDP_H
 
-#include "minic.h"
+#include "dev/minic.h"
 
 #define LLDP_MCAST_MAC	"\x01\x80\xC2\x00\x00\x0E" /* 802.1AB-2005,
 						      Table 8-1 */

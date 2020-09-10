@@ -10,7 +10,7 @@
 #include <string.h>
 #include <errno.h>
 #include <shell.h>
-#include <endpoint.h>
+#include <dev/endpoint.h>
 
 static int cmd_vlan(const char *args[])
 {
