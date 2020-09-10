@@ -38,7 +38,12 @@ void ptpd_netif_set_phase_transition(uint32_t phase)
 {
 	int i;
 
+	pp_printf("phase: %d\n",phase);
+	pp_printf("ARRAY_SIZE(socks): %d\n",ARRAY_SIZE(socks));
+	pp_printf("sizeof(socks[0]): %d\n",sizeof(socks[0]));
+	pp_printf("sizeof(*socks[0]): %d\n",sizeof(*socks[0]));
 	for (i=0; i< ARRAY_SIZE(socks); ++i) {
+        pp_printf("&socks[%d]->phase_transition: 0x%x\n",i, &socks[i]->phase_transition);
 		socks[i]->phase_transition = phase;
 	}
 }
