@@ -39,14 +39,15 @@ void mpll_init(struct spll_main_state *s, int id_ref,
 		s->pi.kp = 1100;		// / 2;
 		s->pi.ki = 30;			// / 2;
 	}
-#elif defined(CONFIG_WR_NODE) && !defined(CONFIG_TARGET_SPEC7)
+//#elif defined(CONFIG_WR_NODE) && !defined(CONFIG_TARGET_SPEC7)
+#elif defined(CONFIG_WR_NODE)
 	s->pi.kp = -1100;		// / 2;
 	s->pi.ki = -30;			// / 2;
-#elif defined(CONFIG_WR_NODE) && defined(CONFIG_TARGET_SPEC7)
+//#elif defined(CONFIG_WR_NODE) && defined(CONFIG_TARGET_SPEC7)
 //	s->pi.kp = -800;		// / 2;
 //	s->pi.ki = -10;			// / 2;
-	s->pi.kp = -5500;		// / 2;
-	s->pi.ki = -30;			// / 2;
+//	s->pi.kp = -5500;		// / 2;
+//	s->pi.ki = -30;			// / 2;
 #else
 #error "Please set CONFIG for wr switch or wr node"
 #endif
@@ -59,7 +60,7 @@ void mpll_init(struct spll_main_state *s, int id_ref,
 	s->id_ref = id_ref;
 	s->id_out = id_out;
 	s->dac_index = id_out - spll_n_chan_ref;
-	pp_printf("Main PLL PI Values:   Kp %i\t Ki%i\n",s->pi.kp,s->pi.ki);
+	//board_dbg("Main PLL PI Values:   Kp %i\t Ki%i\n",s->pi.kp,s->pi.ki);
 
 	if( s->gain_sched )
 	{
@@ -115,6 +116,7 @@ static inline void mpll_handle_gain_schedule( struct spll_main_state *s )
 		s->ld.lock_changed = 0;
 		s->ld.locked = 0;
 		s->gain_sched->locked_d = 0;
+        board_dbg("Gain schedule stage: %d, Kp: %d, ki: %d, shift: %d\n",s->gain_sched->current_stage, stage->kp,stage->ki, stage->shift);
 	}
 
 	s->gain_sched->locked_d = s->ld.locked;
@@ -146,6 +148,7 @@ void mpll_start(struct spll_main_state *s)
 		s->pi.shift = s->gain_sched->stages[0].shift;
 		s->ld.lock_samples = s->gain_sched->stages[0].lock_samples;
 		s->ld.lock_cnt = 0;
+        board_dbg("Gain schedule stage: 0, Kp: %d, ki: %d, shift: %d\n",s->gain_sched->stages[0].kp,s->gain_sched->stages[0].ki,s->gain_sched->stages[0].shift);
 	}
 
 
