@@ -892,12 +892,9 @@ void spll_set_aux_mode( int channel, int mode )
 
 // Guido's heel smerig manier om er data in te proppem
 
-void spll_set_pi(int kp, int ki)
+void spll_set_pi_kpki(int kp, int ki)
 {
-        
-	    //A=softpll.mpll.pi.y;
-	    //pp_printf("output PI Y %i\n",softpll.mpll.pi.y);
-		softpll.mpll.pi.kp=kp;
+        softpll.mpll.pi.kp=kp;
 	    softpll.mpll.pi.ki=ki;
 		spll_show_kpki();
         //pp_printf("setted Kp %i\t Ki %i\n",softpll.mpll.pi.kp,softpll.mpll.pi.ki);
@@ -930,7 +927,7 @@ void spll_set_pi_solo_ki(int ki)
 void spll_show_kpki()
 
 {
-		// to display actual Kp Ki
+		// to display actual Kp Ki of the Main PLL yes it is ugly
 		pp_printf("setted Kp %i\t	Ki %i\n",softpll.mpll.pi.kp,softpll.mpll.pi.ki);
 		pp_printf("PI bypass? %i\n",softpll.mpll.pi.disablecontrol);
 
