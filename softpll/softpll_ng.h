@@ -131,7 +131,8 @@ int spll_get_debug_queue_samples( uint32_t *buf, int size, int undersample );
 void spll_debug_queue_purge(void);
 
 void spll_set_aux_mode( int channel, int mode );
-void spll_set_pi(int kp, int ki);
+
+void spll_set_pi_kpki(int kp, int ki);
 void spll_set_pi_solo_kp(int kp);
 void spll_set_pi_solo_ki(int ki);
 void spll_set_vtune_off(int control);
