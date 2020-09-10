@@ -11,7 +11,7 @@
 
 #include <wrc.h>
 #include "softpll_ng.h"
-#include <TuneGuido.h>
+//#include <TuneGuido.h>
 
 #define MPLL_TAG_WRAPAROUND 100000000
 
@@ -32,6 +32,7 @@ void mpll_init(struct spll_main_state *s, int id_ref,
 	s->pi.anti_windup = 1;
 	s->pi.bias = 30000;
 	s->pi.shift = PI_FRACBITS;
+	
 #if defined(CONFIG_WR_SWITCH)
 	if (spll_ljd_present) {
 		s->pi.kp = 2000;
@@ -46,10 +47,11 @@ void mpll_init(struct spll_main_state *s, int id_ref,
 #elif defined(CONFIG_WR_NODE) && defined(CONFIG_TARGET_SPEC7)
 //	s->pi.kp = -800;		// / 2;
 //	s->pi.ki = -10;			// / 2;
-	s->pi.kp = -3000;		// / 2;
-	s->pi.ki = -10;			// / 2;
-	s->pi.kd =  0;          // is not nessary...
-  
+	s->pi.kp    = -4000 * 16;;		// / 2;
+	s->pi.ki    = -5 * 16;;			// / 2;
+	s->pi.shift = 20;
+ 	s->pi.setblock=0;
+	
 #else
 #error "Please set CONFIG for wr switch or wr node"
 #endif
@@ -174,7 +176,7 @@ int mpll_update(struct spll_main_state *s, int tag, int source)
 	if(!s->enabled)
 	    return SPLL_LOCKED;
 
-	int err, y;
+	int err, y,VtuneHoldVal;
 
 	if (source == s->id_ref)
 		s->tag_ref = tag;
@@ -221,28 +223,16 @@ int mpll_update(struct spll_main_state *s, int tag, int source)
 
 
 
-    if ( s->pi.disablecontrol == 0)
-    {
-			y=VtuneHoldVal;
-	}
-		else
-    {
+	if ( s->pi.disablecontrol == 0)
+		{
+		// when pi.disablecontrol == 0 the last PI val is repeated to test how much the OCXO drifts away yes is ugly...
+		y=VtuneHoldVal;
+		}
+	else
+		{
 		y = pi_update((spll_pi_t *)&s->pi, err);
 	    VtuneHoldVal=y;
-	//	for (k=0; k<15; k++)
-	//	{
-	//	ring_buffer[15]=y;
-	//	}
-
-		
-	 //  k=0;
-    }
-	  
-	// 	for 
-	//	Y = (coeffsLPF[k])*(ring_buffer[(k+rb_idx)%FilterSize]);
-
-
-	
+		}
 
 		SPLL->DAC_MAIN = SPLL_DAC_MAIN_VALUE_W(y)
 			| SPLL_DAC_MAIN_DAC_SEL_W(s->dac_index);
