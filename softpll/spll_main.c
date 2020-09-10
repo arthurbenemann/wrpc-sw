@@ -11,8 +11,6 @@
 
 #include <wrc.h>
 #include "softpll_ng.h"
-//#include <TuneGuido.h>
-
 #define MPLL_TAG_WRAPAROUND 100000000
 
 #undef WITH_SEQUENCING
