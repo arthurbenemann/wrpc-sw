@@ -1,14 +1,17 @@
+variables:
+  GIT_SUBMODULE_STRATEGY: normal
+
 before_script:
   - export PATH=/opt/lm32-gcc-4.5.3/bin:$PATH
 
 stages:
-- make_wrpc_sw
-- make_rt_cpu
+- compile
 
 make_wrpc_sw:
-  stage: make_wrpc_sw
+  stage: compile
+  tags:
+    - wrs_sw
   script:
-  - git submodule init; git submodule update
   - make spec_defconfig
   - make
   artifacts:
@@ -20,9 +23,10 @@ make_wrpc_sw:
     - wrc.mif
 
 make_rt_cpu:
-  stage: make_rt_cpu
+  stage: compile
+  tags:
+    - wrs_sw
   script:
-  - git submodule init; git submodule update
   - make wr_switch_defconfig
   - make
   artifacts:
