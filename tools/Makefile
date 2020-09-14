@@ -1,5 +1,5 @@
 EB    ?= no
-SDBFS ?= ../../fpga-config-space/sdbfs/userspace/
+SDBFS ?= no
 
 CFLAGS = -Wall -ggdb -I../include -I../liblinux -I../liblinux/extest
 CFLAGS += -D__GIT_VER__="\"$(GIT_VER)\"" -D__GIT_USR__="\"$(GIT_USR)\""
