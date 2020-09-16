@@ -6,7 +6,7 @@ stages:
 - make_rt_cpu
 
 make_wrpc_sw:
-  stage: make_wrpc_sw
+  stage: spec7_config
   script:
   - git submodule init; git submodule update
   - make spec_defconfig
