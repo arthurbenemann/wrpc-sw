@@ -3,7 +3,7 @@ before_script:
 
 stages:
 - make_wrpc_sw
-- make_rt_cpu
+#- make_rt_cpu
 
 make_wrpc_sw:
   stage: spec7_defconfig
