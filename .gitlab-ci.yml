@@ -6,10 +6,10 @@ stages:
 - make_rt_cpu
 
 make_wrpc_sw:
-  stage: spec7_config
+  stage: spec7_defconfig
   script:
   - git submodule init; git submodule update
-  - make spec_defconfig
+  - make spec7_defconfig
   - make
   artifacts:
     name: WRPC_SW_CI_%CI_JOB_ID%
