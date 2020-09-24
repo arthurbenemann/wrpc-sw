@@ -1,3 +1,4 @@
 [submodule "ppsi"]
 	path = ppsi
 	url = https://ohwr.org/project/ppsi.git
+  branch = peter_direct_dmtd_v5

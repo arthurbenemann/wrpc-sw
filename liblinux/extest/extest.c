@@ -20,6 +20,9 @@
 
 #include <extest.h>
 
+#define GCC_VERSION (__GNUC__ * 10000 \
+                     + __GNUC_MINOR__ * 100 \
+                     + __GNUC_PATCHLEVEL__)
 //!< Description of each operator.
 static struct operator oprs[OprOPRS] = {
 	{
@@ -84,7 +87,11 @@ static void sighandler(int sig)
 	 * we use sys_siglist[] instead of strsignal() to stay compatible
 	 * with old versions of glibc
 	 */
-	printf("\nEXIT: Signal %s received\n", sys_siglist[sig]);
+    #if GCC_VERSION > 50200
+	printf("\nEXIT: Signal %s received\n", strsignal(sig));
+    #else
+    printf("\nEXIT: Signal %s received\n", sys_siglist[sig]);
+    #endif
 	free(_cmdlist);
 	if (user_sig_hndl)
 		user_sig_hndl();

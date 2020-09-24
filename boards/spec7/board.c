@@ -229,7 +229,7 @@ int wrc_board_early_init()
 }
 
 struct i2c_bus            dev_i2c_eeprom;
-struct i2c_eeprom_device  wrc_eeprom_dev;
+struct i2c_eeprom_device  wrc_eeprom_device;
 
 int wrc_board_init()
 {
@@ -255,8 +255,8 @@ int wrc_board_init()
          &pin_eeprom_sda );
     bb_i2c_init(&dev_i2c_eeprom);
 
-    i2c_eeprom_create(&wrc_eeprom_dev, &dev_i2c_eeprom, 0x50, 2);
-    storage_i2ceeprom_create( &wrc_storage_dev, &wrc_eeprom_dev );
+    i2c_eeprom_create(&wrc_eeprom_device, &dev_i2c_eeprom, 0x50, 2);
+    storage_i2ceeprom_create( &wrc_storage_dev, &wrc_eeprom_device );
 
     /*
      * Read from gateware info about used memory. Currently only base
