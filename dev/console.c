@@ -49,6 +49,20 @@ void console_uart_set_crlf_mode(int on)
     console_uart_priv.uart_dev.crlf_mode = on;
 }
 
+static void console_register_device( struct console_device *dev )
+{
+    int i;
+    for(i = 0; i < BOARD_MAX_CONSOLE_DEVICES; i++)
+    {
+        if ( console_devs[i] == NULL )
+        {
+            console_devs[i] = dev;
+            return;
+        }
+    }
+}
+
+
 #ifdef CONFIG_IPMI_CONSOLE
 
 #define IPMI_CON_TX_BUF_SIZE 1024
@@ -223,19 +237,6 @@ int console_getc()
     }
 
     return -1;
-}
-
-static void console_register_device( struct console_device *dev )
-{
-    int i;
-    for(i = 0; i < BOARD_MAX_CONSOLE_DEVICES; i++)
-    {
-        if ( console_devs[i] == NULL )
-        {
-            console_devs[i] = dev;
-            return;
-        }
-    }
 }
 
 void console_init()
