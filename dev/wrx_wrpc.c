@@ -1,8 +1,7 @@
 #include "onewire.h"
 #include "wrx_proto.h"
 #include "endpoint.h"
-//#include "ptpd.h"
-//#include "ptpd_exports.h"
+#include "temperature.h"
 #include "sfp.h"
 #include <string.h>
 #include <ppsi/ppsi.h>
@@ -72,10 +71,9 @@ void wrxUpdate(int linkStatus)
     uint16_t autonegotiation = 0;
 
     
-/*
-    own_readtemp(ONEWIRE_PORT, &brd_temp, &brd_temp_frac);
-    info->brdTemp     = brd_temp;
-    info->brdTempFrac = brd_temp_frac;
+    int32_t temp = wrc_temp_get("pcb");
+    info->brdTemp     = temp >> 16;
+    info->brdTempFrac = temp & 0xffff;
 
     sfp_read_temp(&sfp_temp, &sfp_temp_frac);
     info->sfpTemp     = sfp_temp;
@@ -87,7 +85,6 @@ void wrxUpdate(int linkStatus)
     sfp_a2_read_u16(SFP_ADC_TX_POWER, &tx_output_power);
     info->txOutputPower = tx_output_power;
 
-*/
     // LINK_WENT_UP and LINK_UP are odd, LINK_WENT_DOWN and LINK_DOWN are even
     //if(linkStatus & 1) {
     if((linkStatus == 1) || (linkStatus == 3)) {
@@ -141,10 +138,6 @@ int wrxExecute() {
     case WRX_COMMAND_NONE:
     default:
         return 0;
-    case WRX_COMMAND_GET_TUNEINFO:
-        info->cmdreply.tuneInfo.tuneproc = WRX_TUNE_PROC_NONE;
-        info->cmdcode = WRX_COMMAND_GET_TUNEINFO;
-        break;
     case WRX_COMMAND_GET_SFP_VENDOR_SN:
         // get Serial number
         memcpy(info->cmdreply.sfpVendorSN, sfp_pn, 16);
@@ -159,7 +152,7 @@ int wrxExecute() {
         pcs_write(MDIO_REG_MCR, 0x1140);
         info->cmdcode = WRX_COMMAND_AUTONEG_ON;
         break;
-    case WRX_COMMAND_GET_TUNEINFO:
+*/  case WRX_COMMAND_GET_TUNEINFO:
         // need 2 find transceiver type, and such...
         info->cmdreply.tuneInfo.tuneproc = sfp_get_tuning_procedure();
         sfp_a2_read_u16(SFP_ADC_LASER_TEMP, &tmp);
@@ -172,17 +165,11 @@ int wrxExecute() {
     case WRX_COMMAND_SET_TUNEWORD:
         sfp_set_tune_word(cmd->params.tuneWord);
         break;
-    case WRX_COMMAND_GET_SFP_VENDOR_SN:
-        // get Serial number
-        sfp_read_part_sn(info->cmdreply.sfpVendorSN);
-        info->cmdcode = WRX_COMMAND_GET_SFP_VENDOR_SN;
-        break;
     case WRX_COMMAND_SET_THRESHOLD:
         //printf("Request to set threhsold index %d to %d\n",
             //cmd->params.threshold.index, cmd->params.threshold.value);
         sfp_a2_write_u16(cmd->params.threshold.index, cmd->params.threshold.value);
         break;
-*/
     }
     // reset command
     cmd->code = WRX_COMMAND_NONE;
