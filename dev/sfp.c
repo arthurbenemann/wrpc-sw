@@ -10,6 +10,7 @@
 
 #include <stdio.h>
 #include <inttypes.h>
+#include <stdbool.h>
 #include <string.h>
 #include <errno.h>
 
@@ -31,38 +32,6 @@ static int sfp_present(void)
 	return !gpio_in(GPIO_SFP_DET);
 }
 
-static int sfp_read_part_id(char *part_id)
-{
-	int i;
-	uint8_t data, sum;
-	mi2c_init(WRPC_SFP_I2C);
-
-	mi2c_start(WRPC_SFP_I2C);
-	mi2c_put_byte(WRPC_SFP_I2C, 0xA0);
-	mi2c_put_byte(WRPC_SFP_I2C, 0x00);
-	mi2c_repeat_start(WRPC_SFP_I2C);
-	mi2c_put_byte(WRPC_SFP_I2C, 0xA1);
-	mi2c_get_byte(WRPC_SFP_I2C, &data, 1);
-	mi2c_stop(WRPC_SFP_I2C);
-
-	sum = data;
-
-	mi2c_start(WRPC_SFP_I2C);
-	mi2c_put_byte(WRPC_SFP_I2C, 0xA1);
-	for (i = 1; i < 63; ++i) {
-		mi2c_get_byte(WRPC_SFP_I2C, &data, 0);
-		sum = (uint8_t) ((uint16_t) sum + data) & 0xff;
-		if (i >= 40 && i <= 55)	//Part Number
-			part_id[i - 40] = data;
-	}
-	mi2c_get_byte(WRPC_SFP_I2C, &data, 1);	//final word, checksum
-	mi2c_stop(WRPC_SFP_I2C);
-
-	if (sum == data)
-		return 0;
-
-	return -1;
-}
 
 int sfp_match(void)
 {
@@ -86,4 +55,315 @@ int sfp_match(void)
 	sfp_alpha = sfp.alpha;
 	sfp_in_db = SFP_MATCHED;
 	return 0;
+}
+
+// ====================================================================
+// Additional functions for KM3NeT
+// ====================================================================
+
+static void sfp_i2c_mod_write(uint8_t addr, uint8_t reg, uint8_t * data, uint8_t len)
+{
+    mi2c_start(WRPC_SFP_I2C);
+    mi2c_put_byte(WRPC_SFP_I2C, addr);
+    mi2c_put_byte(WRPC_SFP_I2C, reg);
+#ifdef DEBUG_I2C    
+    printf("Writing to %02x, reg=%02x:", addr, reg);
+#endif
+    while (len > 0) {
+#ifdef DEBUG_I2C    
+        printf(" %02x", *data);
+#endif
+        mi2c_put_byte(WRPC_SFP_I2C, *data);
+        len--;
+        data++;
+    }
+    mi2c_stop(WRPC_SFP_I2C);
+#ifdef DEBUG_I2C    
+    puts(", done!\n");
+#endif    
+}
+
+
+
+static void sfp_i2c_mod_read(uint8_t addr, uint8_t reg, uint8_t * data, uint8_t len)
+{
+#ifdef DEBUG_I2C    
+    printf("Reading from %02x, reg=%02x: ", addr, reg);
+#endif
+  
+    mi2c_start(WRPC_SFP_I2C);
+    mi2c_put_byte(WRPC_SFP_I2C, addr);
+    // select register to read
+    mi2c_put_byte(WRPC_SFP_I2C, reg);
+    
+    mi2c_repeat_start(WRPC_SFP_I2C);
+    
+    mi2c_put_byte(WRPC_SFP_I2C, addr | 1);
+    
+    while (len > 0) {
+        
+        mi2c_get_byte(WRPC_SFP_I2C, data, len == 1);
+#ifdef DEBUG_I2C            
+        printf(" %02x", *data);
+#endif        
+        len--;
+        data++;
+    }
+
+    // close connection
+    mi2c_stop(WRPC_SFP_I2C);
+#ifdef DEBUG_I2C        
+    puts(", done!\n");
+#endif
+}
+
+// selects the page for the upper 128 bytes of address space A2
+static void sfp_select_page(uint8_t page)
+{
+    
+    sfp_i2c_mod_write(0xA2, 0x7F, &page, 1);
+}
+
+void sfp_a2_read_u16(uint8_t reg, uint16_t * value) {
+    uint8_t data[2];
+
+#ifdef SFP_TUNING_SIMULATE
+    if (reg == SFP_ADC_LASER_TEMP) {
+        *value = sfp_tuning_sim_get_laser_temp();  
+        return;
+    } 
+#endif    
+    
+    sfp_i2c_mod_read(0xA2, reg, data, 2);
+    
+    *value = data[0] << 8;
+    *value |= data[1];
+}
+
+
+
+void sfp_a2_write_u16(uint8_t reg, uint16_t value) {
+    uint8_t data[2];
+    data[0] = 0xFF & (value >> 8);
+    data[1] = 0xFF & value;
+    
+    sfp_i2c_mod_write(0xA2, reg, data, 2);
+    
+}
+
+
+// 
+
+
+void sfp_read_temp(uint8_t * sfp_temp, uint8_t * sfp_temp_frac) {
+    uint16_t temp;
+    sfp_a2_read_u16(SFP_ADC_TEMPERATURE, &temp);
+    *sfp_temp = (0xFF00 & temp) >> 8;
+    *sfp_temp_frac = (temp & 0xFF);
+}
+
+static int sfp_read_chksum(int start, int end, int offset, int len, uint8_t *values)
+{
+	int i;
+	uint8_t data, sum;
+	mi2c_init(WRPC_SFP_I2C);
+
+	mi2c_start(WRPC_SFP_I2C);
+	mi2c_put_byte(WRPC_SFP_I2C, 0xA0);
+	mi2c_put_byte(WRPC_SFP_I2C, start);
+	mi2c_repeat_start(WRPC_SFP_I2C);
+	mi2c_put_byte(WRPC_SFP_I2C, 0xA1);
+	mi2c_get_byte(WRPC_SFP_I2C, &data, 1);
+	mi2c_stop(WRPC_SFP_I2C);
+
+	sum = data;
+
+	mi2c_start(WRPC_SFP_I2C);
+	mi2c_put_byte(WRPC_SFP_I2C, 0xA1);
+	for (i = start + 1; i < end; ++i) {
+		mi2c_get_byte(WRPC_SFP_I2C, &data, 0);
+		sum = (uint8_t) ((uint16_t) sum + data) & 0xff;
+		if (i >= offset && i < offset + len)	//Part Number
+			values[i - offset] = data;
+	}
+	mi2c_get_byte(WRPC_SFP_I2C, &data, 1);	//final word, checksum
+	mi2c_stop(WRPC_SFP_I2C);
+
+	if (sum == data)
+		return 0;
+
+	return -1;
+}
+
+
+static int sfp_read_a0_low(int offset, int len, uint8_t *values)
+{
+    return sfp_read_chksum(0, 63, offset, len, values);
+}
+
+static int sfp_read_a0_mid(int offset, int len, uint8_t *values)
+{
+    return sfp_read_chksum(64, 95, offset, len, values);
+}
+
+
+int sfp_read_oui(uint32_t * oui)
+{
+    uint8_t oui_bytes[3];
+    
+    if (sfp_read_a0_low(37, 3, oui_bytes) != 0) return -1;
+    *oui = ( oui_bytes[2] << 0 ) |  ( oui_bytes[1] << 8 ) | ( oui_bytes[0] << 16 );
+    return 0;
+}
+
+int sfp_read_part_id(char *part_id)
+{
+    return sfp_read_a0_low(40, 16, (uint8_t*)part_id);
+}
+
+
+
+
+// ====================================================================
+// Extension for wavelength tuning
+// ====================================================================
+
+#define OUI_OESOLTIONS      0x00193A
+#define OUI_LUMENTUM        0x000B40
+#define OUI_JDSU            0x00019C
+
+#ifdef SFP_TUNING_SIMULATE
+static uint16_t _sim_tune = 30906;
+
+static uint16_t sfp_tuning_sim_get_laser_temp()
+{
+    return 25000 + (_sim_tune / 16);
+}
+
+#endif
+
+
+static int _tuning_procedure = -1;
+
+int sfp_get_tuning_procedure(void)
+{
+  if (_tuning_procedure != -1) goto end;
+ 
+#ifndef SFP_TUNING_SIMULATE
+  uint32_t oui;
+  
+  if  (sfp_read_oui(&oui) != 0)
+  {
+      goto end;
+  }
+  
+  switch (oui)
+  {
+  case OUI_OESOLTIONS:
+    _tuning_procedure = SFP_TUNING_PROC_OESOLUTIONS;
+    break;
+  case OUI_LUMENTUM:
+    _tuning_procedure = SFP_TUNING_PROC_LUMENTUM;
+    break;
+  case OUI_JDSU:
+    _tuning_procedure = SFP_TUNING_PROC_JDSU;
+    break;
+  default:
+    _tuning_procedure = SFP_TUNING_PROC_NONE;
+    break;
+  }
+#else
+  _tuning_procedure = SFP_TUNING_PROC_SIMULATION;
+#endif
+  
+end:
+  return _tuning_procedure;
+}
+
+
+static void sfp_do_tune_word(int32_t * tw, bool write)
+{
+    uint8_t tmp[4];
+ 
+    if (_tuning_procedure == -1) sfp_get_tuning_procedure();
+
+#ifdef SFP_TUNING_SIMULATE
+    if (write) {
+      _sim_tune = *tw;
+    } else {
+      *tw = _sim_tune;
+    }
+#else    
+    switch (_tuning_procedure)
+    {
+    case SFP_TUNING_PROC_OESOLUTIONS:
+    
+        tmp[0] = 0x4F; tmp[1] = 0x45; tmp[2] = 0x53; tmp[3] = 0x50;
+        // unlock?
+        sfp_i2c_mod_write(0xA2, 0x7B, tmp, 4);
+        sfp_select_page(4);
+        
+        if (write) 
+        {
+            tmp[0] = 0xFF &  (*tw >> 8);
+            tmp[1] = 0xFF &  (*tw);
+            sfp_i2c_mod_write(0xA2, 0x8B, tmp, 2);
+        } else {
+            sfp_i2c_mod_read(0xA2, 0x8B, tmp, 2);
+            *tw = 0;
+            *tw = (tmp[0] << 8) | tmp[1];
+        }
+        // lock again
+        tmp[0] = 0xFF; tmp[1] = 0xFF; tmp[2] = 0xFF; tmp[3] = 0xFF;
+        sfp_i2c_mod_write(0xA2, 0x7B, tmp, 4);
+        break;
+    case SFP_TUNING_PROC_LUMENTUM:
+        sfp_select_page(2);
+        
+        if (write) 
+        {
+            tmp[0] = 0xFF &  (*tw >> 8);
+            tmp[1] = 0xFF &  (*tw);
+            sfp_i2c_mod_write(0xA2, 0x90, tmp, 2);
+        } else {
+            sfp_i2c_mod_read(0xA2, 0x90, tmp, 2);
+            *tw = 0;
+            *tw = (tmp[0] << 8) | tmp[1];
+        }
+        break;
+    case SFP_TUNING_PROC_JDSU:
+        sfp_select_page(2);
+        
+        if (write) 
+        {
+            tmp[0] = 0xFF &  (*tw >> 8);
+            tmp[1] = 0xFF &  (*tw);
+            sfp_i2c_mod_write(0xA2, 0x90, tmp, 2);
+        } else {
+            sfp_i2c_mod_read(0xA2, 0x90, tmp, 2);
+            *tw = 0;
+            *tw = (tmp[1] << 8) | tmp[0];
+        }
+        break;
+    default:
+        if (!write) {
+            *tw = 0x80000000;
+        }
+        break;
+    }
+#endif    
+}
+
+
+int32_t sfp_get_tune_word(void)
+{
+    int32_t tw;
+    sfp_do_tune_word(&tw, false);
+    return tw;
+}
+
+void sfp_set_tune_word(int32_t tw)
+{
+    // printf("Request to set %d as tuneword\n", tw);
+    sfp_do_tune_word(&tw, true);
 }
