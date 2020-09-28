@@ -229,10 +229,11 @@ DEFINE_WRC_TASK(spll) = {
 	.job = spll_update,
 };
 
-void wrx_Execute()
+static int wrx_Execute()
 {
   wrxUpdate(link_status);
   wrxExecute();
+  return 1;
 }
 
 DEFINE_WRC_TASK(wrx_Execute) = {
