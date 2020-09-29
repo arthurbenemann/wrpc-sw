@@ -520,7 +520,6 @@ void spll_set_ptracker_average_samples(int channel, int nsamples)
 
 void spll_get_num_channels(int *n_ref, int *n_out)
 {
-	pp_printf("NUM CHAN: %d %d %x\n\n", spll_n_chan_ref, spll_n_chan_out, SPLL->CSR );
 	if (n_ref)
 		*n_ref = spll_n_chan_ref;
 	if (n_out)
@@ -586,7 +585,7 @@ static int spll_update_aux_clocks(void)
 
 		if(s->seq_state != AUX_DISABLED && !aux_locking_enabled(ch))
 		{
-			pp_printf("softpll: disabled aux channel %d\n", ch);
+			pll_verbose("softpll: disabled aux channel %d\n", ch);
 			spll_stop_channel(ch);
 			set_channel_status(ch, 0);
 			s->seq_state = AUX_DISABLED;
@@ -628,7 +627,7 @@ static int spll_update_aux_clocks(void)
 			case AUX_TRACKING_READY:
 				if (!softpll.mpll.locked) 
 				{
-					pp_printf("softpll: aux tracking channel %d disabled due to PLL LOS\n", ch);
+					pll_verbose("softpll: aux tracking channel %d disabled due to PLL LOS\n", ch);
 					set_channel_status(ch, 0);
 					s->seq_state = AUX_DISABLED;
 					done_sth++;
