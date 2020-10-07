@@ -834,7 +834,7 @@ int storage_phtrans(uint32_t *valp, uint8_t write)
 
 /* MAC Address Storage */
 
-int storage_get_persistent_mac(uint8_t *mac)
+int storage_get_persistent_mac(uint8_t portnum, uint8_t *mac)
 {
 	int ret = 0;
 	//int i;
@@ -891,7 +891,7 @@ int storage_get_persistent_mac(uint8_t *mac)
 	return 0;
 }
 
-int storage_set_persistent_mac(uint8_t *mac)
+int storage_set_persistent_mac(uint8_t portnum, uint8_t *mac)
 {
 	int ret;
 

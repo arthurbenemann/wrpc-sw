@@ -63,7 +63,7 @@ int wrc_board_early_init()
 	/*
 	 * Try reading MAC addr stored in flash
 	 */
-	if (storage_get_persistent_mac(mac_addr) == -1) {
+	if (storage_get_persistent_mac(0, mac_addr) == -1) {
 		board_dbg("Failed to get MAC address from the flash. Using fallback address.\n");
 		mac_addr[0] = 0x22;
 		mac_addr[1] = 0x33;

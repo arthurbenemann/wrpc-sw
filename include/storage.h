@@ -141,8 +141,8 @@ int storage_save_calibration(void);
 
 int storage_read_hdl_cfg(void);
 int storage_mount( struct storage_device *dev );
-int storage_get_persistent_mac(uint8_t *mac);
-int storage_set_persistent_mac(uint8_t *mac);
+int storage_get_persistent_mac(uint8_t portnum, uint8_t *mac);
+int storage_set_persistent_mac(uint8_t portnum, uint8_t *mac);
 
 
 #endif

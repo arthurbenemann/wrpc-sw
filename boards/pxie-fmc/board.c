@@ -49,7 +49,7 @@ int wrc_board_early_init()
 		m24aa025_read_mac(&board.mac_id_eeprom, mac_addr);
 
 	/* 2. Try reading from configuration EEPROM */
-	} else if (storage_get_persistent_mac(mac_addr) == -1) {
+	} else if (storage_get_persistent_mac(0, mac_addr) == -1) {
 	/* 3. If everything fails, use default MAC */
 		board_dbg("Failed to get MAC address from Unique ID chip or EEPROM. \
 				Using fallback address.\n");
