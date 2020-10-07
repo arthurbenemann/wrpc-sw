@@ -934,7 +934,7 @@ static int get_port(uint8_t *buf, struct snmp_oid *obj)
 	switch ((int) obj->p) {
 	case (int)PORT_LINK_STATUS:
 		/* overkill, since we need the link to be up to use SNMP */
-		tmp_int32 = 1 + ep_link_up(NULL);
+		tmp_int32 = 1 + ep_link_up(&wrc_endpoint_dev, NULL);
 		return get_value(buf, obj->asn, &tmp_int32);
 	default:
 		break;

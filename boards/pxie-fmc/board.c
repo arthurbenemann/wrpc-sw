@@ -60,7 +60,7 @@ int wrc_board_early_init()
 		mac_addr[4] = 0x66;
 		mac_addr[5] = 0x77;
 	}
-	ep_set_mac_addr(mac_addr);
+	ep_set_mac_addr(&wrc_endpoint_dev, mac_addr);
 
 	return 0;
 }

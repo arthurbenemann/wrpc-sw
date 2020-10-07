@@ -14,6 +14,7 @@
 #include "ipv4.h"
 #include "ptpd_netif.h"
 #include "dev/pps_gen.h"
+#include "dev/netif.h"
 #include "hw/etherbone-config.h"
 
 enum ip_status ip_status = IP_TRAINING;
@@ -172,7 +173,7 @@ int ipv4_poll(void)
 {
 	int ret = 0;
 
-	if (link_status == LINK_WENT_UP && ip_status == IP_OK_BOOTP)
+	if (link_status == NETIF_LINK_WENT_UP && ip_status == IP_OK_BOOTP)
 		ip_status = IP_TRAINING;
 	ret = bootp_poll();
 
