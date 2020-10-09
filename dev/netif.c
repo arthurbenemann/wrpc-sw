@@ -22,7 +22,7 @@
 static int netif_n_count = 0;
 static struct wrc_netif_device netif_devs[WRC_NETIF_MAX_DEVICES];
 
-struct wrc_endpoint_dev* netif_get_default_endpoint(void)
+struct wr_endpoint_device* netif_get_default_endpoint(void)
 {
     if( netif_n_count == 0 )
         return NULL;

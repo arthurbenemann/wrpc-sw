@@ -27,7 +27,7 @@ struct wrc_netif_device
     int tx_packets;
 };
 
-struct wrc_endpoint_dev* netif_get_default_endpoint(void);
+struct wr_endpoint_device* netif_get_default_endpoint(void);
 int netif_register_device( const char *name, const char* desc, struct wr_endpoint_device* ep );
 int netif_get_device_count(void);
 struct wrc_netif_device* netif_get_device(int idx);
