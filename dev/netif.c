@@ -22,7 +22,7 @@
 static int netif_n_count = 0;
 static struct wrc_netif_device netif_devs[WRC_NETIF_MAX_DEVICES];
 
-struct wrc_endpoint_dev* netif_get_default_endpoint()
+struct wrc_endpoint_dev* netif_get_default_endpoint(void)
 {
     if( netif_n_count == 0 )
         return NULL;
@@ -50,12 +50,12 @@ int netif_register_device( const char *name, const char* desc, struct wr_endpoin
     return 0;
 }
 
-int netif_get_device_count()
+int netif_get_device_count(void)
 {
     return netif_n_count;
 }
 
-static int netif_update_task()
+static int netif_update_task(void)
 {
     int i;
     for( i = 0; i < netif_n_count; i++ )
@@ -101,7 +101,7 @@ struct wrc_netif_device* netif_get_device(int idx)
 }
 
 
-int netif_init()
+int netif_init(void)
 {
     wrc_task_create("netif", NULL, netif_update_task);
     return 0;

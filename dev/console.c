@@ -105,8 +105,6 @@ static int con_uart_put_string(struct console_device* dev, const char *s)
 
 static int con_uart_getc(struct console_device* dev)
 {
-    struct console_uart_priv_data* priv = (struct console_uart_priv_data*) dev->priv;
-
     //if( dev->flags & CONSOLE_FLAGS_MODE_BINARY )
         //return 0;
 
