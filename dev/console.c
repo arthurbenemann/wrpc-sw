@@ -79,6 +79,7 @@ static int con_rx_internal(struct console_device* dev)
         }
         priv->state = CON_STATE_IDLE;
     }
+    return rx_char;
 }
 
 static int con_uart_put_string(struct console_device* dev, const char *s)

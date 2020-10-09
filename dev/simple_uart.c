@@ -72,7 +72,7 @@ int suart_poll(struct simple_uart_device *dev)
 
 int suart_read_byte(struct simple_uart_device *dev)
 {
-	if (suart_poll(dev) < 0)
+	if (!suart_poll(dev))
 		return -1;
 
 	return readl(dev->base + UART_REG_RDR) & 0xff;
