@@ -335,7 +335,7 @@ void console_init()
     console_ipmi_init();
 #endif
 
-    pp_printf("Console UART FIFO:: %d\n", suart_is_fifo_supported( &console_uart_dev ) );
+    pp_printf("Console UART FIFO:: %d\n", suart_is_fifo_supported( &console_uart_priv.uart_dev ) );
 }
 
 void console_force_mode( struct console_device *dev, int mode )
