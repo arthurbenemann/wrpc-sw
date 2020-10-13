@@ -23,7 +23,6 @@ int wrc_board_early_init()
 {
 	uint32_t sdbfs_entry;
 	uint32_t sector_size;
-	uint8_t mac_addr[6];
 
 
 	/* EEPROM support */
@@ -39,6 +38,13 @@ int wrc_board_early_init()
 	 * Mount SDBFS filesystem from storage.
 	 */
 	storage_mount( &wrc_storage_dev );
+
+	return 0;
+}
+
+int wrc_board_init()
+{
+	uint8_t mac_addr[6];
 
 	/*
 	 * MAC address assignment
@@ -61,12 +67,7 @@ int wrc_board_early_init()
 		mac_addr[5] = 0x77;
 	}
 	ep_set_mac_addr(&wrc_endpoint_dev, mac_addr);
-
-	return 0;
-}
-
-int wrc_board_init()
-{
+	ep_pfilter_init_default(&wrc_endpoint_dev);
 
 	return 0;
 }

@@ -12,7 +12,6 @@ int wrc_board_early_init()
 	int memtype;
 	uint32_t sdbfs_entry;
 	uint32_t sector_size;
-	uint8_t mac_addr[6];
 
 
 	if (EEPROM_STORAGE) {
@@ -60,6 +59,12 @@ int wrc_board_early_init()
 	 */
 	storage_mount( &wrc_storage_dev );
 
+	return 0;
+}
+
+int wrc_board_init()
+{
+	uint8_t mac_addr[6];
 	/*
 	 * Try reading MAC addr stored in flash
 	 */
@@ -73,12 +78,7 @@ int wrc_board_early_init()
 		mac_addr[5] = 0x77;
 	}
 	ep_set_mac_addr(&wrc_endpoint_dev, mac_addr);
-
-	return 0;
-}
-
-int wrc_board_init()
-{
+	ep_pfilter_init_default(&wrc_endpoint_dev);
 
 	return 0;
 }
