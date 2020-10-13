@@ -21,10 +21,6 @@ struct {
 
 int wrc_board_early_init()
 {
-	uint32_t sdbfs_entry;
-	uint32_t sector_size;
-
-
 	/* EEPROM support */
 	bb_i2c_create( &i2c_wrc_eeprom,
 		&pin_sysc_fmc_scl,
