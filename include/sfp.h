@@ -88,6 +88,8 @@ int sfp_get_tuning_procedure(void);
 /* Get current tune word */
 int32_t sfp_get_tune_word(void);
 
+void sfp_read_temp(uint8_t * sfp_temp, uint8_t * sfp_temp_frac);
+
 /* Set the tune word */
 void sfp_set_tune_word(int32_t tune_word);
 
