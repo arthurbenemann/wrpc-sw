@@ -17,4 +17,7 @@
 void wrxInit(uint8_t mac_addr[]);
 
 // Execute on a regular basis in main-loop
-void wrxExecute();
+int wrxExecute(void);
+
+// Invoked often to get link status
+void wrxUpdate(int linkStatus);

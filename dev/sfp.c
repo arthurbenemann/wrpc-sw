@@ -27,6 +27,8 @@ int32_t sfp_in_db = 0;
 
 char sfp_pn[SFP_PN_LEN];
 
+int sfp_read_part_id(char *part_id);
+
 static int sfp_present(void)
 {
 	return !gpio_in(GPIO_SFP_DET);
@@ -201,13 +203,14 @@ static int sfp_read_a0_low(int offset, int len, uint8_t *values)
     return sfp_read_chksum(0, 63, offset, len, values);
 }
 
+
 static int sfp_read_a0_mid(int offset, int len, uint8_t *values)
 {
     return sfp_read_chksum(64, 95, offset, len, values);
 }
 
 
-int sfp_read_oui(uint32_t * oui)
+static int sfp_read_oui(uint32_t * oui)
 {
     uint8_t oui_bytes[3];
     

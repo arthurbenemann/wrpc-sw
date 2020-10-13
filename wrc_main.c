@@ -234,7 +234,7 @@ DEFINE_WRC_TASK(spll) = {
 	.job = spll_update,
 };
 
-static int wrx_Execute()
+static int wrx_Execute(void)
 {
   wrxUpdate(link_status);
   wrxExecute();
