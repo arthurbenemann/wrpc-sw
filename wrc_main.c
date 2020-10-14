@@ -308,7 +308,8 @@ static void create_tasks(void)
 #endif
 
 #ifdef CONFIG_LLDP
-	wrc_task_create( "lldp", lldp_init, lldp_poll );
+	t = wrc_task_create( "lldp", lldp_init, lldp_poll );
+	wrc_task_set_enable( t, is_link_up );
 #endif
 
 #ifdef CONFIG_SNMP
