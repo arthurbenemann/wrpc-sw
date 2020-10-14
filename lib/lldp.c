@@ -240,8 +240,8 @@ void lldp_init(void)
 int lldp_poll(void)
 {
 	static int ticks;
-	unsigned char new_ipWR;
-	static unsigned char old_ipWR;
+	uint8_t new_ipWR[4];
+	static uint8_t old_ipWR[4];
 	uint8_t new_mac[ETH_ALEN];
 	static uint8_t old_mac[ETH_ALEN];
 
@@ -253,20 +253,20 @@ int lldp_poll(void)
 	if (ticks > LLDP_TX_TICK_INTERVAL) {
 		ep_get_mac_addr(&wrc_endpoint_dev, new_mac);
 		if (HAS_IP) {
-			getIP(&new_ipWR);
+			getIP(new_ipWR);
 		}
 
 		/* Update only when IP or MAC changed */
 		/* TODO: or VLAN changed */
-		if (memcmp(&new_mac, &old_mac, ETH_ALEN)
+		if (memcmp(new_mac, old_mac, ETH_ALEN)
 		    || (HAS_IP && (ip_status != IP_TRAINING)
-			&& memcmp(&new_ipWR, &old_ipWR, IPLEN))
+			&& memcmp(new_ipWR, old_ipWR, IPLEN))
 		   ) {
 			/* update LLDP info */
 			lldp_update();
 			/* copy new MAC nad IP */
-			memcpy(&old_mac, &new_mac, ETH_ALEN);
-			memcpy(&old_ipWR, &new_ipWR, IPLEN);
+			memcpy(old_mac, new_mac, ETH_ALEN);
+			memcpy(old_ipWR, new_ipWR, IPLEN);
 		}
 
 		ptpd_netif_sendto(lldp_socket, &addr, lldpdu, lldpdu_len, 0);
