@@ -36,9 +36,9 @@ config TEMP_HIGH_THRESHOLD
 config TEMP_HIGH_RAPPEL
 	int
 	default 60
+
 config PLL_VERBOSE
 	boolean
-	default y if WR_SWITCH
 
 config PFILTER_VERBOSE
 	boolean
@@ -127,8 +127,17 @@ config P2P
 	  If you deny this option, P2P code is not built, to save some
 	  binary size.
 
-config IP
+config WR_NIC_CPU
 	depends on WR_NODE
+	boolean "Allows compatibility with external NIC driver on CPU"
+	default n
+	help
+	  ARP & ICMP traffic are bypassed to the external fabric (NIC) so
+	  that the CPU handles these packets and not the LM32. (This option
+	  is mainly used by the wr-starting-kit on SPEC cards)
+
+config IP
+	depends on WR_NODE && !WR_NIC_CPU
 	boolean "Compile minimal IP support in wrpc-sw"
 	help
 	  This allows to run LM32 code that is aware of IP. The feature is
@@ -175,13 +184,28 @@ config SNMP_SET
 	help
 	  This option enables support for SET requests for Mini SNMP responder
 
+config SNMP_INIT
+	depends on SNMP && BUILD_INIT
+	default y if BUILD_INIT
+	default n
+	boolean "Adds support of changing init script/commands via SNMP"
+	help
+	  This option adds a branch wrpcInitScriptConfigGroup to the SNMP
+
+config SNMP_SDB
+	depends on SNMP && GENSDBFS
+	default y
+	boolean "Adds support of generation of SDB via SNMP"
+	help
+	  This option adds a branch wrpcSdbGroup to the SNMP
+
 config SNMP_AUX_DIAG
 	depends on SNMP && AUX_DIAG
 	default y if AUX_DIAG
 	default n
 	boolean "Adds support of auxiliary diagnostics registers to SNMP"
 	help
-	  This option adds branch wrpcAuxDiag to the SNMP
+	  This option adds a branch wrpcAuxDiag to the SNMP
 
 config BUILD_INIT
 	depends on WR_NODE
@@ -298,7 +322,7 @@ config ABSCAL
 	  described and documented by Peter Jansweijer.
 
 config LLDP
-	depends on WR_NODE
+	depends on WR_NODE && IP
 	boolean "Include LLDP protocol transmit-only"
 	default n
 	help
@@ -487,8 +511,7 @@ config PLL_VERBOSE
 	depends on DEVELOPER
 	boolean "Verbose messages in softpll"
 	help
-	  The softpll is usually silent in WR node and verbose in WR
-	  switch. You can enable pll messages in WR node for debugging.
+	  Outputs additional debugging messages in the softpll. Off by default.
 
 config PFILTER_VERBOSE
 	depends on DEVELOPER

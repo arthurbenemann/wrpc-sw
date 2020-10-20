@@ -30,6 +30,7 @@
 #include "lib/ipv4.h"
 #include "rxts_calibrator.h"
 #include "flash.h"
+#include "fram.h"
 
 #include "wrc_ptp.h"
 #include "system_checks.h"
@@ -62,7 +63,10 @@ static void wrc_initialize(void)
 
 	timer_init(1);
 	get_hw_name(wrc_hw_name);
-	storage_read_hdl_cfg();
+
+	if (HAS_GENSDBFS)
+		storage_read_hdl_cfg();
+
 	wrpc_w1_init();
 	wrpc_w1_bus.detail = ONEWIRE_PORT;
 	w1_scan_bus(&wrpc_w1_bus);

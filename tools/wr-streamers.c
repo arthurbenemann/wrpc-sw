@@ -12,10 +12,15 @@
 
 #include <hw/wr_streamers.h>
 
+#define GW_REG_VER_ERROR     -1
+#define GW_REG_VER_OK         0
+#define GW_REG_VER_DIFFERENT  1
+
 static struct mapping_desc *wrstm = NULL;
 
 #define LEAP_SECONDS_DEFAULT 37
 static int leap_seconds = LEAP_SECONDS_DEFAULT;
+static uint32_t gw_reg_map_version = 0;
 
 static char *stats_mesg[][2] = {
 	{"Number of sent wr streamer frames since reset", "tx_cnt"},
@@ -30,6 +35,7 @@ static char *stats_mesg[][2] = {
         {"Counter of the accumulated frequency", "acc_freq_cnt"},
         {"Number of indications that one or more blocks in a"
 	 "frame were lost (probably CRC error) since reset", "rx_cnt_lost_blk"},
+        {"Latency statistics with raw values for calculations", "rx_lat_raw"}
 };
 
 int read_stats(struct cmd_desc *cmdd, struct atom *atoms)
@@ -43,10 +49,10 @@ int read_stats(struct cmd_desc *cmdd, struct atom *atoms)
 	if (atoms == (struct atom *)VERBOSE_HELP) {
 		printf("%s - options\n"
 		       "\t0: %s\n\t1: %s\n\t2: %s\n\t3: %s\n\t4: %s\n\t5: %s\n"
-		       "\t6: %s\n\t7: %s\n", cmdd->name, stats_mesg[0][0],
+		       "\t6: %s\n\t7: %s\n\t8: %s\n", cmdd->name, stats_mesg[0][0],
 		       stats_mesg[1][0], stats_mesg[2][0], stats_mesg[3][0],
 		       stats_mesg[4][0], stats_mesg[5][0], stats_mesg[6][0],
-		       stats_mesg[7][0]);
+		       stats_mesg[7][0], stats_mesg[8][0]);
 		return 1;
 	}
 
@@ -75,38 +81,32 @@ int read_stats(struct cmd_desc *cmdd, struct atom *atoms)
 		cnt_lat = ((uint64_t)iomemr32(wrstm->is_be, ptr->RX_STAT13)
 			  << 32) | iomemr32(wrstm->is_be, ptr->RX_STAT12);
 		avg_lat = (((double)acc_lat) * 8 / 1000) / (double)cnt_lat;
-		fprintf(stderr, "Latency [us]    : min=%10g max=%10g avg =%10g "
-			"(0x%x, 0x%x, %lu=%u << 32 | %u)*8/1000 us, "
-			"cnt =%lu overflow =%d)\n",
-			min_lat, max_lat, avg_lat,
-			iomemr32(wrstm->is_be, ptr->RX_STAT1),
-			iomemr32(wrstm->is_be, ptr->RX_STAT0),
-			acc_lat, iomemr32(wrstm->is_be, ptr->RX_STAT11),
-			iomemr32(wrstm->is_be, ptr->RX_STAT10),
-			cnt_lat, overflow);
-		fprintf(stderr, "Frames  [number]: tx =%lu rx =%lu lost=%lu "
-			"(lost blocks =%lu)\n",
-			((uint64_t)iomemr32(wrstm->is_be, ptr->TX_STAT3)
-			<< 32) | iomemr32(wrstm->is_be, ptr->TX_STAT2),
-			((uint64_t)iomemr32(wrstm->is_be, ptr->RX_STAT5)
-			<< 32) | iomemr32(wrstm->is_be, ptr->RX_STAT4),
-			((uint64_t)iomemr32(wrstm->is_be, ptr->RX_STAT7)
-			<< 32) | iomemr32(wrstm->is_be, ptr->RX_STAT6),
-			((uint64_t)iomemr32(wrstm->is_be, ptr->RX_STAT9)
-			<< 32) | iomemr32(wrstm->is_be, ptr->RX_STAT8));
+		fprintf(stderr, "Latency [us]    : min=%15g max=%15g avg =%15g "
+			"(overflow    =%d)\n",
+			min_lat, max_lat, avg_lat, overflow);
+		fprintf(stderr, "Frames  [number]: tx =%15"PRIu64" rx =%15"PRIu64" "
+			"lost=%15"PRIu64" (lost blocks =%"PRIu64")\n",
+			(uint64_t)(((uint64_t)iomemr32(wrstm->is_be, ptr->TX_STAT3)
+			<< 32) | iomemr32(wrstm->is_be, ptr->TX_STAT2)),
+			(uint64_t)(((uint64_t)iomemr32(wrstm->is_be, ptr->RX_STAT5)
+			<< 32) | iomemr32(wrstm->is_be, ptr->RX_STAT4)),
+			(uint64_t)(((uint64_t)iomemr32(wrstm->is_be, ptr->RX_STAT7)
+			<< 32) | iomemr32(wrstm->is_be, ptr->RX_STAT6)),
+			(uint64_t)(((uint64_t)iomemr32(wrstm->is_be, ptr->RX_STAT9)
+			<< 32) | iomemr32(wrstm->is_be, ptr->RX_STAT8)));
 		break;
 	case 0:
-		fprintf(stderr, "%s:%lu\n", stats_mesg[0][1],
+		fprintf(stderr, "%s:%"PRIu64"\n", stats_mesg[0][1],
 			((uint64_t)iomemr32(wrstm->is_be, ptr->TX_STAT3)
 			<< 32) | iomemr32(wrstm->is_be, ptr->TX_STAT2));
 		break;
 	case 1:
-		fprintf(stderr, "%s:%lu\n", stats_mesg[1][1],
+		fprintf(stderr, "%s:%"PRIu64"\n", stats_mesg[1][1],
 			((uint64_t)iomemr32(wrstm->is_be, ptr->RX_STAT5)
 			<< 32) | iomemr32(wrstm->is_be, ptr->RX_STAT4));
 		break;
 	case 2:
-		fprintf(stderr, "%s:%lu\n", stats_mesg[2][1],
+		fprintf(stderr, "%s:%"PRIu64"\n", stats_mesg[2][1],
 			((uint64_t)iomemr32(wrstm->is_be, ptr->RX_STAT7)
 			<< 32) | iomemr32(wrstm->is_be, ptr->RX_STAT6));
 		break;
@@ -121,19 +121,55 @@ int read_stats(struct cmd_desc *cmdd, struct atom *atoms)
 				iomemr32(wrstm->is_be, ptr->RX_STAT1)));
 		break;
 	case 5:
-		fprintf(stderr, "%s:%lu\n", stats_mesg[5][1],
+		fprintf(stderr, "%s:%"PRIu64"\n", stats_mesg[5][1],
 			((uint64_t)iomemr32(wrstm->is_be, ptr->RX_STAT11)
 			<< 32) | iomemr32(wrstm->is_be, ptr->RX_STAT10));
 		break;
 	case 6:
-		fprintf(stderr, "%s:%lu\n", stats_mesg[6][1],
+		fprintf(stderr, "%s:%"PRIu64"\n", stats_mesg[6][1],
 			((uint64_t)iomemr32(wrstm->is_be, ptr->RX_STAT13)
 			<< 32) | iomemr32(wrstm->is_be, ptr->RX_STAT12));
 		break;
 	case 7:
-		fprintf(stderr, "%s:%lu\n", stats_mesg[7][1],
+		fprintf(stderr, "%s:%"PRIu64"\n", stats_mesg[7][1],
 			((uint64_t)iomemr32(wrstm->is_be, ptr->RX_STAT9)
 			<< 32) | iomemr32(wrstm->is_be, ptr->RX_STAT8));
+		break;
+	case 8:// print all
+		max_lat = WR_STREAMERS_RX_STAT0_RX_LATENCY_MAX_R(
+			  iomemr32(wrstm->is_be, ptr->RX_STAT0));
+		max_lat = (max_lat * 8) / 1000.0;
+		min_lat = WR_STREAMERS_RX_STAT1_RX_LATENCY_MIN_R(
+			  iomemr32(wrstm->is_be, ptr->RX_STAT1));
+		min_lat = (min_lat * 8) / 1000.0;
+		overflow = WR_STREAMERS_SSCR1_RX_LATENCY_ACC_OVERFLOW &
+			   iomemr32(wrstm->is_be, ptr->SSCR1);
+		//put it all together
+		acc_lat = ((uint64_t)iomemr32(wrstm->is_be, ptr->RX_STAT11)
+			  << 32) |iomemr32(wrstm->is_be, ptr->RX_STAT10);
+		cnt_lat = ((uint64_t)iomemr32(wrstm->is_be, ptr->RX_STAT13)
+			  << 32) | iomemr32(wrstm->is_be, ptr->RX_STAT12);
+		avg_lat = (((double)acc_lat) * 8 / 1000) / (double)cnt_lat;
+		fprintf(stderr, "Latency [us]    : min=%10g max=%10g avg =%10g \n"
+			"(0x%lx, 0x%lx, %"PRIu64"=%lu << 32 | %lu)*8/1000 us, "
+			"cnt =%"PRIu64" overflow =%d)\n",
+			min_lat, max_lat, avg_lat,
+			(unsigned long)iomemr32(wrstm->is_be, ptr->RX_STAT1),
+			(unsigned long)iomemr32(wrstm->is_be, ptr->RX_STAT0),
+			acc_lat, (unsigned long) iomemr32(wrstm->is_be, ptr->RX_STAT11),
+			(unsigned long) iomemr32(wrstm->is_be, ptr->RX_STAT10),
+			cnt_lat, overflow);
+
+		fprintf(stderr, "Frames  [number]: tx =%"PRIu64" rx =%"PRIu64" "
+			"lost=%"PRIu64" (lost blocks =%"PRIu64")\n",
+			(uint64_t)(((uint64_t)iomemr32(wrstm->is_be, ptr->TX_STAT3)
+			  << 32) | iomemr32(wrstm->is_be, ptr->TX_STAT2)),
+			(uint64_t)(((uint64_t)iomemr32(wrstm->is_be, ptr->RX_STAT5)
+			  << 32) | iomemr32(wrstm->is_be, ptr->RX_STAT4)),
+			(uint64_t)(((uint64_t)iomemr32(wrstm->is_be, ptr->RX_STAT7)
+			  << 32) | iomemr32(wrstm->is_be, ptr->RX_STAT6)),
+			(uint64_t)(((uint64_t)iomemr32(wrstm->is_be, ptr->RX_STAT9)
+			  << 32) | iomemr32(wrstm->is_be, ptr->RX_STAT8)));
 		break;
 	}
 
@@ -141,6 +177,17 @@ int read_stats(struct cmd_desc *cmdd, struct atom *atoms)
 	ptr->SSCR1 = 0;
 
 	return 1;
+}
+int support_from_version(uint32_t sw_reg_map_version)
+{
+	if(sw_reg_map_version > gw_reg_map_version)
+	{
+		fprintf(stderr, "\nFunction not supported in gateware\n"
+		"(support from version=%d, you interface version=%d)\n\n",
+		sw_reg_map_version, gw_reg_map_version);
+		return -1;
+	}
+	return 0;
 }
 
 int read_reset_time(struct cmd_desc *cmdd, struct atom *atoms)
@@ -206,6 +253,26 @@ int reset_seqid(struct cmd_desc *cmdd, struct atom *atoms)
 	return 1;
 }
 
+int hdl_sw_reset(struct cmd_desc *cmdd, struct atom *atoms)
+{
+	if (support_from_version(/*supported as of gw version:*/ 2))
+		return 0;
+
+	volatile struct WR_STREAMERS_WB *ptr =
+		(volatile struct WR_STREAMERS_WB *)wrstm->base;
+
+	if (atoms == (struct atom *)VERBOSE_HELP) {
+		printf("%s - %s\n", cmdd->name, cmdd->help);
+		return 1;
+	}
+
+	ptr->RSTR = iomemw32(wrstm->is_be, WR_STREAMERS_RSTR_RST_SW);
+        fprintf(stderr, "Reseted the tx and rx wr_streamer HDL modules \n"
+                        "(streamer statistics are not affected and require "
+                        "reset)\n");
+	return 1;
+}
+
 int get_set_tx_ethertype(struct cmd_desc *cmdd, struct atom *atoms)
 {
 	volatile struct WR_STREAMERS_WB *ptr =
@@ -255,7 +322,7 @@ int get_set_tx_local_mac(struct cmd_desc *cmdd, struct atom *atoms)
 	lsw = iomemr32(wrstm->is_be, ptr->TX_CFG1);
 	msw = iomemr32(wrstm->is_be, ptr->TX_CFG2);
 	val = lsw | (msw << 32);
-	fprintf(stderr, "TX Local MAC address 0x%lx\n", val);
+	fprintf(stderr, "TX Local MAC address 0x%"PRIx64"\n", val);
 	return 1;
 }
 
@@ -284,7 +351,7 @@ int get_set_tx_remote_mac(struct cmd_desc *cmdd, struct atom *atoms)
 	lsw = iomemr32(wrstm->is_be, ptr->TX_CFG3);
 	msw = iomemr32(wrstm->is_be, ptr->TX_CFG4);
 	val = lsw | (msw << 32);
-	fprintf(stderr, "TX Target MAC address 0x%lx\n", val);
+	fprintf(stderr, "TX Target MAC address 0x%"PRIx64"\n", val);
 	return 1;
 }
 
@@ -339,7 +406,7 @@ int get_set_rx_local_mac(struct cmd_desc *cmdd, struct atom *atoms)
 	lsw = iomemr32(wrstm->is_be, ptr->RX_CFG1);
 	msw = iomemr32(wrstm->is_be, ptr->RX_CFG2);
 	val = lsw | (msw << 32);
-	fprintf(stderr, "RX Local MAC address 0x%lx\n", val);
+	fprintf(stderr, "RX Local MAC address 0x%"PRIx64"\n", val);
 	return 1;
 }
 
@@ -368,7 +435,7 @@ int get_set_rx_remote_mac(struct cmd_desc *cmdd, struct atom *atoms)
 	lsw = iomemr32(wrstm->is_be, ptr->RX_CFG3);
 	msw = iomemr32(wrstm->is_be, ptr->RX_CFG4);
 	val = lsw | (msw << 32);
-	fprintf(stderr, "RX Target MAC address 0x%lx\n", val);
+	fprintf(stderr, "RX Target MAC address 0x%"PRIx64"\n", val);
 	return 1;
 }
 
@@ -420,6 +487,86 @@ int get_set_latency(struct cmd_desc *cmdd, struct atom *atoms)
 	return 1;
 }
 
+int get_latency_stats(struct cmd_desc *cmdd, struct atom *atoms)
+{
+	if (support_from_version(/*supported as of gw version:*/ 2))
+		return 0;
+
+	volatile struct WR_STREAMERS_WB *ptr =
+		(volatile struct WR_STREAMERS_WB *)wrstm->base;
+
+	if (atoms == (struct atom *)VERBOSE_HELP) {
+		printf("%s - %s\n", cmdd->name, cmdd->help);
+		return 1;
+	}
+
+	//snapshot stats
+	ptr->SSCR1 = iomemw32(wrstm->is_be, WR_STREAMERS_SSCR1_SNAPSHOT_STATS);
+
+	fprintf(stderr, "Fixed latency frames [number]: "
+                "match   = %10lu "
+                "late    = %10lu "
+                "timeout = %10lu\n",
+		((uint64_t)iomemr32(wrstm->is_be, ptr->RX_STAT20)
+		<< 32) | iomemr32(wrstm->is_be, ptr->RX_STAT19),
+		((uint64_t)iomemr32(wrstm->is_be, ptr->RX_STAT16)
+		<< 32) | iomemr32(wrstm->is_be, ptr->RX_STAT15),
+		((uint64_t)iomemr32(wrstm->is_be, ptr->RX_STAT18)
+		<< 32) | iomemr32(wrstm->is_be, ptr->RX_STAT17)
+        );
+
+	//release snapshot
+	ptr->SSCR1 = 0;
+	return 1;
+}
+
+int get_set_latency_timeout(struct cmd_desc *cmdd, struct atom *atoms)
+{
+	if (support_from_version(/*supported as of gw version:*/ 2))
+		return 0;
+
+	volatile struct WR_STREAMERS_WB *ptr =
+		(volatile struct WR_STREAMERS_WB *)wrstm->base;
+	int lat;
+	uint32_t val;
+
+	if (atoms == (struct atom *)VERBOSE_HELP) {
+		printf("%s - %s\n", cmdd->name, cmdd->help);
+		return 1;
+	}
+
+	++atoms;
+	if (atoms->type == Terminator) {
+		// Get Latency
+		val = WR_STREAMERS_RX_CFG6_RX_FIXED_LATENCY_TIMEOUT_R(
+			 iomemr32(wrstm->is_be, ptr->RX_CFG6));
+		fprintf(stderr, "Fixed latency timeout: %d [us]\n",
+			(val * 8) / 1000);
+	}
+	else {
+		if (atoms->type != Numeric)
+			return -TST_ERR_WRONG_ARG;
+		lat = atoms->val;
+		if (lat < 0) {
+			val = 0x1000000;
+			lat = (val * 8) / 1000;
+			fprintf(stderr, "Setting default value of ~134ms\n");
+		}
+		else{
+                	val = (lat * 1000) / 8;
+                }
+		ptr->RX_CFG6 = iomemw32(wrstm->is_be,
+			WR_STREAMERS_RX_CFG6_RX_FIXED_LATENCY_TIMEOUT_W(val));
+		val = WR_STREAMERS_RX_CFG6_RX_FIXED_LATENCY_TIMEOUT_R(
+		      iomemr32(wrstm->is_be, ptr->RX_CFG6));
+		fprintf(stderr, "Fixed latency timeout set: %d [us] "
+			"(set %d | read : %d [8ns cycles])\n",
+			lat, ((lat * 1000) / 8), val);
+	}
+
+	return 1;
+}
+
 int get_set_qtags_flag(struct cmd_desc *cmdd, struct atom *atoms)
 {
 	volatile struct WR_STREAMERS_WB *ptr =
@@ -457,7 +604,7 @@ int get_set_qtags_param(struct cmd_desc *cmdd, struct atom *atoms)
 	volatile struct WR_STREAMERS_WB *ptr =
 		(volatile struct WR_STREAMERS_WB *)wrstm->base;
 	int argc;
-	uint32_t vid, prio, txcfg5, cfg;
+	uint32_t vid, prio, txcfg5, cfg, ena=0;
 
 	if (atoms == (struct atom *)VERBOSE_HELP) {
 		printf("%s - %s\n", cmdd->name, cmdd->help);
@@ -466,14 +613,7 @@ int get_set_qtags_param(struct cmd_desc *cmdd, struct atom *atoms)
 
 	++atoms;
 	txcfg5 = iomemr32(wrstm->is_be, ptr->TX_CFG5);
-	if (atoms->type == Terminator) { //read current flag
-		vid = (txcfg5 & WR_STREAMERS_TX_CFG5_QTAG_VID_MASK) >>
-		      WR_STREAMERS_TX_CFG5_QTAG_VID_SHIFT;
-		prio = (txcfg5 & WR_STREAMERS_TX_CFG5_QTAG_PRIO_MASK) >>
-		       WR_STREAMERS_TX_CFG5_QTAG_PRIO_SHIFT;
-	}
-	else { // writing new QTag settings
-
+	if (atoms->type != Terminator) { // writing new QTag settings
 		argc = 0; //count provided arguments
 		if (atoms->type != Numeric)
 			return -TST_ERR_WRONG_ARG;
@@ -501,8 +641,16 @@ int get_set_qtags_param(struct cmd_desc *cmdd, struct atom *atoms)
 		cfg = iomemr32(wrstm->is_be, ptr->CFG);
 		cfg |= WR_STREAMERS_CFG_OR_TX_QTAG;
 		ptr->CFG = iomemw32(wrstm->is_be, cfg);
+		ena=1;
 	}
-	fprintf(stderr, "Tagging with QTag: VLAN ID: %d prio: %d\n",
+	ena = txcfg5 & WR_STREAMERS_TX_CFG5_QTAG_ENA;
+	vid = (txcfg5 & WR_STREAMERS_TX_CFG5_QTAG_VID_MASK) >>
+		WR_STREAMERS_TX_CFG5_QTAG_VID_SHIFT;
+	prio = (txcfg5 & WR_STREAMERS_TX_CFG5_QTAG_PRIO_MASK) >>
+		WR_STREAMERS_TX_CFG5_QTAG_PRIO_SHIFT;
+
+	fprintf(stderr, "Tagging with QTag: %s\n",(ena)?"Enabled":"Disabled");
+	fprintf(stderr, "Tagging settings : VLAN ID= %d prio= %d\n",
 		vid, prio);
 	return 1;
 }
@@ -573,6 +721,8 @@ enum wrstm_cmd_id{
 	WRSTM_CMD_RX_REM_MAC,
 	*/
 	WRSTM_CMD_LATENCY,
+	WRSTM_CMD_LATENCY_STATS,
+	WRSTM_CMD_LATENCY_TIMEOUT,
 	WRSTM_CMD_QTAG_ENB,
 	WRSTM_CMD_QTAG_VP,
 	WRSTM_CMD_QTAG_OR,
@@ -580,6 +730,7 @@ enum wrstm_cmd_id{
 //	WRSTM_CMD_DBG_BYTE,
 //	WRSTM_CMD_DBG_MUX,
 //	WRSTM_CMD_DBG_VAL,
+	WRSTM_CMD_HDL_SW_RESET,
 	WRSTM_CMD_LAST,
 };
 
@@ -619,9 +770,15 @@ struct cmd_desc wrstm_cmd[WRSTM_CMD_NB + 1] = {
 	{ 1, WRSTM_CMD_TX_ETHERTYPE, "txether",
 	  "get/set TX ethertype", "ethertype", 0, get_set_tx_ethertype},
 	  **************************************************************** */
-	{ 1, WRSTM_CMD_LATENCY, "lat",
+	{ 1, WRSTM_CMD_LATENCY, "flat",
 	  "get/set config of fixed latency in integer [us] (-1 to disable)",
-	  "[latency]", 0, get_set_latency},
+	  "[fixed latency value]", 0, get_set_latency},
+	{ 1, WRSTM_CMD_LATENCY_STATS, "flatstats",
+	  "get statistics regarding fixed latency operation",
+	  "", 0, get_latency_stats},
+	{ 1, WRSTM_CMD_LATENCY_TIMEOUT, "flattimeout",
+	  "get/set fixed latency timeout [us] (-1 to set default: ~1ms)",
+	  "[timeout value]", 0, get_set_latency_timeout},
 	{ 1, WRSTM_CMD_QTAG_ENB, "qtagf",
 	  "QTags flag on off",
 	  "[0/1]", 0, get_set_qtags_flag},
@@ -641,6 +798,9 @@ struct cmd_desc wrstm_cmd[WRSTM_CMD_NB + 1] = {
 //	  "set whether tx or rx frames should be snooped", "dir", 1,},
 //	{ 1, WRSTM_CMD_DBG_VAL, "dbgword",
 //	  "read the snooped 32-bit value", "", 0,},
+	{ 1, WRSTM_CMD_HDL_SW_RESET, "hdlswreset",
+	  "HD software reset of rx and tx streamer HDL modules (excludes stats)",
+	   "", 0, hdl_sw_reset},
 	{0, },
 };
 
@@ -669,14 +829,28 @@ static int verify_reg_version()
 {
 	volatile struct WR_STREAMERS_WB *ptr =
 		(volatile struct WR_STREAMERS_WB *)wrstm->base;
-	uint32_t ver = 0;
-	ver = iomemr32(wrstm->is_be, ptr->VER);
+	gw_reg_map_version = iomemr32(wrstm->is_be, ptr->VER);
 	fprintf(stderr, "Wishbone register version: in FPGA = 0x%x |"
-		" in SW = 0x%x\n", ver, WBGEN2_WR_STREAMERS_VERSION);
-	if(ver != WBGEN2_WR_STREAMERS_VERSION)
-		return -1;
-	else
-		return 0;
+		" in SW = 0x%x\n", gw_reg_map_version, WBGEN2_WR_STREAMERS_VERSION);
+
+	if(gw_reg_map_version == WBGEN2_WR_STREAMERS_VERSION)
+		return GW_REG_VER_OK;
+	else if(gw_reg_map_version == 0xffffffff || gw_reg_map_version == 0x0){
+		fprintf(stderr, "\n\nWrong reading of version register, exiting ...\n\n");
+		return GW_REG_VER_ERROR;
+        }
+	else {
+		fprintf(stderr, "\n");
+		fprintf(stderr, "============== !!! WARNING !!! ===============\n");
+		fprintf(stderr, " Register version in FPGA and SW do not match\n");
+		if(gw_reg_map_version < WBGEN2_WR_STREAMERS_VERSION)
+			fprintf(stderr, "  This software is the newer than the bitstream\n");
+		if(gw_reg_map_version > WBGEN2_WR_STREAMERS_VERSION)
+			fprintf(stderr, "  This software is older than the bitstream\n");
+		fprintf(stderr, "      Some commands may not be supported\n");
+		fprintf(stderr, "============== !!! WARNING !!! ===============\n\n");
+		return GW_REG_VER_DIFFERENT;
+	}
 }
 
 int main(int argc, char *argv[])
@@ -699,11 +873,8 @@ int main(int argc, char *argv[])
 	}
 
 	ret = verify_reg_version();
-	if (ret) {
-		fprintf(stderr, "Register version in FPGA and SW does not match\n");
-		dev_unmap(wrstm);
+	if (ret == GW_REG_VER_ERROR) //something is wrong if incorrection version value
 		return -1;
-	}
 	
 	ret = extest_register_user_cmd(wrstm_cmd, WRSTM_CMD_NB);
 	if (ret) {

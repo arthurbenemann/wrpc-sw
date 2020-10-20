@@ -1,0 +1,31 @@
+before_script:
+  - export PATH=/opt/lm32-gcc-4.5.3/bin:$PATH
+
+stages:
+- make_wrpc_sw
+- make_rt_cpu
+
+make_wrpc_sw:
+  stage: make_wrpc_sw
+  script:
+  - git submodule init; git submodule update
+  - make spec_defconfig
+  - make
+  artifacts:
+    name: WRPC_SW_CI_%CI_JOB_ID%
+    paths:
+    - wrc.bin
+    - wrc.elf
+    - wrc.bram
+    - wrc.mif
+
+make_rt_cpu:
+  stage: make_rt_cpu
+  script:
+  - git submodule init; git submodule update
+  - make wr_switch_defconfig
+  - make
+  artifacts:
+    name: WRPC_SW_CI_%CI_JOB_ID%
+    paths:
+    - rt_cpu.elf

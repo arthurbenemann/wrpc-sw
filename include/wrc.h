@@ -53,13 +53,6 @@ extern int wrc_vlan_number;
 int wrc_mon_gui(void);
 void shell_init(void);
 
-/* This header is included by softpll: manage wrc/wrs difference */
-#ifdef CONFIG_WR_NODE
-#define NS_PER_CLOCK 8
-#else /* CONFIG_WR_SWITCH */
-#define NS_PER_CLOCK 16
-#endif
-
 /* Default width (in 8ns/16ns units) of the pulses on the PPS output */
 #define PPS_WIDTH (10 * 1000 * 1000 / NS_PER_CLOCK) /* 10ms */
 
@@ -70,7 +63,8 @@ extern int abs(int val);
 extern int wrc_ui_refperiod;
 
 /* Init functions and defaults for the wrs build */
-int ad9516_init(int scb_ver);
+int ad9516_init(int scb_ver, int ljd_present);
+int ljd_ad9516_init(void);
 void rts_init(void);
 int rtipc_init(void);
 void rts_update(void);

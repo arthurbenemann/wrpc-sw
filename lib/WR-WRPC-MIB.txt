@@ -742,6 +742,94 @@ wrpcSfpAlpha                   OBJECT-TYPE
     ::= { wrpcSfpEntry 5 }
 
 -- ****************************************************************************
+wrpcInitScriptConfigGroup             OBJECT IDENTIFIER ::= { wrpcCore 9 }
 
+wrpcInitScriptConfigApply             OBJECT-TYPE
+    SYNTAX                     INTEGER {
+                                   na(0),
+                                   writeToFlash(1),
+                                   eraseFlash(50),
+                                   applySuccessful(100),
+                                   applyFailed(200),
+                                   applyFailedEmptyLine(201)
+                               }
+    MAX-ACCESS                 read-write
+    STATUS                     current
+    DESCRIPTION
+            "Make a change to a init script
+            writeToFlash - Add a defined command from wrpcInitScriptConfigLine to the init script
+            eraseFlash - Erase init script in the flash.
+            applySuccessful - Configuration applied successfully.
+            applyFailed - Failed to update init script.
+            applyFailedEmptyLine - Failed to update init script because wrpcInitScriptConfigLine is empty.
+            "
+    ::= { wrpcInitScriptConfigGroup 1 }
+
+wrpcInitScriptConfigLine       OBJECT-TYPE
+    SYNTAX                     DisplayString (SIZE(0..31))
+    MAX-ACCESS                 read-write
+    STATUS                     current
+    DESCRIPTION
+            "Line to be added to the init script."
+    ::= { wrpcInitScriptConfigGroup 2 }
+
+    
+-- ****************************************************************************
+wrpcSdbGroup             OBJECT IDENTIFIER ::= { wrpcCore 10 }
+
+wrpcSdbApply             OBJECT-TYPE
+    SYNTAX                     INTEGER {
+                                   na(0),
+                                   writeToFlash(1),
+                                   eraseFlash(50),
+                                   applySuccessful(100),
+                                   applyFailed(200),
+                                   applyFailedEmptyParam(201)
+                               }
+    MAX-ACCESS                 read-write
+    STATUS                     current
+    DESCRIPTION
+            "Make a change to a sdbfs
+            writeToFlash - Generate sdb in flash; requires other OIDs in this group to be set first.
+            eraseFlash - Erase flash; requires other OIDs in this group to be set first.
+            applySuccessful - Configuration applied successfully.
+            applyFailed - Failed to update flash.
+            applyFailedEmptyParam - Failed to update flash, some params are empty.
+            "
+    ::= { wrpcSdbGroup 1 }
+
+wrpcSdbMemType       OBJECT-TYPE
+    SYNTAX                     INTEGER {
+                                   flash(0),
+                                   eeprom(1),
+                                   w1eeprom(2),
+                                   fram(3)
+                               }
+    MAX-ACCESS                 read-write
+    STATUS                     current
+    DESCRIPTION
+            "Memory type"
+    ::= { wrpcSdbGroup 2 }
+
+wrpcSdbBaseAddr       OBJECT-TYPE
+    SYNTAX                     Integer32
+    MAX-ACCESS                 read-write
+    STATUS                     current
+    DESCRIPTION
+            "Base address"
+    ::= { wrpcSdbGroup 3 }
+
+wrpcSdbParam       OBJECT-TYPE
+    SYNTAX                     Integer32
+    MAX-ACCESS                 read-write
+    STATUS                     current
+    DESCRIPTION
+            "The meaning of this OID depends on the type of selected storage.
+            It is either the sector size in kilobytes (for Flash) or I2C chip
+            address (for I2C EEPROM)."
+    ::= { wrpcSdbGroup 4 }
+
+    
+-- ****************************************************************************
 
 END

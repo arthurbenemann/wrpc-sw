@@ -10,6 +10,13 @@
 
 #include "board.h"
 
+#define GPIO_SYS_CLK_SEL	0
+#define GPIO_PLL_RESET_N	1
+#define GPIO_PERIPH_RESET_N	3
+#define GPIO_LJD_BOARD_DETECT	4
+
+extern int ljd_present;
+
 struct GPIO_WB
 {
   uint32_t CODR;  /*Clear output register*/
@@ -36,7 +43,7 @@ static inline void gpio_dir(int pin, int val)
     __gpio->DDR &= ~(1<<pin);
 }
 
-static inline int gpio_in(int bank, int pin)
+static inline int gpio_in(int pin)
 {
   return __gpio->PSR & (1<<pin) ? 1: 0;
 }

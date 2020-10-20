@@ -20,9 +20,11 @@
 
 /* WR Reference clock period (picoseconds) and frequency (Hz) */
 #ifdef CONFIG_WR_NODE_PCS16
+#  define NS_PER_CLOCK 16
 #  define REF_CLOCK_PERIOD_PS 16000
 #  define REF_CLOCK_FREQ_HZ 62500000
 #else
+#  define NS_PER_CLOCK 8
 #  define REF_CLOCK_PERIOD_PS 8000
 #  define REF_CLOCK_FREQ_HZ 125000000
 #endif
@@ -56,6 +58,12 @@ int board_update(void);
 #define HAS_IP 1
 #else
 #define HAS_IP 0
+#endif
+
+#ifdef CONFIG_ABSCAL
+#define HAS_ABSCAL 1
+#else
+#define HAS_ABSCAL 0
 #endif
 
 #endif /* __BOARD_WRC_H */

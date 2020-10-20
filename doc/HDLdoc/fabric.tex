@@ -43,10 +43,20 @@ various information about Ethernet frame's structure and type:
     it will be assigned from WRPC configuration)
   \item[] \emph{vCRC} - the frame contains a valid CRC checksum
   \item[] \emph{packet class} - the packet class assigned by the classifier
-    inside WRPC MAC module
+    inside WRPC MAC module.
 \end{itemize}
 
-OOB data is used for passing the timestamp-related information for the incoming and 
+The packet class assigned by the classifier is one-hot encoded with 8 possible
+values: \textit{0x01} for class 0 to \textit{0x80} for class 7. In its default
+configuration WRPC assigns {\bf class 0} (\textit{0x01}) to all frames that shall be
+processed inside the core (those are never exposed to the user through the
+fabric interface); {\bf class 7} (\textit{0x80} to all Etherbone frames that are
+either broadcast or unicast with matching destination MAC address; {\bf class 6}
+(\textit{0x40}) to all other traffic not qualified to any of the previous
+classes.\\
+
+
+{\bf OOB data} is used for passing the timestamp-related information for the incoming and 
 outgoing Ethernet frames. Each frame received from a physical link is
 timestamped inside the WRPC and this value is passed as Rx OOB
 data. On the other hand, for each transmitted frame the Tx timestamp can be read
