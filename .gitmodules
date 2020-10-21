@@ -3,4 +3,6 @@
 	url = https://ohwr.org/project/ppsi.git
 [submodule "shared"]
 	path = shared
-	url = git@git.km3net.de:clb/shared.git
+	url = https://CLB_CI:_4Q_RMFeHaSnzFWMKdne@git.km3net.de/clb/shared.git
+  branch = master
+
