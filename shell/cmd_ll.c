@@ -7,6 +7,7 @@
  * Released according to the GNU GPL, version 2 or any later version.
  */
 #include <wrc.h>
+#include <irq.h>
 #include <shell.h>
 #include <storage.h>
 #include <endpoint.h>
@@ -61,6 +62,26 @@ DEFINE_WRC_COMMAND(multiread) = {
 	.exec = cmd_multiread,
 };
 
+static int cmd_irq(const char *args[])
+{
+	if (!args[0]) {
+		pp_printf("irq: use: \"irq on|off\"\n");
+		return 0;
+	}
+	if (args[0][1] == 'f') {
+		disable_irq();
+		pp_printf("interrupts are not off\n");
+	} else {
+		enable_irq();
+		pp_printf("interrupts are not on\n");
+	}
+	return 0;
+}
+
+DEFINE_WRC_COMMAND(irq) = {
+	.name = "irq",
+	.exec = cmd_irq,
+};
 
 extern struct pp_instance ppi_static;
 
