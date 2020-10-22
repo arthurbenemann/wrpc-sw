@@ -36,6 +36,32 @@ DEFINE_WRC_COMMAND(devmem) = {
 	.exec = cmd_devmem,
 };
 
+static int cmd_multiread(const char *args[])
+{
+	volatile uint32_t *addr;
+	uint32_t val, t0, t1;
+	int count, i;
+
+	if (!args[1]) {
+		pp_printf("multiread: use: \"mr <0xaddress> <0xcount>\"\n");
+		return 0;
+	}
+	fromhex(args[0], (void *)&addr);
+	fromhex(args[1], (void *)&count);
+	t0 = timer_get_tics();
+	for (i = 0; i < count; i++)
+		val = *addr;
+	t1 = timer_get_tics();
+	pp_printf("%i reads: %i tics\n", count, t1 - t0);
+	return 0;
+}
+
+DEFINE_WRC_COMMAND(multiread) = {
+	.name = "mr",
+	.exec = cmd_multiread,
+};
+
+
 extern struct pp_instance ppi_static;
 
 static int cmd_delays(const char *args[])
