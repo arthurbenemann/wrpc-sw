@@ -146,7 +146,7 @@ void ertm15_rf_distr_init( struct ertm15_rf_distribution_device *dev, struct ad7
 
 static int convert_power( int adc_value )
 {
-    //pp_printf("ADCV %d\n", adc_value );
+    pp_printf("ADCV %d\n", adc_value );
 
     float adc_voltage = (float) adc_value / 4096.0 * 2.5;
     float rf_power = 10.0 * log( adc_voltage / 2.0 ) / log( 10.0 ) + 15.0; // 2V = 0 dBm, compensate for 15 dB attenuator

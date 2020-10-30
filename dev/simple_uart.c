@@ -62,10 +62,10 @@ int suart_get_rx_fifo_count( struct simple_uart_device *dev )
 
 int suart_poll(struct simple_uart_device *dev)
 {
-	if( suart_is_fifo_supported( dev ) )
+	/*if( suart_is_fifo_supported( dev ) )
 	{
 		return suart_get_rx_fifo_count( dev );
-	}
+	}*/
 	
 	return readl( dev->base + UART_REG_SR) & UART_SR_RX_RDY ? 1 : 0;
 }

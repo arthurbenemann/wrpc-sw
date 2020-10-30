@@ -260,7 +260,7 @@ int mpll_update(struct spll_main_state *s, int tag, int source)
 	return SPLL_LOCKING;
 }
 
-#ifdef CONFIG_PPSI /* use __div64_32 from ppsi library to save libgcc memory */
+// #ifdef CONFIG_PPSI /* use __div64_32 from ppsi library to save libgcc memory */
 static int32_t from_picos(int32_t ps)
 {
 	extern uint32_t __div64_32(uint64_t *n, uint32_t base);
@@ -275,13 +275,13 @@ static int32_t from_picos(int32_t ps)
 	__div64_32(&ups, CLOCK_PERIOD_PICOSECONDS);
 	return -ups;
 }
-#else /* previous implementation: ptp-noposix has no __div64_32 available */
-static int32_t from_picos(int32_t ps)
-{
-	return (int32_t) ((int64_t) ps * (int64_t) (1 << HPLL_N) /
-			  (int64_t) CLOCK_PERIOD_PICOSECONDS);
-}
-#endif
+//#else /* previous implementation: ptp-noposix has no __div64_32 available */
+//static int32_t from_picos(int32_t ps)
+//{
+//	return (int32_t) ((int64_t) ps * (int64_t) (1 << HPLL_N) /
+//			  (int64_t) CLOCK_PERIOD_PICOSECONDS);
+//}
+//#endif
 
 int mpll_set_phase_shift(struct spll_main_state *s,
 				int desired_shift_ps)

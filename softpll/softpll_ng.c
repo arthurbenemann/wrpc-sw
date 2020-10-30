@@ -20,6 +20,8 @@
 
 #include "irq.h"
 
+#define pll_verbose pp_printf
+
 #ifdef CONFIG_SPLL_FIFO_LOG
   struct spll_fifo_log fifo_log[FIFO_LOG_LEN];
   #define HAS_FIFO_LOG 1
@@ -397,6 +399,7 @@ void spll_init(int mode, int slave_ref_channel, int flags)
 	if(mode == SPLL_MODE_DISABLED)
 		return;
 
+	softpll.mpll.gain_sched = NULL;
 	
 	SPLL->EIC_IER = 1;
 	SPLL->OCER |= 1;

@@ -628,6 +628,7 @@ int wrc_board_early_init()
 	idt8v_configure_io ( &board.clk_mux, AFCZ_IC33_CLK_SI570_2_IN, 1, 1, 0);
 	idt8v_configure_io ( &board.clk_mux, AFCZ_IC33_FPGA_CLK3_OUT, 0, 0, AFCZ_IC33_CLK_SI570_1_IN);
 	idt8v_configure_io ( &board.clk_mux, AFCZ_IC33_FPGA_CLK_GTX_CUST2_OUT, 0, 0, AFCZ_IC33_CLK_SI570_1_IN);
+    idt8v_configure_io ( &board.clk_mux, AFCZ_IC33_FPGA_FMC2_CLK2_BIDIR_OUT, 0, 0, AFCZ_IC33_CLK_SI570_1_IN);
 	idt8v_commit_configuration ( &board.clk_mux );
 
 	wb_cm_init( &board.clk_mon, BASE_CLOCK_MONITOR, 6 );

@@ -31,10 +31,10 @@ ENTRY(_start)
 
 MEMORY
 {
-    ram   : ORIGIN = 0x0000, LENGTH = 0x6800
-    stats : ORIGIN = 0x6800, LENGTH = 0x0800
-    mbox  : ORIGIN = 0x7000, LENGTH = 0x1000
-    stack : ORIGIN = 0x8000, LENGTH = 0x8000
+    ram   : ORIGIN = 0x0000, LENGTH = 0x9800
+    stats : ORIGIN = 0x9800, LENGTH = 0x0800
+    mbox  : ORIGIN = 0xa000, LENGTH = 0x1000
+    stack : ORIGIN = 0xb000, LENGTH = 0x3000
 }
 
 SECTIONS

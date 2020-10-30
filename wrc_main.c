@@ -136,7 +136,7 @@ static int wrc_check_link(void)
 		event_post( WRC_EVENT_LINK_UP );
 		gen_gpio_out(&pin_sysc_led_link, 1);
 		sfp_match(0);
-		wrc_ptp_start();
+		//wrc_ptp_start();
 		link_status = NETIF_LINK_WENT_UP;
 		rv = 1;
 	} else if (prev_state && !state) {
@@ -148,7 +148,7 @@ static int wrc_check_link(void)
 		wrc_ptp_stop();
 		rv = 1;
 		/* special case */
-		spll_init(SPLL_MODE_FREE_RUNNING_MASTER, 0, SPLL_FLAG_ALIGN_PPS);
+		//spll_init(SPLL_MODE_FREE_RUNNING_MASTER, 0, SPLL_FLAG_ALIGN_PPS);
 		shw_pps_gen_enable_output(0);
 
 	} else
