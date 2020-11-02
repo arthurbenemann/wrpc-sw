@@ -90,25 +90,58 @@ static char *load_binary_file(const char *filename, size_t *size)
 	return buf;
 }
 
-static int soft_cpu_program(char *binary)
+static int soft_cpu_program(char *binary, struct mapping_desc *map,
+			    off_t offset)
 {
 	char *buf;
+	uint32_t *ibuf;
 	size_t size;
+	int i;
 
-	buf = load_binary_file(binary, &size);
+        buf = load_binary_file(binary, &size);
 	if (!buf)
 		return -1;
+
+	dev_write32(map, 0x1deadbee, offset + 0x20400);
+	while ( !(dev_read32(map, offset + 0x20400) & (1 << 28)))
+		;
+
+        ibuf = (uint32_t *) buf;
+	for (i = 0; i < (size + 3) / 4; i++)
+		dev_write32(map, ibuf[i], offset + (i * 4));
+
+	sync();
+
+	for (i = 0; i < (size + 3) / 4; i++) {
+		uint32_t r = dev_read32(map, offset + i * 4);
+
+                if (r != htonl(ibuf[i]))
+		{
+			fprintf(stderr, "programming error at %x "
+				"(expected %08x, found %08x)\n", i*4,
+				htonl(ibuf[i]), r);
+			return -1;
+		}
+	}
+
+	sync();
+
+	dev_write32(map, 0x0deadbee, offset + 0x20400);
 
         free(buf);
 	return 0;
 }
 
+#define OFFSET_NOT_SET 0xFFFFFFFF
 int main(int argc, char **argv)
 {
 	struct mapping_args *map_args;
+	struct mapping_desc *map;
 	char *binary;
 	int c;
 	int err;
+	int ret;
+	off_t offset = OFFSET_NOT_SET;
 
 	name = strndup(basename(argv[0]), 64);
 	if (!name)
@@ -117,7 +150,7 @@ int main(int argc, char **argv)
 	if (err)
 		exit(EXIT_FAILURE);
 
-	while ((c = getopt (argc, argv, "hVb:")) != -1)
+	while ((c = getopt (argc, argv, "hVb:a:")) != -1)
 	{
 		switch(c) {
 		case 'h':
@@ -129,6 +162,10 @@ int main(int argc, char **argv)
 		case 'b':
 			binary = optarg;
 			break;
+		case 'a':
+			ret = sscanf(optarg, "0x%lx", &offset);
+			if (ret != 1)
+				exit(EXIT_FAILURE);
 	        default:
 			break;
 		}
@@ -140,7 +177,19 @@ int main(int argc, char **argv)
 		goto err_args;
 	}
 
-	err = soft_cpu_program(binary);
+	if (offset == OFFSET_NOT_SET) {
+		fputs("Option '-a' is mandatory\n", stderr);
+		exit(EXIT_FAILURE);
+	}
+
+	map = dev_map(map_args, 0x10000); // FIXME size
+	if (!map) {
+		fprintf(stderr, "failed to map device memory: %s\n",
+			strerror(errno));
+	} else {
+		err = soft_cpu_program(binary, map, offset);
+		dev_unmap(map);
+	}
 	exit(err ? EXIT_FAILURE : EXIT_SUCCESS);
 
 err_args:
