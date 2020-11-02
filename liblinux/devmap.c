@@ -342,3 +342,17 @@ const char * const dev_get_version()
 {
 	return libdevmap_version_s;
 }
+
+uint32_t dev_read32(struct mapping_desc *map, off_t offset)
+{
+	uint32_t val;
+
+	val = *((uint32_t *)(map->base + offset));
+
+        return iomemr32(map->is_be, val);
+}
+
+void dev_write32(struct mapping_desc *map, uint32_t val, off_t offset)
+{
+	*((uint32_t *)(map->base + offset)) = iomemw32(map->is_be, val);
+}
