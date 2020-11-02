@@ -12,6 +12,7 @@ ALL   += wrpc-dump mapper
 ALL   += wrpc-vuart
 ALL   += wr-streamers
 ALL   += wrpc-diags
+ALL   += wrpc-firmware
 
 ifneq ($(EB),no)
 ALL += eb-w1-write
@@ -59,6 +60,9 @@ wrpc-diags: wrpc-diags.c
 	$(CC) $(CFLAGS)  $^ $(LDFLAGS) -o $@
 
 wrpc-vuart: wrpc-vuart.c
+	$(CC) $(CFLAGS) -Werror  $^ $(LDFLAGS) -o $@
+
+wrpc-firmware: wrpc-firmware.c
 	$(CC) $(CFLAGS) -Werror  $^ $(LDFLAGS) -o $@
 
 pfilter-builder: pfilter-builder.c

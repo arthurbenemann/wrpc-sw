@@ -12,5 +12,6 @@ pfilter-builder
 wrpc-dump
 mapper
 wrpc-vuart
+wrpc-firmware
 wr-streamers
 wrpc-diags
