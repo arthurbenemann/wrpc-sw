@@ -13,11 +13,21 @@
 #include <libdevmap.h>
 
 static char *name;
+static const char * const wrpc_firmware_version_s = "version: " __GIT_VER__;
 
 static void help(void)
 {
 	fprintf(stderr, "Usage: %s [options]\n", name);
-	fprintf(stderr, "%s\n", dev_mapping_help());
+	fputs(dev_mapping_help(), stderr);
+	fprintf(stderr, "\t-V  print version\n");
+	fprintf(stderr, "\t-h  print help\n");
+}
+
+static void version(void)
+{
+	fprintf(stdout, "%s version: %s\n", name, wrpc_firmware_version_s);
+	fputs(dev_get_version(), stdout);
+	fputc('\n', stdout);
 }
 
 static void cleanup(void)
@@ -39,20 +49,26 @@ int main(int argc, char **argv)
 	if (err)
 		exit(EXIT_FAILURE);
 
+	while ((c = getopt (argc, argv, "hV")) != -1)
+	{
+		switch(c) {
+		case 'h':
+			help();
+			exit(EXIT_SUCCESS);
+		case 'V':
+			version();
+			exit(EXIT_SUCCESS);
+	        default:
+			break;
+		}
+	}
+	optind = 1;
 	map_args = dev_parse_mapping_args(argc, argv);
 	if (!map_args) {
 		help();
 		goto err_args;
 	}
 
-	while ((c = getopt (argc, argv, "h")) != -1)
-	{
-		switch(c) {
-		case 'h':
-			help();
-			exit(EXIT_SUCCESS);
-		}
-	}
 	exit(EXIT_SUCCESS);
 
 err_args:
