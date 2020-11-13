@@ -20,8 +20,6 @@
 
 #include "irq.h"
 
-#define pll_verbose pp_printf
-
 #ifdef CONFIG_SPLL_FIFO_LOG
   struct spll_fifo_log fifo_log[FIFO_LOG_LEN];
   #define HAS_FIFO_LOG 1

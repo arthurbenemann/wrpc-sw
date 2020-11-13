@@ -21,8 +21,7 @@ struct console_device {
     int flags;
 };
 
-extern struct console_device *console;
-
+extern struct console_device console_uart_dev;
 
 void console_set_device( struct console_device *dev );
 void console_uart_write_bytes( uint8_t *buf, int count );
@@ -33,8 +32,8 @@ int console_getc(void);
 void console_force_mode( struct console_device *dev, int mode );
 int console_get_mode( struct console_device *dev );
 
-int console_binary_send( struct console_device *dev, void *buff, int size );
-int console_binary_recv( struct console_device *dev, void *buff, int size );
+int console_binary_send_byte( struct console_device *dev, uint8_t b );
+int console_binary_recv_byte( struct console_device *dev );
 
 #ifdef CONFIG_IPMI_CONSOLE
 int console_ipmi_process_request(struct console_device* dev,  uint8_t *req, int size, uint8_t *rsp, int rsp_size );

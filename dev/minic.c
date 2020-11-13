@@ -213,6 +213,8 @@ int minic_rx_frame(struct wr_ethhdr *hdr, uint8_t * payload, uint32_t buf_size,
 	/* Increment Rx counter for statistics */
 	minic.rx_count++;
 
+	pp_printf("RX %d\n", payload_size );
+
 	if (minic_readl(MINIC_REG_MCR) & MINIC_MCR_RX_FULL)
 		pp_printf("Warning: Minic Rx fifo full, expect wrong frames\n");
 

@@ -36,6 +36,9 @@
 #include "dev/pps_gen.h"
 #include "dev/console.h"
 #include "dev/endpoint.h"
+
+#include "lib/ertm14-uart-link.h"
+
 #include "softpll_ng.h"
 #include "storage.h"
 #include "wrc_ptp.h"
@@ -66,104 +69,104 @@
 #define ERTM14_IUART_MSG_PING 8
 
 struct ertm14_board board;
-static struct ertm14_board_state ertm14_configs[ ERTM14_MAX_CONFIGS ];
-static struct ertm14_board_state *ertm14_current_state;
+struct ertm14_board_state ertm14_configs[ ERTM14_MAX_CONFIGS ];
+struct ertm14_board_state *ertm14_current_state;
 
-static struct gpio_pin pin_pll_main_cs_n = { &board.gpio_aux, 0 };
-static struct gpio_pin pin_pll_main_sdi = { &board.gpio_aux, 1 };
-static struct gpio_pin pin_pll_main_sdo = { &board.gpio_aux, 2 };
-static struct gpio_pin pin_pll_main_sclk = { &board.gpio_aux, 3 };
-static struct gpio_pin pin_pll_main_reset = { &board.gpio_aux, 4 };
-static struct gpio_pin pin_pll_main_lock = { &board.gpio_aux, 5 };
+struct gpio_pin pin_pll_main_cs_n = { &board.gpio_aux, 0 };
+struct gpio_pin pin_pll_main_sdi = { &board.gpio_aux, 1 };
+struct gpio_pin pin_pll_main_sdo = { &board.gpio_aux, 2 };
+struct gpio_pin pin_pll_main_sclk = { &board.gpio_aux, 3 };
+struct gpio_pin pin_pll_main_reset = { &board.gpio_aux, 4 };
+struct gpio_pin pin_pll_main_lock = { &board.gpio_aux, 5 };
 
-static struct gpio_pin pin_pll_ext_cs_n = { &board.gpio_aux, 6 };
-static struct gpio_pin pin_pll_ext_sdi = { &board.gpio_aux, 7 };
-static struct gpio_pin pin_pll_ext_sdo = { &board.gpio_aux, 8 };
-static struct gpio_pin pin_pll_ext_sclk = { &board.gpio_aux, 9 };
-static struct gpio_pin pin_pll_ext_reset = { &board.gpio_aux, 10 };
-static struct gpio_pin pin_pll_ext_lock = { &board.gpio_aux, 11 };
+struct gpio_pin pin_pll_ext_cs_n = { &board.gpio_aux, 6 };
+struct gpio_pin pin_pll_ext_sdi = { &board.gpio_aux, 7 };
+struct gpio_pin pin_pll_ext_sdo = { &board.gpio_aux, 8 };
+struct gpio_pin pin_pll_ext_sclk = { &board.gpio_aux, 9 };
+struct gpio_pin pin_pll_ext_reset = { &board.gpio_aux, 10 };
+struct gpio_pin pin_pll_ext_lock = { &board.gpio_aux, 11 };
 
-static struct gpio_pin pin_mac_addr_scl = { &board.gpio_aux, 13 };
-static struct gpio_pin pin_mac_addr_sda = { &board.gpio_aux, 12 };
+struct gpio_pin pin_mac_addr_scl = { &board.gpio_aux, 13 };
+struct gpio_pin pin_mac_addr_sda = { &board.gpio_aux, 12 };
 
-static struct gpio_pin pin_main_xo_en_n = { &board.gpio_aux, 14 };
+struct gpio_pin pin_main_xo_en_n = { &board.gpio_aux, 14 };
 
-static struct gpio_pin pin_ltc6950_sclk = { &board.gpio_aux, 15 };
-static struct gpio_pin pin_ltc6950_sdi = { &board.gpio_aux, 16 };
-static struct gpio_pin pin_ltc6950_sdo = { &board.gpio_aux, 17 };
-static struct gpio_pin pin_ltc6950_ce_gen = { &board.gpio_aux, 18 };
-static struct gpio_pin pin_ltc6950_ce_distr = { &board.gpio_aux, 19 };
-static struct gpio_pin pin_ltc6950_sync = { &board.gpio_aux, 20 };
+struct gpio_pin pin_ltc6950_sclk = { &board.gpio_aux, 15 };
+struct gpio_pin pin_ltc6950_sdi = { &board.gpio_aux, 16 };
+struct gpio_pin pin_ltc6950_sdo = { &board.gpio_aux, 17 };
+struct gpio_pin pin_ltc6950_ce_gen = { &board.gpio_aux, 18 };
+struct gpio_pin pin_ltc6950_ce_distr = { &board.gpio_aux, 19 };
+struct gpio_pin pin_ltc6950_sync = { &board.gpio_aux, 20 };
 
-static struct gpio_pin pin_ad9910_lo_sdio = { &board.gpio_aux, 4+21 };
-static struct gpio_pin pin_ad9910_lo_sclk = { &board.gpio_aux, 5+21 };
-static struct gpio_pin pin_ad9910_lo_reset = { &board.gpio_aux, 6+21 };
-static struct gpio_pin pin_ad9910_lo_io_update = { &board.gpio_aux, 3+21 };
+struct gpio_pin pin_ad9910_lo_sdio = { &board.gpio_aux, 4+21 };
+struct gpio_pin pin_ad9910_lo_sclk = { &board.gpio_aux, 5+21 };
+struct gpio_pin pin_ad9910_lo_reset = { &board.gpio_aux, 6+21 };
+struct gpio_pin pin_ad9910_lo_io_update = { &board.gpio_aux, 3+21 };
 const struct gpio_pin pin_ad9910_lo_sync_smp_err = { &board.gpio_aux, 5+21 };
 
-static struct gpio_pin pin_ad9910_ref_sdio = { &board.gpio_aux, 4+28 };
-static struct gpio_pin pin_ad9910_ref_sclk = { &board.gpio_aux, 5+28 };
-static struct gpio_pin pin_ad9910_ref_reset = { &board.gpio_aux, 6+28 };
-static struct gpio_pin pin_ad9910_ref_io_update = { &board.gpio_aux, 3+28 };
+struct gpio_pin pin_ad9910_ref_sdio = { &board.gpio_aux, 4+28 };
+struct gpio_pin pin_ad9910_ref_sclk = { &board.gpio_aux, 5+28 };
+struct gpio_pin pin_ad9910_ref_reset = { &board.gpio_aux, 6+28 };
+struct gpio_pin pin_ad9910_ref_io_update = { &board.gpio_aux, 3+28 };
 const struct gpio_pin pin_ad9910_ref_sync_smp_err = { &board.gpio_aux, 5+28 };
 
-static struct gpio_pin pin_ocxo_override = { &board.gpio_aux, 48 };
-static struct gpio_pin pin_ocxo_cs_n = { &board.gpio_aux, 51 };
-static struct gpio_pin pin_ocxo_sclk = { &board.gpio_aux, 50 };
-static struct gpio_pin pin_ocxo_data = { &board.gpio_aux, 49 };
+struct gpio_pin pin_ocxo_override = { &board.gpio_aux, 48 };
+struct gpio_pin pin_ocxo_cs_n = { &board.gpio_aux, 51 };
+struct gpio_pin pin_ocxo_sclk = { &board.gpio_aux, 50 };
+struct gpio_pin pin_ocxo_data = { &board.gpio_aux, 49 };
 
-static struct gpio_pin pin_pwrmon_adc_cs_n = {  &board.gpio_aux, 52 };
-static struct gpio_pin pin_pwrmon_adc_dout = {  &board.gpio_aux, 46 };
-static struct gpio_pin pin_pwrmon_adc_din = {  &board.gpio_aux, 47 };
-static struct gpio_pin pin_pwrmon_adc_sclk = {  &board.gpio_aux, 45 };
+struct gpio_pin pin_pwrmon_adc_cs_n = {  &board.gpio_aux, 52 };
+struct gpio_pin pin_pwrmon_adc_dout = {  &board.gpio_aux, 46 };
+struct gpio_pin pin_pwrmon_adc_din = {  &board.gpio_aux, 47 };
+struct gpio_pin pin_pwrmon_adc_sclk = {  &board.gpio_aux, 45 };
 
-static struct gpio_pin pin_sys_clk_sel_stb = {  &board.gpio_aux, 61 };
-static struct gpio_pin pin_sys_clk_sel_next = {  &board.gpio_aux, 62 };
+struct gpio_pin pin_sys_clk_sel_stb = {  &board.gpio_aux, 61 };
+struct gpio_pin pin_sys_clk_sel_next = {  &board.gpio_aux, 62 };
 
-static struct gpio_pin pin_pps_out_mode0 = {  &board.gpio_aux, 63 };
-static struct gpio_pin pin_pps_out_mode1 = {  &board.gpio_aux, 64 };
-static struct gpio_pin pin_pps_out_mode2 = {  &board.gpio_aux, 65 };
+struct gpio_pin pin_pps_out_mode0 = {  &board.gpio_aux, 63 };
+struct gpio_pin pin_pps_out_mode1 = {  &board.gpio_aux, 64 };
+struct gpio_pin pin_pps_out_mode2 = {  &board.gpio_aux, 65 };
 
-static struct gpio_pin pin_led_sync_green = {  &board.gpio_aux, 69 };
-static struct gpio_pin pin_led_sync_red = {  &board.gpio_aux, 70 };
+struct gpio_pin pin_led_sync_green = {  &board.gpio_aux, 69 };
+struct gpio_pin pin_led_sync_red = {  &board.gpio_aux, 70 };
 
-static struct gpio_pin pin_ertm15_leds_ser = { &board.gpio_aux, 66 };
-static struct gpio_pin pin_ertm15_leds_updtclk = { &board.gpio_aux, 67 };
-static struct gpio_pin pin_ertm15_leds_shftclk = { &board.gpio_aux, 68 };
+struct gpio_pin pin_ertm15_leds_ser = { &board.gpio_aux, 66 };
+struct gpio_pin pin_ertm15_leds_updtclk = { &board.gpio_aux, 67 };
+struct gpio_pin pin_ertm15_leds_shftclk = { &board.gpio_aux, 68 };
 
 
 // a/b/lo/ref, red->green
-static struct gpio_pin pin_ertm15_led_clka_red = { &board.gpio_ertm15_leds, 0 };
-static struct gpio_pin pin_ertm15_led_clka_green = { &board.gpio_ertm15_leds, 1 };
-static struct gpio_pin pin_ertm15_led_clkb_red = { &board.gpio_ertm15_leds, 2 };
-static struct gpio_pin pin_ertm15_led_clkb_green = { &board.gpio_ertm15_leds, 3 };
-static struct gpio_pin pin_ertm15_led_lo_red = { &board.gpio_ertm15_leds, 4 };
-static struct gpio_pin pin_ertm15_led_lo_green = { &board.gpio_ertm15_leds, 5 };
-static struct gpio_pin pin_ertm15_led_ref_red = { &board.gpio_ertm15_leds, 6 };
-static struct gpio_pin pin_ertm15_led_ref_green = { &board.gpio_ertm15_leds, 7 };
+struct gpio_pin pin_ertm15_led_clka_red = { &board.gpio_ertm15_leds, 0 };
+struct gpio_pin pin_ertm15_led_clka_green = { &board.gpio_ertm15_leds, 1 };
+struct gpio_pin pin_ertm15_led_clkb_red = { &board.gpio_ertm15_leds, 2 };
+struct gpio_pin pin_ertm15_led_clkb_green = { &board.gpio_ertm15_leds, 3 };
+struct gpio_pin pin_ertm15_led_lo_red = { &board.gpio_ertm15_leds, 4 };
+struct gpio_pin pin_ertm15_led_lo_green = { &board.gpio_ertm15_leds, 5 };
+struct gpio_pin pin_ertm15_led_ref_red = { &board.gpio_ertm15_leds, 6 };
+struct gpio_pin pin_ertm15_led_ref_green = { &board.gpio_ertm15_leds, 7 };
 
-static struct gpio_pin pin_ertm15_clkab_mosi = { &board.gpio_aux, 57 };
-static struct gpio_pin pin_ertm15_clkab_miso = { &board.gpio_aux, 57 };
-static struct gpio_pin pin_ertm15_clkab_sck = { &board.gpio_aux, 58 };
-static struct gpio_pin pin_ertm15_clka_cs_n = { &board.gpio_aux, 59 };
-static struct gpio_pin pin_ertm15_clkb_cs_n = { &board.gpio_aux, 60 };
+struct gpio_pin pin_ertm15_clkab_mosi = { &board.gpio_aux, 57 };
+struct gpio_pin pin_ertm15_clkab_miso = { &board.gpio_aux, 57 };
+struct gpio_pin pin_ertm15_clkab_sck = { &board.gpio_aux, 58 };
+struct gpio_pin pin_ertm15_clka_cs_n = { &board.gpio_aux, 59 };
+struct gpio_pin pin_ertm15_clkb_cs_n = { &board.gpio_aux, 60 };
 
-static struct ad95xx_config pll_ext_10mhz_config = 
+struct ad95xx_config pll_ext_10mhz_config = 
 #include "configs/ertm_14_pll_ext_10mhz.h"
 
-static struct ad95xx_config pll_main_dot050_config =
+struct ad95xx_config pll_main_dot050_config =
 #include "configs/ertm_14_pll_main_dot050_config.h"
 
-static struct ad95xx_config pll_main_ocxo_config =
+struct ad95xx_config pll_main_ocxo_config =
 #include "configs/ertm_14_pll_ocxo_config.h"
 
-static struct ltc695x_config pll_ertm15_bootstrap_config =
+struct ltc695x_config pll_ertm15_bootstrap_config =
 #include "configs/ertm_15_ltc6950_config_rev2.h"
 
-static struct ltc695x_config clkab_ertm15_bootstrap_config =
+struct ltc695x_config clkab_ertm15_bootstrap_config =
 #include "configs/ertm_15_ltc6953_bootstrap_config.h"
 
-static spll_gain_schedule_t spll_main_ocxo_gain_sched;
+spll_gain_schedule_t spll_main_ocxo_gain_sched;
 
 #define ERTM14_BIST_LTC6950 0
 #define ERTM14_BIST_MAC_EEPROM 1
@@ -198,6 +201,7 @@ static struct bist_stage ertm_bist[] = {
     {ERTM14_BIST_DDS_REF, "DDS comm (REF)", 1},
     {0, NULL}};
 
+
 void bist_checkpoint( struct bist_stage *bist, int id, int channel, int pass )
 {
     int i;
@@ -222,9 +226,9 @@ void bist_init( struct bist_stage *bist )
 int bist_summary( struct bist_stage *bist )
 {
     int i;
-    int n_ok, n_errors;
+    int n_ok = 0, n_errors = 0;
     pp_printf("Built-in Self Test Summary\n------------------------------\n");
-    pp_printf("Id  | Test name                       | Channel | Status       ");
+    pp_printf("Id  | Test name                       | Channel | Status       \n");
 
     for(i = 0; bist[i].name; i++ )
     {
@@ -233,10 +237,35 @@ int bist_summary( struct bist_stage *bist )
 
         for( ch = 0; ch < s->n_channels; ch++ )
         {
-            pp_printf("%-2d | %-30s | ", i + 1, bist[i].name);
-        }
+            pp_printf("%-3d | %-31s | ", i + 1, bist[i].name);
+            if( s->n_channels > 1 )
+                pp_printf("%-02d    | ", ch );
+            else
+                pp_printf("-       | ");
 
+            int stat = s->status >> (ch * 2);
+
+            if( !( stat & BIST_STATUS_DONE ) )
+                pp_printf("Not ran");
+            else if (stat & BIST_STATUS_ERROR)
+            {
+                pp_printf("ERROR");
+                n_errors++;
+            }
+            else
+            {
+                pp_printf("OK");
+                n_ok++;
+            }
+
+            pp_printf("\n");
+        }
     }
+
+    if( n_errors )
+        pp_printf("--------------------------------\nBIST FAILED with %d ERRORS!\n\n\n", n_errors );
+    else 
+        pp_printf("BIST PASSED.\n");
 
     return n_errors > 0 ? -1 : 0;
 }
@@ -630,6 +659,19 @@ static void iuart_14_poll(void)
     }
 }
 
+static int control_uart_poll(void)
+{
+    struct uart_packet pkt;
+
+    if( uart_link_recv( &board.control_uart, &pkt ) > 0 )
+    {
+        /*... dispatch */
+    }
+
+    return 0;
+}
+
+
 static void ertm14_clock_monitor_init(void)
 {
     wb_cm_init(&board.ertm14_cmon, BASE_CLOCK_MONITOR, 5);
@@ -826,7 +868,7 @@ static int calc_apr(int meas_min, int meas_max, int f_center )
 
 static int measure_vcxo_freq( int cm_channel, int cm_ref, int gate_freq, int n_steps, uint32_t expected_freq, void (*dac_setter)(int), int *apr, uint32_t *base_freq )
 {
-	int f_min, f_max;
+	int f_min = 0, f_max = 0;
 	int tune_min = 0;
 	int tune_max = 65535;
 	int tune_step = (tune_max-tune_min) / n_steps;
@@ -843,14 +885,14 @@ static int measure_vcxo_freq( int cm_channel, int cm_ref, int gate_freq, int n_s
 		timer_delay_ms(1);
 		wb_cm_restart( &board.ertm14_cmon );
 		while( ! (wb_cm_read( &board.ertm14_cmon ) & ( 1<< cm_channel) ) );
-		
+
 		int f = board.ertm14_cmon.freqs[ cm_channel ];
 
 		if( tune == tune_min )
 			f_min = f;
 		else if ( tune == tune_max )
 			f_max = f;
-		
+
 		if(tune == tune_max)
 			break;
 
@@ -919,6 +961,7 @@ int ertm15_check_oscillators()
     measure_vcxo_freq( ERTM14_CMON_CLK_REF, ERTM14_CMON_CLK_DMTD, 10000000, 1, 62500000, set_main_dac, NULL, NULL );
     board_dbg("Check DMTD VCXO\n");
     measure_vcxo_freq( ERTM14_CMON_CLK_DMTD, ERTM14_CMON_CLK_REF, 100000, 10, 62500000, set_dmtd_dac, NULL, NULL );
+    return 0;
 }
 
 // initializes the eRTM15 LTC6950 PLL & OCXO
@@ -934,7 +977,7 @@ int ertm15_pll_init(void)
         return -1;
     }
 
-    bist_checkpoint(&ertm_bist, ERTM14_BIST_LTC6950, 0, id == LTC6950_ID_VALUE);
+    bist_checkpoint( ertm_bist, ERTM14_BIST_LTC6950, 0, id == LTC6950_ID_VALUE);
 
     // load default 'bootstrap' config and check what is the OCXO frequency
     ltc695x_configure(&board.ltc6950_pll, &pll_ertm15_bootstrap_config);
@@ -946,7 +989,7 @@ int ertm15_pll_init(void)
     ltc695x_write(&board.ltc6950_pll, 0x15, 50); // RDIVOUT = 0, output div = 50
     ltc695x_write(&board.ltc6950_pll, 0x0a, 10); // N divider = 10 (VCO @ 1GHz, PFD @ 10 MHz)
     board.mode |= ERTM14_MODE_OCXO_100MHZ;
-
+    return 0;
 }
 
 static struct clkab_output_map_entry *clkab_find_map_entry(  int clka_or_clkb, int output )
@@ -1020,8 +1063,8 @@ int ertm14_init_clkab_distribution()
     int result_a = ltc695x_configure( &board.dev_clka_distr, &clkab_ertm15_bootstrap_config );
     int result_b = ltc695x_configure( &board.dev_clkb_distr, &clkab_ertm15_bootstrap_config );
 
-    bist_checkpoint( &ertm_bist, ERTM14_BIST_CLKA, 0, (id_a == LTC6953_EXPECTED_ID) && !result_a );
-    bist_checkpoint( &ertm_bist, ERTM14_BIST_CLKB, 0, (id_b == LTC6953_EXPECTED_ID) && !result_b );
+    bist_checkpoint( ertm_bist, ERTM14_BIST_CLKA, 0, (id_a == LTC6953_EXPECTED_ID) && !result_a );
+    bist_checkpoint( ertm_bist, ERTM14_BIST_CLKB, 0, (id_b == LTC6953_EXPECTED_ID) && !result_b );
 
     if( id_a != LTC6953_EXPECTED_ID || id_b != LTC6953_EXPECTED_ID )
         return -ENODEV;
@@ -1038,6 +1081,7 @@ int ertm14_init_clkab_distribution()
 // (so that any clock output is possible)
     fine_pulse_gen_force_pulse( &board.dds_sync_dev, ERTM14_PLL_SYNC_CLKA );
     fine_pulse_gen_force_pulse( &board.dds_sync_dev, ERTM14_PLL_SYNC_CLKB );
+    return 0;
 }
 
 int ertm14_init_ref_clock_distribution(void)
@@ -1045,8 +1089,8 @@ int ertm14_init_ref_clock_distribution(void)
     int main_stat = ad951x_init(&board.ad9516_main, &board.spi_pll_main, &pin_pll_main_reset, &pin_pll_main_lock);
     int ext_stat = ad951x_init(&board.ad9516_ext, &board.spi_pll_ext, &pin_pll_ext_reset, &pin_pll_ext_lock);
 
-    bist_checkpoint( &ertm_bist, ERTM14_BIST_AD951X_MAIN, 0, main_stat == 0 );
-    bist_checkpoint( &ertm_bist, ERTM14_BIST_AD951X_EXT, 0, ext_stat == 0 );
+    bist_checkpoint( ertm_bist, ERTM14_BIST_AD951X_MAIN, 0, main_stat == 0 );
+    bist_checkpoint( ertm_bist, ERTM14_BIST_AD951X_EXT, 0, ext_stat == 0 );
 
     if( main_stat < 0 )
     {
@@ -1071,6 +1115,7 @@ int ertm14_init_ref_clock_distribution(void)
         ad951x_configure(&board.ad9516_main, &pll_main_ocxo_config);
         // ad951x_configure(&board.ad9516_ext, &pll_ext_10mhz_config);
     }
+    return 0;
 }
 
 int ertm15_init_dds(void)
@@ -1087,8 +1132,12 @@ int ertm15_init_dds(void)
 // initialize DDS synchronizer unit
     ertm14_dds_sync_init();
 
-    ad9910_probe( &board.dds_ad9910_ref, &board.spi_ad9910_ref, ertm14_dds_trigger_ioupdate );
-    ad9910_probe( &board.dds_ad9910_lo, &board.spi_ad9910_lo, ertm14_dds_trigger_ioupdate );
+    int probe_ref = ad9910_probe( &board.dds_ad9910_ref, &board.spi_ad9910_ref, ertm14_dds_trigger_ioupdate );
+    int probe_lo = ad9910_probe( &board.dds_ad9910_lo, &board.spi_ad9910_lo, ertm14_dds_trigger_ioupdate );
+
+    bist_checkpoint( ertm_bist, ERTM14_BIST_DDS_LO, 0, probe_lo == 0 );
+    bist_checkpoint( ertm_bist, ERTM14_BIST_DDS_REF, 0, probe_ref == 0 );
+    return 0;
 }
 
 int ertm14_init_mac_eeprom(void)
@@ -1104,7 +1153,7 @@ int ertm14_init_mac_eeprom(void)
     int err = m24aa025_read_mac( &board.m24_mac_ids[0], mac );
     //m24aa025_read_mac( &board.m24_mac_ids[1], mac );
 
-    bist_checkpoint( &ertm_bist, ERTM14_BIST_MAC_EEPROM, 0, !err );
+    bist_checkpoint( ertm_bist, ERTM14_BIST_MAC_EEPROM, 0, !err );
 
     if( err < 0 )
         return err;
@@ -1304,15 +1353,14 @@ int ertm14_low_level_init(void)
     /* Initialize the IUART which is responsible for the communication with the MMC.
        Fixme: below is IUART14 which talks to the MMC on eRTM14. If eRTM15 is present, we need another IUART device. */
     board_dbg("Init IUART14\n");
-
     iuart_init_bare( &board.iuart_14, BASE_IUART_14, 115200 );
 
-    //ertm15_rf_distr_self_test( &board.rf_distr ;
-
+    board_dbg("Init Control UART Link\n");
+    uart_link_create_wrpc( &board.control_uart, 921600 );
 
     board_dbg("Init RF transceiver\n");
     wr_rf_frame_transceiver_create( &board.rf_xcvr, BASE_ERTM14_RF_FRAME_TRANSCEIVER );
-    
+
     board_dbg("eRTM14/15 early init done\n");
 
     ertm_init_complete = 1;
@@ -1369,6 +1417,7 @@ int ertm14_apply_config(int config_id)
     board_dbg("Apply_config: %d\n", config_id );
     ertm14_current_state = &ertm14_configs[config_id];
     event_post ( WRC_ERTM14_EVENT_APPLY_NEW_CONFIG );
+    return 0;
 }
 
 int ertm14_get_current_config_id()
@@ -1494,6 +1543,8 @@ int wrc_board_early_init()
     static int32_t flash_entry_points[64];
     int i;
 
+    bist_init( ertm_bist );
+
     /* initialize SPI flash */
     bb_spi_create( &spi_wrc_flash,
 		&pin_sysc_spi_ncs,
@@ -1531,11 +1582,15 @@ int wrc_board_early_init()
 	ep_enable( &wrc_endpoint_dev, 1, 1);
 	timer_delay_ms(200);
 
-    return ertm14_low_level_init();
+    int ll = ertm14_low_level_init();
+
+    bist_summary( ertm_bist );
+
+    return ll;
 }
 
-extern int phy_calibration_poll();
-extern void phy_calibration_init();
+extern int phy_calibration_poll(void);
+extern void phy_calibration_init(void);
 
 int wrc_board_init()
 {
@@ -1544,7 +1599,8 @@ int wrc_board_init()
     evth_dds_nco_sync = event_listener_create();
     evth_config_update_listener = event_listener_create();
 
-    wrc_task_create( "iuart14", NULL, iuart_14_poll );
+    //wrc_task_create( "iuart14", NULL, iuart_14_poll );
+    wrc_task_create( "control-uart", NULL, control_uart_poll );
     wrc_task_create( "rf-nco-sync", ertm14_dds_nco_sync_init, ertm14_dds_nco_sync_task );
     wrc_task_create( "ertm-config", ertm14_config_update_init, ertm14_config_update_task );
     wrc_task_create( "phy-cal", phy_calibration_init, phy_calibration_poll );

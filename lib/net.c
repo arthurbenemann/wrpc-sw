@@ -231,6 +231,8 @@ int ptpd_netif_recvfrom(struct wrpc_socket *s, struct wr_sockaddr *from, void *d
 	if (!q->n)
 		return 0;
 
+	pp_printf("QNotEmpty\n");
+
 	q->n--;
 
 	q->avail += wrap_copy_in(&size, q, 2, 0);
@@ -341,6 +343,8 @@ int net_bh_poll(void)
 			return 0;
 	}
 
+	pp_printf("F1\n");
+
 	/* Prepare for IP/UDP checks */
 	if (payload[IP_VERSION] == 0x45 && payload[IP_PROTOCOL] == 17)
 		port = payload[UDP_DPORT] << 8 | payload[UDP_DPORT + 1];
@@ -351,8 +355,11 @@ int net_bh_poll(void)
 		s = socks[i];
 		if (!s)
 			continue;
+		pp_printf("check sock %p\n", s);
+		pp_printf("check e %x %x\n", hdr.ethtype , s->bind_addr.ethertype);
 		if (hdr.ethtype != s->bind_addr.ethertype)
 			continue;
+		
 		if (!port && !s->bind_addr.udpport)
 			raws = s; /* match with raw socket */
 		if (port && s->bind_addr.udpport == port)
@@ -367,6 +374,8 @@ int net_bh_poll(void)
 		return 1;
 	}
 
+	pp_printf("F2\n");
+
 	q = &s->queue;
 	q_required =
 	    sizeof(struct wr_ethhdr) + recvd + sizeof(struct hw_timestamp) + 2;
@@ -377,6 +386,8 @@ int net_bh_poll(void)
 		     __FUNCTION__, q->avail, q_required);
 		return 1;
 	}
+
+	pp_printf("F3\n");
 
 	size = recvd;
 

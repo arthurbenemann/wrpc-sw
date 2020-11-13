@@ -13,3 +13,4 @@ obj-$(CONFIG_SYSLOG) += lib/syslog.o
 obj-$(CONFIG_LATENCY_PROBE) += lib/latency.o
 obj-$(CONFIG_SNMP) += lib/snmp.o
 obj-$(CONFIG_LLDP) += lib/lldp.o
+obj-$(CONFIG_TARGET_ERTM14) += lib/ertm14-uart-link.o

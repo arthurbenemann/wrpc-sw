@@ -132,7 +132,7 @@ static int wrc_check_link(void)
 	int rv = 0;
 
 	if (!prev_state && state) {
-		wrc_verbose("Link up.\n");
+		main_dbg("Link up.\n");
 		event_post( WRC_EVENT_LINK_UP );
 		gen_gpio_out(&pin_sysc_led_link, 1);
 		sfp_match(0);
@@ -140,7 +140,7 @@ static int wrc_check_link(void)
 		link_status = NETIF_LINK_WENT_UP;
 		rv = 1;
 	} else if (prev_state && !state) {
-		wrc_verbose("Link down.\n");
+		main_dbg("Link down.\n");
 		prev_timing_ok = 0;
 		event_post( WRC_EVENT_LINK_DOWN );
 		gen_gpio_out(&pin_sysc_led_link, 0);

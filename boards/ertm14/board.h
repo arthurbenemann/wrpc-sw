@@ -20,6 +20,7 @@
 #include "dev/spi_flash.h"
 #include "dev/bb_i2c.h"
 #include "dev/iuart.h"
+#include "lib/ertm14-uart-link.h"
 #include "rf_frame_transceiver.h"
 
 #define BOARD_HAS_CUSTOM_NETWORK_INIT 1
@@ -146,6 +147,11 @@ extern unsigned char *BASE_EP;
 #define WRC_ERTM14_EVENT_APPLY_NEW_CONFIG (WRC_EVENT_PRIVATE_START+0)
 #define WRC_ERTM14_EVENT_RECONFIGURED     (WRC_EVENT_PRIVATE_START+1)
 
+// UART Protocol packet types
+#define ERTM14_UART_PTYPE_PING 1
+#define ERTM14_UART_PTYPE_SNMP_REQ 2
+#define ERTM14_UART_PTYPE_SNMP_RESP 3
+
 struct ertm14_board
 {
     struct gpio_device gpio_aux;
@@ -178,6 +184,7 @@ struct ertm14_board
     struct iuart_device iuart_14;
     struct wr_rf_frame_transceiver_device rf_xcvr;
     struct gpio_device gpio_ertm15_leds;
+    struct uart_link control_uart;
 
     int mode;
     int dds_resync_count;

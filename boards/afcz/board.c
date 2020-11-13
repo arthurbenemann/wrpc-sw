@@ -413,6 +413,8 @@ static void wr_si57x_interface_init( struct wr_si57x_interface_device *dev, uint
 }
 
 
+
+// fixme: factor out all this code to a common file (used by sis83k, afcz, ertm)
 static int calc_apr(int meas_min, int meas_max, int f_center )
 {
 	// apr_min is in PPM
@@ -442,37 +444,54 @@ static int calc_apr(int meas_min, int meas_max, int f_center )
 	return ppm_lo < ppm_hi ? ppm_lo : ppm_hi;
 }
 
-static void check_vco_freq( int cm_channel, int cm_ref, void (*dac_setter)(int ))
+static int gen_rnd( )
 {
-	int f_min, f_max;
-	int tune_min = 0;
-	int tune_max = 65535;
-	int tune_step = 5000;
+	static const uint32_t lcg_m = 1103515245;
+	static const uint32_t lcg_i = 12345;	
+  	static uint32_t seed = 0;
 
-	wb_cm_configure( &board.clk_mon, cm_ref, 5, 1000000 );
+	seed *= lcg_m;
+	seed += lcg_i;
+	seed &= 0x7fffffffUL;
+
+	return seed;
+}
+
+static int measure_vcxo_freq( int cm_channel, int cm_ref, int gate_freq, int n_steps, uint32_t expected_freq, void (*dac_setter)(int), int *apr, uint32_t *base_freq )
+{
+	int f_min = 0, f_max = 0;
+	int tune_min = 3000;
+	int tune_max = 65535;
+	int tune_step = 1; //(tune_max-tune_min) / n_steps;
+
+	wb_cm_configure( &board.clk_mon, cm_ref, 5, gate_freq );
 	wb_cm_set_ref_frequency( &board.clk_mon, CPU_CLOCK );
 
 	int tune = tune_min;
-	
+
 	for(;;)
 	{
 
-		dac_setter( tune );
-		timer_delay_ms(1);
+		dac_setter( tune + (gen_rnd() % 3000) - 1500);
+		timer_delay_ms(5);
 		wb_cm_restart( &board.clk_mon );
-		while( ! (wb_cm_read( &board.clk_mon ) & ( 1<< cm_channel) ) );
-		
+		while( ! (wb_cm_read( &board.clk_mon ) & ( 1<< cm_channel) ) )
+		{
+			dac_setter( tune + (gen_rnd() % 3000) - 1500);
+			timer_delay_ms(5);
+		}
+
 		int f = board.clk_mon.freqs[ cm_channel ];
 
 		if( tune == tune_min )
 			f_min = f;
 		else if ( tune == tune_max )
 			f_max = f;
-		
+
 		if(tune == tune_max)
 			break;
 
-		pp_printf("Tune: %d f = %d Hz (deltaF = %d Hz)\n", tune, f, f - 62500000 );
+		board_dbg("Tune: %d f = %d Hz (deltaF = %d Hz)\n", tune, f, f - expected_freq );
 
 		tune += tune_step;
 		if( tune > tune_max )
@@ -482,8 +501,19 @@ static void check_vco_freq( int cm_channel, int cm_ref, void (*dac_setter)(int )
 	dac_setter( 32768 );
 	timer_delay(1);
 
-	pp_printf("VCO ch %d:  Low=%d Hz Hi=%d Hz, APR = %d ppm.\n", cm_channel, f_min, f_max, calc_apr(f_min, f_max, 62500000) );
+    int l_apr = calc_apr(f_min, f_max, 62500000);
+
+    if( apr )
+        *apr = l_apr;
+
+    if( base_freq )
+        *base_freq = (f_min + f_max) / 2;
+
+    board_dbg("VCO ch %d:  Low=%d Hz Hi=%d Hz, APR = %d ppm.\n", cm_channel, f_min, f_max, l_apr );
+
+    return 0;
 }
+
 
 
 static void set_dmtd_dac( int value )
@@ -493,7 +523,22 @@ static void set_dmtd_dac( int value )
 
 static void set_main_dac( int value )
 {
+	//pp_printf("smaind %d\n", value );
 	spll_set_dac( 0, value );
+}
+
+int afcz_check_clocks()
+{
+	//check_vco_freq( AFCZ_CM_CHANNEL_CLK_DMTD, AFCZ_CM_CHANNEL_CLK_RX, set_dmtd_dac );
+	//check_vco_freq( AFCZ_CM_CHANNEL_CLK_REF,  AFCZ_CM_CHANNEL_CLK_RX, set_main_dac );
+
+    board_dbg("Check REF VCXO (Si570)\n");
+    measure_vcxo_freq( AFCZ_CM_CHANNEL_CLK_REF, AFCZ_CM_CHANNEL_CLK_RX, 10000000, 10, 62500000, set_main_dac, NULL, NULL );
+
+	board_dbg("Check DMTD VCXO\n");
+    measure_vcxo_freq( AFCZ_CM_CHANNEL_CLK_DMTD, AFCZ_CM_CHANNEL_CLK_RX, 100000, 10, 62500000, set_dmtd_dac, NULL, NULL );
+
+	return 0;
 }
 
 const struct gpio_pin pin_rtm_4sfp_led_orange = { &board.gpio_rtm_main.gpio, 3 };
@@ -629,6 +674,8 @@ int wrc_board_early_init()
 	idt8v_configure_io ( &board.clk_mux, AFCZ_IC33_FPGA_CLK3_OUT, 0, 0, AFCZ_IC33_CLK_SI570_1_IN);
 	idt8v_configure_io ( &board.clk_mux, AFCZ_IC33_FPGA_CLK_GTX_CUST2_OUT, 0, 0, AFCZ_IC33_CLK_SI570_1_IN);
     idt8v_configure_io ( &board.clk_mux, AFCZ_IC33_FPGA_FMC2_CLK2_BIDIR_OUT, 0, 0, AFCZ_IC33_CLK_SI570_1_IN);
+	idt8v_configure_io ( &board.clk_mux, 10, 0, 0, AFCZ_IC33_CLK_SI570_1_IN);
+	
 	idt8v_commit_configuration ( &board.clk_mux );
 
 	wb_cm_init( &board.clk_mon, BASE_CLOCK_MONITOR, 6 );
@@ -675,6 +722,7 @@ int wrc_board_early_init()
 
 #define AFCZ_CLOCK_MON_TIMEOUT_MS 4000
 
+#if 0
 int afcz_check_clocks()
 {
 	wb_cm_configure( &board.clk_mon, AFCZ_CM_CHANNEL_CLK_SYS, 5, 10000000 );
@@ -697,11 +745,11 @@ int afcz_check_clocks()
 	pp_printf("Checking clocks: RX clock freq = %d Hz\n", board.clk_mon.freqs[ AFCZ_CM_CHANNEL_CLK_RX ]);
 	
 	pp_printf("Checking DDMTD and REF clock frequencies:\n");
-	check_vco_freq( AFCZ_CM_CHANNEL_CLK_DMTD, AFCZ_CM_CHANNEL_CLK_RX, set_dmtd_dac );
-	check_vco_freq( AFCZ_CM_CHANNEL_CLK_REF,  AFCZ_CM_CHANNEL_CLK_RX, set_main_dac );
+//	afcz_check_clocks();
 
 	return 0;
 }
+#endif
 
 int wrc_board_init()
 {
@@ -718,7 +766,7 @@ int wrc_board_init()
 		&pin_sysc_spi_sclk, 10 );
 
 	spi_wrc_flash.rd_falling_edge = 1;
-	int retries = 100;
+	int retries = 1000000;
 	uint32_t id;
 	
 	flash_entry_points[0] = 0x1f00000;
