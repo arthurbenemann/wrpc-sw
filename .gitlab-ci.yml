@@ -22,6 +22,21 @@ make_wrpc_sw:
     - wrc.bram
     - wrc.mif
 
+make_spec7:
+  stage: compile
+  tags:
+    - wrs_sw
+  script:
+  - make spec7_defconfig
+  - make
+  artifacts:
+    name: WRPC_SW_CI_%CI_JOB_ID%
+    paths:
+    - wrc.bin
+    - wrc.elf
+    - wrc.bram
+    - wrc.mif
+
 make_rt_cpu:
   stage: compile
   tags:
