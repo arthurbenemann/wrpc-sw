@@ -15,4 +15,6 @@ all: modules
 
 install: modules_install
 modules help coccicheck modules_install clean:
-	$(MAKE) -C $(LINUX) M=$(shell pwd) VERSION=$(VERSION) $@
+	$(MAKE) -C $(LINUX) M=$(shell pwd) VERSION=$(VERSION) \
+		WB_UART=$(WB_UART) \
+		$@
