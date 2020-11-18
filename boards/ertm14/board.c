@@ -36,6 +36,8 @@
 #include "dev/pps_gen.h"
 #include "dev/console.h"
 #include "dev/endpoint.h"
+#include "dev/74x595.h"
+#include "dev/netif.h"
 
 #include "lib/ertm14-uart-link.h"
 
@@ -56,17 +58,6 @@
 #include "wrc-task.h"
 
 #include <errno.h>
-
-#define ERTM14_IUART_MAX_PAYLOAD 100
-
-/* IUART Request types */
-#define ERTM14_IUART_MSG_MMC_UPDATE 0
-#define ERTM14_IUART_MSG_IPMI_CONSOLE_REQ 2
-#define ERTM14_IUART_MSG_IPMI_SNMP_REQ 3
-#define ERTM14_IUART_MSG_IPMI_CONSOLE_RESP 4
-#define ERTM14_IUART_MSG_IPMI_SNMP_RESP 5
-#define ERTM14_IUART_MSG_IPMI_REBOOT_FPGA 6
-#define ERTM14_IUART_MSG_PING 8
 
 struct ertm14_board board;
 struct ertm14_board_state ertm14_configs[ ERTM14_MAX_CONFIGS ];
@@ -239,7 +230,7 @@ int bist_summary( struct bist_stage *bist )
         {
             pp_printf("%-3d | %-31s | ", i + 1, bist[i].name);
             if( s->n_channels > 1 )
-                pp_printf("%-02d    | ", ch );
+                pp_printf("%-2d    | ", ch );
             else
                 pp_printf("-       | ");
 
@@ -272,10 +263,7 @@ int bist_summary( struct bist_stage *bist )
 
 static int ertm_init_complete = 0;
 
-static int ertm14_update_config_task(void);
 void ertm14_set_pps_out_mode(int mode);
-
-static timeout_t rf_nco_sync_tmo;
 
 #define LTC6950_ID_VALUE 0x65
 
@@ -608,64 +596,46 @@ static int ertm14_align_clocks(void)
     return 0;
 }
 
-
-extern struct console_device console_ipmi_dev;
-
-static void handle_iuart_14_request( uint8_t *buf, int size )
+void blink(int id)
 {
-    uint8_t tx_buf[ERTM14_IUART_MAX_PAYLOAD];
-    int n_tx;
-    int type = buf[0];
+    struct gpio_pin *pin = NULL;
 
-    if( size <= 0 )
-        return;
-
-    switch( type )
-    {
-        case ERTM14_IUART_MSG_PING:
-            //board_dbg("IUART14 pings from MMC!\n");
-            break;
-
-        case ERTM14_IUART_MSG_IPMI_CONSOLE_REQ:
-            n_tx = console_ipmi_process_request( &console_ipmi_dev, buf + 1, size - 1, tx_buf + 1, sizeof(tx_buf) - 1 );
-
-            tx_buf[0] = ERTM14_IUART_MSG_IPMI_CONSOLE_RESP;
-            iuart_send_message(&board.iuart_14, tx_buf, n_tx + 1);
-
-            break;
-
-        case ERTM14_IUART_MSG_IPMI_SNMP_REQ:
-            //snmp_respond(uint8_t *buf);
-
-            break;
-
-
-        default:
-            return;
-    }
+    if(id == 0 )
+        pin = &pin_ertm15_led_lo_green;
+    else if (id == 1 )
+        pin = &pin_ertm15_led_lo_red;
+    else if (id == 2 )
+        pin = &pin_ertm15_led_ref_red;
+    
+    gen_gpio_out( pin, 1 );
+    timer_delay_ms(50);
+    gen_gpio_out( pin, 0 );
+    timer_delay_ms(50);
 }
 
-/* Task polls requests coming from the eRTM14 IUART from the MMC and dispatches them to handlers */
-static void iuart_14_poll(void)
+static void control_uart_mode_callback( int is_binary )
 {
-    int msg = iuart_recv_message(&board.iuart_14);
-
-    if (msg <= 0)
-        return;
-
-    if( msg == START_INSN_CHAR_VAL )
-    {
-        handle_iuart_14_request( board.iuart_14.rx_buf, board.iuart_14.rx_csize );
-    }
+    if( is_binary )
+        uart_link_reset( &board.control_uart_link );
 }
 
 static int control_uart_poll(void)
 {
-    struct uart_packet pkt;
+    struct uart_packet *pkt;
 
-    if( uart_link_recv( &board.control_uart, &pkt ) > 0 )
+    if( uart_link_recv( &board.control_uart_link, &pkt, 0 ) > 0 )
     {
+        struct uart_packet tx_pkt;
         /*... dispatch */
+        if( pkt->ptype == ERTM14_UART_PTYPE_PING )
+        {
+            tx_pkt.ptype = ERTM14_UART_PTYPE_PING;
+            tx_pkt.length = 10;
+
+            uart_link_send( &board.control_uart_link, &tx_pkt );
+
+            blink(1);
+        }
     }
 
     return 0;
@@ -763,7 +733,7 @@ static int rf_nco_sync_wait_trigger( struct ertm14_dds_state *state, uint32_t io
     return 0;
 }
 
-static void ertm14_dds_nco_sync_task(void)
+static int ertm14_dds_nco_sync_task(void)
 {
     int evt = event_poll( evth_dds_nco_sync );
 
@@ -834,6 +804,8 @@ static void ertm14_dds_nco_sync_task(void)
         default:
             break;
     }
+
+    return 0;
 }
 
 // fixme: factor out all this code to a common file (used by sis83k, afcz, ertm)
@@ -927,13 +899,13 @@ static void blink_led( struct gpio_pin *pin )
     gen_gpio_out( pin, 0 );
 }
 
-static void ertm14_test_leds()
+static void ertm14_test_leds(void)
 {
     blink_led( &pin_led_sync_green );
     blink_led( &pin_led_sync_red );
 }
 
-static void ertm15_test_leds()
+static void ertm15_test_leds(void)
 {
     blink_led(&pin_ertm15_led_ref_green);
     blink_led(&pin_ertm15_led_lo_green);
@@ -955,7 +927,7 @@ static void set_dmtd_dac( int value )
 	spll_set_dac( -1, value );
 }
 
-int ertm15_check_oscillators()
+int ertm15_check_oscillators(void)
 {
     board_dbg("Check REF OCXO\n");
     measure_vcxo_freq( ERTM14_CMON_CLK_REF, ERTM14_CMON_CLK_DMTD, 10000000, 1, 62500000, set_main_dac, NULL, NULL );
@@ -992,9 +964,9 @@ int ertm15_pll_init(void)
     return 0;
 }
 
-static struct clkab_output_map_entry *clkab_find_map_entry(  int clka_or_clkb, int output )
+static const struct clkab_output_map_entry *clkab_find_map_entry(  int clka_or_clkb, int output )
 {
-    struct clkab_output_map_entry *omap = (clka_or_clkb == ERTM14_OUT_CLKA) ? &clka_out_map : &clkb_out_map;
+    const struct clkab_output_map_entry *omap = (clka_or_clkb == ERTM14_OUT_CLKA) ? clka_out_map : clkb_out_map;
     int i;
     for( i = 0; omap[i].id_backplane >= 0; i++ )
     {
@@ -1007,7 +979,7 @@ static struct clkab_output_map_entry *clkab_find_map_entry(  int clka_or_clkb, i
 
 static int clkab_set_output_divider( int clka_or_clkb, int output, int divider )
 {
-    struct clkab_output_map_entry *o = clkab_find_map_entry( clka_or_clkb, output );
+    const struct clkab_output_map_entry *o = clkab_find_map_entry( clka_or_clkb, output );
     struct ltc695x_device* dev = (clka_or_clkb == ERTM14_OUT_CLKA) ? &board.dev_clka_distr : &board.dev_clkb_distr;
 
     if(!o)
@@ -1021,7 +993,7 @@ static int clkab_set_output_divider( int clka_or_clkb, int output, int divider )
 
 static int clkab_enable_output( int clka_or_clkb, int output, int enable )
 {
-    struct clkab_output_map_entry *o = clkab_find_map_entry( clka_or_clkb, output );
+    const struct clkab_output_map_entry *o = clkab_find_map_entry( clka_or_clkb, output );
     struct ltc695x_device* dev = (clka_or_clkb == ERTM14_OUT_CLKA) ? &board.dev_clka_distr : &board.dev_clkb_distr;
 
     if(!o)
@@ -1033,7 +1005,7 @@ static int clkab_enable_output( int clka_or_clkb, int output, int enable )
 }
 
 
-int ertm14_init_clkab_distribution()
+int ertm14_init_clkab_distribution(void)
 {
     /* initialize the SPI bus for the CLKA fanout (LTC6953) */
     bb_spi_create( &board.spi_ltc6953_clka,
@@ -1041,7 +1013,7 @@ int ertm14_init_clkab_distribution()
         &pin_ertm15_clkab_mosi,
         &pin_ertm15_clkab_miso,
         &pin_ertm15_clkab_sck,
-        100 );
+        1000 );
 
     ltc695x_init(&board.dev_clka_distr, &board.spi_ltc6953_clka);
 
@@ -1051,14 +1023,15 @@ int ertm14_init_clkab_distribution()
         &pin_ertm15_clkab_mosi,
         &pin_ertm15_clkab_miso,
         &pin_ertm15_clkab_sck,
-        100 );
+        1000 );
 
     ltc695x_init(&board.dev_clkb_distr, &board.spi_ltc6953_clkb);
 
-#define LTC6953_EXPECTED_ID 0x93
+#define LTC6953_EXPECTED_ID 0x23
 
-    int id_a = ltc695x_read(&board.dev_clka_distr, 0xa);
-    int id_b = ltc695x_read(&board.dev_clkb_distr, 0xa);
+    int id_a, id_b;
+    id_a = ltc695x_read(&board.dev_clka_distr, 0x38);
+    id_b = ltc695x_read(&board.dev_clkb_distr, 0x38);
 
     int result_a = ltc695x_configure( &board.dev_clka_distr, &clkab_ertm15_bootstrap_config );
     int result_b = ltc695x_configure( &board.dev_clkb_distr, &clkab_ertm15_bootstrap_config );
@@ -1071,11 +1044,11 @@ int ertm14_init_clkab_distribution()
 
 
 // set 250 MHz output on CLKA/CLKB on the front panel
-    clkab_set_output_divider( &board.dev_clka_distr, ERTM14_CLKAB_OUT_FRONT_PANEL, 4 ); // divide by 4 -> 250 MHz
-    clkab_set_output_divider( &board.dev_clkb_distr, ERTM14_CLKAB_OUT_FRONT_PANEL, 4 );
+    clkab_set_output_divider( ERTM14_OUT_CLKA, ERTM14_CLKAB_OUT_FRONT_PANEL, 4 ); // divide by 4 -> 250 MHz
+    clkab_set_output_divider( ERTM14_OUT_CLKB, ERTM14_CLKAB_OUT_FRONT_PANEL, 4 );
 
-    clkab_enable_output( &board.dev_clka_distr, ERTM14_CLKAB_OUT_FRONT_PANEL, 1 );
-    clkab_enable_output( &board.dev_clkb_distr, ERTM14_CLKAB_OUT_FRONT_PANEL, 1 );
+    clkab_enable_output( ERTM14_OUT_CLKA, ERTM14_CLKAB_OUT_FRONT_PANEL, 1 );
+    clkab_enable_output( ERTM14_OUT_CLKB, ERTM14_CLKAB_OUT_FRONT_PANEL, 1 );
 
 // force a SYNC pulse to make sure the SYNC_N pins of the AD9520s are high
 // (so that any clock output is possible)
@@ -1175,9 +1148,6 @@ void ertm14_set_pps_out_mode(int mode)
 
 int ertm14_low_level_init(void)
 {
-    int i;
-    uint32_t id;
-
     ertm_init_complete = 0;
 
     memset( &board, 0, sizeof( struct ertm14_board ));
@@ -1350,13 +1320,12 @@ int ertm14_low_level_init(void)
         ertm14_dds_sync_calibrate();
     }
 
-    /* Initialize the IUART which is responsible for the communication with the MMC.
-       Fixme: below is IUART14 which talks to the MMC on eRTM14. If eRTM15 is present, we need another IUART device. */
-    board_dbg("Init IUART14\n");
-    iuart_init_bare( &board.iuart_14, BASE_IUART_14, 115200 );
-
     board_dbg("Init Control UART Link\n");
-    uart_link_create_wrpc( &board.control_uart, 921600 );
+    uart_link_create_wrpc_console( &board.control_uart_link );
+
+    board_dbg("Init MMC14 UART Link\n");
+    suart_init( &board.mmc_14_uart, BASE_MMC_UART_14, 115200 );
+    uart_link_create_wrpc_suart( &board.mmc_14_link, &board.mmc_14_uart );
 
     board_dbg("Init RF transceiver\n");
     wr_rf_frame_transceiver_create( &board.rf_xcvr, BASE_ERTM14_RF_FRAME_TRANSCEIVER );
@@ -1364,7 +1333,6 @@ int ertm14_low_level_init(void)
     board_dbg("eRTM14/15 early init done\n");
 
     ertm_init_complete = 1;
-
 
     return 0;
 }
@@ -1474,12 +1442,14 @@ static int ertm14_commit_config( struct  ertm14_board_state *cfg )
         }
 
         ertm15_update_rf_switches( &board.rf_distr );
+    return 0;
 }
 
 static int evth_config_update_listener;
 
-static int ertm14_config_update_init(void)
+static void ertm14_config_update_init(void)
 {
+    return 0;
 }
 
 static int ertm14_config_update_task(void)
@@ -1496,6 +1466,7 @@ static int ertm14_config_update_task(void)
             event_post( WRC_ERTM14_EVENT_RECONFIGURED );
         }
     }
+    return 0;
 }
 
 static struct {
@@ -1592,6 +1563,30 @@ int wrc_board_early_init()
 extern int phy_calibration_poll(void);
 extern void phy_calibration_init(void);
 
+timeout_t mmc14_tmo;
+
+void mmc14_link_init(void)
+{
+    tmo_init( &mmc14_tmo, 1000 );
+    return 0;
+}
+
+int mmc14_link_poll(void)
+{
+    if (tmo_expired(&mmc14_tmo))
+    {
+        tmo_restart( &mmc14_tmo );
+        struct uart_packet pkt;
+
+        pkt.ptype = ERTM14_UART_PTYPE_MMC_STATUS_REQ;
+        pkt.length = 0;
+        uart_link_send( &board.mmc_14_link, &pkt );
+
+        pp_printf("req mmc14\n");
+    }
+    return 0;
+}
+
 int wrc_board_init()
 {
     ertm14_shell_init();
@@ -1600,10 +1595,14 @@ int wrc_board_init()
     evth_config_update_listener = event_listener_create();
 
     //wrc_task_create( "iuart14", NULL, iuart_14_poll );
+    
+    console_set_mode_switch_hook( &console_uart_dev, control_uart_mode_callback );
+
     wrc_task_create( "control-uart", NULL, control_uart_poll );
     wrc_task_create( "rf-nco-sync", ertm14_dds_nco_sync_init, ertm14_dds_nco_sync_task );
     wrc_task_create( "ertm-config", ertm14_config_update_init, ertm14_config_update_task );
     wrc_task_create( "phy-cal", phy_calibration_init, phy_calibration_poll );
+    wrc_task_create( "mmc14", mmc14_link_init, mmc14_link_poll );
 
     ertm14_apply_config( 0 );
 

@@ -86,7 +86,8 @@ extern unsigned char *BASE_EP;
 #define BASE_EP                     0x40100
 #define BASE_MINIC                  0x40000
 #define BASE_ONEWIRE                0x40600
-#define BASE_IUART_14               (BASE_AUXWB + 0x200)
+#define BASE_MMC_UART_14            (BASE_AUXWB + 0x200)
+#define BASE_MMC_UART_15            (BASE_AUXWB + 0x700)
 #define BASE_ERTM14_DDS_SYNC_UNIT   (BASE_AUXWB + 0x300)
 #define BASE_CLOCK_MONITOR          (BASE_AUXWB + 0x100)
 #define BASE_ERTM14_10MHZ_ALIGN_UNIT       (BASE_AUXWB + 0x400)
@@ -151,6 +152,7 @@ extern unsigned char *BASE_EP;
 #define ERTM14_UART_PTYPE_PING 1
 #define ERTM14_UART_PTYPE_SNMP_REQ 2
 #define ERTM14_UART_PTYPE_SNMP_RESP 3
+#define ERTM14_UART_PTYPE_MMC_STATUS_REQ 4
 
 struct ertm14_board
 {
@@ -181,10 +183,13 @@ struct ertm14_board
     struct i2c_bus i2c_mac_addr;
     struct m24aa025_device m24_mac_ids[2];
     struct fine_pulse_gen_device dds_sync_dev;
-    struct iuart_device iuart_14;
     struct wr_rf_frame_transceiver_device rf_xcvr;
     struct gpio_device gpio_ertm15_leds;
-    struct uart_link control_uart;
+    struct uart_link control_uart_link;
+    struct simple_uart_device mmc_14_uart;
+    struct simple_uart_device mmc_15_uart;
+    struct uart_link mmc_14_link;
+    struct uart_link mmc_15_link;
 
     int mode;
     int dds_resync_count;
