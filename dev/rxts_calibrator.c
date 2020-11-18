@@ -274,6 +274,6 @@ int calib_t24p(int mode, uint32_t *value)
 
 	//update phtrans value in socket struct
 	if (ret >= 0)
-		ptpd_netif_set_phase_transition(*value);
+		//ptpd_netif_set_phase_transition(*value);
 	return ret;
 }
