@@ -25,6 +25,7 @@ struct console_uart_priv_data
     struct simple_uart_device uart_dev;
     uint8_t state;
     uint8_t prev_char;
+    void (*mode_switch_hook)( int is_binary );
 };
 
 static struct console_uart_priv_data console_uart_priv;
@@ -67,10 +68,14 @@ static int con_rx_internal(struct console_device* dev)
             case CON_SWITCH_TEXT_CODE: // switch to tty mode
                 dev->flags &= ~CONSOLE_FLAGS_MODE_BINARY;
                 dev->flags |= CONSOLE_FLAGS_MODE_TTY;
+                if( priv->mode_switch_hook )
+                    priv->mode_switch_hook( 0 );
                 return -1;
             case CON_SWITCH_BINARY_CODE: // switch to binary mode
                 dev->flags &= ~CONSOLE_FLAGS_MODE_TTY;
                 dev->flags |= CONSOLE_FLAGS_MODE_BINARY;
+                if( priv->mode_switch_hook )
+                    priv->mode_switch_hook( 1 );
                 return -1;
             default:
                 priv->state = CON_STATE_ESC_FLUSH;
@@ -310,6 +315,12 @@ int console_getc()
     return -1;
 }
 
+void console_set_mode_switch_hook( struct console_device *dev, void (*callback)(int) )
+{
+    struct console_uart_priv_data* priv = (struct console_uart_priv_data*) dev->priv;
+    priv->mode_switch_hook = callback;
+}
+
 void console_init()
 {
     int i;
@@ -324,9 +335,10 @@ void console_init()
     console_uart_dev.get_char = con_uart_getc;
     console_uart_dev.put_string = con_uart_put_string;
     
+
     console_uart_priv.prev_char = 0;
     console_uart_priv.state = CON_STATE_IDLE;
-    
+    console_uart_priv.mode_switch_hook = NULL;
     
     console_register_device( &console_uart_dev );
 
