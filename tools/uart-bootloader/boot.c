@@ -21,8 +21,13 @@
 
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 
-#undef CONFIG_ERTM14_FLASH
+#ifndef CONFIG_TARGET_ERTM14
+#error "The bootloader is made so far only for the eRTM14/15 boards. If you're building it for another board, comment out this error (but beware, here be dragons!)"
+#endif
+
+#define CONFIG_ERTM14_FLASH
 
 #include "board.h"
 
@@ -67,19 +72,14 @@ int     boot_wait;
 static uint32_t orig_reset_vector = 0x4;
 
 typedef void (*voidfunc_t)();
+void start_user(void);
 
 struct simple_uart_device dev_uart;
 
 #ifdef CONFIG_ERTM14_FLASH
 
-#define BASE_AUXWB 0x48000
-
-
-struct gpio_device gpio_aux;
 struct spi_bus spi_flash;
 struct spi_flash_device dev_flash;
-
-void start_user();
 
 static void boot_sysc_gpio_set_dir(const struct gpio_pin *pin, int dir)
 {
@@ -89,14 +89,14 @@ static void boot_sysc_gpio_set_out(const struct gpio_pin *pin, int value)
 {
 	
     if(value)
-		writel( ( 1<< pin->pin), (void*) ( BASE_SYSCON + SYSC_REG_GPSR) );
+		writel( ( 1<< pin->pin), (void*) ( (void*)BASE_SYSCON + SYSC_REG_GPSR) );
 	else
-		writel( ( 1<< pin->pin), (void *) ( BASE_SYSCON + SYSC_REG_GPCR) );
+		writel( ( 1<< pin->pin), (void *) ( (void*)BASE_SYSCON + SYSC_REG_GPCR) );
 }
 
 static int boot_sysc_gpio_read_pin(const struct gpio_pin *pin)
 {
-  return readl(BASE_SYSCON + SYSC_REG_GPSR) & (1<<pin->pin) ? 1 : 0;
+  return readl( (void*)BASE_SYSCON + SYSC_REG_GPSR) & (1<<pin->pin) ? 1 : 0;
 }
 
 static const struct gpio_device boot_syscon_gpio = {
@@ -106,22 +106,20 @@ static const struct gpio_device boot_syscon_gpio = {
 	boot_sysc_gpio_read_pin
 };
 
-static const struct gpio_pin boot_pin_sysc_spi_sclk = { &boot_syscon_gpio, 10 };
-static const struct gpio_pin boot_pin_sysc_spi_ncs = { &boot_syscon_gpio, 11 };
-static const struct gpio_pin boot_pin_sysc_spi_mosi = { &boot_syscon_gpio, 12 };
-static const struct gpio_pin boot_pin_sysc_spi_miso = { &boot_syscon_gpio, 13 };
+static struct gpio_pin boot_pin_sysc_spi_sclk = { &boot_syscon_gpio, 10 };
+static struct gpio_pin boot_pin_sysc_spi_ncs = { &boot_syscon_gpio, 11 };
+static struct gpio_pin boot_pin_sysc_spi_mosi = { &boot_syscon_gpio, 12 };
+static struct gpio_pin boot_pin_sysc_spi_miso = { &boot_syscon_gpio, 13 };
 
 void  boot_flash_init()
 {
-    wb_gpio_create( &gpio_aux, BASE_AUXWB );
     bb_spi_create( &spi_flash,
 		&boot_pin_sysc_spi_ncs,
 		&boot_pin_sysc_spi_mosi,
 		&boot_pin_sysc_spi_miso,
 		&boot_pin_sysc_spi_sclk, 10 );
 
-
-    spi_flash_create( &dev_flash, &spi_flash, 16384, 0x0 );
+    spi_flash_create( &dev_flash, &spi_flash, 16384, 0 );
 }
 
 #endif
@@ -250,7 +248,7 @@ void on_cmd_get_flash_id(uint8_t *payload, int len)
 {
     uint32_t id = spi_flash_read_id(&dev_flash);
 
-    send_reply(RSP_OK, 4, &id);
+    send_reply(RSP_OK, 4, (uint8_t*) &id);
 }
 
 #endif
@@ -400,10 +398,8 @@ void boot_fsm()
 #define ERTM14_FLASH_PAGE_SIZE 65536
 #define ERTM14_FLASH_SIZE 16777216
 #define ERTM14_FIRMWARE_MAGIC 0xf1dee41a
-
 void try_flash_boot()
 {
-#ifdef CONFIG_ERTM14_FLASH
     uint8_t buf[512];
     uint32_t offset;
     for(offset = 0; offset < ERTM14_FLASH_SIZE; offset += ERTM14_FLASH_PAGE_SIZE)
@@ -419,17 +415,19 @@ void try_flash_boot()
             start_user();
         }
     }
-#endif
 }
 
 
-
-
-void start_user()
+void start_user(void)
 {
     voidfunc_t f = (voidfunc_t)orig_reset_vector;
 
     f();
+}
+
+void dev_dbg()
+{
+    /* stub to avoid linking errors */
 }
 
 int boot_main()

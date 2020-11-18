@@ -344,8 +344,9 @@ def main(argv):
 
     our_port = "/dev/ttyUSB0"
     do_flash = False
+    run_term = False
     try:
-        opts, args = getopt.getopt(argv[1:], "hf:p:", ["uart"])
+        opts, args = getopt.getopt(argv[1:], "hf:p:t", ["uart"])
     except getopt.GetoptError:
         print('Usage: %s [-f] [-p serial_port_device] file.bin' % argv[0])
         sys.exit(2)
@@ -359,12 +360,16 @@ def main(argv):
             print(
                 '-p / --port:  - specifies the serial port device (default: %s)'
                 % our_port)
+            print(
+                '-t / --term:  - runs a serial terminal on the specified port after programming')
             sys.exit()
         elif opt in ("-f", "--flash"):
-	    flash_target = arg
+    	    flash_target = arg
             do_flash = True
         elif opt in ("-p", "--port"):
             our_port = arg
+        elif opt in ("-t", "--term"):
+            run_term = True
         else:
             print("Unrecognized option '%s'" % opt)
 
@@ -380,7 +385,9 @@ def main(argv):
         boot.program_flash(fw, flash_target)
     else:
         boot.load_ram(fw, 0x0)
-    run_terminal(boot.sock)
+
+    if run_term:
+        run_terminal(boot.sock)
 
 
 if __name__ == "__main__":
