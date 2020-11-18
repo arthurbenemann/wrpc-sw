@@ -34,7 +34,7 @@ void suart_init(struct simple_uart_device *dev, uint32_t base_addr, int baudrate
 void suart_init_default_baudrate(struct simple_uart_device *dev, uint32_t base_addr)
 {
 	dev->base = (void*) base_addr;
-	writel( suart_calc_baud(CONSOLE_UART_BAUDRATE), dev->base + UART_REG_BCR );
+	writel( SUART_CALC_BAUD(CONSOLE_UART_BAUDRATE), dev->base + UART_REG_BCR );
 }
 
 void suart_write_byte(struct simple_uart_device *dev, int b)
@@ -62,11 +62,11 @@ int suart_get_rx_fifo_count( struct simple_uart_device *dev )
 
 int suart_poll(struct simple_uart_device *dev)
 {
-	/*if( suart_is_fifo_supported( dev ) )
+	if( suart_is_fifo_supported( dev ) )
 	{
 		return suart_get_rx_fifo_count( dev );
-	}*/
-	
+	}
+
 	return readl( dev->base + UART_REG_SR) & UART_SR_RX_RDY ? 1 : 0;
 }
 
