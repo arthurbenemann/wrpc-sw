@@ -224,6 +224,7 @@ int spec7_init()
 
 struct i2c_bus            dev_i2c_eeprom;
 struct i2c_eeprom_device  wrc_eeprom_dev;
+struct i2c_eeprom_device  wrc_uid_dev;
 
 int wrc_board_early_init()
 {
@@ -236,13 +237,16 @@ int wrc_board_early_init()
          &pin_eeprom_sda );
     bb_i2c_init(&dev_i2c_eeprom);
 
-    i2c_eeprom_create(&wrc_eeprom_dev, &dev_i2c_eeprom, 0x50, 2);
+    i2c_eeprom_create(&wrc_eeprom_dev, &dev_i2c_eeprom, EEPROM_ADR, 2);
     storage_i2ceeprom_create( &wrc_storage_dev, &wrc_eeprom_dev );
 
     /*
      * Mount SDBFS filesystem from storage.
      */
     storage_mount( &wrc_storage_dev );
+
+    /* create and initialize UID eeprom I2C bus */
+    i2c_eeprom_create(&wrc_uid_dev, &dev_i2c_eeprom, UID_EEPROM_ADR, 1);
 
     return 0;
 }
@@ -251,17 +255,12 @@ int wrc_board_init()
 {
 	uint8_t mac_addr[6];
 	/*
-	 * Try reading MAC addr stored in flash
+	 * Read MAC addr from Unique-ID, IC D12, 24AA025E48
 	 */
-	if (storage_get_persistent_mac(0, mac_addr) == -1) {
-		board_dbg("Failed to get MAC address from the flash. Using fallback address.\n");
-		mac_addr[0] = 0x22;
-		mac_addr[1] = 0x33;
-		mac_addr[2] = 0x44;	/* fallback MAC if get_persistent_mac fails */
-		mac_addr[3] = 0x55;
-		mac_addr[4] = 0x66;
-		mac_addr[5] = 0x77;
-	}
+
+	i2c_eeprom_read(&wrc_uid_dev, UID_OFFSET , mac_addr, sizeof(mac_addr));
+	board_dbg("MAC addr: %x:%x:%x:%x:%x:%x\n",mac_addr[0],mac_addr[1],mac_addr[2],mac_addr[3],mac_addr[4],mac_addr[5]);
+
 	ep_set_mac_addr(&wrc_endpoint_dev, mac_addr);
 	ep_pfilter_init_default(&wrc_endpoint_dev);
 
