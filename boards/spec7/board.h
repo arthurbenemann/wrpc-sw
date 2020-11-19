@@ -80,7 +80,9 @@
 
 #define SDB_ADDRESS 0x30000
 
-#define FMC_EEPROM_ADR 0x50
+#define EEPROM_ADR 0x50
+#define UID_EEPROM_ADR 0x51
+#define UID_OFFSET 0xfa
 
 #define SDBFS_REC 5
 
