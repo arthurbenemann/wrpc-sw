@@ -169,6 +169,8 @@ spll_gain_schedule_t spll_main_ocxo_gain_sched;
 #define ERTM14_BIST_CLKB 7
 #define ERTM14_BIST_DDS_REF 8
 #define ERTM14_BIST_DDS_LO 9
+#define ERTM14_BIST_FLASH_PRESENCE 10
+#define ERTM14_BIST_FLASH_FS_MOUNT 11
 
 #define BIST_STATUS_DONE (1<<0)
 #define BIST_STATUS_ERROR (1<<1)
@@ -182,6 +184,8 @@ struct bist_stage
 };
 
 static struct bist_stage ertm_bist[] = {
+    {ERTM14_BIST_FLASH_PRESENCE, "Check flash presence", 1},
+    {ERTM14_BIST_FLASH_FS_MOUNT, "Mount flash FS", 1},
     {ERTM14_BIST_LTC6950, "LTC6950", 1},
     {ERTM14_BIST_MAC_EEPROM, "MAC EEPROM", 1},
     {ERTM14_BIST_AD951X_EXT, "AD9510 (Ext)", 1},
@@ -1215,7 +1219,6 @@ int ertm14_low_level_init(void)
         &pin_ad9910_lo_sclk,
         100 );
 
-    
     /* detect if the eRTM15 is present and decide how to configure the board */
     int ertm15_present = check_ertm15_presence();
 
@@ -1269,16 +1272,6 @@ int ertm14_low_level_init(void)
     /* Read unique MAC addresses from storage chips (eRTM14 - IC7 and IC8) */
     ertm14_init_mac_eeprom();
 
-    /* RF Power Monitor ADC (eRTM15 - IC43) */
-    bb_spi_create( &board.spi_ad7888,
-        &pin_pwrmon_adc_cs_n,
-        &pin_pwrmon_adc_din,
-        &pin_pwrmon_adc_dout,
-        &pin_pwrmon_adc_sclk,
-        100 );
-
-    ad7888_create( &board.pwrmon_adc, &board.spi_ad7888 );
-
     board_dbg("Init Fine Pulse Generator\n");
 
     /* Initialize the Fine Pulse Generator - it MUST be done 
@@ -1292,19 +1285,41 @@ int ertm14_low_level_init(void)
     {
         board_dbg("Initializing RF distribution\n");
 
+        /* RF Power Monitor ADC (eRTM15 - IC43) */
+        bb_spi_create( &board.spi_ad7888,
+            &pin_pwrmon_adc_cs_n,
+            &pin_pwrmon_adc_din,
+            &pin_pwrmon_adc_dout,
+            &pin_pwrmon_adc_sclk,
+            100 );
 
-    /* RF distribution switches and shift registers controlling these (eRTM15 - IC26..28) */
+        ad7888_create( &board.pwrmon_adc, &board.spi_ad7888 );
+
+
+        /* RF distribution switches and shift registers controlling these (eRTM15 - IC26..28) */
         ertm15_rf_distr_init( &board.rf_distr, &board.pwrmon_adc );
 
-    /* Now that the PLL clocks are ready, init the DDS synthesizers */
+        /* Now that the PLL clocks are ready, init the DDS synthesizers */
         board_dbg("Initializing DDSes\n");
         ertm15_init_dds();
 
-
-        uint64_t ftw = ad9910_frequency_to_ftw( &board.dds_ad9910_ref, ERTM14_DEFAULT_DDS_FREQUENCY_HZ );
         /* Program the DDSes to some meaninfgul settings, say, 205 MHz */
-        ad9910_program(&board.dds_ad9910_ref, ftw, 0, 0x0 );
-        ad9910_program(&board.dds_ad9910_lo, ftw, 0, 0x0 );
+        ad9910_program(&board.dds_ad9910_ref, ERTM14_DDS_DEFAULT_FTW, 0, ERTM14_DDS_DEFAULT_AMPLITUDE );
+        ad9910_program(&board.dds_ad9910_lo, ERTM14_DDS_DEFAULT_FTW, 0, ERTM14_DDS_DEFAULT_AMPLITUDE );
+
+        ertm15_rf_distr_measure_power ( &board.rf_distr );
+
+        int i;
+
+        board_dbg("PA PWR REF = %d mBm, LO = %d mBm\n", board.rf_distr.pwr_ref_in, board.rf_distr.pwr_lo_in );
+
+        for(i = ERTM14_RF_OUT_MIN_ID; i <= ERTM14_RF_OUT_MAX_ID; i++)
+        {
+            board_dbg("OUT[%d] PWR REF = %d mBm, LO = %d mBm\n", i, board.rf_distr.pwr_ref_ch[i], board.rf_distr.pwr_lo_ch[i] );
+        }
+
+        for(;;);
+
     }
 
     /* Setup the SoftPLL for the OCXO we have */
@@ -1346,10 +1361,10 @@ void ertm14_config_init()
         struct ertm14_board_state *cfg = &ertm14_configs[i];
 
         cfg->valid = 1;
-        cfg->lo.ftw = 0x39374BC6;
-        cfg->ref.ftw =  0x39374BC6;
-        cfg->lo.ampl_factor = 50;
-        cfg->ref.ampl_factor = 50; 
+        cfg->lo.ftw = ERTM14_DDS_DEFAULT_FTW;
+        cfg->ref.ftw = ERTM14_DDS_DEFAULT_FTW;
+        cfg->lo.ampl_factor = ERTM14_DDS_DEFAULT_AMPLITUDE;
+        cfg->ref.ampl_factor = ERTM14_DDS_DEFAULT_AMPLITUDE; 
 
         for( j = 0; j <= ERTM14_RF_OUT_MAX_ID; j++)
         {
@@ -1449,7 +1464,7 @@ static int evth_config_update_listener;
 
 static void ertm14_config_update_init(void)
 {
-    return 0;
+
 }
 
 static int ertm14_config_update_task(void)
@@ -1509,6 +1524,9 @@ int ertm14_get_supported_clkab_freqs( int *freqs, int max_count )
     return i;
 }
 
+
+#define ERTM14_EXPECTED_FLASH_ID 0x00016018
+
 int wrc_board_early_init()
 {
     static int32_t flash_entry_points[64];
@@ -1521,24 +1539,28 @@ int wrc_board_early_init()
 		&pin_sysc_spi_ncs,
 		&pin_sysc_spi_mosi,
 		&pin_sysc_spi_miso,
-		&pin_sysc_spi_sclk, 10 );
+		&pin_sysc_spi_sclk, 0 );
 
 	spi_flash_create( &wrc_flash_dev, &spi_wrc_flash, 16384, 0x600000 );
 
+	uint32_t id = spi_flash_read_id( &wrc_flash_dev );
+
+    bist_checkpoint( ertm_bist, ERTM14_BIST_FLASH_PRESENCE, 0, id == ERTM14_EXPECTED_FLASH_ID );
+
 	/* initialize I2C bus */
 	bb_i2c_init( &dev_i2c_fmc );
-   
 
     for(i = 0; i < 32 + 8; i++)
         flash_entry_points[i] = 0x600000 + 0x40000 * i;
 
     flash_entry_points[i] = -1;
 
-    
     /* init storage (we use the SPI flash on eRTM14) */
     storage_spiflash_create( &wrc_storage_dev, &wrc_flash_dev );
     wrc_storage_dev.entry_points = &flash_entry_points[0];
-    storage_mount( &wrc_storage_dev );
+
+    int rv = storage_mount( &wrc_storage_dev );
+    bist_checkpoint( ertm_bist, ERTM14_BIST_FLASH_FS_MOUNT, 0, rv == 0 );
 
     /* reset the networking part of the WRCore and start the WR Endpoint */
    	net_rst();

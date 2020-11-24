@@ -21,12 +21,23 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <math.h>
+#include <limits.h>
+
+#include <sys/errno.h>
 
 #include "board.h"
 #include "dev/gpio.h"
 #include "dev/74x595.h"
 #include "dev/ad7888.h"
 #include "ertm15_rf_distr.h"
+
+#ifndef INT32_MAX
+    #define INT32_MAX INT_MAX
+#endif
+
+#ifndef INT32_MIN
+    #define INT32_MIN INT_MIN
+#endif
 
 static const struct gpio_pin pin_lo_ctrl_ser = { &board.gpio_aux, 39 };
 static const struct gpio_pin pin_lo_ctrl_updtclk = { &board.gpio_aux, 40 };
@@ -144,47 +155,127 @@ void ertm15_rf_distr_init( struct ertm15_rf_distribution_device *dev, struct ad7
     ertm15_update_rf_switches( dev );
 }
 
-static int convert_power( int adc_value )
+// fixed point logarithm code from: https://github.com/dmoulding/log2fix/blob/master/log2fix.c
+
+#define INV_LOG2_E_Q1DOT31  (0x58b90bfcULL) // Inverse log base 2 of e
+#define INV_LOG2_10_Q1DOT31 (0x268826a1ULL) // Inverse log base 2 of 10
+
+int64_t log2fix (uint64_t x, size_t precision)
 {
-    pp_printf("ADCV %d\n", adc_value );
+    // This implementation is based on Clay. S. Turner's fast binary logarithm
+    // algorithm[1].
 
-    float adc_voltage = (float) adc_value / 4096.0 * 2.5;
-    float rf_power = 10.0 * log( adc_voltage / 2.0 ) / log( 10.0 ) + 15.0; // 2V = 0 dBm, compensate for 15 dB attenuator
+    int64_t b = 1UL << (precision - 1);
+    int64_t y = 0;
 
-    return (int) (rf_power * 100.0);
+    if (precision < 1 || precision > 31) {
+        errno = -EINVAL;
+        return INT32_MAX; // indicates an error
+    }
+
+    if (x == 0) {
+        return INT32_MIN; // represents negative infinity
+    }
+
+    while (x < 1UL << precision) {
+        x <<= 1;
+        y -= 1UL << precision;
+    }
+
+    while (x >= 2UL << precision) {
+        x >>= 1;
+        y += 1UL << precision;
+    }
+
+    uint64_t z = x;
+
+    size_t i;
+    for (i = 0; i < precision; i++) {
+        z = z * z >> precision;
+        if (z >= 2UL << precision) {
+            z >>= 1;
+            y += b;
+        }
+        b >>= 1;
+    }
+
+    return y;
 }
 
-#define ADC_CH_REF_DDS_PA 2
+int32_t log10fix (uint64_t x, size_t precision)
+{
+    uint64_t t;
+
+    t = log2fix(x, precision) * INV_LOG2_10_Q1DOT31;
+
+    return t >> 31;
+}
+
+// takes raw ADC readout (0..4095), returns normalized power value in mBm
+static int convert_power( int adc_value )
+{
+//    pp_printf("ADCV %d\n", adc_value );
+
+    // ADC full scale: 0..4095 - 0..2.5 V
+    // LMH2120: 0 dBm = 2V (see datasheet Figure 17)
+    // LMH2120 pre-attenuator: 15 dB
+
+    int precision_bits = 16;
+
+    int32_t f_adc_voltage = ( (int64_t)adc_value << precision_bits) * 25LL / 4096LL; // volts, fixed point
+    const int32_t f_2V = (20LL << precision_bits);
+    const int32_t f_log_2V_0dBm = log10fix( f_2V, precision_bits );
+    int32_t f_log_input = log10fix( f_adc_voltage, precision_bits );
+    int32_t pwr =  ( ( 2000LL * (int64_t)(f_log_input - f_log_2V_0dBm) ) >> precision_bits ) + 1500;
+
+    return (int) (pwr);
+}
+
+
 #define ADC_CH_LO_DDS_PA 0
-#define ADC_CH_REF_DDS_DISTR 3
 #define ADC_CH_LO_DDS_DISTR 1
+
+#define ADC_CH_REF_DDS_PA 2
+#define ADC_CH_REF_DDS_DISTR 3
 
 int ertm15_rf_distr_measure_power ( struct ertm15_rf_distribution_device *dev )
 {
-
+    int i;
     ad7888_start_conversion( dev->pwr_mon_adc, 0x0f );
+
     while( dev->pwr_mon_adc->channel_valid != 0x0f )
     {
         ad7888_poll( dev->pwr_mon_adc );
-        usleep(1000);
+        timer_delay_ms(1);
     }
 
     dev->pwr_ref_in = convert_power( dev->pwr_mon_adc->channel[ADC_CH_REF_DDS_PA] );
     dev->pwr_lo_in = convert_power( dev->pwr_mon_adc->channel[ADC_CH_LO_DDS_PA] );
 
-    int i;
-    for( i = 4; i <= 12; i ++ )
+    timer_delay_ms(1);
+
+    for( i = ERTM14_RF_OUT_MIN_ID; i <= ERTM14_RF_OUT_MAX_ID; i ++ )
     {
         dev->pwr_ref_valid &= ~(1<<i);
         if( ! (dev->ref_enabled & (1<<i) ) )
         {
             rf_switch_set( ERTM15_RF_REF, i, ERTM15_RF_OUT_MONITOR );
-            usleep(10000);
+            timer_delay_ms(10);
             int raw_pwr = ad7888_meas_channel( dev->pwr_mon_adc, ADC_CH_REF_DDS_DISTR );
             dev->pwr_ref_ch[ i ] = convert_power( raw_pwr );
-            pp_printf("Ch REF %d: pwr %d v %d\n", i, dev->pwr_ref_ch[i], dev->pwr_mon_adc->channel_valid );
             dev->pwr_ref_valid |= (1<<i);
             rf_switch_set( ERTM15_RF_REF, i, ERTM15_RF_OUT_OFF );
+        }
+
+        dev->pwr_lo_valid &= ~(1<<i);
+        if( ! (dev->lo_enabled & (1<<i) ) )
+        {
+            rf_switch_set( ERTM15_RF_LO, i, ERTM15_RF_OUT_MONITOR );
+            timer_delay_ms(10);
+            int raw_pwr = ad7888_meas_channel( dev->pwr_mon_adc, ADC_CH_LO_DDS_DISTR );
+            dev->pwr_lo_ch[ i ] = convert_power( raw_pwr );
+            dev->pwr_lo_valid |= (1<<i);
+            rf_switch_set( ERTM15_RF_LO, i, ERTM15_RF_OUT_OFF );
         }
     }
 

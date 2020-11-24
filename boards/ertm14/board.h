@@ -154,6 +154,9 @@ extern unsigned char *BASE_EP;
 #define ERTM14_UART_PTYPE_SNMP_RESP 3
 #define ERTM14_UART_PTYPE_MMC_STATUS_REQ 4
 
+#define ERTM14_DDS_DEFAULT_FTW 0x39374BC6 /* 223.5 MHz @ 1 GHz refclk */
+#define ERTM14_DDS_DEFAULT_AMPLITUDE 0x7f
+
 struct ertm14_board
 {
     struct gpio_device gpio_aux;
