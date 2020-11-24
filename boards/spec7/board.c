@@ -49,16 +49,17 @@ void spec7_set_pll_wr_mode(int wrc_ptp_mode)
 {
     int pll_wr_mode;
 
+#if defined(CONFIG_HPSEC_GM)
+    // When HPSEC is used then (Morion MV336) 10MHz is tuned
+    // and the LTC6950 generates 125 MHz.
+    pll_wr_mode = PLL_WR_MODE_GM;
+#else
+    // When referecne design is used then (Morion MV336) 10MHz is tuned
     // Set clock multiplexers (U63, U64) depending on wrc_ptp_mode
     switch(wrc_ptp_mode) {
         case WRC_MODE_GM || WRC_MODE_ABSCAL:
             // Default reference design locks local VCXO to external 10 MHz
             pll_wr_mode = PLL_WR_MODE_SLAVE;
-#if defined(CONFIG_HPSEC_GM)
-            // When HPSEC is used in GM mode then HPSEC locks to external
-            // 10 MHz via LTC6950.
-            pll_wr_mode = PLL_WR_MODE_GM;
-#endif
             break;
         case WRC_MODE_MASTER:
             pll_wr_mode = PLL_WR_MODE_MASTER;
@@ -66,6 +67,7 @@ void spec7_set_pll_wr_mode(int wrc_ptp_mode)
         default:
             pll_wr_mode = PLL_WR_MODE_SLAVE;
     }
+#endif
 
     gen_gpio_out( &pin_pll_wr_mode0_o, (pll_wr_mode & 0x1) ? 1 : 0);
     gen_gpio_out( &pin_pll_wr_mode1_o, (pll_wr_mode & 0x2) ? 1 : 0);
