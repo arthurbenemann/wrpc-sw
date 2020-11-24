@@ -40,15 +40,14 @@ static struct ltc6950_config ltc6950_ext_10mhz_config =
 timeout_t pll_even_odd_timeout;
 timeout_t pll_sync_timeout;
 
-//#define CONFIG_HPSEC_GM
-#undef CONFIG_HPSEC_GM
+#define CONFIG_HPSEC_GM
+//#undef CONFIG_HPSEC_GM
 
 //volatile struct softpll_state softpll;
 
 void spec7_set_pll_wr_mode(int wrc_ptp_mode)
 {
     int pll_wr_mode;
-    int mode_hpsec_gm = 0;
 
     // Set clock multiplexers (U63, U64) depending on wrc_ptp_mode
     switch(wrc_ptp_mode) {
@@ -57,20 +56,12 @@ void spec7_set_pll_wr_mode(int wrc_ptp_mode)
             pll_wr_mode = PLL_WR_MODE_SLAVE;
 #if defined(CONFIG_HPSEC_GM)
             // When HPSEC is used in GM mode then HPSEC locks to external
-            // 10 MHz via LTC6950 and WRC_MODE *must* be free running master.
-            // Note: WRC_MODE_GM tries to align the local VCXO with the
-            // external 10 MHz but in HPSEC_GM case the VCXO is not used.
-            pp_printf("ERROR: HPSEC_GM must use WRC_MODE_MASTER.\n");
+            // 10 MHz via LTC6950.
+            pll_wr_mode = PLL_WR_MODE_GM;
 #endif
             break;
         case WRC_MODE_MASTER:
             pll_wr_mode = PLL_WR_MODE_MASTER;
-#if defined(CONFIG_HPSEC_GM)
-            // When HPSEC is used in GM mode then HPSEC locks to external
-            // 10 MHz via LTC6950 and WRC_MODE *must* be free running master.
-            pll_wr_mode = PLL_WR_MODE_GM;
-            mode_hpsec_gm = 1;
-#endif
             break;
         default:
             pll_wr_mode = PLL_WR_MODE_SLAVE;
@@ -82,15 +73,13 @@ void spec7_set_pll_wr_mode(int wrc_ptp_mode)
 
     // ltc6950 initialization depending on wrc_ptp_mode
     board_dbg("Initialize ltc6950.\n");
-    if (wrc_ptp_mode == WRC_MODE_MASTER | mode_hpsec_gm == 1) {
+    if (pll_wr_mode == PLL_WR_MODE_MASTER | pll_wr_mode == PLL_WR_MODE_GM) {
         // 10 MHZ from TCXO (WRC_MODE_MASTER) on outputs 0, 1, 2
-        // or (for HPSEC in WRC_MODE GM) External 10 MHZ In (Bulls-Eye B03/B04) => 125 MHz
+        // or (for HPSEC in WRC_MODE GM) External 10 MHZ In (Bulls-Eye B03/B04)
+        // via LTC6950 => 125 MHz
         ltc6950_configure(&board.ltc6950_pll, &ltc6950_ext_10mhz_config);
         while ((ltc6950_read(&board.ltc6950_pll,  0x00) & LTC6950_LOCK) == 0);
         board_dbg("ltc6950 locked.\n");
-#if defined(CONFIG_HPSEC_GM)
-        pll_sync();
-#endif
     } else {
         // Forward 125 MHz VCXO_REFCLK at CLK input to outputs 0, 1, 2
         ltc6950_configure(&board.ltc6950_pll, &ltc6950_base_config);
@@ -102,81 +91,9 @@ void spec7_set_pll_wr_mode(int wrc_ptp_mode)
     timer_delay_ms(10);
 }
 
-int pll_sync()
-{
-    // Used in HPSEC Grand Master mode where external 10MHz generates 125MHz.
-    // 125MHz is not an integer multiple of 10MHz so it has two lock modes: even/odd.
-    // The generated 125MHz must be even/odd alligned with the external 10MHz/1PPS.
-    
-    tmo_init(&pll_even_odd_timeout, PLL_EVEN_ODD_TIMEOUT_MS);
-    while (gen_gpio_in( &pin_pll_even_odd_n_i ) == 0) {
-        // Reset the PLL (RES6950 clears itself)
-        board_dbg("Reset ltc6950...\n");
-        ltc6950_write( &board.ltc6950_pll, 0x03, 4);
-        timer_delay_ms(1);
-        ltc6950_configure(&board.ltc6950_pll, &ltc6950_ext_10mhz_config);
-        while ((ltc6950_read(&board.ltc6950_pll,  0x00) & LTC6950_LOCK) == 0);
-        timer_delay_ms(1000);  // wait for next PPS
-        if ( tmo_expired(&pll_even_odd_timeout)) {
-            pp_printf("TIMEOUT: External 10MHz/1PPS lock to \"even\" 125MHz clock cycle.\n");
-            return 0;
-        }
-    }
-    board_dbg("HPSEC_GM mode: External 10MHz/1PPS lock achieved on \"even\" 125MHz clock cycle\n");
-
-    // Trigger a clk_ref_125m to clk_ref_62m5 divider synchronisation
-    gen_gpio_out( &pin_pll_sync_o, 1);
-    gen_gpio_out( &pin_pll_sync_o, 0);
-
-    tmo_init(&pll_sync_timeout, PLL_SYNC_TIMEOUT_MS);
-    // Wait for sync sequence done
-    while (gen_gpio_in( &pin_pll_sync_done_i ) == 0) {
-        if ( tmo_expired(&pll_sync_timeout)) {
-            pp_printf("TIMEOUT: clk_ref_125m to clk_ref_62m5 divider synchronization.\n");
-            return 0;
-        }
-    }
-    board_dbg("HPSEC_GM mode: clk_ref_125m to clk_ref_62m5 divider synchronization done\n");
-
-/*
-    PPSG->ESCR = PPSG_ESCR_SYNC;
-    tmo_init(&pll_sync_timeout, PLL_SYNC_TIMEOUT_MS);
-    // Wait for PPS sync sequence done
-    while (PPSG->ESCR & PPSG_ESCR_SYNC == 0) {
-        if ( tmo_expired(&pll_sync_timeout)) {
-            pp_printf("TIMEOUT: External PPS alignment.\n");
-            return 0;
-        }
-    }
-    board_dbg("HPSEC_GM mode: synced to external PPS.\n");
-*/
-    phy_calibration_init();
-    while (!phy_calibration_done()) {
-        phy_calibration_poll();
-    }
-
-    return 1;
-}
 
 int post_pll_lock(int wrc_ptp_mode)
 {
-#if defined(CONFIG_HPSEC_GM)
-    // Sync external PPS when in HPSEC_GM mode
-    PPSG->ESCR = PPSG_ESCR_SYNC;
-    tmo_init(&pll_sync_timeout, PLL_SYNC_TIMEOUT_MS);
-    // Wait for PPS sync sequence done
-    while (PPSG->ESCR & PPSG_ESCR_SYNC == 0) {
-        if ( tmo_expired(&pll_sync_timeout)) {
-            pp_printf("TIMEOUT: External PPS alignment.\n");
-            return 0;
-        }
-    }
-    board_dbg("HPSEC_GM mode: synced to external PPS.\n");
-#endif
-
-    if (wrc_ptp_mode == WRC_MODE_MASTER)
-        //phy_calibration_init();
-
     return 1;
 }
 
