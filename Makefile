@@ -105,7 +105,7 @@ cflags-$(CONFIG_WR_NODE) += -Isdb-lib
 
 CFLAGS = $(cflags-y) -Wall -Wstrict-prototypes \
 	-ffunction-sections -fdata-sections -Os \
-	-include include/wrc.h -ggdb
+	-include include/wrc.h -ggdb 
 
 # Assembler Flags
 ASFLAGS = -I.
@@ -280,4 +280,4 @@ makeall_copy: $(addprefix $(DEFCONFIG_NAME),$(MAKEALL_COPY_LIST))
 
 load: all
 		- killall -9 usb-bootloader.py
-		- ./tools/uart-bootloader/usb-bootloader.py -p $(PORT) wrc.bin
+		- ./tools/uart-bootloader/usb-bootloader.py -t -p $(PORT) wrc.bin
