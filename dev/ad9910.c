@@ -109,7 +109,6 @@ int ad9910_program( struct ad9910_device *dev, uint64_t ftw_n, int phase, int fs
         {
             r.value &= 0xffffff00;
             r.value |= fs_current;     // Aux DAC control: DAC Full scale current
-  //          pp_printf("auxdac %08x\n", (uint32_t) r.value );
         } else
         if( r.addr == 0xe ) // profile 0
             r.value = prof0_cr;

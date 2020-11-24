@@ -38,7 +38,6 @@ uint8_t ltc695x_read(struct ltc695x_device *dev, uint32_t reg) {
     rv = bb_spi_read(dev->bus, 8);
     bb_spi_cs(dev->bus, 0);
 
-    pp_printf("REad %x %x\n", reg, rv );
     return rv;
 }
 
@@ -109,7 +108,7 @@ int ltc6953_configure_output( struct ltc695x_device *dev, int output, int divide
     uint8_t div_mp, div_md;
 
     
-    dev_dbg("ltc6953 out %d div=%d inv=%d\n", output, divider, invert );
+    //dev_dbg("ltc6953 out %d div=%d inv=%d\n", output, divider, invert );
     
     switch(divider)
     {
@@ -127,8 +126,8 @@ int ltc6953_configure_output( struct ltc695x_device *dev, int output, int divide
 
     int base = (output * 4 + 0xc);
 
-    dev_dbg("ltc6953 r%02x = %02x\n", base+0, or0 );
-    dev_dbg("ltc6953 r%02x = %02x\n", base+1, or1 );
+    //dev_dbg("ltc6953 r%02x = %02x\n", base+0, or0 );
+    //dev_dbg("ltc6953 r%02x = %02x\n", base+1, or1 );
     ltc695x_write( dev, base + 0, or0 );
     ltc695x_write( dev, base + 1, or1 );
 
