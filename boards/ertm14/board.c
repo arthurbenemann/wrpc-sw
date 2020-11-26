@@ -1317,9 +1317,6 @@ int ertm14_low_level_init(void)
         {
             board_dbg("OUT[%d] PWR REF = %d mBm, LO = %d mBm\n", i, board.rf_distr.pwr_ref_ch[i], board.rf_distr.pwr_lo_ch[i] );
         }
-
-        for(;;);
-
     }
 
     /* Setup the SoftPLL for the OCXO we have */
