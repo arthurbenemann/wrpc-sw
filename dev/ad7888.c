@@ -69,7 +69,7 @@ void ad7888_start_conversion( struct ad7888_device *dev, uint16_t channel_mask )
 
     dev->channel_mask = channel_mask;
     dev->channel_valid = 0;
-    dev->current_ch = 0;
+    dev->current_ch = -1;
     dev->last_poll_tics = timer_get_tics();
 
     int ch = first_bit_set_after( dev->channel_mask, dev->current_ch );
