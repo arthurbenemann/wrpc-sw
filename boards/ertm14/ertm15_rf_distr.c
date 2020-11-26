@@ -234,16 +234,17 @@ static int convert_power( int adc_value )
 
 #define ADC_CH_LO_DDS_PA 0
 #define ADC_CH_LO_DDS_DISTR 1
-
 #define ADC_CH_REF_DDS_PA 2
 #define ADC_CH_REF_DDS_DISTR 3
+
+#define ADC_CHANNEL_MASK 0xf
 
 int ertm15_rf_distr_measure_power ( struct ertm15_rf_distribution_device *dev )
 {
     int i;
-    ad7888_start_conversion( dev->pwr_mon_adc, 0x0f );
+    ad7888_start_conversion( dev->pwr_mon_adc, ADC_CHANNEL_MASK );
 
-    while( dev->pwr_mon_adc->channel_valid != 0x0f )
+    while( dev->pwr_mon_adc->channel_valid != ADC_CHANNEL_MASK )
     {
         ad7888_poll( dev->pwr_mon_adc );
         timer_delay_ms(1);
