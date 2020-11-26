@@ -23,6 +23,7 @@
 #include "lib/ertm14-uart-link.h"
 #include "rf_frame_transceiver.h"
 
+#define BOARD_USE_CUSTOM_SDBFS 1
 #define BOARD_HAS_CUSTOM_NETWORK_INIT 1
 
 #undef BOARD_ERTM14_REV_1
