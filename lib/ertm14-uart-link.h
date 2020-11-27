@@ -5,6 +5,51 @@
 
 #define ERTM14_MAX_UART_LINK_PAYLOAD 512
 
+
+// UART Protocol packet types
+#define ERTM14_UART_PTYPE_PING 1
+#define ERTM14_UART_PTYPE_SNMP_REQ 2
+#define ERTM14_UART_PTYPE_SNMP_RESP 3
+#define ERTM14_UART_PTYPE_MMC_STATUS_REQ 4
+#define ERTM14_UART_PTYPE_MMC_STATUS_RESP 5
+
+
+#define ERTM14_SENSOR_VOLTAGE_MV   (1<<0)
+#define ERTM14_SENSOR_CURRENT_MA   (1<<1)
+#define ERTM14_SENSOR_TEMP_CELSIUS (1<<2)
+#define ERTM14_SENSOR_VALID         (1<<7)
+
+#define ERTM14_VOLTAGE_P3V3 0
+#define ERTM14_VOLTAGE_P12V 1
+#define ERTM14_TEMP_FPGA 2
+#define ERTM14_TEMP_DCDC 3
+
+#define ERTM14_MAX_SENSORS_COUNT 16
+
+#ifndef PACKED
+    #define PACKED __attribute__((packed))
+#endif
+
+PACKED struct ertm14_mmc_version_info
+{
+    char git_tag[32];
+    char git_sha[32];
+    uint32_t build_date;
+};
+
+PACKED struct ertm14_mmc_sensor_state
+{
+    uint8_t flags;
+    uint8_t id;
+    uint16_t value;
+};
+
+PACKED struct ertm14_mmc_state
+{
+    struct ertm14_mmc_version_info info;
+    struct ertm14_mmc_sensor_state sensors[ERTM14_MAX_SENSORS_COUNT];
+};
+
 struct simple_uart_device;
 
 struct uart_packet

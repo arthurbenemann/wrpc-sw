@@ -102,12 +102,14 @@ int uart_link_create_wrpc_console( struct uart_link *link )
 static int wrpc_suart_send_byte( struct uart_link* link, uint8_t b )
 {
     struct simple_uart_device *suart = (struct simple_uart_device* ) link->priv;
-
+    suart_write_byte( suart, b );
+    return 1;
 }
 
 static int wrpc_suart_recv_byte( struct uart_link* link )
 {
     struct simple_uart_device *suart = (struct simple_uart_device* ) link->priv;
+    return suart_read_byte( suart );
 }
 
 int uart_link_create_wrpc_suart( struct uart_link *link, struct simple_uart_device *uart_dev )
