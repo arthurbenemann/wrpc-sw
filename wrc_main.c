@@ -13,7 +13,6 @@
 #include <stdarg.h>
 
 #include <wrc.h>
-#include <temperature.h>
 #include <dev/w1.h>
 #include <dev/syscon.h>
 #include <dev/console.h>

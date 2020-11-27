@@ -20,7 +20,7 @@
 #include <dev/onewire.h>
 #include <dev/endpoint.h>
 #include <dev/netif.h>
-#include <temperature.h>
+#include "sensors.h"
 #include "wrc_ptp.h"
 #include "hal_exports.h"
 #include "lib/ipv4.h"
@@ -408,11 +408,13 @@ int wrc_log_stats(void)
 		spll_get_dac(1));
 
 	if (1) {
-		int32_t temp;
+		
+		struct wrc_sensor *s = wrc_sensor_find_by_type( WRC_SENSOR_TEMP_CELSIUS );
 
-		temp = wrc_temp_get("pcb");
-		pp_printf("temp: %d.%04d C", temp >> 16,
-			  (int)((temp & 0xffff) * 10 * 1000 >> 16));
+		if( s )
+		{
+			pp_printf("temp: %d degC", s->value );
+		}
 	}
 
 	pp_printf("\n");

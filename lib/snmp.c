@@ -25,7 +25,7 @@
 #include "hw/etherbone-config.h"
 #include "revision.h"
 #include "softpll_ng.h"
-#include "temperature.h"
+#include "sensors.h"
 #include "sfp.h"
 #include "dev/syscon.h"
 

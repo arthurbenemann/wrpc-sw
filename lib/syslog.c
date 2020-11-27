@@ -1,7 +1,7 @@
 #include <string.h>
 #include <wrc.h>
 #include <wrpc.h>
-#include <temperature.h>
+#include "sensors.h"
 #include "dev/endpoint.h"
 #include "dev/minic.h"
 #include "shell.h"
