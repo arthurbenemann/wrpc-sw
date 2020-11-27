@@ -13,12 +13,25 @@
 
 #define WRC_MAX_TEMPERATURES 4
 
+#define WRC_SENSOR_TEMP_CELSIUS (1<<0)
+#define WRC_SENSOR_CURRENT_MA (1<<1)
+#define WRC_SENSOR_VOLTAGE_MV (1<<2)
+#define WRC_SENSOR_VALID (1<<3)
+
+#define WRC_SENSOR_INVALID_VALUE (0x80000000)
+
+struct wrc_sensor
+{
+	const char* name;
+	uint8_t flags;
+	uint8_t id;
+	int16_t value;
+};
+
 struct wrc_onetemp {
 	char *name;
 	int32_t t;  /* fixed point, 16.16 (signed!) */
 };
-
-#define TEMP_INVALID (0x8000 << 16)
 
 struct wrc_temp {
 	int used;

@@ -9,8 +9,9 @@
 
 #include <wrc.h>
 #include <dev/w1.h>
-#include <temperature.h>
+#include "sensors.h"
 
+#if 0
 static struct wrc_onetemp temp_w1_data[] = {
 	{"pcb", TEMP_INVALID},
 	{NULL,}
@@ -59,4 +60,5 @@ DEFINE_TEMPERATURE(w1) = {
 	.t = temp_w1_data,
 };
 
+#endif
 #endif
