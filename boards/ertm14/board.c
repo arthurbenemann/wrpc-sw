@@ -41,6 +41,7 @@
 
 #include "lib/ertm14-uart-link.h"
 
+#include "sensors.h"
 #include "softpll_ng.h"
 #include "storage.h"
 #include "wrc_ptp.h"
@@ -171,6 +172,8 @@ spll_gain_schedule_t spll_main_ocxo_gain_sched;
 #define ERTM14_BIST_DDS_LO 9
 #define ERTM14_BIST_FLASH_PRESENCE 10
 #define ERTM14_BIST_FLASH_FS_MOUNT 11
+#define ERTM14_BIST_MMC_14 12
+#define ERTM14_BIST_MMC_15 13
 
 #define BIST_STATUS_DONE (1<<0)
 #define BIST_STATUS_ERROR (1<<1)
@@ -194,8 +197,62 @@ static struct bist_stage ertm_bist[] = {
     {ERTM14_BIST_CLKB, "LTC6953 (CLKB fanout)", 1},
     {ERTM14_BIST_DDS_LO, "DDS comm (LO)", 1},
     {ERTM14_BIST_DDS_REF, "DDS comm (REF)", 1},
+    {ERTM14_BIST_MMC_14, "MMC Link (eRTM14)", 1},
+    {ERTM14_BIST_MMC_15, "MMC Link (eRTM15)", 1},
+
     {0, NULL}};
 
+
+static struct wrc_sensor ertm_sensors[] = {
+    {
+        .flags = WRC_SENSOR_TEMP_CELSIUS,
+        .name = "eRTM14 FPGA",
+        .id = ERTM14_TEMP_FPGA
+    },
+    {
+        .flags = WRC_SENSOR_TEMP_CELSIUS,
+        .name = "eRTM14 DC/DC",
+        .id = ERTM14_TEMP_DCDC
+    },
+    {
+        .flags = WRC_SENSOR_VOLTAGE_MV,
+        .name = "eRTM14 P3V3",
+        .id = ERTM14_VOLTAGE_P3V3
+    },
+    {
+        .flags = WRC_SENSOR_VOLTAGE_MV,
+        .name = "eRTM14 P12V",
+        .id = ERTM14_VOLTAGE_P12V
+    },
+    {
+        .flags = 0
+    }
+};
+
+static struct uart_packet* mmc_get_status ( struct uart_link *link );
+static void mmc_show_version_info( const char *brdname, struct ertm14_mmc_state *st );
+
+uint32_t bswap32(uint32_t v)
+{
+    uint32_t rv = 0;
+
+    rv |= (v >> 24) & 0xff;
+    rv |= (v >> 8) & 0xff00;
+    rv |= (v << 8) & 0xff0000;
+    rv |= (v << 24) & 0xff000000;
+    
+    return rv;
+}
+
+uint16_t bswap16(uint16_t v)
+{
+    uint16_t rv = 0;
+
+    rv |= (v >> 8) & 0xff;
+    rv |= (v << 8) & 0xff00;
+
+    return rv;
+}
 
 void bist_checkpoint( struct bist_stage *bist, int id, int channel, int pass )
 {
@@ -275,10 +332,13 @@ void ertm14_set_pps_out_mode(int mode);
 static int check_ertm15_presence(void)
 {
     ltc695x_init(&board.ltc6950_pll, &board.spi_ltc6950);
+    int id;
+    //for(;;)
+    {
+         id = ltc695x_read( &board.ltc6950_pll, 0x16 );
 
-    int id = ltc695x_read( &board.ltc6950_pll, 0x16 );
-
-    board_dbg("detect LTC6950: ID %x should be %x\n", id, LTC6950_ID_VALUE );
+        board_dbg("detect LTC6950: ID %x should be %x\n", id, LTC6950_ID_VALUE );
+    }
 
     if( id != LTC6950_ID_VALUE )
         return 0;
@@ -1339,6 +1399,14 @@ int ertm14_low_level_init(void)
     suart_init( &board.mmc_14_uart, BASE_MMC_UART_14, 115200 );
     uart_link_create_wrpc_suart( &board.mmc_14_link, &board.mmc_14_uart );
 
+    struct ertm14_mmc_state *st = mmc_get_status( &board.mmc_14_link );
+    bist_checkpoint( ertm_bist, ERTM14_BIST_MMC_14, 0, st != NULL );
+
+    if( st )
+    {
+        mmc_show_version_info( "eRTM14", st );
+    }
+
     board_dbg("Init RF transceiver\n");
     wr_rf_frame_transceiver_create( &board.rf_xcvr, BASE_ERTM14_RF_FRAME_TRANSCEIVER );
 
@@ -1531,6 +1599,8 @@ int wrc_board_early_init()
 
     bist_init( ertm_bist );
 
+    wrc_register_sensors( ertm_sensors );
+
     /* initialize SPI flash */
     bb_spi_create( &spi_wrc_flash,
 		&pin_sysc_spi_ncs,
@@ -1539,6 +1609,27 @@ int wrc_board_early_init()
 		&pin_sysc_spi_sclk, 0 );
 
 	spi_flash_create( &wrc_flash_dev, &spi_wrc_flash, 16384, 0x600000 );
+
+
+#if 0
+    uint32_t ts = timer_get_tics();
+
+    for(i=0;i<1000000;i++)
+    {
+        //gen_gpio_out(&pin_sysc_spi_sclk, 0);
+        //gen_gpio_out(&pin_sysc_spi_sclk, 1);
+
+        sysc_gpio_set_out(&pin_sysc_spi_sclk, 0);
+        sysc_gpio_set_out(&pin_sysc_spi_sclk, 1);
+
+    }
+
+    uint32_t te = timer_get_tics();
+    pp_printf("meas: %d ms\n", te - ts);
+    for(;;);
+#endif
+
+
 
 	uint32_t id = spi_flash_read_id( &wrc_flash_dev );
 
@@ -1584,6 +1675,34 @@ extern void phy_calibration_init(void);
 
 timeout_t mmc14_tmo;
 
+static void mmc_show_version_info( const char *brdname, struct ertm14_mmc_state *st )
+{
+    pp_printf("MMC Build Info for %s:\n", brdname );
+    pp_printf("  - Git build commit : %32s\n", st->info.git_sha );
+    pp_printf("  - Git build tag    : %32s\n", st->info.git_tag );
+    pp_printf("  - Build date       : %d\n",   bswap32( st->info.build_date ) );
+}
+
+static struct uart_packet* mmc_get_status ( struct uart_link *link )
+{
+    struct uart_packet tx_pkt;
+    struct uart_packet *rx_pkt;
+
+    tx_pkt.ptype = ERTM14_UART_PTYPE_MMC_STATUS_REQ;
+    tx_pkt.length = 0;
+    uart_link_send( &board.mmc_14_link, &tx_pkt );
+
+    if( uart_link_recv( &board.mmc_14_link, &rx_pkt, 100 ) == 1 )
+    {
+        if ( rx_pkt->ptype != ERTM14_UART_PTYPE_MMC_STATUS_RESP )
+            return NULL;
+        return rx_pkt;
+    }
+
+    return NULL;
+}
+
+
 void mmc14_link_init(void)
 {
     tmo_init( &mmc14_tmo, 1000 );
@@ -1594,15 +1713,36 @@ int mmc14_link_poll(void)
 {
     if (tmo_expired(&mmc14_tmo))
     {
-        tmo_restart( &mmc14_tmo );
-        struct uart_packet pkt;
+        tmo_restart(&mmc14_tmo);
+        struct uart_packet *rx_pkt = mmc_get_status(&board.mmc_14_link);
 
-        pkt.ptype = ERTM14_UART_PTYPE_MMC_STATUS_REQ;
-        pkt.length = 0;
-        uart_link_send( &board.mmc_14_link, &pkt );
+        if (!rx_pkt) // fixme: report error?
+            return 0;
 
-        pp_printf("req mmc14\n");
+        struct ertm14_mmc_state *state = (struct ertm14_mmc_state *)rx_pkt->payload;
+        int i;
+
+        for (i = 0; i < ERTM14_MAX_SENSORS_COUNT; i++)
+        {
+            struct ertm14_mmc_sensor_state *s;
+            s = &state->sensors[i];
+
+            if (!(s->flags & ERTM14_SENSOR_VALID))
+                continue;
+
+            struct wrc_sensor *sensor = wrc_sensor_find_by_id(s->id);
+
+            if (!sensor)
+                continue;
+
+            //pp_printf("upd s %d v %d\n", s->id, bswap16( s->value ) );
+
+            // ARMs are little endian, LM32 is big endian.... Such is life...
+            sensor->value = bswap16(s->value);
+            sensor->flags |= WRC_SENSOR_VALID;
+        }
     }
+
     return 0;
 }
 
