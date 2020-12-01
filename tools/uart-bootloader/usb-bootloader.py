@@ -62,7 +62,7 @@ class SerialIF:
                 if state == None or len(state) == 0:
                     continue
                 #print ("************************ ST", state)
-                return state
+                return ord(state)
             except:
                 #print("Sleep")
                 time.sleep(1)
@@ -71,7 +71,7 @@ class SerialIF:
     def recv_nonblock(self):
         try:
             state = self.ser.read(1)
-            return state
+            return ord(state)
         except:
             return None
 
@@ -98,11 +98,11 @@ class SerialIF:
         frame = []
 
         while True:
-            b = ord(self.recv())
+            b = self.recv()
             if (b != 0x55):
                 #    		sys.stderr.write("%c" % b)
                 continue
-            b = ord(self.recv())
+            b = self.recv()
             if (b != 0xaa):
                 #		sys.stderr.write("%c" % b)
                 continue
@@ -110,17 +110,17 @@ class SerialIF:
 
         frame = [0x55, 0xaa]
 
-        rsp = ord(self.recv())
-        l = ord(self.recv())
+        rsp = self.recv()
+        l = self.recv()
         l <<= 8
-        l |= ord(self.recv())
+        l |= self.recv()
 
         for i in range(0, l):
-            frame.append(ord(self.recv()))
+            frame.append(self.recv())
 
-        crc = ord(self.recv())
+        crc = self.recv()
         crc <<= 8
-        crc |= ord(self.recv())
+        crc |= self.recv()
 
         return rsp
 
@@ -250,7 +250,7 @@ class DSIBootloader:
             n = 256 if remaining > 256 else remaining
             data = []
             for b in fw[p:p + n]:
-                data.append(ord(b))
+                data.append(b)
 
             #print("b0 %x" % data[0])
 
@@ -274,7 +274,7 @@ class DSIBootloader:
             n = 256 if remaining > 256 else remaining
             data = []
             for b in image[p:p + n]:
-                data.append(ord(b))
+                data.append(b)
 
 
 #	    print("addr %x l %d" %( p+addr, len(data)))
@@ -326,15 +326,16 @@ def run_terminal(ser):
 
     while True:
         a = ser.recv_nonblock()
-        if (a != None and len(a) > 0):
-            sys.stderr.write("%c" % a)
+        if (a != None):
+            sys.stderr.write(chr(a))
+            # flush is needed FIXME:
+            # sys.stderr.flush()
 
         a = os.read(sys.stdin.fileno(), 1)
-        if a != None and len(a) > 0:
-            if (ord(a) == 1):
-                return
-            else:
-                ser.send(ord(a))
+        if a and ord(a) == 1:
+            return      # exit on Ctrl-A
+        else:
+            ser.send(a)
 
 
 
@@ -378,7 +379,7 @@ def main(argv):
         sys.exit(2)
 
     boot = DSIBootloader(our_port)
-    fw = open(args[0], "rb").read()
+    fw = bytearray(open(args[0], "rb").read())
 
     boot.boot_enter()
     if do_flash:
