@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 
 #
 # DSI Shield
@@ -328,8 +328,9 @@ def run_terminal(ser):
         a = ser.recv_nonblock()
         if (a != None):
             sys.stderr.write(chr(a))
-            # flush is needed FIXME:
-            # sys.stderr.flush()
+            # sys.stderr.write(a).decode('utf-8'))
+	    # flush is needed FIXME:
+	    # sys.stderr.flush()
 
         a = os.read(sys.stdin.fileno(), 1)
         if a and ord(a) == 1:
@@ -365,7 +366,7 @@ def main(argv):
                 '-t / --term:  - runs a serial terminal on the specified port after programming')
             sys.exit()
         elif opt in ("-f", "--flash"):
-    	    flash_target = arg
+            flash_target = arg
             do_flash = True
         elif opt in ("-p", "--port"):
             our_port = arg
