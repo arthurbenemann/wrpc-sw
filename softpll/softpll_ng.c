@@ -278,6 +278,9 @@ void spll_init(int mode, int slave_ref_channel, int align_pps)
 	SPLL = (volatile struct SPLL_WB *)BASE_SOFTPLL;
 	PPSG = (volatile struct PPSG_WB *)BASE_PPS_GEN;
 
+	if(s->mpll.ld.ho_active==1)
+		return;
+
 	uint32_t csr = SPLL->CSR;
 
 	spll_n_chan_ref = SPLL_CSR_N_REF_R(csr);
@@ -468,9 +471,9 @@ void spll_show_stats()
 	struct softpll_state *s = (struct softpll_state *)&softpll;
 
 	if (softpll.mode > 0)
-		    pp_printf("softpll: irqs %d seq %s mode %d "
+		    pp_printf("softpll: sample_n %d seq %s mode %d "
 		     "alignment_state %d HL%d ML%d HY=%d MY=%d EH=%d EM=%d ho=%d\n",
-		      s->irq_count, stringlist_lookup(seq_states, s->seq_state),
+		      s->mpll.sample_n, stringlist_lookup(seq_states, s->seq_state),
 			      s->mode, s->ext.align_state,
 			      s->helper.ld.locked, s->mpll.ld.locked,
 			      s->helper.pi.y, s->mpll.pi.y,
@@ -647,15 +650,24 @@ int spll_update()
 	stats.del_cnt = softpll.delock_count;
 	stats.sequence++;
 
-	if((SPLL->HO_CR & SPLL_HO_CR_HO_ACTIVE) > 0)
+	if ((SPLL->HO_CR & SPLL_HO_CR_HO_ACTIVE) > 0)
 	{
-		softpll.mpll.ld.ho_active = 1;
-		disable_irq();
+		if (softpll.mpll.ld.ho_active == 0)
+		{
+			spll_enable_tagger(MAIN_CHANNEL, 0);
+			softpll.mpll.ld.ho_active = 1;
+		}
+		//disable_irq();
 		mpll_update(&s->mpll, -1, -1);
-	}else
+	}
+	else
 	{
-		softpll.mpll.ld.ho_active = 0;
-		enable_irq();
+		if (softpll.mpll.ld.ho_active == 1)
+		{
+			softpll.mpll.ld.ho_active = 0;
+			spll_enable_tagger(MAIN_CHANNEL, 1);
+			// enable_irq();
+		}
 	}
 
 	softpll.mpll.ho_buf_div = SPLL->HO_RATE;

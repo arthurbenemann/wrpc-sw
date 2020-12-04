@@ -121,7 +121,8 @@ int mpll_update(struct spll_main_state *s, int tag, int source)
 	if(!s->enabled)
 	    return SPLL_LOCKED;
 
-	int err, y;
+	int err;
+	int y = s->pi.y;
 
 	if (source == s->id_ref)
 		s->tag_ref = tag;
@@ -180,6 +181,7 @@ int mpll_update(struct spll_main_state *s, int tag, int source)
 		if(s->ld.ho_active){
 			if( !(s->sample_n % s->ho_buf_div) )
 				y = ho_update(s);
+				s->pi.y = y;
 			// ho_buf_pop(&s->ho_buf, &ho_value);
 			//s->pi.y=ho_value;
 			SPLL->DAC_HO = SPLL_DAC_HO_VALUE_W(y);
@@ -229,6 +231,16 @@ int mpll_update(struct spll_main_state *s, int tag, int source)
 		}
 		if (ld_update((spll_lock_det_t *)&s->ld, err))
 			return SPLL_LOCKED;
+	}else if(s->ld.ho_active){
+		if( !(s->sample_n % s->ho_buf_div) )
+				y = ho_update(s);
+				s->pi.y = y;
+			// ho_buf_pop(&s->ho_buf, &ho_value);
+			//s->pi.y=ho_value;
+			SPLL->DAC_HO = SPLL_DAC_HO_VALUE_W(y);
+			s->sample_n++;
+			return SPLL_LOCKED;
+
 	}
 
 	return SPLL_LOCKING;
@@ -359,7 +371,8 @@ int ho_update_1(struct spll_main_state *s)
 
 int ho_update_2(struct spll_main_state *s)
 {
-	return 30000;
+	int y=s->pi.y;
+	return y;
 }
 
 int ho_update_3(struct spll_main_state *s)
