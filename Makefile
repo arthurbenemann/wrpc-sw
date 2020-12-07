@@ -118,9 +118,18 @@ WRC-O-FLAGS-$(CONFIG_LM32) = --gc-sections -e _start
 
 OBJS = $(obj-y)
 
-OUTPUT-$(CONFIG_WR_NODE)   = wrc
+ifeq ($(MAKECMDGOALS), broadcast)
+	OUTPUT-$(CONFIG_WR_NODE) = wrc_broadcast
+	BC = broadcast
+else
+	OUTPUT-$(CONFIG_WR_NODE)   = wrc
+endif
+
 OUTPUT-$(CONFIG_WR_SWITCH) = rt_cpu
 OUTPUT := $(OUTPUT-y)
+
+broadcast: CFLAGS += -DBROADCAST
+broadcast: all
 
 GIT_VER = $(shell git describe --always --dirty | sed  's;^wr-switch-sw-;;')
 GIT_USR = $(shell git config --get-all user.name)
@@ -157,7 +166,7 @@ $(obj-ppsi): gitmodules
 	else \
 		echo "Warning: keeping previous ppsi configuration" >& 2; \
 	fi
-	$(MAKE) -C $(PPSI) ppsi.o WRPCSW_ROOT=.. \
+	$(MAKE) $(BC) -C $(PPSI) ppsi.o WRPCSW_ROOT=.. \
 		CROSS_COMPILE=$(CROSS_COMPILE) CONFIG_NO_PRINTF=y
 		USER_CFLAGS="$(PPSI_USER_CFLAGS)"
 
