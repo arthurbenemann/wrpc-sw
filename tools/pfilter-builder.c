@@ -221,18 +221,15 @@ enum pf_symbolic_regs {
 	FRAME_TYPE_PTP2,
 	FRAME_TYPE_LATENCY,
 	FRAME_TYPE_ARP,
-	FRAME_ICMP,
-	FRAME_UDP,
+	FRAME_FOR_2ND_IPV4,
 	PORT_UDP_HOST,
 	PORT_UDP_ETHERBONE,
 	R_TMP,
 
 	/* These are results of logic over the previous bits  */
 	FRAME_IP_UNI,
-	FRAME_IP_OK, /* unicast or broadcast */
-
+	
 	/* A temporary register, and the CPU target */
-	FRAME_FOR_2ND,
 	FRAME_FOR_CPU, /* must be last */
 };
 
@@ -379,6 +376,8 @@ void pfilter_init_novlan(char *fname)
 	 * After these instructions, the whole Eth header is there
 	 */
 
+#define FRAME_FOR_2ND     R_CLASS(7)
+
 	/* Local frame, using fake MAC: 12:34:56:78:9a:bc */
 	pfilter_cmp(0, 0x1234, 0xffff, MOV, FRAME_MAC_OK);
 	pfilter_cmp(1, 0x5678, 0xffff, AND, FRAME_MAC_OK);
@@ -410,14 +409,10 @@ void pfilter_init_novlan(char *fname)
 	pfilter_cmp(6, 0x0800, 0xffff, MOV, FRAME_TYPE_IPV4);
 	pfilter_cmp(6, 0x0806, 0xffff, MOV, FRAME_TYPE_ARP);
 
-	/* Mark one bits for ip-valid (unicast or broadcast) */
-	pfilter_logic3(FRAME_IP_OK, FRAME_BROADCAST, OR, FRAME_MAC_OK, AND, FRAME_TYPE_IPV4);
-
 	/* Ethernet = 14 bytes, Offset to type in IP: 8 bytes = 22/2 = 11 */
-	pfilter_cmp(11, 0x0001, 0x00ff, MOV, FRAME_ICMP);
-	pfilter_cmp(11, 0x0011, 0x00ff, MOV, FRAME_UDP);
-	pfilter_logic2(FRAME_UDP, FRAME_UDP, AND, FRAME_IP_OK);
-	pfilter_logic2(FRAME_ICMP, FRAME_ICMP, AND, FRAME_IP_OK);
+	pfilter_cmp(11, 0x0001, 0x00ff, MOV, FRAME_FOR_2ND_IPV4);
+	pfilter_cmp(11, 0x0011, 0x00ff, OR, FRAME_FOR_2ND_IPV4);
+  pfilter_cmp(11, 0x0006, 0x00ff, OR, FRAME_FOR_2ND_IPV4);
 
 #ifdef CONFIG_WR_NIC_CPU
 	/* For CPU: icmp unicast or ptp (or latency) */
@@ -429,10 +424,9 @@ void pfilter_init_novlan(char *fname)
 	/* For CPU: just ptp (or latency) */
 	pfilter_logic2(FRAME_FOR_CPU, FRAME_MAC_PTP, OR, FRAME_TYPE_PTP2);
 	//pfilter_logic3(FRAME_FOR_CPU, FRAME_IP_OK, AND, FRAME_ICMP, OR, FRAME_FOR_CPU);
-	/* For LM32_2ND: arp or icmp or udp */
-	pfilter_logic3(FRAME_FOR_2ND, FRAME_TYPE_ARP, OR, FRAME_ICMP, OR, FRAME_UDP);
+	/* For LM32_2ND: arp or icmp or udp or TCP*/
+	pfilter_logic3(FRAME_FOR_2ND, FRAME_FOR_2ND_IPV4, AND, FRAME_TYPE_IPV4, OR, FRAME_TYPE_ARP);
 #endif
-
 
 
 	/* Now look in UDP ports: at offset 18 (14 + 20 + 8 = 36) */
@@ -451,7 +445,7 @@ void pfilter_init_novlan(char *fname)
 	//pfilter_logic2(R_CLASS(7), FRAME_UDP, AND, PORT_UDP_ETHERBONE);
 	//pfilter_logic2(R_CLASS(6), FRAME_UDP, NAND, PORT_UDP_ETHERBONE);
 	/* For LM32_2ND: arp or icmp or udp */
-	pfilter_logic2(R_CLASS(7), FRAME_FOR_2ND, OR, FRAME_FOR_2ND);
+	// pfilter_logic2(R_CLASS(7), FRAME_FOR_2ND, OR, FRAME_FOR_2ND);
 	/* drop anything else */
   pfilter_logic3(R_DROP, FRAME_FOR_CPU, OR, FRAME_FOR_2ND, NOT, R_ZERO);
 
