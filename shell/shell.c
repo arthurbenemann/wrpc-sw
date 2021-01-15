@@ -41,6 +41,12 @@
 #define KEY_BACKSPACE (127)
 #define KEY_DELETE (126)
 
+#ifdef CONFIG_CMD_PPS
+#define HAS_CMD_PPS 1
+#else
+#define HAS_CMD_PPS 0
+#endif
+
 static char cmd_buf[SH_MAX_LINE_LEN + 1];
 static int cmd_pos = 0, cmd_len = 0;
 static int state = SH_PROMPT;
@@ -372,5 +378,6 @@ void shell_register_commands(void)
 		REGISTER_WRC_COMMAND(ip);
 	if (HAS_VLANS)
 		REGISTER_WRC_COMMAND(vlan);
+	if (HAS_CMD_PPS)
+		REGISTER_WRC_COMMAND(pps);
 }
-
