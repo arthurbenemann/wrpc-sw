@@ -83,8 +83,17 @@ static void sighandler(int sig)
 	/*
 	 * we use sys_siglist[] instead of strsignal() to stay compatible
 	 * with old versions of glibc
+	 * This will not work for gcc v10+
 	 */
+#if defined(__GNUC__)
+	#if defined(__GNUC__) && (__GNUC___ > 10 || (__GNUC__ == 10 && __GNUC_MINOR__ >= 0))
+		printf("\nEXIT: Signal %s received\n", strsignal(sig));
+	#else
+		printf("\nEXIT: Signal %s received\n", sys_siglist[sig]);
+	#endif
+#else
 	printf("\nEXIT: Signal %s received\n", sys_siglist[sig]);
+#endif
 	free(_cmdlist);
 	if (user_sig_hndl)
 		user_sig_hndl();
