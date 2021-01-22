@@ -147,11 +147,8 @@ static int wrc_check_link(void)
 		gen_gpio_out(&pin_sysc_led_link, 0);
 		link_status = NETIF_LINK_WENT_DOWN;
 		wrc_ptp_stop();
+		wrc_ptp_link_down();
 		rv = 1;
-		/* special case */
-		spll_init(SPLL_MODE_FREE_RUNNING_MASTER, 0, SPLL_FLAG_ALIGN_PPS);
-		shw_pps_gen_enable_output(0);
-
 	} else
 		link_status = (state ? NETIF_LINK_UP : NETIF_LINK_DOWN);
 
