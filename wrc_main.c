@@ -113,7 +113,6 @@ static void wrc_initialize(void)
 	_endram = ENDRAM_MAGIC;
 
 	wrc_ptp_set_mode(WRC_MODE_SLAVE);
-	wrc_ptp_start();
 
 	wrc_tasks_accounting_init();
 	wrc_board_create_tasks();
