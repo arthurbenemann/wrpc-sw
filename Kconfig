@@ -58,7 +58,7 @@ config STACKSIZE
 config PRINT_BUFSIZE
 	int
 	default CUSTOM_PRINT_BUFSIZE if DEVELOPER
-	default 128
+	default 256
 
 config RAMSIZE
 	int
@@ -496,7 +496,7 @@ config CUSTOM_STACKSIZE
 config CUSTOM_PRINT_BUFSIZE
 	depends on DEVELOPER
 	int "Size for the temporary output string of pp_printf"
-	default 128
+	default 256
 	help
 	  This buffer is constant storage (i.e. wasted space), but it
 	  also constraints the maximum lenght of text that can be written
