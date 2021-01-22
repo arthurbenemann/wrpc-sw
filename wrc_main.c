@@ -218,7 +218,7 @@ static int wrc_dispatch_ptp_events_poll(void)
 {
 	extern struct pp_instance ppi_static;
 	struct pp_instance *ppi = &ppi_static;
-	struct wr_servo_state *ss = &((struct wr_data *)ppi->ext_data)->servo_state;
+	struct pp_servo *ss = SRV(ppi);//= &((struct wr_data *)ppi->ext_data)->servo_state;
 
 	int mode = wrc_ptp_get_mode();
 
@@ -250,12 +250,12 @@ static int wrc_dispatch_ptp_events_poll(void)
 	{
 		if( ppi->state == PPS_SLAVE )
 		{
-			if( ss->state == WR_TRACK_PHASE && prev_servo_state != WR_TRACK_PHASE )
+			if( ss->state == WRH_TRACK_PHASE && prev_servo_state != WRH_TRACK_PHASE )
 			{
 				prev_timing_ok = 1;
 				event_post( WRC_EVENT_TIMING_UP );
 			}
-			else if( ss->state != WR_TRACK_PHASE && prev_servo_state == WR_TRACK_PHASE )
+			else if( ss->state != WRH_TRACK_PHASE && prev_servo_state == WRH_TRACK_PHASE )
 			{
 				prev_timing_ok = 0;
 				event_post( WRC_EVENT_TIMING_DOWN );
