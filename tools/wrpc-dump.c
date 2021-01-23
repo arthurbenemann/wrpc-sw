@@ -337,7 +337,7 @@ void dump_one_field(void *addr, struct dump_info *info, char *info_prefix)
 		printf("\n");
 		break;
 
-	case dump_type_timing_mode:
+	case dump_type_wrpc_mode_cfg:
 		i = wrpc_get_i32(p);
 		switch(i) {
 		ENUM_TO_P_IN_CASE(WRC_MODE_UNKNOWN, char_p);
@@ -345,6 +345,21 @@ void dump_one_field(void *addr, struct dump_info *info, char *info_prefix)
 		ENUM_TO_P_IN_CASE(WRC_MODE_MASTER, char_p);
 		ENUM_TO_P_IN_CASE(WRC_MODE_SLAVE, char_p);
 		ENUM_TO_P_IN_CASE(WRC_MODE_ABSCAL, char_p);
+		default:
+			char_p = "Unknown";
+		}
+		printf("%d", i);
+		print_str(char_p);
+		printf("\n");
+		break;
+
+	case dump_type_timing_mode:
+		i = wrpc_get_i32(p);
+		switch(i) {
+		ENUM_TO_P_IN_CASE(WRH_TM_GRAND_MASTER, char_p);
+		ENUM_TO_P_IN_CASE(WRH_TM_FREE_MASTER, char_p);
+		ENUM_TO_P_IN_CASE(WRH_TM_BOUNDARY_CLOCK, char_p);
+		ENUM_TO_P_IN_CASE(WRH_TM_DISABLED, char_p);
 		default:
 			char_p = "Unknown";
 		}
