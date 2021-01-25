@@ -372,6 +372,14 @@ config CMD_PPS
 	  This enables pps command, which can be used to force PPS output
 	  all the time for all clock classes.
 
+config CMD_LEAPSEC
+	depends on WR_NODE
+	boolean "Include command to control leapsecond value"
+	default n
+	help
+	  This enables leapsec command, which can be used to adjust leap seconds
+	  value.
+
 #
 # This is a set of configuration options that should not be changed by
 # normal users. If the "developer" menu is used, the binary is tainted.

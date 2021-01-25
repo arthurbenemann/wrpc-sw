@@ -47,6 +47,13 @@
 #define HAS_CMD_PPS 0
 #endif
 
+#ifdef CONFIG_CMD_LEAPSEC
+#define HAS_CMD_LEAPSEC 1
+#else
+#define HAS_CMD_LEAPSEC 0
+#endif
+
+
 static char cmd_buf[SH_MAX_LINE_LEN + 1];
 static int cmd_pos = 0, cmd_len = 0;
 static int state = SH_PROMPT;
@@ -380,4 +387,6 @@ void shell_register_commands(void)
 		REGISTER_WRC_COMMAND(vlan);
 	if (HAS_CMD_PPS)
 		REGISTER_WRC_COMMAND(pps);
+	if (HAS_CMD_LEAPSEC)
+		REGISTER_WRC_COMMAND(leapsec);
 }
