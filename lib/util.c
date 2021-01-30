@@ -97,7 +97,6 @@ void cprintf(int color, const char *fmt, ...)
 	va_start(ap, fmt);
 	pp_vprintf(fmt, ap);
 	va_end(ap);
-	pp_printf("\e[m");
 }
 
 void pcprintf(int row, int col, int color, const char *fmt, ...)
@@ -108,7 +107,6 @@ void pcprintf(int row, int col, int color, const char *fmt, ...)
 	va_start(ap, fmt);
 	pp_vprintf(fmt, ap);
 	va_end(ap);
-	pp_printf("\e[m");
 }
 
 void __debug_printf(const char *fmt, ...)
