@@ -29,16 +29,23 @@ typedef struct
     uint32_t timeout;
 } timeout_t;
 
-/* Color printf() variant. */
+/* Color printf() variant. Does not restore color */
 void cprintf(int color, const char *fmt, ...);
 
-/* Color printf() variant, sets curspor position to (row, col) too. */
+/* Color printf() variant, sets curspor position to (row, col) too.
+ * Does not restore color */
 void pcprintf(int row, int col, int color, const char *fmt, ...);
+
+/* Printf, sets curspor position to (row, col) */
+void pprintf(int row, int col, const char *fmt, ...);
 
 void __debug_printf(const char *fmt, ...);
 
-/* Clears the terminal scree. */
+/* Clears the terminal screen */
 void term_clear(void);
+
+/* Clears the terminal screen from cursor to the end */
+void term_clear_to_end(void);
 
 int tmo_init(timeout_t *tmo, uint32_t milliseconds);
 int tmo_restart(timeout_t *tmo);
