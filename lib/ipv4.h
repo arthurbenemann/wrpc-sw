@@ -36,6 +36,8 @@
 #define UDP_CHECKSUM	(UDP_LENGTH+2)
 #define UDP_END		(UDP_CHECKSUM+2)
 
+#define INET_ALEN	4
+
 /* Internal to IP stack: */
 unsigned int ipv4_checksum(unsigned short *buf, int shorts);
 

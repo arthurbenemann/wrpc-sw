@@ -356,6 +356,7 @@ void shell_activate_ui_command( int (*callback)(void) )
 	shell_ui_callback = callback;
 	state = SH_EXEC_UI;
 	pp_printf("Activateui: %p\n", callback );
+	term_clear();
 	cmd_len = 0;
 }
 

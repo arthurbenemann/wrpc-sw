@@ -10,6 +10,7 @@
 
 static int cmd_gui(const char *args[])
 {
+	redraw_gui();
 	shell_activate_ui_command( wrc_mon_gui );
 	return 0;
 }
