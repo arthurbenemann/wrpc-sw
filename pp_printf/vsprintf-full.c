@@ -18,6 +18,7 @@
 /* BEGIN OF HACKS */
 #include <pp-printf.h>
 
+#define CONFIG_PRINTF_64BIT
 /* <linux/types.h> -- but if we typedef we get redefined type when hosted */
 #define u8		uint8_t
 #define size_t		unsigned long
@@ -335,11 +336,13 @@ int pp_vsprintf(char *buf, const char *fmt, va_list args)
 			str = string(str, va_arg(args, char *), field_width, precision, flags);
 			continue;
 
+#if 0
 		case 'p':
 			str = pointer(fmt+1, str,
 					va_arg(args, void *),
 					field_width, precision, flags);
 			continue;
+#endif
 
 		case 'n':
 			if (qualifier == 'l') {

@@ -27,6 +27,10 @@
 #include "shell.h"
 #include "revision.h"
 
+#ifndef CONFIG_PRINTF_FULL
+#error ("WRPC monitor requires full version of pp_printf implementation")
+#endif
+
 /* internal "last", exported to shell command */
 uint32_t wrc_stats_last;
 

@@ -705,12 +705,12 @@ config VLAN_ARRAY_SIZE
 ################# helper configuration items #############
 config PRINTF_XINT
 	boolean
-	default PRINTF_IS_XINT if (DEVELOPER && WR_NODE)
-	default y
+	default PRINTF_IS_XINT
 
 config PRINTF_FULL
 	boolean
-	default PRINTF_IS_FULL
+	default PRINTF_IS_FULL 
+	default y
 
 config PRINTF_MINI
 	boolean
