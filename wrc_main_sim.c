@@ -103,8 +103,8 @@ static void wrc_sim_initialize(void)
 	mac_addr[4] = 0xBA;
 	mac_addr[5] = 0xBE;
 
-	ep_init(mac_addr);
-	ep_enable(1, 1);
+	ep_init(&wrc_endpoint_dev, (void *) BASE_EP);
+	ep_enable(&wrc_endpoint_dev, 1, 1);
 
 	minic_init();
 	shw_pps_gen_init();
