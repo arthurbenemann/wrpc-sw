@@ -567,6 +567,7 @@ config SPLL_FIFO_LOG
 choice
 	prompt "Implementation of pp_printf"
 	depends on DEVELOPER
+	default PRINTF_IS_FULL if EMBEDDED_NODE
 
 config PRINTF_IS_XINT
 	bool "hex-and-int"
@@ -709,7 +710,7 @@ config PRINTF_XINT
 
 config PRINTF_FULL
 	boolean
-	default PRINTF_IS_FULL 
+	default PRINTF_IS_FULL if (DEVELOPER && WR_NODE)
 	default y
 
 config PRINTF_MINI
