@@ -47,7 +47,7 @@ static int cmd_sfp(const char *args[])
 			return -EIO;
 		}
 		return 0;
-	} else if (args[4] && !strcasecmp(args[0], "add")) {
+	} else if (args[5] && !strcasecmp(args[0], "add")) {
 		temp = strnlen(args[1], SFP_PN_LEN);
 		for (i = 0; i < temp; ++i)
 			sfp.pn[i] = args[1][i];
@@ -56,6 +56,9 @@ static int cmd_sfp(const char *args[])
 		sfp.dTx = atoi(args[2]);
 		sfp.dRx = atoi(args[3]);
 		sfp.alpha = atoi(args[4]);
+		sfp.alpha = sfp.alpha * 1000000000;
+		/* first value defines a sign */
+		sfp.alpha += (sfp.alpha < 0?-1:1) * atoi(args[5]);
 		temp = storage_get_sfp(&sfp, SFP_ADD, 0);
 		if (temp == EE_RET_DBFULL) {
 			pp_printf("SFP DB is full\n");
@@ -83,7 +86,7 @@ static int cmd_sfp(const char *args[])
 			pp_printf("%d: PN:", i + 1);
 			for (temp = 0; temp < SFP_PN_LEN; ++temp)
 				pp_printf("%c", sfp.pn[temp]);
-			pp_printf(" dTx: %8d dRx: %8d alpha: %8d\n", sfp.dTx,
+			pp_printf(" dTx: %8d dRx: %8d alpha: %19Ld\n", sfp.dTx,
 				sfp.dRx, sfp.alpha);
 		}
 		return 0;
@@ -112,7 +115,7 @@ static int cmd_sfp(const char *args[])
 			return ret;
 		}
 		/* match successful */
-		pp_printf("SFP matched, dTx=%d dRx=%d alpha=%d\n",
+		pp_printf("SFP matched, dTx=%d dRx=%d alpha=%Ld\n",
 			sfp_deltaTx, sfp_deltaRx, sfp_alpha);
 		return ret;
 	} else if (args[1] && !strcasecmp(args[0], "ena")) {

@@ -19,7 +19,7 @@
 extern char sfp_pn[SFP_PN_LEN];
 
 extern int32_t sfp_in_db;
-extern int32_t sfp_alpha;
+extern int64_t sfp_alpha;
 extern int32_t sfp_deltaTx;
 extern int32_t sfp_deltaRx;
 

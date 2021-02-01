@@ -460,12 +460,12 @@ int set_persistent_mac(uint8_t portnum, uint8_t *mac)
  * For each sfp we have
  *
  * - part number (16 bytes)
- * - alpha (4 bytes)
+ * - alpha (8 bytes)
  * - deltaTx (4 bytes)
  * - delta Rx (4 bytes)
  * - checksum (1 byte)  (low order 8 bits of the sum of all bytes)
  *
- * the total is 29 bytes for each sfp (ugly, but we are byte-oriented anyways
+ * the total is 33 bytes for each sfp (ugly, but we are byte-oriented anyways
  */
 
 

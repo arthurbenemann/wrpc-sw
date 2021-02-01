@@ -41,8 +41,10 @@
 /* It should be:
  * #define EE_BASE_INIT (EE_BASE_SFP + sizeof(sfpcount) + \
  *                       SFPS_MAX * sizeof(struct s_sfpinfo))
- * The used definition define the start of the init script 5 bytes
+ * The used definition define the start of the init script 21 bytes
  * (sizeof(sfpcount) + sizeof(t24p)) before the end of SFP database.
+ * Edit: Since the alpha was changed to 64bit, the size of sizeof(struct s_sfpinfo)
+ * increased by 4. The error is now 5 + 16 = 21 bytes, not 5 as before.
  * To make the init script working during the update of old versions of wrpc
  * SFPS_MAX is limited to 3. Adding the 4th SFP will corrupt the init script
  * anyway.
@@ -73,7 +75,7 @@ struct storage_device;
 
 struct s_sfpinfo {
 	char pn[SFP_PN_LEN];
-	int32_t alpha;
+	int64_t alpha;
 	int32_t dTx;
 	int32_t dRx;
 	uint8_t chksum;

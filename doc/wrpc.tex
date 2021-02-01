@@ -666,11 +666,13 @@ where \texttt{xx:xx:xx:xx:xx:xx} is the MAC address of your board.\\
 Next, you should input calibration fixed delays values and alpha parameters. The
 example below clears any existing entries and adds two Axcen transceivers with
 $\Delta_{TX}$, $\Delta_{RX}$ and $\alpha$ parameters associated with them.
+Please note that the $\alpha$ value is slit into two values. The most
+significant 9 decimal digits and the least significant 9 decimal digits.
 
 \begin{lstlisting}
 wrc# sfp erase
-wrc# sfp add AXGE-1254-0531 180750 148326 72169888
-wrc# sfp add AXGE-3454-0531 180750 148326 -73685416
+wrc# sfp add AXGE-1254-0531 180750 148326 1235332 333756144
+wrc# sfp add AXGE-3454-0531 180750 148326 -1235332 333756144
 \end{lstlisting}
 
 To check the content of the SFP database you can execute the \textit{sfp show}
@@ -1070,7 +1072,7 @@ Simple verification of performed actions:\\
 The same add can also be achieved by performing \texttt{sfp add} command in
 the WRPC's console:
 \begin{lstlisting}
- wrc# sfp add NEW-SFP 1111 2222 3333
+ wrc# sfp add NEW-SFP 1111 2222 0 3333
  Update existing SFP entry
  3 SFPs in DB
 \end{lstlisting}
@@ -1907,8 +1909,10 @@ tools used to build and run it, you can write to our mailing list
     as VHDL generic parameters of the WR PTP Core. Command \code{sdb} is
     available if \texttt{CONFIG\_GENSDBFS} is set.\\
 
-  \code{sfp add <PN> <deltaTx> <deltaRx> <alpha>} & stores calibration
-    parameters for SFP to a file in Flash/EEPROM \\
+  \code{sfp add <PN> <deltaTx> <deltaRx> <alphaH> <alphaL>} & stores calibration
+    parameters for SFP to a file in Flash/EEPROM. \code{<alphaL>} is the 9 lower
+    decimal digits of alpha value, \code{<alphaH>} are the 9 higher decimal
+    digits. For negative alpha values only \code{<alphaH>} is negative. \\
 
   \code{sfp erase} & erases the SFP database stored in the Flash/EEPROM \\
 
