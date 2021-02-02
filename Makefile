@@ -1,7 +1,7 @@
 # Tomasz Wlostowski for CERN, 2011,2012
 -include $(CURDIR)/.config
 
-CROSS_COMPILE ?= lm32-elf-
+CROSS_COMPILE ?= /home/twl/gcc-riscv/bin/riscv32-elf-
 
 ifdef CONFIG_HOST_PROCESS
   CROSS_COMPILE =
@@ -28,7 +28,7 @@ PPSI = ppsi
 # list of file extensions to be copied for MAKEALL script
 MAKEALL_COPY_LIST=.bin .elf
 
-cflags-arch = -march=rv32im -mabi=ilp32 -msoft-float
+cflags-arch = -march=rv32imc -mabi=ilp32
 USER_CFLAGS = $(cflags-arch)
 #PPSI_O_LDFLAGS = -melf32lriscv 
 #-mabi=ilp32
@@ -36,12 +36,12 @@ USER_CFLAGS = $(cflags-arch)
 CFLAGS += $(cflags-arch)
 
 # we miss CONFIG_ARCH_LM32 as we have no other archs by now
-obj-$(CONFIG_LM32) = arch/lm32/crt0.o arch/lm32/irq.o
-LDS-$(CONFIG_WR_NODE)   = arch/lm32/ram.ld
-LDS-$(CONFIG_TARGET_WR_SWITCH) = arch/lm32/ram-wrs.ld
+obj-$(CONFIG_LM32) = 
+LDS-$(CONFIG_WR_NODE)   = arch/risc-v/ram.ld
+LDS-$(CONFIG_TARGET_WR_SWITCH) = arch/risc-v/ram-wrs.ld
 LDS-$(CONFIG_HOST_PROCESS) =
 
-obj-$(CONFIG_WR_NODE)   += wrc_main.o
+obj-$(CONFIG_WR_NODE)   += arch/risc-v/crt0.o arch/risc-v/irq.o wrc_main.o
 obj-$(CONFIG_WR_NODE_SIM) += wrc_main_sim.o
 obj-$(CONFIG_TARGET_WR_SWITCH) += ipc/minipc-mem-server.o ipc/rt_ipc.o
 
@@ -123,7 +123,7 @@ CFLAGS = $(cflags-y) -Wall -Wstrict-prototypes \
 ASFLAGS = -I.
 
 LDFLAGS = $(ldflags-y) \
-	-Wl,--gc-sections -Os -lgcc -lc
+	-march=rv32imc -mabi=ilp32 -Wl,--gc-sections -Os -lgcc -lc 
 
 WRC-O-FLAGS-$(CONFIG_LM32) = --gc-sections -e _start
 
@@ -237,6 +237,10 @@ distclean: clean
 
 %.o:		%.c
 	${CC} $(CFLAGS) $(PTPD_CFLAGS) $(INCLUDE_DIR) $(LIB_DIR) -c $*.c -o $@
+
+%.o:		%.S
+	${CC}   -march=rv32imc -mabi=ilp32 -c $*.S -o $@
+
 
 liblinux:
 	$(MAKE) -C liblinux CC=cc

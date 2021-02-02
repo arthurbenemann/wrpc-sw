@@ -322,6 +322,13 @@ static void create_tasks(void)
 #endif
 }
 
+uint32_t uptime_sec;
+
+
+void enable_irq() {};
+void disable_irq() {};
+
+
 int main(void) __attribute__ ((weak));
 int main(void)
 {
