@@ -28,6 +28,13 @@ PPSI = ppsi
 # list of file extensions to be copied for MAKEALL script
 MAKEALL_COPY_LIST=.bin .elf
 
+cflags-arch = -march=rv32im -mabi=ilp32 -msoft-float
+USER_CFLAGS = $(cflags-arch)
+#PPSI_O_LDFLAGS = -melf32lriscv 
+#-mabi=ilp32
+
+CFLAGS += $(cflags-arch)
+
 # we miss CONFIG_ARCH_LM32 as we have no other archs by now
 obj-$(CONFIG_LM32) = arch/lm32/crt0.o arch/lm32/irq.o
 LDS-$(CONFIG_WR_NODE)   = arch/lm32/ram.ld
@@ -45,7 +52,7 @@ obj-y += dump-info.o
 
 
 cflags-y =	-ffreestanding -include $(AUTOCONF) -include $(AUTOCONF_PPSI) -Iinclude \
-			-I. -Isoftpll -Iipc
+			-I. -Isoftpll -Iipc $(cflags-arch)
 cflags-y +=	-I$(CURDIR)/pp_printf
 cflags-$(CONFIG_LM32) +=  -Iinclude/std
 
@@ -68,8 +75,9 @@ obj-$(CONFIG_EMBEDDED_NODE) += \
 	monitor/monitor_ppsi.o \
 	lib/ppsi-wrappers.o
 
-cflags-$(CONFIG_LM32) += -mmultiply-enabled -mbarrel-shift-enabled
-ldflags-$(CONFIG_LM32) = -mmultiply-enabled -mbarrel-shift-enabled \
+#cflags-$(CONFIG_LM32) += -mmultiply-enabled -mbarrel-shift-enabled
+#-mmultiply-enabled -mbarrel-shift-enabled 
+ldflags-$(CONFIG_LM32) = \
 	-nostdlib -T $(LDS-y)
 arch-files-$(CONFIG_LM32) = $(OUTPUT).bram $(OUTPUT).vhd $(OUTPUT).mif
 
@@ -162,21 +170,24 @@ $(obj-ppsi): gitmodules
 		echo "Warning: keeping previous ppsi configuration" >& 2; \
 	fi
 	$(MAKE) -C $(PPSI) ppsi.o WRPCSW_ROOT=.. \
-		CROSS_COMPILE=$(CROSS_COMPILE) CONFIG_NO_PRINTF=y
-		USER_CFLAGS="$(PPSI_USER_CFLAGS)"
+		CROSS_COMPILE=$(CROSS_COMPILE) CONFIG_NO_PRINTF=y \
+		USER_CFLAGS="$(PPSI_USER_CFLAGS)" PPSI_O_LDFLAGS="$(PPSI_O_LDFLAGS)"
+
 
 sdb-lib/libsdbfs.a:
 	$(MAKE) -C sdb-lib
 
 $(OUTPUT).elf: $(LDS-y) $(AUTOCONF) gitmodules config.o pconfig.o $(OBJS)
 	$(CC) $(CFLAGS) -D__GIT_VER__="\"$(GIT_VER)\"" -D__GIT_USR__="\"$(GIT_USR)\"" -c revision.c
-	${CC} -o $@ revision.o config.o pconfig.o $(OBJS) $(LDFLAGS)
+	${CC} -o $@ revision.o $(OBJS) $(LDFLAGS)
+#	${CC} -o $@ revision.o config.o pconfig.o $(OBJS) $(LDFLAGS)
 	${OBJDUMP} -d $(OUTPUT).elf > $(OUTPUT)_disasm.S
 	$(SIZE) $@
-	./save_size.sh $(SIZE) $@
+	size_info_file=size_info.txt ./save_size.sh $(SIZE) $@
+	cat size_info.txt | tail -n 20
 
 
-OBJCOPY-TARGET-$(CONFIG_LM32) = -O elf32-lm32 -B lm32
+OBJCOPY-TARGET-$(CONFIG_LM32) = -O elf32-littleriscv -B riscv
 OBJCOPY-TARGET-$(CONFIG_HOST_PROCESS) = -O elf64-x86-64 -B i386
 
 config.o: .config $(AUTOCONF)

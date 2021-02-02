@@ -13,7 +13,7 @@
 #else
 
 #  ifndef __IEEE_BIG_ENDIAN
-#    error "Not big endian, or unknown endianness"
+//#    error "Not big endian, or unknown endianness"
 #  endif
 
   static inline uint16_t ntohs(uint16_t x) {return x;}

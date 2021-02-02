@@ -12,7 +12,6 @@
 static inline void clear_irq(void)
 {
 	unsigned int val = 1;
-	asm volatile ("wcsr ip, %0"::"r" (val));
 }
 
 #endif

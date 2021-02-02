@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  */
 
-OUTPUT_FORMAT("elf32-lm32")
+OUTPUT_FORMAT("elf32-littleriscv")
 ENTRY(_start)
 
 MEMORY
