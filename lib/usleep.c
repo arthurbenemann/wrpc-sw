@@ -7,7 +7,7 @@
  * Released according to the GNU GPL, version 2 or any later version.
  */
 #include <wrc.h>
-#include <syscon.h>
+#include <dev/syscon.h>
 #include <shell.h>
 
 static int usleep_lpj; /* loops per jiffy */

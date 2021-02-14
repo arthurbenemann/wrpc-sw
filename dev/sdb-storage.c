@@ -9,19 +9,19 @@
  */
 #include <errno.h>
 #include <wrc.h>
-#include <w1.h>
-#include <storage.h>
+#include <dev/w1.h>
+#include <dev/storage.h>
 
 #include "types.h"
-#include "i2c.h"
-#include "onewire.h"
-#include "endpoint.h"
-#include "syscon.h"
+#include "dev/i2c.h"
+#include "dev/onewire.h"
+#include "dev/endpoint.h"
+#include "dev/syscon.h"
 #include <sdb.h>
 
 #define SDBFS_BIG_ENDIAN
 #include <libsdbfs.h>
-#include <flash.h>
+#include <dev/flash.h>
 
 /*
  * This source file is a drop-in replacement of the legacy one: it manages
@@ -31,7 +31,9 @@
 #define SDB_DEV_INIT	0x77722d69 /* wr-i (nit) */
 #define SDB_DEV_MAC	0x6d61632d /* mac- (address) */
 #define SDB_DEV_SFP	0x7366702d /* sfp- (database) */
+#define SDB_DEV_DP_SFP	0x64702d73 /* dp-s (fp-database) */
 #define SDB_DEV_CALIB	0x63616c69 /* cali (bration) */
+#define SDB_DEV_DP_CALIB 0x64702d63 /* dp-c (alibration) */
 
 /* constants for scanning I2C EEPROMs */
 #define EEPROM_START_ADR 0
@@ -176,7 +178,7 @@ static void storage_sdb_list(struct sdbfs *fs)
 
 	while ((d = sdbfs_scan(fs, new)) != NULL) {
 		d->sdb_component.product.record_type = '\0';
-		pp_printf("file 0x%08x @ %4i, name %s\n",
+		pp_printf("file 0x%08x @ %4x, name %s\n",
 			  (int)(d->sdb_component.product.device_id),
 			  (int)(d->sdb_component.addr_first),
 			  (char *)(d->sdb_component.product.name));
@@ -204,13 +206,13 @@ void storage_init(int chosen_i2cif, int chosen_i2c_addr)
 	uint32_t magic = 0;
 	static unsigned entry_points_eeprom[] = {0, 64, 128, 256, 512, 1024};
 	static unsigned entry_points_flash[] = {
-				0x000000,	/* flash base */
-				0x100,		/* second page in flash */
-				0x200,		/* IPMI with MultiRecord */
-				0x300,		/* IPMI with larger MultiRecord */
-				0x170000,	/* after first FPGA bitstream */
-				0x2e0000,	/* after MultiBoot bitstream */
-				0x600000};	/* after SVEC AFPGA bitstream */
+			0x000000, /* flash base */
+			0x100,		/* second page in flash */
+			0x200,		/* IPMI with MultiRecord */
+			0x300,		/* IPMI with larger MultiRecord */
+			0x3B0000,	/* after first FPGA bitstream */
+			0x760000,	/* after MultiBoot bitstream */
+			0x900000}; /* after SVEC AFPGA bitstream */
 	int i, ret;
 
 	/*
@@ -222,7 +224,7 @@ void storage_init(int chosen_i2cif, int chosen_i2c_addr)
 			break;
 	}
 	if (magic == SDB_MAGIC) {
-		pp_printf("sdbfs: found at %i in Flash\n",
+		pp_printf("sdbfs: found at %x in Flash\n",
 				entry_points_flash[i]);
 		wrc_sdb.drvdata = NULL;
 		wrc_sdb.blocksize = storage_cfg.blocksize;
@@ -246,7 +248,7 @@ void storage_init(int chosen_i2cif, int chosen_i2c_addr)
 			break;
 	}
 	if (magic == SDB_MAGIC) {
-		pp_printf("sdbfs: found at %i in W1\n", entry_points_eeprom[i]);
+		pp_printf("sdbfs: found at %x in W1\n", entry_points_eeprom[i]);
 		/* override default i2c settings with w1 ones */
 		wrc_sdb.drvdata = &wrpc_w1_bus;
 		wrc_sdb.blocksize = 1;
@@ -316,11 +318,11 @@ int get_persistent_mac(uint8_t portnum, uint8_t *mac)
 
 	if (IS_HOST_PROCESS) {
 		/* we don't have sdb working, so get the real eth address */
-		get_mac_addr(mac);
+		get_mac_addr(mac, 0);
 		return 0;
 	}
 
-	if (sdbfs_open_id(&wrc_sdb, SDB_VENDOR, SDB_DEV_MAC) < 0)
+	if (sdbfs_open_id(&wrc_sdb, SDB_VENDOR, SDB_DEV_MAC, 0) < 0)
 		return -1;
 
 	ret = sdbfs_fread(&wrc_sdb, 0, mac, 6);
@@ -360,7 +362,7 @@ int set_persistent_mac(uint8_t portnum, uint8_t *mac)
 {
 	int ret;
 
-	ret = sdbfs_open_id(&wrc_sdb, SDB_VENDOR, SDB_DEV_MAC);
+	ret = sdbfs_open_id(&wrc_sdb, SDB_VENDOR, SDB_DEV_MAC, 0);
 	if (ret >= 0) {
 		sdbfs_ferase(&wrc_sdb, 0, wrc_sdb.f_len);
 		ret = sdbfs_fwrite(&wrc_sdb, 0, mac, 6);
@@ -392,11 +394,16 @@ int set_persistent_mac(uint8_t portnum, uint8_t *mac)
 
 
 /* Erase SFB database in the memory */
-int32_t storage_sfpdb_erase(void)
+int32_t storage_sfpdb_erase(int port)
 {
 	int ret;
+	uint32_t sdb_dev_addr;
+	if (port==0)
+		sdb_dev_addr = SDB_DEV_SFP;
+	else
+		sdb_dev_addr = SDB_DEV_DP_SFP;
 
-	if (sdbfs_open_id(&wrc_sdb, SDB_VENDOR, SDB_DEV_SFP) < 0)
+	if (sdbfs_open_id(&wrc_sdb, SDB_VENDOR, sdb_dev_addr, 0) < 0)
 		return -1;
 	ret = sdbfs_ferase(&wrc_sdb, 0, wrc_sdb.f_len);
 	if (ret == wrc_sdb.f_len)
@@ -418,49 +425,54 @@ static int sfp_valid(struct s_sfpinfo *sfp)
 	return 1;
 }
 
-static int sfp_entry(struct s_sfpinfo *sfp, uint8_t oper, uint8_t pos)
+static int sfp_entry(struct s_sfpinfo *sfp, uint8_t oper, uint8_t pos, int port)
 {
-	static uint8_t sfpcount = 0;
+	static uint8_t sfpcount[wr_num_ports];
 	struct s_sfpinfo tempsfp;
 	int ret = -1;
 	uint8_t i, chksum = 0;
 	uint8_t *ptr;
 	int sdb_offset;
+	uint32_t sdb_dev_addr;
+	if (port==0)
+		sdb_dev_addr = SDB_DEV_SFP;
+	else
+		sdb_dev_addr = SDB_DEV_DP_SFP;
 
 	if (pos >= SFPS_MAX)
 		return EE_RET_POSERR;	/* position outside the range */
 
-	if (sdbfs_open_id(&wrc_sdb, SDB_VENDOR, SDB_DEV_SFP) < 0)
+	if (sdbfs_open_id(&wrc_sdb, SDB_VENDOR, sdb_dev_addr, 0) < 0)
 		return -1;
 
 	/* Read how many SFPs are in the database, but only in the first
 	 * call */
 	if (!pos) {
-		sfpcount = 0;
-		sdb_offset = sizeof(sfpcount);
+		sfpcount[port] = 0;
+		sdb_offset = sizeof(sfpcount[port]);
 		while (sdbfs_fread(&wrc_sdb, sdb_offset, &tempsfp,
 					sizeof(tempsfp)) == sizeof(tempsfp)) {
 			if (!sfp_valid(&tempsfp))
 				break;
-			sfpcount++;
-			sdb_offset = sizeof(sfpcount) + sfpcount * sizeof(tempsfp);
+			sfpcount[port]++;
+			sdb_offset = sizeof(sfpcount[port]) + sfpcount[port] * sizeof(tempsfp);
 		}
 	}
 
-	if ((oper == SFP_ADD) && (sfpcount == SFPS_MAX)) {
+	if ((oper == SFP_ADD) && (sfpcount[port] == SFPS_MAX)) {
 		/* no more space to add new SFPs */
 		ret = EE_RET_DBFULL;
 		goto out;
 	}
 
-	if (!pos && (oper == SFP_GET) && sfpcount == 0) {
+	if (!pos && (oper == SFP_GET) && sfpcount[port] == 0) {
 		/* no SFPs in the database */
 		ret = 0;
 		goto out;
 	}
 
 	if (oper == SFP_GET) {
-		sdb_offset = sizeof(sfpcount) + pos * sizeof(*sfp);
+		sdb_offset = sizeof(sfpcount[port]) + pos * sizeof(*sfp);
 		if (sdbfs_fread(&wrc_sdb, sdb_offset, sfp, sizeof(*sfp))
 				!= sizeof(*sfp))
 			goto out;
@@ -482,20 +494,21 @@ static int sfp_entry(struct s_sfpinfo *sfp, uint8_t oper, uint8_t pos)
 			chksum = chksum + *(ptr++);
 		sfp->chksum = chksum;
 		/* add SFP at the end of DB */
-		sdb_offset = sizeof(sfpcount) + sfpcount * sizeof(*sfp);
+		sdb_offset = sizeof(sfpcount[port]) + sfpcount[port] * sizeof(*sfp);
+
 		if (sdbfs_fwrite(&wrc_sdb, sdb_offset, sfp, sizeof(*sfp))
 				!= sizeof(*sfp)) {
 			goto out;
 		}
-		sfpcount++;
+		sfpcount[port]++;
 	}
-	ret = sfpcount;
+	ret = sfpcount[port];
 out:
 	sdbfs_close(&wrc_sdb);
 	return ret;
 }
 
-static int storage_update_sfp(struct s_sfpinfo *sfp)
+static int storage_update_sfp(struct s_sfpinfo *sfp, int port)
 {
 	int sfpcount = 1;
 	int temp;
@@ -506,7 +519,7 @@ static int storage_update_sfp(struct s_sfpinfo *sfp)
 	/* copy entries from flash to the memory, update entry if matched */
 	for (i = 0; i < sfpcount; ++i) {
 		dbsfp = &sfp_db[i];
-		sfpcount = sfp_entry(dbsfp, SFP_GET, i);
+		sfpcount = sfp_entry(dbsfp, SFP_GET, i, port);
 		if (sfpcount <= 0)
 			return sfpcount;
 		if (!strncmp(dbsfp->pn, sfp->pn, 16)) {
@@ -518,7 +531,7 @@ static int storage_update_sfp(struct s_sfpinfo *sfp)
 	}
 
 	/* erase entire database */
-	if (storage_sfpdb_erase() == EE_RET_I2CERR) {
+	if (storage_sfpdb_erase(port) == EE_RET_I2CERR) {
 			pp_printf("Could not erase DB\n");
 			return -1;
 		}
@@ -526,7 +539,7 @@ static int storage_update_sfp(struct s_sfpinfo *sfp)
 	/* add all SFPs */
 	for (i = 0; i < sfpcount; ++i) {
 		dbsfp = &sfp_db[i];
-		temp = sfp_entry(dbsfp, SFP_ADD, 0);
+		temp = sfp_entry(dbsfp, SFP_ADD, 0, port);
 		if (temp < 0) {
 			/* if error, return it */
 			return temp;
@@ -535,38 +548,40 @@ static int storage_update_sfp(struct s_sfpinfo *sfp)
 	return i;
 }
 
-int storage_get_sfp(struct s_sfpinfo *sfp, uint8_t oper, uint8_t pos)
+int storage_get_sfp(struct s_sfpinfo *sfp, uint8_t oper, uint8_t pos, int port)
 {
 	struct s_sfpinfo tmp_sfp;
 
 	if (oper == SFP_GET) {
 		/* Get SFP entry */
-		return sfp_entry(sfp, SFP_GET, pos);
+		return sfp_entry(sfp, SFP_GET, pos, port);
 	}
 
 	/* storage_match_sfp replaces content of parameter, so do the copy
 	 * first */
 	tmp_sfp = *sfp;
-	if (!storage_match_sfp(&tmp_sfp)) { /* add a new sfp entry */
+	if (!storage_match_sfp(&tmp_sfp, port)) { /* add a new sfp entry */
 		pp_printf("Adding new SFP entry\n");
-		return sfp_entry(sfp, SFP_ADD, 0);
+		return sfp_entry(sfp, SFP_ADD, 0, port);
 	}
 
 	pp_printf("Update existing SFP entry\n");
-	return storage_update_sfp(sfp);
+	return storage_update_sfp(sfp, port);
 }
 
-int storage_match_sfp(struct s_sfpinfo *sfp)
+int storage_match_sfp(struct s_sfpinfo *sfp, int port)
 {
 	uint8_t sfpcount = 1;
 	int8_t i;
 	struct s_sfpinfo dbsfp;
 
 	for (i = 0; i < sfpcount; ++i) {
-		sfpcount = sfp_entry(&dbsfp, SFP_GET, i);
+		sfpcount = sfp_entry(&dbsfp, SFP_GET, i, port);
 		if (sfpcount <= 0)
 			return sfpcount;
+
 		if (!strncmp(dbsfp.pn, sfp->pn, 16)) {
+			sfp->port = dbsfp.port;
 			sfp->dTx = dbsfp.dTx;
 			sfp->dRx = dbsfp.dRx;
 			sfp->alpha = dbsfp.alpha;
@@ -581,14 +596,20 @@ int storage_match_sfp(struct s_sfpinfo *sfp)
  * Phase transition ("calibration" file)
  */
 #define VALIDITY_BIT 0x80000000
-int storage_phtrans(uint32_t *valp, uint8_t write)
+int storage_phtrans(uint32_t *valp, uint8_t write, int port)
 {
 	int ret = -1;
 	uint32_t value;
+	uint32_t sdb_dev_addr;
+	if (port==0)
+		sdb_dev_addr = SDB_DEV_CALIB;
+	else
+		sdb_dev_addr = SDB_DEV_DP_CALIB;
 
-	if (sdbfs_open_id(&wrc_sdb, SDB_VENDOR, SDB_DEV_CALIB) < 0)
+	if (sdbfs_open_id(&wrc_sdb, SDB_VENDOR, sdb_dev_addr, 0) < 0)
 		return -1;
 	if (write) {
+		pp_printf("Port %d Updating t2/t4 phase transition...\n", port);
 		sdbfs_ferase(&wrc_sdb, 0, wrc_sdb.f_len);
 		value = *valp | VALIDITY_BIT;
 		if (sdbfs_fwrite(&wrc_sdb, 0, &value, sizeof(value))
@@ -624,7 +645,7 @@ int storage_init_erase(void)
 {
 	int ret;
 
-	if (sdbfs_open_id(&wrc_sdb, SDB_VENDOR, SDB_DEV_INIT) < 0)
+	if (sdbfs_open_id(&wrc_sdb, SDB_VENDOR, SDB_DEV_INIT, 0) < 0)
 		return -1;
 	ret = sdbfs_ferase(&wrc_sdb, 0, wrc_sdb.f_len);
 	if (ret == wrc_sdb.f_len)
@@ -644,7 +665,7 @@ int storage_init_add(const char *args[])
 	int ret = -1;
 	uint8_t byte;
 
-	if (sdbfs_open_id(&wrc_sdb, SDB_VENDOR, SDB_DEV_INIT) < 0)
+	if (sdbfs_open_id(&wrc_sdb, SDB_VENDOR, SDB_DEV_INIT, 0) < 0)
 		return -1;
 
 	/* check how many bytes we already have there */
@@ -696,7 +717,7 @@ int storage_init_show(void)
 	uint16_t used;
 	uint8_t byte;
 
-	if (sdbfs_open_id(&wrc_sdb, SDB_VENDOR, SDB_DEV_INIT) < 0)
+	if (sdbfs_open_id(&wrc_sdb, SDB_VENDOR, SDB_DEV_INIT, 0) < 0)
 		return -1;
 
 	pp_printf("-- user-defined script --\n");
@@ -724,7 +745,7 @@ int storage_init_readcmd(uint8_t *buf, uint8_t bufsize, uint8_t next)
 	uint16_t used;
 	static uint16_t ptr;
 
-	if (sdbfs_open_id(&wrc_sdb, SDB_VENDOR, SDB_DEV_INIT) < 0)
+	if (sdbfs_open_id(&wrc_sdb, SDB_VENDOR, SDB_DEV_INIT, 0) < 0)
 		return -1;
 
 	if (next == 0)

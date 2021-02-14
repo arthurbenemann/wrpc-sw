@@ -10,11 +10,11 @@
 #include <wrc.h>
 
 #include "types.h"
-#include "i2c.h"
-#include "storage.h"
+#include "dev/i2c.h"
+#include "dev/storage.h"
 #include "board.h"
-#include "syscon.h"
-#include "onewire.h"
+#include "dev/syscon.h"
+#include "dev/onewire.h"
 
 /*
  * The SFP section is placed somewhere inside FMC EEPROM and it really does not
@@ -59,7 +59,7 @@
 
 #define SFP_DB_EMPTY 0xff
 
-static uint8_t sfpcount = SFP_DB_EMPTY;
+static uint8_t sfpcount[2] = {SFP_DB_EMPTY,SFP_DB_EMPTY};
 
 uint8_t has_eeprom = 0;
 
@@ -396,7 +396,7 @@ int storage_init_readcmd(uint8_t *buf, uint8_t bufsize, uint8_t next)
 }
 
 #ifdef CONFIG_W1
-#include <w1.h>
+#include <dev/w1.h>
 /*
  * The "persistent mac" thing was part of onewire.c, and it's not something
  * I can understand, I admit.

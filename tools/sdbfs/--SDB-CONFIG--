@@ -11,20 +11,33 @@
 #
 # Allocation granularity is 64 bytes
 
-mac-address
-	write = 1
-	maxsize = 6
-
 wr-init
 	write = 1
 	maxsize = 256
+	position = 0x2f0000
+
+mac-address
+	write = 1
+	maxsize = 6
+	position = 0x300000
+
+calibration
+	write = 1
+	maxsize = 128
+	position = 0x310000
 
 # each sfp takes 29 bytes, 4 of them fit in 128 bytes
 sfp-database
 	write = 1
 	maxsize = 128
+	position = 0x320000
 
-# I don't know what this is
-calibration
+dp-sfp-database
 	write = 1
 	maxsize = 128
+	position = 0x330000
+
+dp-calibration
+	write = 1
+	maxsize = 128
+	position = 0x340000

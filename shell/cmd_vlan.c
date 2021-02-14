@@ -10,7 +10,7 @@
 #include <string.h>
 #include <errno.h>
 #include <shell.h>
-#include <endpoint.h>
+#include <dev/endpoint.h>
 
 static int cmd_vlan(const char *args[])
 {
@@ -25,10 +25,12 @@ static int cmd_vlan(const char *args[])
 			return -EINVAL;
 		}
 		wrc_vlan_number = i;
-		pfilter_init_default();
+		pfilter_init_default(0);
+		pfilter_init_default(1);
 	} else if (!strcasecmp(args[0], "off")) {
 		wrc_vlan_number = 0;
-		pfilter_init_default();
+		pfilter_init_default(0);
+		pfilter_init_default(1);
 
 	} else {
 		return -EINVAL;

@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-#include "etherbone.h"
+#include "dev/etherbone.h"
 
 eb_status_t ebs_block_write(eb_device_t device, eb_address_t address, eb_data_t* data, int count, int autoincrement_address);
 eb_status_t ebs_block_read(eb_device_t device, eb_address_t read_address, eb_data_t *rdata, int count, int autoincrement_address);

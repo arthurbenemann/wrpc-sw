@@ -1,2 +1,2 @@
 /* usleep */
-#include <syscon.h>
+#include <dev/syscon.h>

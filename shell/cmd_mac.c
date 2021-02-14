@@ -14,8 +14,8 @@
 
 #include "softpll_ng.h"
 #include "shell.h"
-#include "onewire.h"
-#include "endpoint.h"
+#include "dev/onewire.h"
+#include "dev/endpoint.h"
 
 void decode_mac(const char *str, unsigned char *mac)
 {
@@ -40,28 +40,33 @@ char *format_mac(char *s, const unsigned char *mac)
 
 static int cmd_mac(const char *args[])
 {
-	unsigned char mac[6];
+	int port;	
+	unsigned char mac[wr_num_ports][6];
 	char buf[32];
 
 	if (!args[0] || !strcasecmp(args[0], "get")) {
 		/* get current MAC */
-		get_mac_addr(mac);
+		for (port = 0; port < wr_num_ports; ++port)
+			get_mac_addr(mac[port], port);
 	} else if (!strcasecmp(args[0], "getp")) {
-		/* get persistent MAC */
-		get_mac_addr(mac);
-		get_persistent_mac(ONEWIRE_PORT, mac);
+		get_persistent_mac(ONEWIRE_PORT, mac[0]);
+		pp_printf("Persistent MAC-address: %s\n", format_mac(buf, mac[0]));
 	} else if (!strcasecmp(args[0], "set") && args[1]) {
-		decode_mac(args[1], mac);
-		set_mac_addr(mac);
-		pfilter_init_default();
+		decode_mac(args[1], mac[0]);
+		for (port = 0; port < wr_num_ports; ++port) {
+			mac[0][0]=mac[0][0]+port;
+			set_mac_addr(mac[0], port);
+			pfilter_init_default(port);
+		}
 	} else if (!strcasecmp(args[0], "setp") && args[1]) {
-		decode_mac(args[1], mac);
-		set_persistent_mac(ONEWIRE_PORT, mac);
+		decode_mac(args[1], mac[0]);
+		set_persistent_mac(ONEWIRE_PORT, mac[0]);
 	} else {
 		return -EINVAL;
 	}
 
-	pp_printf("MAC-address: %s\n", format_mac(buf, mac));
+	for (port = 0; port < wr_num_ports; ++port)
+		pp_printf("Port %d MAC-address: %s\n", port, format_mac(buf, mac[port]));
 	return 0;
 }
 

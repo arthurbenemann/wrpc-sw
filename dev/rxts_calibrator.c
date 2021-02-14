@@ -12,13 +12,13 @@
 #include <wrc.h>
 
 #include "board.h"
-#include "syscon.h"
-#include "endpoint.h"
+#include "dev/syscon.h"
+#include "dev/endpoint.h"
 #include "softpll_ng.h"
 #include "wrc_ptp.h"
-#include "storage.h"
+#include "dev/storage.h"
 #include "ptpd_netif.h"
-#include "rxts_calibrator.h"
+#include "dev/rxts_calibrator.h"
 
 /* New calibrator for the transition phase value. A major pain in the ass for
    the folks who frequently rebuild their gatewares. The idea is described
@@ -115,28 +115,28 @@ static int lookup_transition(struct trans_detect_state *state, int flip_bit,
 	return 0;
 }
 
-static struct trans_detect_state det_rising, det_falling;
-static int cal_cur_phase;
+static struct trans_detect_state det_rising[wr_num_ports], det_falling[wr_num_ports];
+static int cal_cur_phase[wr_num_ports];
 
 /* Starts RX timestamper calibration process state machine. Invoked by
    ptpnetif's check lock function when the PLL has already locked, to avoid
    complicating the API of ptp-noposix/ppsi. */
 
-void rxts_calibration_start(void)
+void rxts_calibration_start(uint8_t port)
 {
-	cal_cur_phase = 0;
-	det_rising.prev_val = det_falling.prev_val = -1;
-	det_rising.state = det_falling.state = TD_WAIT_INACTIVE;
-	det_rising.sample_count = 0;
-	det_falling.sample_count = 0;
-	det_rising.trans_phase = 0;
-	det_falling.trans_phase = 0;
+	cal_cur_phase[port] = 0;
+	det_rising[port].prev_val = det_falling[port].prev_val = -1;
+	det_rising[port].state = det_falling[port].state = TD_WAIT_INACTIVE;
+	det_rising[port].sample_count = 0;
+	det_falling[port].sample_count = 0;
+	det_rising[port].trans_phase = 0;
+	det_falling[port].trans_phase = 0;
 	spll_set_phase_shift(0, 0);
 }
 
 /* Updates RX timestamper state machine. Non-zero return value means that
    calibration is done. */
-int rxts_calibration_update(uint32_t *t24p_value)
+int rxts_calibration_update(uint32_t *t24p_value, int port)
 {
 	int32_t ttrans = 0;
 
@@ -145,31 +145,31 @@ int rxts_calibration_update(uint32_t *t24p_value)
 
 	/* generate a fake RX timestamp and check if falling edge counter is
 	   ahead of rising edge counter */
-	int flip = ep_timestamper_cal_pulse();
+	int flip = ep_timestamper_cal_pulse(port);
 
 	/* look for transitions (with deglitching) */
-	lookup_transition(&det_rising, flip, cal_cur_phase, 1);
-	lookup_transition(&det_falling, flip, cal_cur_phase, 0);
+	lookup_transition(&det_rising[port], flip, cal_cur_phase[port], 1);
+	lookup_transition(&det_falling[port], flip, cal_cur_phase[port], 0);
 
-	if (cal_cur_phase >= CAL_SCAN_RANGE) {
-		if (det_rising.state != TD_DONE || det_falling.state != TD_DONE) 
+	if (cal_cur_phase[port] >= CAL_SCAN_RANGE) {
+		if (det_rising[port].state != TD_DONE || det_falling[port].state != TD_DONE) 
 		{
 			wrc_verbose("RXTS calibration error.\n");
 			return -1;
 		}
 
 		/* normalize */
-		while (det_falling.trans_phase >= REF_CLOCK_PERIOD_PS)
-			det_falling.trans_phase -= REF_CLOCK_PERIOD_PS;
-		while (det_rising.trans_phase >= REF_CLOCK_PERIOD_PS)
-			det_rising.trans_phase -= REF_CLOCK_PERIOD_PS;
+		while (det_falling[port].trans_phase >= REF_CLOCK_PERIOD_PS)
+			det_falling[port].trans_phase -= REF_CLOCK_PERIOD_PS;
+		while (det_rising[port].trans_phase >= REF_CLOCK_PERIOD_PS)
+			det_rising[port].trans_phase -= REF_CLOCK_PERIOD_PS;
 
 		/* Use falling edge as second sample of rising edge */
-		if (det_falling.trans_phase > det_rising.trans_phase)
-			ttrans = det_falling.trans_phase - REF_CLOCK_PERIOD_PS/2;
-		else if(det_falling.trans_phase < det_rising.trans_phase)
-			ttrans = det_falling.trans_phase + REF_CLOCK_PERIOD_PS/2;
-		ttrans += det_rising.trans_phase;
+		if (det_falling[port].trans_phase > det_rising[port].trans_phase)
+			ttrans = det_falling[port].trans_phase - REF_CLOCK_PERIOD_PS/2;
+		else if(det_falling[port].trans_phase < det_rising[port].trans_phase)
+			ttrans = det_falling[port].trans_phase + REF_CLOCK_PERIOD_PS/2;
+		ttrans += det_rising[port].trans_phase;
 		ttrans /= 2;
 
 		/*normalize ttrans*/
@@ -178,97 +178,103 @@ int rxts_calibration_update(uint32_t *t24p_value)
 
 
 		wrc_verbose("RXTS calibration: R@%dps, F@%dps, transition@%dps\n",
-			  det_rising.trans_phase, det_falling.trans_phase,
+			  det_rising[port].trans_phase, det_falling[port].trans_phase,
 			  ttrans);
 
 		*t24p_value = (uint32_t)ttrans;
 		return 1;
 	}
 
-	cal_cur_phase += CAL_SCAN_STEP;
+	cal_cur_phase[port] += CAL_SCAN_STEP;
 
-	spll_set_phase_shift(0, cal_cur_phase);
-
+	spll_set_phase_shift(0, cal_cur_phase[port]);
 	return 0;
 }
 
 /* legacy function for 'calibration force' command */
-int measure_t24p(uint32_t *value)
+int measure_t24p(uint32_t *value, int port)
 {
 	int rv;
+	int retry_cnt;
 	pp_printf("Waiting for link...\n");
-	while (!ep_link_up(NULL))
+	while (!ep_link_up(NULL, port))
 		timer_delay_ms(100);
 
-	spll_init(SPLL_MODE_SLAVE, 0, 1);
+  // spll contains rx/tx clocks
+	spll_init(SPLL_MODE_SLAVE, 2*port, 1);
 	pp_printf("Locking PLL...\n");
 	while (!spll_check_lock(0))
+	{
 		timer_delay_ms(100);
+		retry_cnt++;
+		if (retry_cnt>400)
+			return -1;
+	}
 	pp_printf("\n");
 
 	pp_printf("Calibrating RX timestamper...\n");
-	rxts_calibration_start();
+	rxts_calibration_start(port);
 
-	while (!(rv = rxts_calibration_update(value))) ;
+	while (!(rv = rxts_calibration_update(value,port))) ;
 	return rv;
 }
 
 /* Delays for master must have been calibrated while running as slave */
-static int calib_t24p_master(uint32_t *value)
+static int calib_t24p_master(uint32_t *value, int port)
 {
 	int rv;
 
-	rv = storage_phtrans(value, 0);
+	rv = storage_phtrans(value, 0, port);
 	if(rv < 0) {
-		pp_printf("Error %d while reading t24p from storage\n", rv);
+		pp_printf("port %d Error %d while reading t24p from storage\n", port, rv);
 		return rv;
 	}
-	pp_printf("t24p read from storage: %d ps\n", *value);
+	pp_printf("port %d t24p read from storage: %d ps\n", port,*value);
 	return rv;
 }
 
 
 /*SoftPLL must be locked prior calling this function*/
-static int calib_t24p_slave(uint32_t *value)
+static int calib_t24p_slave(uint32_t *value, int port)
 {
 	int rv;
 	uint32_t prev;
 	int retries = 0;
 
-	while (!(rv = rxts_calibration_update(value))) {
-		if (retries > CALIB_RETRIES || ep_link_up(NULL) == LINK_DOWN)
+	while (!(rv = rxts_calibration_update(value,port))) {
+		if (retries > CALIB_RETRIES || ep_link_up(NULL, port) == LINK_DOWN)
 			return -1;
  		retries++;
 	}
 	if (rv < 0) {
 		/* Fall back on master == eeprom-or-error */
-		return calib_t24p_master(value);
+		return calib_t24p_master(value,port);
 	}
 
 	/*
 	 * Let's see if we have a matching value in EEPROM:
 	 * accept a 200ps difference, otherwise rewrite eeprom
 	 */
-	rv = storage_phtrans(&prev, 0 /* rd */);
+	rv = storage_phtrans(&prev, 0 /* rd */, port);
 	if (rv < 0 || (prev < *value - 200) || (prev > *value + 200)) {
-		rv = storage_phtrans(value, 1);
+		rv = storage_phtrans(value, 1, port);
 		pp_printf("Wrote new t24p value: %d ps (%s)\n", *value,
 			  rv < 0 ? "Failed" : "Success");
 	}
 	return 0;
 }
 
-int calib_t24p(int mode, uint32_t *value)
+int calib_t24p(int mode, uint32_t *value, int port)
 {
 	int ret;
 
 	if (mode == WRC_MODE_SLAVE)
-		ret = calib_t24p_slave(value);
+		ret = calib_t24p_slave(value, port);
 	else
-		ret = calib_t24p_master(value);
+		ret = calib_t24p_master(value, port);
 
 	//update phtrans value in socket struct
 	if (ret >= 0)
-		ptpd_netif_set_phase_transition(*value);
+		ptpd_netif_set_phase_transition(*value, port);
 	return ret;
 }

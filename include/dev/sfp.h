@@ -1,0 +1,29 @@
+/*
+ * This work is part of the White Rabbit project
+ *
+ * Released according to the GNU GPL, version 2 or any later version.
+ */
+
+#ifndef __SFP_H
+#define __SFP_H
+
+#include <stdint.h>
+
+#define SFP_PN_LEN 16
+#define SFP_NOT_MATCHED 1
+#define SFP_MATCHED 2
+
+#define SFP_GET 0
+#define SFP_ADD 1
+
+extern char sfp_pn[wr_num_ports][SFP_PN_LEN];
+
+extern int32_t sfp_in_db[2];
+extern int32_t sfp_alpha[2];
+extern int32_t sfp_deltaTx[2];
+extern int32_t sfp_deltaRx[2];
+
+/* Match plugged SFP with a DB entry */
+int sfp_match(int port);
+
+#endif

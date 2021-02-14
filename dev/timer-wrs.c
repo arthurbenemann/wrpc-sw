@@ -5,7 +5,7 @@
  */
 #include "board.h"
 
-#include "syscon.h"
+#include "dev/syscon.h"
 
 uint32_t timer_get_tics(void)
 {

@@ -44,11 +44,11 @@ enum ip_status {
 	IP_OK_BOOTP,
 	IP_OK_STATIC,
 };
-extern enum ip_status ip_status;
-void setIP(unsigned char *IP);
-void getIP(unsigned char *IP);
+extern enum ip_status ip_status[2];
+void setIP(unsigned char *IP, int port);
+void getIP(unsigned char *IP, int port);
 
-int process_icmp(uint8_t * buf, int len);
+int process_icmp(uint8_t * buf, int len, int port);
 int process_bootp(uint8_t * buf, int len);	/* non-zero if IP was set */
 int prepare_bootp(struct wr_sockaddr *addr, uint8_t * buf, int retry);
 
@@ -61,10 +61,17 @@ struct wr_udp_addr {
 };
 
 void fill_udp(uint8_t * buf, int len, struct wr_udp_addr *uaddr);
-int check_dest_ip(unsigned char *buf);
+int check_dest_ip(unsigned char *buf, int port);
+int check_magic_udp(unsigned char *buf);
 
 void syslog_init(void);
 int syslog_poll(void);
 void syslog_report(const char *buf);
+
+#define FLASH_ERASE 0xffff
+#define FLASH_WRITE 0x0000
+#define FLASH_READ  0x0001
+#define REG_WRITE   0x0010
+#define REG_READ    0x0011
 
 #endif

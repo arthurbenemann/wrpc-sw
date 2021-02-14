@@ -13,14 +13,16 @@
 #include <wrc.h>
 #include "softpll_ng.h"
 #include "irq.h"
-
+#include "dev/pps_gen.h"
 
 #define ALIGN_SAMPLE_PERIOD 100000
 #define ALIGN_TARGET 0
 
 #define EXT_PERIOD_NS 100
 #define EXT_FREQ_HZ 10000000
-#define EXT_PPS_LATENCY_PS 30000 // fixme: make configurable
+// fixme: make configurable
+#define EXT_PPS_LATENCY_PS 30000	// for regular ext channel
+#define EXT_PPS_LATENCY_LJD_PS 63000	// for low-jitter daughterboard
 
 
 void external_init(volatile struct spll_external_state *s, int ext_ref,
@@ -28,6 +30,8 @@ void external_init(volatile struct spll_external_state *s, int ext_ref,
 {
     int idx = spll_n_chan_ref + spll_n_chan_out;
 
+    //if (ljd_present)
+    //  idx++;
 
     helper_init(s->helper, idx);
     mpll_init(s->main, idx, spll_n_chan_ref);
@@ -38,7 +42,7 @@ void external_init(volatile struct spll_external_state *s, int ext_ref,
 
 void external_start(struct spll_external_state *s)
 {
-    helper_start(s->helper);
+	helper_start(s->helper);
 
 	SPLL->ECCR = SPLL_ECCR_EXT_EN;
 
@@ -83,27 +87,52 @@ static int align_sample(int channel, int *v)
 	return 0; // sample not valid
 }
 
+static inline int get_pps_latency(int sel)
+{
+	if (sel)
+		return EXT_PPS_LATENCY_LJD_PS;
+	else
+		return EXT_PPS_LATENCY_PS;
+}
+
 int external_align_fsm(volatile struct spll_external_state *s)
 {
 	int v, done_sth = 0;
+	static int timeout;
 
 	switch(s->align_state) {
 		case ALIGN_STATE_EXT_OFF:
 			break;
 
 		case ALIGN_STATE_WAIT_CLKIN:
-			if( !(SPLL->ECCR & SPLL_ECCR_EXT_REF_STOPPED) ) {
+			if(!ljd_present && !(SPLL->ECCR & SPLL_ECCR_EXT_REF_STOPPED) ) {
 				SPLL->ECCR |= SPLL_ECCR_EXT_REF_PLLRST;
 				s->align_state = ALIGN_STATE_WAIT_PLOCK;
 				done_sth++;
+			}
+			else if (ljd_present) {
+				uint32_t f_ext;
+				int ljd_ad9516_stat;
+				/* reset ljd ad9516 */
+				SPLL->ECCR |= SPLL_ECCR_EXT_REF_PLLRST;
+				timer_delay(10);
+				SPLL->ECCR &= (~SPLL_ECCR_EXT_REF_PLLRST);
+				timer_delay(10);
+				ljd_ad9516_stat = ljd_ad9516_init();
+				// f_ext = spll_measure_frequency(SPLL_OSC_EXT);
+				// if (!ljd_ad9516_stat && (f_ext > 9999000) && (f_ext < 10001000)) {
+				if (!ljd_ad9516_stat) {
+					s->align_state = ALIGN_STATE_WAIT_PLOCK;
+					pp_printf("External AD9516 locked\n");
+				}
 			}
 			break;
 
 		case ALIGN_STATE_WAIT_PLOCK:
 			SPLL->ECCR &= (~SPLL_ECCR_EXT_REF_PLLRST);
-			if( SPLL->ECCR & SPLL_ECCR_EXT_REF_STOPPED )
+			if(SPLL->ECCR & SPLL_ECCR_EXT_REF_STOPPED )
 				s->align_state = ALIGN_STATE_WAIT_CLKIN;
-			else if( SPLL->ECCR & SPLL_ECCR_EXT_REF_LOCKED )
+			else if(SPLL->ECCR & SPLL_ECCR_EXT_REF_LOCKED)
 				s->align_state = ALIGN_STATE_START;
 			done_sth++;
 			break;
@@ -115,24 +144,30 @@ int external_align_fsm(volatile struct spll_external_state *s)
 				enable_irq();
 				s->align_state = ALIGN_STATE_START_MAIN;
 				done_sth++;
+			} else if (time_after(timer_get_tics(), timeout + 5*TICS_PER_SECOND)) {
+				pll_verbose("EXT: timeout, restarting\n");
+				s->align_state = ALIGN_STATE_WAIT_CLKIN;
 			}
 			break;
 
 		case ALIGN_STATE_START_MAIN:
 			SPLL->AL_CR = 2;
 			if(s->helper->ld.locked && s->main->ld.locked) {
-				PPSG->CR = PPSG_CR_CNT_EN | PPSG_CR_PWIDTH_W(10);
-				PPSG->ADJ_NSEC = 3;
+				PPSG->CR = PPSG_CR_CNT_EN | PPSG_CR_PWIDTH_W(PPS_WIDTH);
+				PPSG->ADJ_NSEC = 5;
 				PPSG->ESCR = PPSG_ESCR_SYNC;
 				s->align_state = ALIGN_STATE_INIT_CSYNC;
 				pll_verbose("EXT: DMTD locked.\n");
 				done_sth++;
+			} else if (time_after(timer_get_tics(), timeout + 5*TICS_PER_SECOND)) {
+				pll_verbose("EXT: timeout, restarting\n");
+				s->align_state = ALIGN_STATE_WAIT_CLKIN;
 			}
 			break;
 
 		case ALIGN_STATE_INIT_CSYNC:
 			if (PPSG->ESCR & PPSG_ESCR_SYNC) {
-			    PPSG->ESCR = PPSG_ESCR_PPS_VALID; // enable PPS output (even though it's not aligned yet)
+				shw_pps_gen_enable_output(1); // enable PPS output (even though it's not aligned yet)
 				s->align_timer = timer_get_tics() + 2 * TICS_PER_SECOND;
 				s->align_state = ALIGN_STATE_WAIT_CSYNC;
 				done_sth++;
@@ -154,7 +189,7 @@ int external_align_fsm(volatile struct spll_external_state *s)
 				if(v == 0 || v >= ALIGN_SAMPLE_PERIOD / 2) {
 					s->align_target = EXT_PERIOD_NS;
 					s->align_step = -100;
-				} else if (s > 0) {
+				} else if (v > 0) {
 					s->align_target = 0;
 					s->align_step = 100;
 				}
@@ -172,8 +207,8 @@ int external_align_fsm(volatile struct spll_external_state *s)
 					s->align_shift += s->align_step;
 					mpll_set_phase_shift(s->main, s->align_shift);
 				} else if (v == s->align_target) {
-					s->align_shift += EXT_PPS_LATENCY_PS;
-				mpll_set_phase_shift(s->main, s->align_shift);
+					s->align_shift += get_pps_latency(ljd_present);
+					mpll_set_phase_shift(s->main, s->align_shift);
 					s->align_state = ALIGN_STATE_COMPENSATE_DELAY;
 				}
 				done_sth++;
@@ -182,8 +217,9 @@ int external_align_fsm(volatile struct spll_external_state *s)
 
 		case ALIGN_STATE_COMPENSATE_DELAY:
 			if(!mpll_shifter_busy(s->main)) {
-				pll_verbose("EXT: Align done.\n");
+				pp_printf("EXT: Align done.\n");
 				s->align_state = ALIGN_STATE_LOCKED;
+				shw_pps_gen_time_valid(1);
 				done_sth++;
 			}
 			break;
@@ -197,6 +233,9 @@ int external_align_fsm(volatile struct spll_external_state *s)
 
 		default:
 			break;
+	}
+	if (done_sth > 0) {
+		timeout = timer_get_tics();
 	}
 	return done_sth != 0;
 }

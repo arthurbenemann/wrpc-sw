@@ -8,9 +8,9 @@
 
 #include "irq.h"
 #include "uart.h"
-#include "endpoint.h"
-#include "pps_gen.h"
-#include "rxts_calibrator.h"
+#include "dev/endpoint.h"
+#include "dev/pps_gen.h"
+#include "dev/rxts_calibrator.h"
 
 #include "host.h"
 

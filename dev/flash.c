@@ -7,21 +7,21 @@
  * Released according to the GNU LGPL, version 2.1 or any later version.
  */
 #include <wrc.h>
-#include <flash.h>
+#include <dev/flash.h>
 #include <types.h>
-#include <storage.h>
+#include <dev/storage.h>
 
 #define SDBFS_BIG_ENDIAN
 #include <libsdbfs.h>
 
 /*
- * Delay function - limit SPI clock speed to 10 MHz
+ * Delay function - limit SPI clock speed to 30 MHz
  */
 static void delay(void)
 {
 	int i;
 
-	for (i = 0; i < (int)(CPU_CLOCK/10000000); i++)
+	for (i = 0; i < (int)(CPU_CLOCK/30000000); i++)
 		asm volatile ("nop");
 }
 
@@ -231,9 +231,9 @@ int flash_sdb_check(void)
 			0x100,		/* second page in flash */
 			0x200,		/* IPMI with MultiRecord */
 			0x300,		/* IPMI with larger MultiRecord */
-			0x170000,	/* after first FPGA bitstream */
-			0x2e0000	/* after MultiBoot bitstream */
-			};
+			0x3B0000,	/* after first FPGA bitstream */
+			0x760000	/* after MultiBoot bitstream */
+	};
 
 	for (i = 0; i < ARRAY_SIZE(entry_point); i++) {
 		flash_read(entry_point[i], (uint8_t *)&magic, 4);

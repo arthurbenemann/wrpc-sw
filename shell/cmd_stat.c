@@ -7,7 +7,7 @@
  * Released according to the GNU GPL, version 2 or any later version.
  */
 #include "shell.h"
-#include "endpoint.h"
+#include "dev/endpoint.h"
 #include <string.h>
 #include <wrc.h>
 #include <errno.h>
@@ -17,6 +17,7 @@ extern uint32_t wrc_stats_last;
 
 static int cmd_stat(const char *args[])
 {
+	int port;
 	/* no arguments: invert */
 	if (!args[0]) {
 		wrc_stat_running = !wrc_stat_running;
@@ -28,7 +29,9 @@ static int cmd_stat(const char *args[])
 
 	/* arguments: bts, on, off */
 	if (!strcasecmp(args[0], "bts")) {
-		pp_printf("%d ps\n", ep_get_bitslide());
+		for(port=0; port<wr_num_ports; port++) {		
+			pp_printf("port %d : %d ps\n", port, ep_get_bitslide(port));
+		}
 	} else if (!strcasecmp(args[0], "on")) {
 		wrc_stat_running = 1;
 		wrc_stats_last--; /* force a line to be printed */

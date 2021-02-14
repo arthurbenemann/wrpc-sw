@@ -15,22 +15,22 @@
 #include <wrc.h>
 #include <wrpc.h>
 #include <string.h>
-#include <minic.h>
+#include <dev/minic.h>
 #include <limits.h>
 
-#include "endpoint.h"
+#include "dev/endpoint.h"
 #include "ipv4.h"
 #include "ptpd_netif.h"
-#include "pps_gen.h"
+#include "dev/pps_gen.h"
 #include "hw/memlayout.h"
 #include "hw/etherbone-config.h"
 #include "revision.h"
 #include "softpll_ng.h"
 #include "temperature.h"
-#include "sfp.h"
-#include "syscon.h"
+#include "dev/sfp.h"
+#include "dev/syscon.h"
 
-#include "storage.h"
+#include "dev/storage.h"
 
 #define ASN_BOOLEAN	((u_char)0x01)
 #define ASN_INTEGER	((u_char)0x02)
@@ -218,7 +218,7 @@ static uint32_t aux_diag_reg_ro_num;
 static uint32_t aux_diag_reg_rw_num;
 
 
-extern struct pp_instance ppi_static;
+extern struct pp_instance ppi_static[wr_num_ports];
 static struct wr_servo_state *wr_s_state;
 
 extern char wrc_hw_name[HW_NAME_LENGTH];
@@ -403,8 +403,8 @@ static struct snmp_oid oid_array_wrpcPtpGroup[] = {
 	OID_FIELD_STRUCT(oid_wrpcPtpClockOffsetErrCnt,get_pp,      NO_SET,   ASN_COUNTER,   struct wr_servo_state, &wr_s_state, n_err_offset),
 	OID_FIELD_STRUCT(oid_wrpcPtpRTTErrCnt,       get_pp,       NO_SET,   ASN_COUNTER,   struct wr_servo_state, &wr_s_state, n_err_delta_rtt),
 	OID_FIELD_VAR(   oid_wrpcPtpAsymmetry,       get_servo,    NO_SET,   ASN_COUNTER64, SERVO_ASYMMETRY),
-	OID_FIELD_VAR(   oid_wrpcPtpTX,              get_p,        NO_SET,   ASN_COUNTER,   &ppi_static.ptp_tx_count),
-	OID_FIELD_VAR(   oid_wrpcPtpRX,              get_p,        NO_SET,   ASN_COUNTER,   &ppi_static.ptp_rx_count),
+	OID_FIELD_VAR(   oid_wrpcPtpTX,              get_p,        NO_SET,   ASN_COUNTER,   &ppi_static[0].ptp_tx_count),
+	OID_FIELD_VAR(   oid_wrpcPtpRX,              get_p,        NO_SET,   ASN_COUNTER,   &ppi_static[0].ptp_rx_count),
 	OID_FIELD_STRUCT(oid_wrpcPtpAlpha,           get_pp,       NO_SET,   ASN_INTEGER,   struct wr_servo_state, &wr_s_state, fiber_fix_alpha),
 	{ 0, }
 };
@@ -424,9 +424,9 @@ static struct snmp_oid oid_array_wrpcPtpConfigGroup[] = {
 static struct snmp_oid oid_array_wrpcPortGroup[] = {
 	OID_FIELD_VAR(   oid_wrpcPortLinkStatus,     get_port,     NO_SET,   ASN_INTEGER,   PORT_LINK_STATUS),
 	OID_FIELD_VAR(   oid_wrpcPortSfpPn,          get_p,        NO_SET,   ASN_OCTET_STR, &sfp_pn),
-	OID_FIELD_VAR(   oid_wrpcPortSfpInDB,        get_p,        NO_SET,   ASN_INTEGER,   &sfp_in_db),
-	OID_FIELD_VAR(   oid_wrpcPortInternalTX,     get_p,        NO_SET,   ASN_COUNTER,   &minic.tx_count),
-	OID_FIELD_VAR(   oid_wrpcPortInternalRX,     get_p,        NO_SET,   ASN_COUNTER,   &minic.rx_count),
+	OID_FIELD_VAR(   oid_wrpcPortSfpInDB,        get_p,        NO_SET,   ASN_INTEGER,   &sfp_in_db[0]),
+	OID_FIELD_VAR(   oid_wrpcPortInternalTX,     get_p,        NO_SET,   ASN_COUNTER,   &minic[0].tx_count),
+	OID_FIELD_VAR(   oid_wrpcPortInternalRX,     get_p,        NO_SET,   ASN_COUNTER,   &minic[0].rx_count),
 
 	{ 0, }
 };
@@ -474,10 +474,10 @@ static void snmp_init(void)
 	uint32_t aux_diag_ver;
 	/* Use UDP engine activated by function arguments  */
 	snmp_socket = ptpd_netif_create_socket(&__static_snmp_socket, NULL,
-						PTPD_SOCK_UDP, 161 /* snmp */);
+						PTPD_SOCK_UDP, 161 /* snmp */, 0/*port*/);
 	/* TODO: check if pointer(s) is initialized already */
 	wr_s_state =
-		&((struct wr_data *)ppi_static.ext_data)->servo_state;
+		&((struct wr_data *)ppi_static[0].ext_data)->servo_state;
 	if (SNMP_AUX_DIAG_ENABLED) {
 		/* Fix ID and version of aux diag registers by values read from FPGA */
 		diag_read_info(&aux_diag_id, &aux_diag_ver, &aux_diag_reg_rw_num,
@@ -880,7 +880,7 @@ static int get_port(uint8_t *buf, struct snmp_oid *obj)
 	switch ((int) obj->p) {
 	case (int)PORT_LINK_STATUS:
 		/* overkill, since we need the link to be up to use SNMP */
-		tmp_int32 = 1 + ep_link_up(NULL);
+		tmp_int32 = 1 + ep_link_up(NULL,0);
 		return get_value(buf, obj->asn, &tmp_int32);
 	default:
 		break;
@@ -1052,7 +1052,7 @@ static int get_sfp(uint8_t *buf, struct snmp_oid *obj)
 	col = obj->oid_match[TABLE_COL];
 	snmp_verbose("%s: row%d, col%d\n", __func__, row, col);
 	for (i = 1; i < sfpcount+1; ++i) {
-		sfpcount = storage_get_sfp(&sfp, SFP_GET, i - 1);
+		sfpcount = storage_get_sfp(&sfp, SFP_GET, i - 1, 0);
 		if (sfpcount == 0) {
 			snmp_verbose("SFP database empty...\n");
 			return 0;
@@ -1249,8 +1249,8 @@ static int set_ptp_restart(uint8_t *buf, struct snmp_oid *obj)
 	switch (*restart_val) {
 	case restartPtp:
 		snmp_verbose("%s: restart PTP\n", __func__);
-		wrc_ptp_stop();
-		wrc_ptp_start();
+		wrc_ptp_stop(0);
+		wrc_ptp_start(0);
 
 		*restart_val = restartPtpSuccessful;
 		break;
@@ -1272,15 +1272,15 @@ static int set_ptp_config(uint8_t *buf, struct snmp_oid *obj)
 		return ret;
 	switch (*apply_mode) {
 	case writeToMemoryCurrentSfp:
-		sfp_deltaTx = snmp_ptp_config.dTx;
-		sfp_deltaRx = snmp_ptp_config.dRx;
-		sfp_alpha = snmp_ptp_config.alpha;
+		sfp_deltaTx[0] = snmp_ptp_config.dTx;
+		sfp_deltaRx[0] = snmp_ptp_config.dRx;
+		sfp_alpha[0] = snmp_ptp_config.alpha;
 
 		/* Since ppsi does not support update of deltas in runtime,
 		 * we need to restart the ppsi */
 		pp_printf("SNMP: SFP updated in memory, restart PTP\n");
-		wrc_ptp_stop();
-		wrc_ptp_start();
+		wrc_ptp_stop(0);
+		wrc_ptp_start(0);
 
 		*apply_mode = applySuccessful;
 		break;
@@ -1300,7 +1300,7 @@ static int set_ptp_config(uint8_t *buf, struct snmp_oid *obj)
 			snmp_ptp_config.pn[temp++] = ' ';
 
 		/* add a sfp to the DB */
-		temp = storage_get_sfp(&snmp_ptp_config, SFP_ADD, 0);
+		temp = storage_get_sfp(&snmp_ptp_config, SFP_ADD, 0, 0);
 		if (temp == EE_RET_DBFULL) {
 			snmp_verbose("%s: SFP DB is full\n", __func__);
 			*apply_mode = applyFailedDBFull;
@@ -1311,7 +1311,7 @@ static int set_ptp_config(uint8_t *buf, struct snmp_oid *obj)
 			break;
 		}
 		/* perform a sfp match */
-		temp = sfp_match();
+		temp = sfp_match(0);
 		if (temp) {
 			snmp_verbose("%s: Match error (%d)\n", __func__, temp);
 			*apply_mode = applySuccessfulMatchFailed;
@@ -1321,7 +1321,7 @@ static int set_ptp_config(uint8_t *buf, struct snmp_oid *obj)
 		*apply_mode = applySuccessful;
 		break;
 	case eraseFlash:
-		if (storage_sfpdb_erase() == EE_RET_I2CERR)
+		if (storage_sfpdb_erase(0) == EE_RET_I2CERR)
 			*apply_mode = applyFailed;
 		else
 			*apply_mode = applySuccessful;
@@ -1653,16 +1653,19 @@ static int snmp_poll(void)
 	uint8_t buf[200];
 	int len;
 
+	if (link_status[0]!=LINK_UP)
+		return 0;
+
 	/* no need to wait for IP address: we won't get queries */
 	len = ptpd_netif_recvfrom(snmp_socket, &addr,
-				  buf, sizeof(buf), NULL);
+				  buf, sizeof(buf), NULL, 0/*port*/);
 	if (len <= UDP_END + sizeof(match_array))
 		return 0;
 
 	/* Check the destination IP of SNMP packets. IP version, protocol and
 	 * port are checked in the function update_rx_queues, so no need to
 	 * check it again */
-	if (check_dest_ip(buf)) {
+	if (check_dest_ip(buf,0)) {
 		snmp_verbose("wrong destination IP\n");
 		return 0;
 	}
@@ -1673,13 +1676,13 @@ static int snmp_poll(void)
 	len += UDP_END;
 
 	fill_udp(buf, len, NULL);
-	ptpd_netif_sendto(snmp_socket, &addr, buf, len, 0);
+	ptpd_netif_sendto(snmp_socket, &addr, buf, len, 0 ,0/*port*/);
 	return 1;
 }
 
 DEFINE_WRC_TASK(snmp) = {
 	.name = "snmp",
-	.enable = &link_status,
+	.enable = &link_status[0],
 	.init = snmp_init,
 	.job = snmp_poll,
 };

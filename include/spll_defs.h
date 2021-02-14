@@ -17,6 +17,9 @@ WARNING: These parameters must be in sync with the generics of the HDL instantia
 /* Reference clock frequency, in [Hz] */
 #define CLOCK_FREQ  REF_CLOCK_FREQ_HZ
 
+/* Reference clock frequency, in [Hz] */
+#define CLOCK_RATE  REF_CLOCK_RATE
+
 /* Reference clock period, in picoseconds */
 #define CLOCK_PERIOD_PICOSECONDS REF_CLOCK_PERIOD_PS
 

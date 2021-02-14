@@ -17,10 +17,10 @@
 #include "revision.h"
 #include "ptpd_netif.h"
 #include "lldp.h"
-#include "endpoint.h"
+#include "dev/endpoint.h"
 #include "ipv4.h"
 #include "shell.h"
-#include "syscon.h"
+#include "dev/syscon.h"
 #include <wrpc.h> /*needed for htons()*/
 
 static uint8_t lldpdu[LLDP_MAX_PKT_LEN];
@@ -245,6 +245,9 @@ static int lldp_poll(void)
 	uint8_t new_mac[ETH_ALEN];
 	static uint8_t old_mac[ETH_ALEN];
 
+	if (link_status[0]!=LINK_UP)
+		return 0;
+
 	/* periodic tasks */
 	if (ticks > LLDP_TX_TICK_INTERVAL) {
 		get_mac_addr(new_mac);
@@ -255,7 +258,7 @@ static int lldp_poll(void)
 		/* Update only when IP or MAC changed */
 		/* TODO: or VLAN changed */
 		if (memcmp(&new_mac, &old_mac, ETH_ALEN)
-		    || (HAS_IP && (ip_status != IP_TRAINING)
+		    || (HAS_IP && (ip_status[0] != IP_TRAINING)
 			&& memcmp(&new_ipWR, &old_ipWR, IPLEN))
 		   ) {
 			/* update LLDP info */

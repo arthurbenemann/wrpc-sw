@@ -210,9 +210,10 @@ int sdbfs_open_name(struct sdbfs *fs, const char *name)
 	return -ENOENT;
 }
 
-int sdbfs_open_id(struct sdbfs *fs, uint64_t vid, uint32_t did)
+int sdbfs_open_id(struct sdbfs *fs, uint64_t vid, uint32_t did, uint16_t devnum)
 {
 	struct sdb_device *d;
+	uint16_t num=0;
 
 	sdbfs_scan(fs, 1); /* new scan: get the interconnect and igore it */
 	while ( (d = sdbfs_scan(fs, 0)) != NULL) {
@@ -220,6 +221,10 @@ int sdbfs_open_id(struct sdbfs *fs, uint64_t vid, uint32_t did)
 			continue;
 		if (did != d->sdb_component.product.device_id)
 			continue;
+		if(num < devnum) {
+			num++;
+			continue;
+		}
 		fs->currentp = d;
 		__open(fs);
 		return 0;
@@ -248,12 +253,12 @@ unsigned long sdbfs_find_name(struct sdbfs *fs, const char *name)
 	return offset;
 }
 
-unsigned long sdbfs_find_id(struct sdbfs *fs, uint64_t vid, uint32_t did)
+unsigned long sdbfs_find_id(struct sdbfs *fs, uint64_t vid, uint32_t did, uint16_t devnum)
 {
 	unsigned long offset;
 	int ret;
 
-	ret = sdbfs_open_id(fs, vid, did);
+	ret = sdbfs_open_id(fs, vid, did, devnum);
 	if (ret < 0)
 		return (unsigned long)ret;
 

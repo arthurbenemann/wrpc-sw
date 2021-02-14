@@ -8,7 +8,7 @@
  */
 
 #include <wrc.h>
-#include <w1.h>
+#include <dev/w1.h>
 #include <temperature.h>
 
 static struct wrc_onetemp temp_w1_data[] = {

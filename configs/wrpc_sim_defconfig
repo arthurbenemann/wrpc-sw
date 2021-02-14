@@ -41,6 +41,7 @@ CONFIG_GENSDBFS=y
 # CONFIG_WR_DIAG is not set
 CONFIG_WR_NODE_SIM=y
 CONFIG_ABSCAL=y
+CONFIG_DUALPORT=y
 
 #
 # wrpc-sw is tainted if you change the following options

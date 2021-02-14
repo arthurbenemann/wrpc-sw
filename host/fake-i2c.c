@@ -1,4 +1,4 @@
-#include "i2c.h"
+#include "dev/i2c.h"
 
 void mi2c_init(uint8_t i2cif)
 {}

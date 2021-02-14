@@ -10,59 +10,146 @@
 #include <wrpc.h>
 #include <string.h>
 
-#include "endpoint.h"
+#include "dev/endpoint.h"
 #include "ipv4.h"
 #include "ptpd_netif.h"
+#include "arp.h"
 
-static uint8_t __arp_queue[128];
-static struct wrpc_socket __static_arp_socket = {
-	.queue.buff = __arp_queue,
-	.queue.size = sizeof(__arp_queue),
+static uint8_t __arp_queue[2][128];
+static struct wrpc_socket __static_arp_socket[2] = {
+	{.queue.buff = __arp_queue[0],
+	.queue.size = sizeof(__arp_queue[0]),},
+	{.queue.buff = __arp_queue[1],
+	.queue.size = sizeof(__arp_queue[1]),},
 };
-static struct wrpc_socket *arp_socket;
-
-#define ARP_HTYPE	0
-#define ARP_PTYPE	(ARP_HTYPE+2)
-#define ARP_HLEN	(ARP_PTYPE+2)
-#define ARP_PLEN	(ARP_HLEN+1)
-#define ARP_OPER	(ARP_PLEN+1)
-#define ARP_SHA		(ARP_OPER+2)
-#define ARP_SPA		(ARP_SHA+6)
-#define ARP_THA		(ARP_SPA+4)
-#define ARP_TPA		(ARP_THA+6)
-#define ARP_END		(ARP_TPA+4)
+static struct wrpc_socket *arp_socket[2];
 
 static void arp_init(void)
 {
 	struct wr_sockaddr saddr;
-
+	int port=0;
 	/* Configure socket filter */
 	memset(&saddr, 0, sizeof(saddr));
-	memset(&saddr.mac, 0xFF, 6);	/* Broadcast */
+	// memset(&saddr.mac, 0xFF, 6);	/* Broadcast */
 	saddr.ethertype = htons(0x0806);	/* ARP */
 
-	arp_socket = ptpd_netif_create_socket(&__static_arp_socket, &saddr,
-					      PTPD_SOCK_RAW_ETHERNET, 0);
+	arp_socket[port] = ptpd_netif_create_socket(&__static_arp_socket[port], &saddr,
+						PTPD_SOCK_RAW_ETHERNET, 0, port);
 }
 
-static int process_arp(uint8_t * buf, int len)
+static void dp_arp_init(void)
+{
+	struct wr_sockaddr saddr;
+	int port=1;
+	/* Configure socket filter */
+	memset(&saddr, 0, sizeof(saddr));
+	// memset(&saddr.mac, 0xFF, 6);	/* Broadcast */
+	saddr.ethertype = htons(0x0806);	/* ARP */
+
+	arp_socket[port] = ptpd_netif_create_socket(&__static_arp_socket[port], &saddr,
+							PTPD_SOCK_RAW_ETHERNET, 0, port);
+}
+
+static int process_arp(uint8_t * buf, int len, int port)
 {
 	uint8_t hisMAC[6];
 	uint8_t hisIP[4];
-	uint8_t myIP[4];
+	uint8_t myIP[2][4];
 
 	if (len < ARP_END)
 		return 0;
 
-	/* Is it ARP request targetting our IP? */
-	getIP(myIP);
-	if (buf[ARP_OPER + 0] != 0 ||
-	    buf[ARP_OPER + 1] != 1 || memcmp(buf + ARP_TPA, myIP, 4))
+	if (buf[ARP_OPER + 0] != 0)
 		return 0;
 
-	memcpy(hisMAC, buf + ARP_SHA, 6);
-	memcpy(hisIP, buf + ARP_SPA, 4);
+	if (buf[ARP_OPER + 1] == 1)
+	{
+		memcpy(hisMAC, buf + ARP_SHA, 6);
+		memcpy(hisIP, buf + ARP_SPA, 4);
+		// ------------- ARP ------------
+		// HW ethernet
+		buf[ARP_HTYPE + 0] = 0;
+		buf[ARP_HTYPE + 1] = 1;
+		// proto IP
+		buf[ARP_PTYPE + 0] = 8;
+		buf[ARP_PTYPE + 1] = 0;
+		// lengths
+		buf[ARP_HLEN] = 6;
+		buf[ARP_PLEN] = 4;
+		// Response
+		buf[ARP_OPER + 0] = 0;
+		buf[ARP_OPER + 1] = 2;
+		// my MAC
+		get_mac_addr(buf + ARP_SHA, port);
 
+		for (port = 0; port < wr_num_ports; ++port)
+		{
+			/* Is it ARP request targetting our IP? */
+			getIP(myIP[port], port);
+			if (memcmp(buf + ARP_TPA, myIP[port], 4) == 0)
+			{
+				memcpy(buf + ARP_SPA, myIP[port], 4);
+				// his MAC+IP
+				memcpy(buf + ARP_THA, hisMAC, 6);
+				memcpy(buf + ARP_TPA, hisIP, 4);
+				return ARP_END;
+			}
+		}
+	}
+	return 0;
+}
+
+static int arp_poll(void)
+{
+	uint8_t buf[ARP_END + 100];
+	struct wr_sockaddr addr;
+	int len;
+	int port=0;
+	int ret;
+
+	if ((link_status[port]!=LINK_UP) || (ip_status[port] == IP_TRAINING))
+		return 0;
+
+	ret = 0;
+	if ((len = ptpd_netif_recvfrom(arp_socket[port],
+				       &addr, buf, sizeof(buf), 0, port)) > 0)
+	{	
+		if ((len = process_arp(buf, len, port)) > 0)
+			ptpd_netif_sendto(arp_socket[port], &addr, buf, len, 0, port);
+		ret = 1;
+	}
+	return ret;
+}
+
+static int dp_arp_poll(void)
+{
+	uint8_t buf[ARP_END + 100];
+	struct wr_sockaddr addr;
+	int len;
+	int port=1;
+	int ret;
+
+	if ((link_status[port]!=LINK_UP) || (ip_status[port] == IP_TRAINING))
+		return 0;
+
+	ret = 0;
+	if ((len = ptpd_netif_recvfrom(arp_socket[port],
+				       &addr, buf, sizeof(buf), 0, port)) > 0)
+	{	
+		if ((len = process_arp(buf, len, port)) > 0)
+			ptpd_netif_sendto(arp_socket[port], &addr, buf, len, 0, port);
+		ret = 1;
+	}
+	return ret;
+}
+
+int send_arp(uint8_t * hisIP, int port)
+{
+	uint8_t buf[ARP_END + 100];
+
+	struct wr_sockaddr addr;
+	/* Configure socket filter */
+	memset(&addr.mac, 0xFF, 6);  /* Broadcast */
 	// ------------- ARP ------------
 	// HW ethernet
 	buf[ARP_HTYPE + 0] = 0;
@@ -73,40 +160,29 @@ static int process_arp(uint8_t * buf, int len)
 	// lengths
 	buf[ARP_HLEN] = 6;
 	buf[ARP_PLEN] = 4;
-	// Response
+	// request
 	buf[ARP_OPER + 0] = 0;
-	buf[ARP_OPER + 1] = 2;
-	// my MAC+IP
-	get_mac_addr(buf + ARP_SHA);
-	memcpy(buf + ARP_SPA, myIP, 4);
-	// his MAC+IP
-	memcpy(buf + ARP_THA, hisMAC, 6);
+	buf[ARP_OPER + 1] = 1;
+
+	get_mac_addr(buf + ARP_SHA, port);
+	getIP(buf + ARP_SPA, port);
+	memset(buf + ARP_THA, 0x00, 6);  /* Broadcast */
 	memcpy(buf + ARP_TPA, hisIP, 4);
-
-	return ARP_END;
-}
-
-static int arp_poll(void)
-{
-	uint8_t buf[ARP_END + 100];
-	struct wr_sockaddr addr;
-	int len;
-
-	if (ip_status == IP_TRAINING)
-		return 0;		/* can't do ARP w/o an address... */
-
-	if ((len = ptpd_netif_recvfrom(arp_socket,
-				       &addr, buf, sizeof(buf), 0)) > 0) {
-		if ((len = process_arp(buf, len)) > 0)
-			ptpd_netif_sendto(arp_socket, &addr, buf, len, 0);
-		return 1;
-	}
-	return 0;
+	return (ptpd_netif_sendto(arp_socket[port], &addr, buf, ARP_END+10, 0, port));
 }
 
 DEFINE_WRC_TASK(arp) = {
 	.name = "arp",
-	.enable = &link_status,
+	.enable = &(link_status[0]),
 	.init = arp_init,
 	.job = arp_poll,
 };
+
+#ifdef CONFIG_DUALPORT
+DEFINE_WRC_TASK(dp_arp) = {
+	.name = "dp-arp",
+	.enable = &(link_status[1]),
+	.init = dp_arp_init,
+	.job = dp_arp_poll,
+};
+#endif

@@ -8,8 +8,8 @@
  * Released according to the GNU GPL, version 2 or any later version.
  */
 #include <string.h>
-#include <etherbone.h>
-#include <w1.h>
+#include <dev/etherbone.h>
+#include <dev/w1.h>
 #include <hw/sockit_owm_regs.h>
 
 extern eb_address_t BASE_ONEWIRE;

@@ -27,9 +27,9 @@
 #include <inttypes.h>
 
 #include "system_checks.h"
-#include "endpoint.h"
-#include "minic.h"
-#include "pps_gen.h"
+#include "dev/endpoint.h"
+#include "dev/minic.h"
+#include "dev/pps_gen.h"
 #include "softpll_ng.h"
 #include <wrpc.h> /*needed for htons()*/
 
@@ -84,8 +84,8 @@ static void wrc_sim_initialize(void)
 	// uncomment the following line to perform a dynamic search
 	// at runtime.
 	//sdb_find_devices();
-	BASE_MINIC         = (void *)0x20000;
-	BASE_EP            = (void *)0x20100;
+	BASE_MINIC[0]      = (void *)0x20000;
+	BASE_EP[0]         = (void *)0x20100;
 	BASE_SOFTPLL       = (void *)0x20200;
 	BASE_PPS_GEN       = (void *)0x20300;
 	BASE_SYSCON        = (void *)0x20400;
@@ -109,6 +109,8 @@ static void wrc_sim_initialize(void)
 	minic_init();
 	shw_pps_gen_init();
 	spll_very_init();
+  /* wait for link up before enabling tm_time_valid_o */
+  while (ep_link_up(NULL) == 0) {}
 	shw_pps_gen_enable_output(1);
 }
 /*

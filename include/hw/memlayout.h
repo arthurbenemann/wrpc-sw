@@ -8,13 +8,16 @@
 
 #define SDB_ADDRESS 0x30000
 
-extern unsigned char *BASE_MINIC;
-extern unsigned char *BASE_EP;
+extern unsigned char *BASE_MINIC[2];
+extern unsigned char *BASE_EP[2];
 extern unsigned char *BASE_SOFTPLL;
 extern unsigned char *BASE_PPS_GEN;
 extern unsigned char *BASE_SYSCON;
 extern unsigned char *BASE_UART;
 extern unsigned char *BASE_ONEWIRE;
+extern unsigned char *BASE_GEN10MHZ_CFG;
+extern unsigned char *BASE_SPI;
+extern unsigned char *BASE_SPI_LJD_BOARD;
 extern unsigned char *BASE_ETHERBONE_CFG;
 
 #define FMC_EEPROM_ADR 0x50

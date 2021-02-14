@@ -86,8 +86,10 @@ struct hal_port_state {
 	hal_port_calibration_t calib;
 
 	/* current DMTD loopback phase (ps) and whether is it valid or not */
-	uint32_t phase_val;
-	int phase_val_valid;
+	uint32_t phase_rx_val;
+	int phase_rx_val_valid;
+	uint32_t phase_tx_val;
+	int phase_tx_val_valid;
 	int tx_cal_pending, rx_cal_pending;
 	/* locking FSM state */
 	int lock_state;

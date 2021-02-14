@@ -11,7 +11,7 @@
 #include <sys/time.h>
 #include <unistd.h>
 
-#include "etherbone.h"
+#include "dev/etherbone.h"
 
 static 	eb_socket_t socket;
 

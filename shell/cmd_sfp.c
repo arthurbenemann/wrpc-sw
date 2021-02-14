@@ -26,15 +26,18 @@
 #include <wrc.h>
 
 #include "shell.h"
-#include "storage.h"
-#include "syscon.h"
-#include "endpoint.h"
+#include "dev/storage.h"
+#include "dev/syscon.h"
+#include "dev/endpoint.h"
 
-#include "sfp.h"
+#include "dev/sfp.h"
 
 static int cmd_sfp(const char *args[])
 {
-	int8_t sfpcount = 1, i, temp, ret;
+	int8_t sfpcount[] = {1,1};
+	int8_t i, temp, ret=0;
+	int port;
+
 	struct s_sfpinfo sfp;
 
 	if (!args[0]) {
@@ -42,11 +45,19 @@ static int cmd_sfp(const char *args[])
 		return -EINVAL;
 	}
 	if (!strcasecmp(args[0], "erase")) {
-		if (storage_sfpdb_erase() == EE_RET_I2CERR) {
-			pp_printf("Could not erase DB\n");
-			return -EIO;
+		if (args[1])
+			port = atoi(args[1]);
+		else
+			port = 0;
+		
+		if (port > 1) return -EINVAL;
+		
+		if (storage_sfpdb_erase(port) == EE_RET_I2CERR) {
+			pp_printf("Port %d Could not erase DB\n", port);
+			ret = -EIO;
 		}
-		return 0;
+		return ret;
+
 	} else if (args[4] && !strcasecmp(args[0], "add")) {
 		temp = strnlen(args[1], SFP_PN_LEN);
 		for (i = 0; i < temp; ++i)
@@ -56,7 +67,13 @@ static int cmd_sfp(const char *args[])
 		sfp.dTx = atoi(args[2]);
 		sfp.dRx = atoi(args[3]);
 		sfp.alpha = atoi(args[4]);
-		temp = storage_get_sfp(&sfp, SFP_ADD, 0);
+		if (args[5])
+			sfp.port = atoi(args[5]);
+		else
+			sfp.port = 0;
+
+		if (sfp.port > 1) return -EINVAL;
+		temp = storage_get_sfp(&sfp, SFP_ADD, 0, sfp.port);
 		if (temp == EE_RET_DBFULL) {
 			pp_printf("SFP DB is full\n");
 			return -ENOSPC;
@@ -64,55 +81,68 @@ static int cmd_sfp(const char *args[])
 			pp_printf("I2C error\n");
 			return -EIO;
 		} else if (temp < 0) {
-			pp_printf("SFP database error (%d)\n", temp);
+			pp_printf("Port %d SFP database error (%d)\n", sfp.port, temp);
 			return -EFAULT;
 		}
-		pp_printf("%d SFPs in DB\n", temp);
+		pp_printf("Port %d has %d SFPs in DB\n", sfp.port, temp);
 		return 0;
 	} else if (!strcasecmp(args[0], "show")) {
-		for (i = 0; i < sfpcount; ++i) {
-			sfpcount = storage_get_sfp(&sfp, SFP_GET, i);
-			if (sfpcount == 0) {
-				pp_printf("SFP database empty\n");
-				return 0;
-			} else if (sfpcount < 0) {
-				pp_printf("SFP database error (%d)\n",
-					  sfpcount);
-				return -EFAULT;
+		for (port = 0; port < wr_num_ports; ++port) {
+			for (i = 0; i< sfpcount[port]; ++i) {
+				sfpcount[port] = storage_get_sfp(&sfp, SFP_GET, i, port);
+				if (sfpcount[port] == 0) {
+					pp_printf("Port %d SFP database empty\n", port);
+				} else if (sfpcount[port] < 0) {
+					pp_printf("Port %d SFP database error (%d)\n", port,
+						  sfpcount[port]);
+					ret = -EFAULT;
+				} else {
+					pp_printf("Port %d, SFP %d: PN:", port, i + 1);
+					for (temp = 0; temp < SFP_PN_LEN; ++temp)
+						pp_printf("%c", sfp.pn[temp]);
+					pp_printf(" dTx: %8d dRx: %8d alpha: %8d\n", sfp.dTx,
+						sfp.dRx, sfp.alpha);
+				}
 			}
-			pp_printf("%d: PN:", i + 1);
-			for (temp = 0; temp < SFP_PN_LEN; ++temp)
-				pp_printf("%c", sfp.pn[temp]);
-			pp_printf(" dTx: %8d dRx: %8d alpha: %8d\n", sfp.dTx,
-				sfp.dRx, sfp.alpha);
 		}
-		return 0;
+		return ret;
 	} else if (!strcasecmp(args[0], "match")) {
-		ret = sfp_match();
-		if (ret == -ENODEV) {
-			pp_printf("No SFP.\n");
-			return ret;
-		}
-		if (ret == -EIO) {
-			pp_printf("SFP read error\n");
-			return ret;
-		}
+		for (port = 0; port < wr_num_ports; ++port) {
+			
+			ret = sfp_match(port);
+			if (ret == -ENODEV) {
+				pp_printf("Port %d No SFP.\n", port);
+				continue;
+			} else if (ret == -EIO) {
+				pp_printf("Port %d SFP read error\n", port);
+				continue;
+			} 
 
-		/* SFP read correctly */
-		for (temp = 0; temp < SFP_PN_LEN; ++temp)
-			pp_printf("%c", sfp_pn[temp]);
-		pp_printf("\n");
+			/* SFP read correctly */
+			for (temp = 0; temp < SFP_PN_LEN; ++temp)
+				pp_printf("%c", sfp_pn[port][temp]);
+			pp_printf("\n");
 
-		if (ret == -ENXIO) {
-			pp_printf("Could not match to DB\n");
-			return ret;
+			if (ret == -ENXIO) {
+				pp_printf("Port %d Could not match to DB\n", port);
+				continue;
+			}
+
+			/* match successful */
+			pp_printf("Port %d SFP matched, dTx=%d dRx=%d alpha=%d\n",
+				port, sfp_deltaTx[port], sfp_deltaRx[port], sfp_alpha[port]);
 		}
-		/* match successful */
-		pp_printf("SFP matched, dTx=%d dRx=%d alpha=%d\n",
-			sfp_deltaTx, sfp_deltaRx, sfp_alpha);
+	
 		return ret;
 	} else if (args[1] && !strcasecmp(args[0], "ena")) {
-		ep_sfp_enable(atoi(args[1]));
+		if (args[2])
+			sfp.port = atoi(args[2]);
+		else
+			sfp.port = 0;
+
+		if (sfp.port > 1) return -EINVAL;
+
+		ep_sfp_enable(atoi(args[1]), sfp.port);
 		return 0;
 	} else {
 		pp_printf("Wrong parameter\n");

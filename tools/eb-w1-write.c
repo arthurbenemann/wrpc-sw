@@ -20,9 +20,9 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/mman.h>
-#include <etherbone.h>
+#include <dev/etherbone.h>
 
-#include <w1.h>
+#include <dev/w1.h>
 
 #define W1_VENDOR	0xce42		/* CERN */
 #define W1_DEVICE	0x779c5443	/* WR-Periph-1Wire */

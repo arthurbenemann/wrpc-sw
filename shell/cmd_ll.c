@@ -8,8 +8,8 @@
  */
 #include <wrc.h>
 #include <shell.h>
-#include <storage.h>
-#include <endpoint.h>
+#include <dev/storage.h>
+#include <dev/endpoint.h>
 #include <ppsi/ppsi.h>
 #include "wr-api.h"
 
@@ -36,28 +36,40 @@ DEFINE_WRC_COMMAND(devmem) = {
 	.exec = cmd_devmem,
 };
 
-extern struct pp_instance ppi_static;
+extern struct pp_instance ppi_static[wr_num_ports];
 
 static int cmd_delays(const char *args[])
 {
 	int tx, rx;
-	struct wr_data *wrp = (void *)(ppi_static.ext_data);
-	struct wr_servo_state *s = &wrp->servo_state;
+	int port;
+	struct wr_data *wrp;
+	struct wr_servo_state *s;
 
 	if (args[0] && !args[1]) {
-		pp_printf("delays: use: \"delays [<txdelay> <rxdelay>]\"\n");
+		pp_printf("delays: use: \"delays [<txdelay> <rxdelay>] [port]\"\n");
 		return 0;
 	}
 	if (args[1]) {
 		fromdec(args[0], &tx);
 		fromdec(args[1], &rx);
-		sfp_deltaTx = tx;
-		sfp_deltaRx = rx;
+		if (args[2])
+			port = atoi(args[2]);
+		else
+			port = 0;
+		if (port > 1) return -1;
+
+		sfp_deltaTx[port] = tx;
+		sfp_deltaRx[port] = rx;
+		wrp = (void *)(ppi_static[port].ext_data);
+		s = &wrp->servo_state;
 		/* Change the active value too (add bislide here) */
 		s->delta_tx_m = tx;
-		s->delta_rx_m = rx + ep_get_bitslide();
+		s->delta_rx_m = rx + ep_get_bitslide(port);
 	} else {
-		pp_printf("tx: %i   rx: %i\n", sfp_deltaTx, sfp_deltaRx);
+		for (port = 0; port < wr_num_ports; ++port)
+		{
+			pp_printf("port %d: tx: %i   rx: %i\n", port, sfp_deltaTx[port], sfp_deltaRx[port]);
+		}
 	}
 	return 0;
 }

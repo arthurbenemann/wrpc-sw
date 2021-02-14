@@ -1,4 +1,4 @@
-#include "syscon.h"
+#include "dev/syscon.h"
 #include "spll_common.h"
 #include "hw/etherbone-config.h"
 

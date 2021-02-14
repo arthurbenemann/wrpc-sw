@@ -31,7 +31,7 @@
 #define UART_BAUDRATE 115200ULL
 
 /* Maximum number of simultaneously created sockets */
-#define NET_MAX_SOCKETS 12
+#define NET_MAX_SOCKETS 8
 
 /* Socket buffer size, determines the max. RX packet size */
 #define NET_MAX_SKBUF_SIZE 512
@@ -48,9 +48,9 @@ int board_update(void);
 #else
 #  define BOARD_DIVIDE_DMTD_CLOCKS	1
 #endif
-#define BOARD_MAX_CHAN_REF		1
+#define BOARD_MAX_CHAN_REF		2
 #define BOARD_MAX_CHAN_AUX		2
-#define BOARD_MAX_PTRACKERS		1
+#define BOARD_MAX_PTRACKERS		2*2
 
 #ifdef CONFIG_IP
 #define HAS_IP 1

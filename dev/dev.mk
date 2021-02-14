@@ -12,7 +12,10 @@ obj-$(CONFIG_EMBEDDED_NODE) += \
 	dev/sfp.o \
 	dev/devicelist.o \
 	dev/rxts_calibrator.o \
-	dev/flash.o
+	dev/flash.o \
+	dev/ad9516.o \
+	dev/gen10mhz.o \
+	dev/etherbone.o
 
 obj-$(CONFIG_WR_NODE) += \
 	dev/temperature.o \

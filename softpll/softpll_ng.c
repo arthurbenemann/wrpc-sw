@@ -32,7 +32,7 @@ volatile struct SPLL_WB *SPLL;
 volatile struct PPSG_WB *PPSG;
 
 int spll_n_chan_ref, spll_n_chan_out;
-
+int ljd_present = 1;		/* Low-jitter Daughterboard presence indicator */
 
 
 #define MAIN_CHANNEL (spll_n_chan_ref)
@@ -283,6 +283,7 @@ void _irq_entry(void)
 void spll_very_init()
 {
 	PPSG = (volatile struct PPSG_WB *)BASE_PPS_GEN;
+	PPSG->ESCR = 0;
 	PPSG->CR = PPSG_CR_CNT_EN | PPSG_CR_CNT_RST | PPSG_CR_PWIDTH_W(PPS_WIDTH);
 }
 
@@ -339,10 +340,11 @@ void spll_init(int mode, int slave_ref_channel, int align_pps)
 		mpll_init(&s->aux[i].pll.dmtd, slave_ref_channel, spll_n_chan_ref + i + 1);
 		s->aux[i].seq_state = AUX_DISABLED;
 	}
-	
+
 	if(mode == SPLL_MODE_FREE_RUNNING_MASTER)
-		PPSG->ESCR = PPSG_ESCR_PPS_VALID | PPSG_ESCR_TM_VALID;
-	
+		// PPSG->ESCR = PPSG_ESCR_PPS_VALID | PPSG_ESCR_TM_VALID;
+		PPSG->ESCR = PPSG_ESCR_PPS_VALID;
+
 	for (i = 0; i < spll_n_chan_ref; i++)
 		ptracker_init(&s->ptrackers[i], i, PTRACKER_AVERAGE_SAMPLES);
 
@@ -470,6 +472,21 @@ int spll_read_ptracker(int channel, int32_t *phase_ps, int *enabled)
 	return st->ready;
 }
 
+void spll_set_ptracker_average_samples(int channel, int nsamples)
+{
+	struct softpll_state *s = (struct softpll_state *) &softpll;
+	struct spll_ptracker_state *pt = &s->ptrackers[channel];
+
+	disable_irq();
+	pt->preserve_sign = 0;
+	pt->ready = 0;
+	pt->acc = 0;
+	pt->avg_count = 0;
+	pt->n_avg = nsamples;
+	enable_irq();
+}
+
+
 void spll_get_num_channels(int *n_ref, int *n_out)
 {
 	if (n_ref)
@@ -487,13 +504,13 @@ void spll_show_stats()
 		statename = "<Unknown>";
 
 	if (softpll.mode > 0)
-		    pp_printf("softpll: irqs %d seq %s mode %d "
-		     "alignment_state %d HL%d ML%d HY=%d MY=%d DelCnt=%d\n",
-		      s->irq_count, statename,
-			      s->mode, s->ext.align_state,
-			      s->helper.ld.locked, s->mpll.ld.locked,
-			      s->helper.pi.y, s->mpll.pi.y,
-			      s->delock_count);
+		pp_printf("softpll: irqs %d seq %s mode %d "
+		"alignment_state %d HL%d ML%d HY=%d MY=%d DelCnt=%d setpoint:%d\n",
+		s->irq_count, statename,
+		s->mode, s->ext.align_state,
+		s->helper.ld.locked, s->mpll.ld.locked,
+		s->helper.pi.y, s->mpll.pi.y,
+		s->delock_count, s->mpll.phase_shift_current);
 }
 
 int spll_shifter_busy(int channel)
@@ -652,7 +669,7 @@ int spll_update()
 	return ret != 0;
 }
 
-static int spll_measure_frequency(int osc)
+int spll_measure_frequency(int osc)
 {
 	volatile uint32_t *reg;
 

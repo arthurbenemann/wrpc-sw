@@ -10,7 +10,7 @@
  */
 #include <wrc.h>
 #include "board.h"
-#include "pps_gen.h"
+#include "dev/pps_gen.h"
 
 #include "hw/pps_gen_regs.h"
 
@@ -127,10 +127,24 @@ int shw_pps_gen_enable_output(int enable)
 	uint32_t escr = ppsg_read(ESCR);
 	if (enable)
 		ppsg_write(ESCR,
-			   escr | PPSG_ESCR_PPS_VALID | PPSG_ESCR_TM_VALID);
+			   escr | PPSG_ESCR_PPS_VALID);
 	else
 		ppsg_write(ESCR,
-			   escr & ~(PPSG_ESCR_PPS_VALID | PPSG_ESCR_TM_VALID));
+			   escr & ~(PPSG_ESCR_PPS_VALID));
+
+	return 0;
+}
+
+/* Time valid or unvalid */
+int shw_pps_gen_time_valid(int valid)
+{
+	uint32_t escr = ppsg_read(ESCR);
+	if (valid)
+		ppsg_write(ESCR,
+			   escr | PPSG_ESCR_TM_VALID);
+	else
+		ppsg_write(ESCR,
+			   escr & ~(PPSG_ESCR_TM_VALID));
 
 	return 0;
 }

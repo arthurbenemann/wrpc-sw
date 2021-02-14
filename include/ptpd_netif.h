@@ -18,7 +18,7 @@
 #define PTPD_SOCK_UDP		0 /* wrong name, it should be "WRPC" */
 #define PTPD_SOCK_RAW_ETHERNET 	1 /* but used in ppsi, which I won't change */
 
-extern int link_status;
+extern uint8_t link_status[wr_num_ports];
 #define LINK_DOWN 0
 #define LINK_WENT_UP 1
 #define LINK_WENT_DOWN 2
@@ -57,8 +57,10 @@ struct wrpc_socket {
 	mac_addr_t local_mac;
 	uint16_t prio;
 
-	uint32_t phase_transition;
-	uint32_t dmtd_phase;
+	uint32_t phase_transition_rx;
+	uint32_t dmtd_phase_rx;
+	uint32_t phase_transition_tx;
+	uint32_t dmtd_phase_tx;
 	struct sockq queue;
 };
 
@@ -86,7 +88,7 @@ PACKED struct wr_timestamp {
 // to bind_addr.
 struct wrpc_socket *ptpd_netif_create_socket(struct wrpc_socket *s,
 					     struct wr_sockaddr * bind_addr,
-					     int udp_or_raw, int udpport);
+					     int udp_or_raw, int udpport, int port);
 
 // Sends a UDP/RAW packet (data, data_length) to addr in wr_sockaddr.
 // For raw frames, mac/ethertype needs to be provided, for UDP - ip/port.
@@ -94,7 +96,7 @@ struct wrpc_socket *ptpd_netif_create_socket(struct wrpc_socket *s,
 // This value is later used for recovering the precise transmit timestamp.
 // If user doesn't need it, tag parameter can be left NULL.
 int ptpd_netif_sendto(struct wrpc_socket *sock, struct wr_sockaddr *to, void *data,
-		      size_t data_length, struct wr_timestamp *tx_ts);
+		      size_t data_length, struct wr_timestamp *tx_ts, int port);
 
 // Receives an UDP/RAW packet. Data is written to (data) and len is returned.
 // Maximum buffer length can be specified by data_length parameter.
@@ -102,21 +104,21 @@ int ptpd_netif_sendto(struct wrpc_socket *sock, struct wr_sockaddr *to, void *da
 // All RXed packets are timestamped and the timestamp
 // is stored in rx_timestamp (unless it's NULL).
 int ptpd_netif_recvfrom(struct wrpc_socket *sock, struct wr_sockaddr *from, void *data,
-			size_t data_length, struct wr_timestamp *rx_timestamp);
+			size_t data_length, struct wr_timestamp *rx_timestamp, int port);
 
 // Closes the socket.
-int ptpd_netif_close_socket(struct wrpc_socket * sock);
+int ptpd_netif_close_socket(struct wrpc_socket * sock, int port);
 
-int ptpd_netif_get_hw_addr(struct wrpc_socket * sock, mac_addr_t * mac);
+int ptpd_netif_get_hw_addr(struct wrpc_socket * sock, mac_addr_t * mac, int port);
 
 void ptpd_netif_linearize_rx_timestamp(struct wr_timestamp *ts,
-				       int32_t dmtd_phase,
+				       int32_t dmtd_phase_rx,
 				       int cntr_ahead, int transition_point,
 				       int clock_period);
-void ptpd_netif_set_phase_transition(uint32_t phase);
+void ptpd_netif_set_phase_transition(uint32_t phase, int port);
 
 struct hal_port_state;
-int wrpc_get_port_state(struct hal_port_state *port,
-			const char *port_name /* unused */);
+int wrpc_get_port_state(struct hal_port_state *state,
+			const char *port_name);
 
 #endif /* __PTPD_NETIF_H */

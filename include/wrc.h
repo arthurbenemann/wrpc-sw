@@ -13,7 +13,7 @@
  * Also, this brings in very common and needed headers
  */
 #include <inttypes.h>
-#include <syscon.h>
+#include <dev/syscon.h>
 #include <pp-printf.h>
 #include <util.h>
 #include <trace.h>
@@ -70,13 +70,26 @@ extern int abs(int val);
 extern int wrc_ui_refperiod;
 
 /* Init functions and defaults for the wrs build */
-int ad9516_init(int scb_ver);
+int ad9516_init(int scb_ver, int ljd_present);
+int ljd_ad9516_init(void);
 void rts_init(void);
 int rtipc_init(void);
 void rts_update(void);
 void rtipc_action(void);
+int pll_ad9516_init(unsigned char *BASE_SPI);
+int gen10mhz_init(void);
 
 /* div64.c, lifted from the linux kernel through pp_printf or ppsi */
 extern uint32_t __div64_32(uint64_t *n, uint32_t base);
+
+// CUTE DP
+#ifdef CONFIG_DUALPORT
+#define wr_num_ports 2
+#else
+#define wr_num_ports 1
+#endif
+
+// pps delay between ext pps in and pps out
+int ext_pps_latency_ps;
 
 #endif /* __WRC_H__ */

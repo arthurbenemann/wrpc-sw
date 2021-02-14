@@ -15,9 +15,9 @@
 
 #include <wrc.h>
 #include "uart.h"
-#include "syscon.h"
+#include "dev/syscon.h"
 #include "shell.h"
-#include "storage.h"
+#include "dev/storage.h"
 
 #define SH_MAX_LINE_LEN 80
 #define SH_MAX_ARGS 8

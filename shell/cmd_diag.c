@@ -9,7 +9,7 @@
 
 #include "shell.h"
 #include <wrc.h>
-#include <syscon.h>
+#include <dev/syscon.h>
 #include <string.h>
 #include <errno.h>
 

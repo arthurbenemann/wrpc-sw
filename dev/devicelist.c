@@ -6,18 +6,21 @@
  *
  * Released according to the GNU GPL, version 2 or any later version.
  */
-#include <wrc.h>
 #define SDBFS_BIG_ENDIAN
 #include <libsdbfs.h>
+#include "hw/memlayout.h"
 
 /* The following pointers are exported */
-unsigned char *BASE_MINIC;
-unsigned char *BASE_EP;
+unsigned char *BASE_MINIC[2];
+unsigned char *BASE_EP[2];
 unsigned char *BASE_SOFTPLL;
 unsigned char *BASE_PPS_GEN;
 unsigned char *BASE_SYSCON;
 unsigned char *BASE_UART;
 unsigned char *BASE_ONEWIRE;
+unsigned char *BASE_GEN10MHZ_CFG;
+unsigned char *BASE_SPI;
+unsigned char *BASE_SPI_LJD_BOARD;
 unsigned char *BASE_ETHERBONE_CFG;
 
 /* The sdb filesystem itself */
@@ -55,22 +58,30 @@ void sdb_print_devices(void)
 /* To save a little size, we enumerate our vendors */
 #define VID_CERN	0x0000ce42LL
 #define VID_GSI		0x00000651LL
+#define VID_THU		0x00746875LL
 
 struct wrc_device {
 	unsigned char **base;
 	uint64_t vid;
 	uint32_t did;
+	uint16_t devnum;
 };
 
 struct wrc_device devs[] = {
-	{&BASE_MINIC,         VID_CERN,	0xab28633a},
-	{&BASE_EP,            VID_CERN,	0x650c2d4f},
-	{&BASE_SOFTPLL,       VID_CERN,	0x65158dc0},
-	{&BASE_PPS_GEN,       VID_CERN,	0xde0d8ced},
-	{&BASE_SYSCON,        VID_CERN,	0xff07fc47},
-	{&BASE_UART,          VID_CERN,	0xe2d13d04},
-	{&BASE_ONEWIRE,       VID_CERN,	0x779c5443},
-	{&BASE_ETHERBONE_CFG, VID_GSI,	0x68202b22},
+	{&BASE_MINIC[0],      VID_CERN,	0xab28633a, 0},
+	{&BASE_EP[0],         VID_CERN,	0x650c2d4f, 0},
+#ifdef CONFIG_DUALPORT
+	{&BASE_MINIC[1],      VID_CERN,	0xab28633a, 1},
+	{&BASE_EP[1],         VID_CERN,	0x650c2d4f, 1},
+#endif
+	{&BASE_SOFTPLL,       VID_CERN,	0x65158dc0, 0},
+	{&BASE_PPS_GEN,       VID_CERN,	0xde0d8ced, 0},
+	{&BASE_SYSCON,        VID_CERN,	0xff07fc47, 0},
+	{&BASE_UART,          VID_CERN,	0xe2d13d04, 0},
+	{&BASE_ONEWIRE,       VID_CERN,	0x779c5443, 0},
+	{&BASE_GEN10MHZ_CFG,  VID_CERN, 0x4765feb0, 0},
+	{&BASE_SPI_LJD_BOARD, VID_CERN, 0xe503947e, 0},
+	{&BASE_ETHERBONE_CFG, VID_GSI,	0x68202b22, 0},
 };
 
 void sdb_find_devices(void)
@@ -85,6 +96,6 @@ void sdb_find_devices(void)
 	}
 	for (d = devs, i = 0; i < ARRAY_SIZE(devs); d++, i++) {
 		*(d->base) = (void *)sdbfs_find_id(&wrc_fpga_sdb,
-						    d->vid, d->did);
+						    d->vid, d->did, d->devnum);
 	}
 }

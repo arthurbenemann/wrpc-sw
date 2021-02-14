@@ -7,9 +7,9 @@
 #include <errno.h>
 
 #include "shell.h"
-#include "syscon.h"
+#include "dev/syscon.h"
 #include "hw/memlayout.h"
-#include "storage.h"
+#include "dev/storage.h"
 
 /*
  * args[1] - where to write sdbfs image (0 - Flash, 1 - I2C EEPROM,

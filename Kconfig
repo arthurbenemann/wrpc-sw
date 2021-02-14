@@ -297,6 +297,15 @@ config ABSCAL
 	  using a loop-back SFP adapter, according to the procedure
 	  described and documented by Peter Jansweijer.
 
+config DUALPORT
+  depends on WR_NODE
+	default y
+	boolean "Support dualport function"
+	help
+	  If you select this, the node could support second WR port and a 
+	  cascaded WR link could be built. In future, the second WR port 
+	  could act as back up port.
+
 config LLDP
 	depends on WR_NODE
 	boolean "Include LLDP protocol transmit-only"

@@ -6,13 +6,16 @@
  *
  * Released according to the GNU GPL, version 2 or any later version.
  */
-#include "syscon.h"
+#include "dev/syscon.h"
 #include <errno.h>
 #include <string.h>
+#include <shell.h>
+#include <wrc.h>
 
-struct s_i2c_if i2c_if[2] = {
+struct s_i2c_if i2c_if[3] = {
 	{SYSC_GPSR_FMC_SCL, SYSC_GPSR_FMC_SDA, FMC_I2C_DELAY},
-	{SYSC_GPSR_SFP_SCL, SYSC_GPSR_SFP_SDA, SFP_I2C_DELAY}
+	{SYSC_GPSR_SFP_SCL, SYSC_GPSR_SFP_SDA, SFP_I2C_DELAY},
+	{SYSC_GPSR_SFP1_SCL, SYSC_GPSR_SFP1_SDA, SFP_I2C_DELAY},
 };
 
 volatile struct SYSCON_WB *syscon;

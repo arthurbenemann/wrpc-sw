@@ -13,26 +13,26 @@
 #include <stdarg.h>
 
 #include <wrc.h>
-#include <w1.h>
 #include <temperature.h>
-#include "syscon.h"
-#include "uart.h"
-#include "endpoint.h"
-#include "minic.h"
-#include "pps_gen.h"
-#include "ptpd_netif.h"
-#include "i2c.h"
-#include "storage.h"
-#include "softpll_ng.h"
-#include "onewire.h"
-#include "pps_gen.h"
-#include "shell.h"
-#include "lib/ipv4.h"
-#include "rxts_calibrator.h"
-#include "flash.h"
+#include <dev/w1.h>
+#include <dev/syscon.h>
+#include <uart.h>
+#include <dev/endpoint.h>
+#include <dev/minic.h>
+#include <dev/pps_gen.h>
+#include <ptpd_netif.h>
+#include <dev/i2c.h>
+#include <dev/storage.h>
+#include <softpll_ng.h>
+#include <dev/onewire.h>
+#include <dev/pps_gen.h>
+#include <shell.h>
+#include <lib/ipv4.h>
+#include <dev/rxts_calibrator.h>
+#include <dev/flash.h>
 
-#include "wrc_ptp.h"
-#include "system_checks.h"
+#include <wrc_ptp.h>
+#include <system_checks.h>
 
 #ifndef CONFIG_DEFAULT_PRINT_TASK_TIME_THRESHOLD
 #define CONFIG_DEFAULT_PRINT_TASK_TIME_THRESHOLD 0
@@ -43,18 +43,19 @@ int wrc_ui_refperiod = TICS_PER_SECOND; /* 1 sec */
 int wrc_phase_tracking = 1;
 char wrc_hw_name[HW_NAME_LENGTH];
 
-uint32_t cal_phase_transition = 2389;
+uint32_t cal_phase_transition[wr_num_ports];
 
 int wrc_vlan_number = CONFIG_VLAN_NR;
 
 static uint32_t prev_nanos_for_profile;
 static uint32_t prev_ticks_for_profile;
 uint32_t print_task_time_threshold = CONFIG_DEFAULT_PRINT_TASK_TIME_THRESHOLD;
+uint8_t mac_addr[wr_num_ports][6];
 
 static void wrc_initialize(void)
 {
-	uint8_t mac_addr[6];
-
+	int port;
+	uint32_t trans[wr_num_ports];
 	sdb_find_devices();
 	uart_init_hw();
 
@@ -62,7 +63,9 @@ static void wrc_initialize(void)
 
 	timer_init(1);
 	get_hw_name(wrc_hw_name);
+#ifdef CONFIG_SDB_STORAGE
 	storage_read_hdl_cfg();
+#endif
 	wrpc_w1_init();
 	wrpc_w1_bus.detail = ONEWIRE_PORT;
 	w1_scan_bus(&wrpc_w1_bus);
@@ -74,41 +77,63 @@ static void wrc_initialize(void)
 	/*init storage (Flash / W1 EEPROM / I2C EEPROM*/
 	storage_init(WRPC_FMC_I2C, FMC_EEPROM_ADR);
 
-	if (get_persistent_mac(ONEWIRE_PORT, mac_addr) == -1) {
+	if (get_persistent_mac(ONEWIRE_PORT, mac_addr[0]) == -1) {
 		pp_printf("Unable to determine MAC address\n");
-		mac_addr[0] = 0x22;	/*
-		mac_addr[1] = 0x33;	*
-		mac_addr[2] = 0x44;	* fallback MAC if get_persistent_mac fails
-		mac_addr[3] = 0x55;	*
-		mac_addr[4] = 0x66;	*
-		mac_addr[5] = 0x77;	*/
+		for (port=0; port<wr_num_ports;port++) {
+			mac_addr[0][0] = 0x22+port; //fallback MAC if get_persistent_mac fails
+			mac_addr[0][1] = 0x33;
+			mac_addr[0][2] = 0x44;
+			mac_addr[0][3] = 0x55;
+			mac_addr[0][4] = 0x66;
+			mac_addr[0][5] = 0x77;
+		}
+	} else {
+		for (port=0; port<wr_num_ports;port++) {
+			mac_addr[port][0]=mac_addr[0][0]+port;
+			mac_addr[port][1]=mac_addr[0][1];
+			mac_addr[port][2]=mac_addr[0][2];
+			mac_addr[port][3]=mac_addr[0][3];
+			mac_addr[port][4]=mac_addr[0][4];
+			mac_addr[port][5]=mac_addr[0][5];
+		}
 	}
 
-	pp_printf("Local MAC address: %02x:%02x:%02x:%02x:%02x:%02x\n",
-		mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3],
-		mac_addr[4], mac_addr[5]);
-
 	net_rst();
-	ep_init(mac_addr);
-	/* Sleep for 1s to make sure WRS v4.2 always realizes that
-	 * the link is down */
-	timer_delay_ms(200);
-	ep_enable(1, 1);
 
-	minic_init();
+	//Duplicate the configuration for both ports.
+	for (port=0; port<wr_num_ports;port++)
+	{	
+		pp_printf("PORT %d Local MAC address: %02x:%02x:%02x:%02x:%02x:%02x\n", port,
+			mac_addr[port][0], mac_addr[port][1], mac_addr[port][2], mac_addr[port][3],
+			mac_addr[port][4], mac_addr[port][5]);
+		ep_init(mac_addr[port], port);
+		/* Sleep for 1s to make sure WRS v4.2 always realizes that
+		 * the link is down */
+		timer_delay_ms(200);
+		ep_enable(1, 1, port);
+		minic_init(port);
+	}
+
 	shw_pps_gen_init();
 	wrc_ptp_init();
 	/* try reading t24 phase transition from EEPROM */
-	calib_t24p(WRC_MODE_MASTER, &cal_phase_transition);
+	for (port=0; port<wr_num_ports;port++){
+		cal_phase_transition[port] = 5800; // default
+	}
+
 	spll_very_init();
 	usleep_init();
 	shell_init();
+	gen10mhz_init();
 
 	wrc_ui_mode = UI_SHELL_MODE;
+	// wrc_ui_mode = UI_GUI_MODE;
 	_endram = ENDRAM_MAGIC;
 
-	wrc_ptp_set_mode(WRC_MODE_SLAVE);
-	wrc_ptp_start();
+	wrc_ptp_set_mode(WRC_MODE_SLAVE, 0);
+	// wrc_ptp_set_mode(WRC_MODE_CASCADED, 0);
+	//wrc_ptp_set_mode(WRC_MODE_MASTER, 0);
+
 	shw_pps_gen_get_time(NULL, &prev_nanos_for_profile);
 	/* get tics */
 	prev_ticks_for_profile = timer_get_tics();
@@ -119,35 +144,60 @@ DEFINE_WRC_TASK0(idle) = {
 	.init = wrc_initialize,
 };
 
-int link_status;
+uint8_t link_status[wr_num_ports];
 
 static int wrc_check_link(void)
 {
-	static int prev_state = 0;
-	int state = ep_link_up(NULL);
+	static int prev_state[wr_num_ports];
+	static uint8_t first_run=0;
+	int state[wr_num_ports];
 	int rv = 0;
+	int port;
 
-	if (!prev_state && state) {
-		wrc_verbose("Link up.\n");
-		gpio_out(GPIO_LED_LINK, 1);
-		sfp_match();
-		wrc_ptp_start();
-		link_status = LINK_WENT_UP;
-		rv = 1;
-	} else if (prev_state && !state) {
-		wrc_verbose("Link down.\n");
-		gpio_out(GPIO_LED_LINK, 0);
-		link_status = LINK_WENT_DOWN;
-		wrc_ptp_stop();
-		rv = 1;
-		/* special case */
-		spll_init(SPLL_MODE_FREE_RUNNING_MASTER, 0, 1);
-		shw_pps_gen_enable_output(0);
+	if (first_run==0)
+	{
+		for(port=0; port<wr_num_ports; port++) {
+			sfp_match(port);
+			calib_t24p(WRC_MODE_MASTER, &cal_phase_transition[port],port);
+			prev_state[port] = -1;
+			state[port] = ep_link_up(NULL, port);
+			if (state[port])
+			{
+				wrc_ptp_start(port);
+				link_status[port] = LINK_UP;
+				if (port==0) gpio_out(GPIO_LED_LINK, 1);
+			} else {
+				link_status[port] = LINK_DOWN;
+				if (port==0) gpio_out(GPIO_LED_LINK, 0);
+			}
+		}
+		first_run++;
+	} else {
+		for(port=0; port<wr_num_ports; port++) {
+			state[port] = ep_link_up(NULL, port);
 
-	} else
-		link_status = (state ? LINK_UP : LINK_DOWN);
-	prev_state = state;
+			if (!prev_state[port] && state[port]) {
+				wrc_verbose("Port 0 Link up.\n");
+				if (port==0) gpio_out(GPIO_LED_LINK, 1);
+				sfp_match(port);
+				calib_t24p(WRC_MODE_MASTER, &cal_phase_transition[port],port);
+				wrc_ptp_start(port);
+				link_status[port] = LINK_WENT_UP;
+				rv = 1;
+			} else if (prev_state[port] && !state[port]) {
+				wrc_verbose("Port %d Link down.\n",port);
+				if (port==0) gpio_out(GPIO_LED_LINK, 0);
+				link_status[port] = LINK_WENT_DOWN;
+				wrc_ptp_stop(port);
+				minic_init(port);
+				rv = 1;
+			} else {
+				link_status[port] = (state[port] ? LINK_UP : LINK_DOWN);
+			}
 
+			prev_state[port] = state[port];
+		}	
+	}
 	return rv;
 }
 DEFINE_WRC_TASK(link) = {
@@ -186,6 +236,7 @@ static void init_uptime(void)
 {
 	uptime_lastj = timer_get_tics();
 }
+
 static int update_uptime(void)
 {
 	extern uint32_t uptime_sec;

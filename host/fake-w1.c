@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include <w1.h>
+#include <dev/w1.h>
 
 struct w1_bus wrpc_w1_bus;
 
