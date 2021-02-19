@@ -6,10 +6,17 @@ obj-$(CONFIG_TARGET_SIS8300KU) += boards/sis8300ku/board.o
 obj-$(CONFIG_TARGET_ERTM14) += boards/ertm14/board.o boards/ertm14/ertm15_rf_distr.o boards/ertm14/phy_calibration.o boards/ertm14/rf_frame_transceiver.o  boards/ertm14/cmd_ertm14.o
 obj-$(CONFIG_TARGET_PXIE_FMC) += boards/pxie-fmc/board.o
 
+cflags-$(CONFIG_TARGET_GENERIC_PHY_8BIT)  += -Iboards/generic
+cflags-$(CONFIG_TARGET_GENERIC_PHY_16BIT) += -Iboards/generic
+cflags-$(CONFIG_TARGET_WR_SWITCH)         += -Iboards/wr-switch
+cflags-$(CONFIG_TARGET_AFCZ)              += -Iboards/afcz
+cflags-$(CONFIG_TARGET_SIS8300KU)         += -Iboards/sis8300ku
+cflags-$(CONFIG_TARGET_ERTM14)            += -Iboards/ertm14
+cflags-$(CONFIG_TARGET_PXIE_FMC)          += -Iboards/pxie-fmc
+
 REQUIRE_AUTOCONF_PPSI+= \
 			boards/ertm14/board.o \
 			boards/ertm14/cmd_ertm14.o \
-
 
 #boards/sis8300ku/board.o: boards/sis8300ku/sdbfs-image.h
 		#./tools/gensdbfs -c boards/sis8300ku/sdbfs-image.h boards/sis8300ku/sdbfs boards/sis8300ku/sdbfs-image.bin

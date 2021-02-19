@@ -65,8 +65,85 @@ static int cmd_pos = 0, cmd_len = 0;
 static int state = SH_PROMPT;
 static int current_key = 0;
 
-static struct wrc_shell_cmd *cmds[ SHELL_MAX_COMMANDS ];
-static int n_cmds = 0;
+
+#define DECLARE_WRC_COMMAND(_name) \
+	extern struct wrc_shell_cmd __wrc_cmd_ ## _name;
+
+#define REGISTER_WRC_COMMAND(_name) \
+	&__wrc_cmd_ ## _name
+
+DECLARE_WRC_COMMAND(gui)
+DECLARE_WRC_COMMAND(ps)
+DECLARE_WRC_COMMAND(pll)
+DECLARE_WRC_COMMAND(ptp)
+DECLARE_WRC_COMMAND(verbose)
+DECLARE_WRC_COMMAND(mode)
+DECLARE_WRC_COMMAND(mac)
+DECLARE_WRC_COMMAND(sdb)
+DECLARE_WRC_COMMAND(calibration)
+DECLARE_WRC_COMMAND(help)
+DECLARE_WRC_COMMAND(diag)
+DECLARE_WRC_COMMAND(init)
+DECLARE_WRC_COMMAND(sfp)
+DECLARE_WRC_COMMAND(stat)
+DECLARE_WRC_COMMAND(ver)
+DECLARE_WRC_COMMAND(ptrack)
+DECLARE_WRC_COMMAND(time)
+#if HAS_IP == 1
+DECLARE_WRC_COMMAND(ip)
+#endif
+#if HAS_VLANS == 1
+DECLARE_WRC_COMMAND(vlan)
+#endif
+#if HAS_CMD_PPS == 1
+DECLARE_WRC_COMMAND(pps)
+#endif
+#if HAS_CMD_LEAPSEC == 1
+DECLARE_WRC_COMMAND(leapsec)
+#endif
+#if HAS_CMD_NETCONSOLE == 1
+DECLARE_WRC_COMMAND(netconsole)
+#endif
+#include <board_cmd_decl.h>
+
+static struct wrc_shell_cmd *cmds[] = {
+	REGISTER_WRC_COMMAND(gui),
+	REGISTER_WRC_COMMAND(ps),
+	REGISTER_WRC_COMMAND(pll),
+	REGISTER_WRC_COMMAND(ptp),
+	REGISTER_WRC_COMMAND(verbose),
+	REGISTER_WRC_COMMAND(mode),
+	REGISTER_WRC_COMMAND(mac),
+	REGISTER_WRC_COMMAND(sdb),
+	REGISTER_WRC_COMMAND(calibration),
+	REGISTER_WRC_COMMAND(help),
+	REGISTER_WRC_COMMAND(diag),
+	REGISTER_WRC_COMMAND(init),
+	REGISTER_WRC_COMMAND(sfp),
+	REGISTER_WRC_COMMAND(stat),
+	REGISTER_WRC_COMMAND(ver),
+	REGISTER_WRC_COMMAND(ptrack),
+	REGISTER_WRC_COMMAND(time),
+#if HAS_IP == 1
+	REGISTER_WRC_COMMAND(ip),
+#endif
+#if HAS_VLANS == 1
+	REGISTER_WRC_COMMAND(vlan),
+#endif
+#if HAS_CMD_PPS == 1
+	REGISTER_WRC_COMMAND(pps),
+#endif
+#if HAS_CMD_LEAPSEC == 1
+	REGISTER_WRC_COMMAND(leapsec),
+#endif
+#if HAS_CMD_NETCONSOLE == 1
+	REGISTER_WRC_COMMAND(netconsole),
+#endif
+
+#include <board_cmd_reg.h>
+};
+
+static int n_cmds = ARRAY_SIZE(cmds);
 
 int shell_is_interacting;
 int (*shell_ui_callback)(void);
@@ -342,18 +419,6 @@ void shell_show_build_init(void)
 		pp_printf("(empty)\n");
 }
 
-
-void shell_register_command( struct wrc_shell_cmd* cmd )
-{
-	if( n_cmds >= SHELL_MAX_COMMANDS )
-	{
-		pp_printf("can't register shell command '%s', increase SHELL_MAX_COMMANDS\n", cmd->name );
-		return;
-	}
-	cmds[ n_cmds ] = cmd;
-	n_cmds++;
-}
-
 void shell_list_cmds()
 {
 	int i;
@@ -373,36 +438,3 @@ void shell_activate_ui_command( int (*callback)(void) )
 	cmd_len = 0;
 }
 
-#define REGISTER_WRC_COMMAND(_name) \
-	{ extern struct wrc_shell_cmd __wrc_cmd_ ## _name; shell_register_command( &__wrc_cmd_ ## _name ); }
-
-void shell_register_commands(void)
-{
-	REGISTER_WRC_COMMAND(gui);
-	REGISTER_WRC_COMMAND(ps);
-	REGISTER_WRC_COMMAND(pll);
-	REGISTER_WRC_COMMAND(ptp);
-	REGISTER_WRC_COMMAND(verbose);
-	REGISTER_WRC_COMMAND(mode);
-	REGISTER_WRC_COMMAND(mac);
-	REGISTER_WRC_COMMAND(sdb);
-	REGISTER_WRC_COMMAND(calibration);
-	REGISTER_WRC_COMMAND(help);
-	REGISTER_WRC_COMMAND(diag);
-	REGISTER_WRC_COMMAND(init);
-	REGISTER_WRC_COMMAND(sfp);
-	REGISTER_WRC_COMMAND(stat);
-	REGISTER_WRC_COMMAND(ver);
-	REGISTER_WRC_COMMAND(ptrack);
-	REGISTER_WRC_COMMAND(time);
-	if (HAS_IP)
-		REGISTER_WRC_COMMAND(ip);
-	if (HAS_VLANS)
-		REGISTER_WRC_COMMAND(vlan);
-	if (HAS_CMD_PPS)
-		REGISTER_WRC_COMMAND(pps);
-	if (HAS_CMD_LEAPSEC)
-		REGISTER_WRC_COMMAND(leapsec);
-	if (HAS_CMD_NETCONSOLE)
-		REGISTER_WRC_COMMAND(netconsole);
-}
