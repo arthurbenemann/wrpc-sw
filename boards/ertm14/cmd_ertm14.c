@@ -345,7 +345,7 @@ static int ertm14_monitor_ui(void)
     term_clear();
 
 	cprintf(C_BLUE, "eRTM14/15 Board Monitor");
-	cprintf(C_GREY, "\nEsc = exit\n\n");
+	cprintf(C_MAGENTA, "\nEsc = exit\n\n");
 
     ret = diag_read_word(8, DIAG_RO_BANK, &val);
 
@@ -356,15 +356,15 @@ static int ertm14_monitor_ui(void)
         return 0;
 
     cprintf(C_WHITE, "NCO Sync Status:\n");
-    cprintf(C_GREY, "Streamer RX Message count: ");
+    cprintf(C_MAGENTA, "Streamer RX Message count: ");
     cprintf(C_WHITE, "%d\n", val);
-    cprintf(C_GREY, "LO DDS Sync Mode:          ");
+    cprintf(C_MAGENTA, "LO DDS Sync Mode:          ");
     cprintf(C_WHITE, "%s\n", nco_sync_source_to_string(st->lo.sync_source));
-    cprintf(C_GREY, "REF DDS Sync Mode:         ");
+    cprintf(C_MAGENTA, "REF DDS Sync Mode:         ");
     cprintf(C_WHITE, "%s\n", nco_sync_source_to_string(st->ref.sync_source));
-    cprintf(C_GREY, "LO DDS Sync Triggers:      ");
+    cprintf(C_MAGENTA, "LO DDS Sync Triggers:      ");
     cprintf(C_WHITE, "%d\n", st->lo.sync_count);
-    cprintf(C_GREY, "REF DDS Sync Triggers:     ");
+    cprintf(C_MAGENTA, "REF DDS Sync Triggers:     ");
     cprintf(C_WHITE, "%d\n", st->ref.sync_count);
 
 
