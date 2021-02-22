@@ -28,7 +28,7 @@ PPSI = ppsi
 # list of file extensions to be copied for MAKEALL script
 MAKEALL_COPY_LIST=.bin .elf
 
-cflags-arch = -march=rv32imc -mabi=ilp32
+cflags-arch = -march=rv32im -mabi=ilp32
 USER_CFLAGS = $(cflags-arch)
 #PPSI_O_LDFLAGS = -melf32lriscv 
 #-mabi=ilp32
@@ -123,7 +123,7 @@ CFLAGS = $(cflags-y) -Wall -Wstrict-prototypes \
 ASFLAGS = -I.
 
 LDFLAGS = $(ldflags-y) \
-	-march=rv32imc -mabi=ilp32 -Wl,--gc-sections -Os -lgcc -lc 
+	-march=rv32im -mabi=ilp32 -Wl,--gc-sections -Os -lgcc -lc 
 
 WRC-O-FLAGS-$(CONFIG_LM32) = --gc-sections -e _start
 
@@ -239,7 +239,7 @@ distclean: clean
 	${CC} $(CFLAGS) $(PTPD_CFLAGS) $(INCLUDE_DIR) $(LIB_DIR) -c $*.c -o $@
 
 %.o:		%.S
-	${CC}   -march=rv32imc -mabi=ilp32 -c $*.S -o $@
+	${CC}   -march=rv32im -mabi=ilp32 -c $*.S -o $@
 
 
 liblinux:

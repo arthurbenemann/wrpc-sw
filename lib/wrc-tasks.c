@@ -15,6 +15,7 @@ static uint32_t prev_ticks_for_profile;
 uint32_t print_task_time_threshold = CONFIG_DEFAULT_PRINT_TASK_TIME_THRESHOLD;
 
 static struct wrc_task tasks[WRC_MAX_TASKS];
+static struct wrc_task* last_task = &tasks[0];
 
 static void task_time_normalize(struct wrc_task *t)
 {
