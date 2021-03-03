@@ -69,14 +69,22 @@ struct wr_endpoint_device wrc_endpoint_dev;
 
 int wrc_wr_diags(void); // fixme: move the header
 
+
 static void wrc_initialize(void)
 {
 #ifdef CONFIG_USE_SDB
-	sdb_find_devices();
+//	sdb_find_devices();
 #endif
+
 
 	console_init();
 	timer_init(1);
+
+	for(;;)	{
+		pp_printf("Hello World!\n");
+	}
+	
+		return;
 	spll_very_init();
 	usleep_init();
 	netif_init();
@@ -332,7 +340,10 @@ void disable_irq() {};
 int main(void) __attribute__ ((weak));
 int main(void)
 {
-	check_reset();
+	wrc_initialize();
+
+	#if 0
+	//check_reset();
 	create_tasks();
 
 	/* initialization of individual tasks */
@@ -346,4 +357,6 @@ int main(void)
 		/* better safe than sorry */
 		check_stack();
 	}
+	#endif
 }
+

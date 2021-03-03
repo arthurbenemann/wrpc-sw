@@ -143,7 +143,7 @@ ifeq ($(GIT_USR),)
 GIT_USR = $(shell whoami)@$(shell hostname)
 endif
 
-all: tools $(OUTPUT).elf $(arch-files-y)
+all:  $(OUTPUT).elf $(arch-files-y)
 
 .PRECIOUS: %.elf %.bin
 .PHONY: all tools clean gitmodules $(PPSI)/ppsi.o extest liblinux
