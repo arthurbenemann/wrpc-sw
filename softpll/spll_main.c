@@ -185,16 +185,17 @@ int mpll_update(struct spll_main_state *s, int tag, int source)
 static int32_t from_picos(int32_t ps)
 {
 	extern uint32_t __div64_32(uint64_t *n, uint32_t base);
-	uint64_t ups = ps;
-
-	if (ps >= 0) {
-		ups *= 1 << HPLL_N;
-		__div64_32(&ups, CLOCK_PERIOD_PICOSECONDS);
-		return ups;
-	}
-	ups = -ps * (1 << HPLL_N);
+	uint32_t abs_ps;
+	uint64_t ups;
+	int sign = ps > 0? 1 : -1;
+	abs_ps = (uint32_t)(sign * ps); 
+	ups = abs_ps * (1 << HPLL_N);
 	__div64_32(&ups, CLOCK_PERIOD_PICOSECONDS);
-	return -ups;
+	if(sign == 1)
+		return ups;
+	else
+		return -ups;
+
 }
 #else /* previous implementation: ptp-noposix has no __div64_32 available */
 static int32_t from_picos(int32_t ps)

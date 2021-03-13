@@ -119,6 +119,6 @@ void ptpd_netif_set_phase_transition(uint32_t phase, int port);
 
 struct hal_port_state;
 int wrpc_get_port_state(struct hal_port_state *state,
-			const char *port_name);
+			int port);
 
 #endif /* __PTPD_NETIF_H */

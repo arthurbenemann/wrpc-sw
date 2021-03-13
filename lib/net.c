@@ -49,7 +49,6 @@ struct wrpc_socket *ptpd_netif_create_socket(struct wrpc_socket *sock,
 {
 	int i;
 	struct hal_port_state pstate;
-	const char *port_name;
 
 	/* Look for the first available socket. */
 	for (i = 0; i < ARRAY_SIZE(socks[port]); i++)
@@ -65,13 +64,7 @@ struct wrpc_socket *ptpd_netif_create_socket(struct wrpc_socket *sock,
 		    sock, ntohs(bind_addr->ethertype),
 		    udpport, i, port);
 
-	switch(port){
-		case 0: port_name="wr0";break;
-		case 1: port_name="wr1";break;
-		default:port_name="wr0";
-	};
-
-	if (wrpc_get_port_state(&pstate, port_name) < 0)
+	if (wrpc_get_port_state(&pstate, port) < 0)
 		return NULL;
 
 	/* copy and complete the bind information. If MAC is 0 use unicast */

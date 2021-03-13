@@ -136,7 +136,7 @@ int wrc_mon_gui(void)
 	cprintf(C_WHITE, "%s", format_time(sec, TIME_FORMAT_LEGACY));
 
 	for (port = 0; port < wr_num_ports; ++port) {
-		wrpc_get_port_state(&state, port_name[port]);
+		wrpc_get_port_state(&state, port);
 		cprintf(C_BLUE, "\n\nLink status:");
 
 		cprintf(C_WHITE, "\n%s: ", port_name[port]);
@@ -348,7 +348,7 @@ static int wrc_log_stats(void)
 	wrc_stats_last = s[port]->update_count;
 
 	shw_pps_gen_get_time(&sec, &nsec);
-	wrpc_get_port_state(&state, port_name[port]);
+	wrpc_get_port_state(&state, port);
 	minic_get_stats(&tx, &rx, port);
 	pp_printf("lnk:%d rx:%d tx:%d ", state.state, rx, tx);
 	pp_printf("lock:%d ", state.locked ? 1 : 0);
@@ -400,7 +400,7 @@ static int wrc_log_stats(void)
 
 	// port 1
 	for(port=1; port<wr_num_ports; port++) {	
-		wrpc_get_port_state(&state, "wr1");
+		wrpc_get_port_state(&state, port);
 		minic_get_stats(&tx, &rx, port);
 		pp_printf("p1 lnk:%d rx:%d tx:%d ", state.state, rx, tx);
 		pp_printf("p1 lock:%d ", state.locked ? 1 : 0);
@@ -461,7 +461,7 @@ int wrc_wr_diags(void)
 	wdiags_write_time(sec, nsec);
 	
 	/* port state (from hal) */
-	wrpc_get_port_state(&ps, port_name[port]);
+	wrpc_get_port_state(&ps, port);
 	wdiags_write_port_state((ps.state  ? 1 : 0), (ps.locked ? 1 : 0));
 
 	/* port PTP State (from ppsi)

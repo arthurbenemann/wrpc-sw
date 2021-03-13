@@ -197,7 +197,7 @@ int minic_tx_frame(struct wr_ethhdr_vlan *hdr, uint8_t * payload, uint32_t size,
 }
 
 
-int wrpc_get_port_state(struct hal_port_state *port, const char *port_name)
+int wrpc_get_port_state(struct hal_port_state *ps, int port)
 {
 	return 0;
 }

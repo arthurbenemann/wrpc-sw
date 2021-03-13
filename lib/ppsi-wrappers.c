@@ -49,9 +49,8 @@ static int read_phase_val(struct hal_port_state *port, int ep_port)
 extern uint32_t cal_phase_transition[2];
 extern int32_t sfp_alpha[2];
 
-int wrpc_get_port_state(struct hal_port_state *state, const char *port_name)
+int wrpc_get_port_state(struct hal_port_state *state, int port)
 {
-	int port = atoi(&port_name[2]);
 	int wrc_mode = wrc_ptp_get_mode(port);
 
 	if(wrc_mode == WRC_MODE_SLAVE)

@@ -425,21 +425,16 @@ void pfilter_init_novlan(char *fname)
 
 	/* The CPU gets those ports in a proper UDP frame, plus the previous selections */
 	pfilter_logic3(R_CLASS(0), FRAME_UDP, AND, PORT_UDP_HOST, OR, FRAME_FOR_CPU);
-
+	
 	/* Etherbone is UDP at port 0xebd0, let's "or" in the last move */
-	// pfilter_cmp(18, 0xebd0, 0xffff, MOV, PORT_UDP_ETHERBONE);
+	pfilter_cmp(18, 0xebd0, 0xffff, MOV, PORT_UDP_ETHERBONE);
 
-	/* and now copy out fabric selections: 7 etherbone, 6 for anything else */
-	// pfilter_logic2(R_CLASS(7), FRAME_UDP, AND, PORT_UDP_ETHERBONE);
-	// pfilter_logic3(R_CLASS(6), FRAME_UDP, NAND, PORT_UDP_ETHERBONE, OR, FRAME_TCP);
+	/* and now copy out fabric selections: 4 etherbone*/
+	pfilter_logic2(R_CLASS(4), FRAME_UDP, AND, PORT_UDP_ETHERBONE);
 
-	/* other UDP ports marks as class 4 */
-	pfilter_logic3(R_CLASS(4), PORT_UDP_HOST, NOT, R_ZERO, AND, FRAME_UDP);
-	/* other TCP ports marks as class 5 */
-	pfilter_logic2(R_CLASS(5), FRAME_TCP, AND, FRAME_IP_OK);
+	/* other UDP/TCP ports marks as class ６ */
 	/* mark the broadcast packets as class 7 */
-	/* which will be transferred to another port */
-	pfilter_logic2(R_CLASS(7), FRAME_BROADCAST, MOV, R_ZERO);
+	pfilter_logic3(R_CLASS(7), FRAME_UDP, OR, FRAME_TCP, OR, FRAME_BROADCAST);
 
 	/*
 	 * Note that earlier we used to be more strict in ptp ethtype (only proper multicast),
