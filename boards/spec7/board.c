@@ -36,6 +36,8 @@ static struct ltc6950_config ltc6950_base_config =
 static struct ltc6950_config ltc6950_ext_10mhz_config =
 #include "configs/ltc6950_ext_10mhz_config.h" 
 
+static spll_gain_schedule_t spll_main_ocxo_gain_sched;
+
 #define PLL_EVEN_ODD_TIMEOUT_MS 10000
 #define PLL_SYNC_TIMEOUT_MS 4000
 
@@ -46,6 +48,32 @@ timeout_t pll_sync_timeout;
 #undef CONFIG_HPSEC_GM
 
 //volatile struct softpll_state softpll;
+
+static void spec7_spll_setup(void)
+{
+/* configure a suitable PI gain schedule for the SoftPLL: */
+    spll_gain_schedule_t* gs=  &spll_main_ocxo_gain_sched;
+
+/* we start with ~100 Hz bandwidth to make it lock reasonably fast */
+    gs->stages[0].kp = -5500;
+    gs->stages[0].ki = -30;
+    gs->stages[0].lock_samples = 30000;
+    gs->stages[0].shift = 12;
+
+/* once it's locked, the loop bandwidth is switched to ~0.1 Hz to filter out WR link added phase noise */
+    gs->stages[1].kp = -3000;
+    gs->stages[1].ki = -5;
+    gs->stages[1].lock_samples = 10000;
+    gs->stages[1].shift = 16;
+
+#if defined(CONFIG_HPSEC_GM)
+    gs->n_stages = 2;   // 2 stages: SPEC7 Crysteck => HPSEC Morion MV336
+#else
+    gs->n_stages = 1;   // 1 stage: SPEC7 Crysteck
+#endif
+
+	spll_set_gain_schedule( gs );
+}
 
 void spec7_set_pll_wr_mode(int wrc_ptp_mode)
 {
@@ -206,6 +234,9 @@ int spec7_init()
         &pin_pll_miso_i,
         &pin_pll_sck_o,
         100 );
+
+    /* Setup the SoftPLL for the OCXO we have */
+    spec7_spll_setup();
 
     ltc6950_init(&board.ltc6950_pll, &board.spi_ltc6950);
 
