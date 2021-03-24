@@ -39,6 +39,12 @@ config TARGET_SPEC7
 	help
 	  Simple PCIe FMC carrier 7 (Zynq-7000)
 
+config TARGET_HPSEC
+	depends on TARGET_SPEC7
+	bool "HPSEC"
+	help
+	  SPEC7 (Zynq-7000) with High Precision Secondairy External Clock
+
 config TARGET_PXIE_FMC
 	bool "ZU7 PXIe FMC Carrier"
 	help

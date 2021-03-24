@@ -66,7 +66,7 @@ static void spec7_spll_setup(void)
     gs->stages[1].lock_samples = 10000;
     gs->stages[1].shift = 16;
 
-#if defined(CONFIG_HPSEC_GM)
+#if defined(CONFIG_TARGET_HPSEC)
     gs->n_stages = 2;   // 2 stages: SPEC7 Crysteck => HPSEC Morion MV336
 #else
     gs->n_stages = 1;   // 1 stage: SPEC7 Crysteck
