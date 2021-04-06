@@ -85,26 +85,24 @@ void spec7_set_pll_wr_mode(int wrc_ptp_mode)
         case WRC_MODE_GM || WRC_MODE_ABSCAL:
             // Default reference design locks local VCXO to external 10 MHz
             pll_wr_mode = PLL_WR_MODE_SLAVE;
-#if defined(CONFIG_HPSEC_GM)
-            // When HPSEC is used in GM mode then HPSEC locks to external
-            // 10 MHz via LTC6950 and WRC_MODE *must* be free running master.
-            // Note: WRC_MODE_GM tries to align the local VCXO with the
-            // external 10 MHz but in HPSEC_GM case the VCXO is not used.
-            pp_printf("ERROR: HPSEC_GM must use WRC_MODE_MASTER.\n");
-#endif
             break;
         case WRC_MODE_MASTER:
             pll_wr_mode = PLL_WR_MODE_MASTER;
-#if defined(CONFIG_HPSEC_GM)
-            // When HPSEC is used in GM mode then HPSEC locks to external
-            // 10 MHz via LTC6950 and WRC_MODE *must* be free running master.
-            pll_wr_mode = PLL_WR_MODE_GM;
-            mode_hpsec_gm = 1;
-#endif
             break;
         default:
             pll_wr_mode = PLL_WR_MODE_SLAVE;
     }
+
+#if defined(CONFIG_TARGET_HPSEC)
+    // HPSEC mode, in all cases:
+    // HPSEC 10 MHz sinewave (J6) => 10MHZ_IN (BullsEye B03,B04) =>
+    // LTC6950 as 10 MHz => 125 MHz fanout for re-clocking
+    //   PPS_OUT (BullsEye A01,A02)
+    // HPSEC 125 MHz out (J90,J91) => BE_REFCLK (BullsEye B05,B06)
+    //   = WR Referenc e Clock
+    pll_wr_mode = PLL_WR_MODE_GM;
+    mode_hpsec_gm = 1;
+#endif
 
     gen_gpio_out( &pin_pll_wr_mode0_o, (pll_wr_mode & 0x1) ? 1 : 0);
     gen_gpio_out( &pin_pll_wr_mode1_o, (pll_wr_mode & 0x2) ? 1 : 0);
