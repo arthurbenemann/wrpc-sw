@@ -285,6 +285,9 @@ int wrc_mon_gui(void)
 	cprintf(C_GREY, "Update counter:");
 	cprintf(C_WHITE, "%27d\n", (int32_t) (s->update_count));
 
+	cprintf(C_GREY, "Extra stats: ");
+	cprintf(C_WHITE, "Sync packet errors: %d followup errors: %d servo restarts: %d\n", ppi->stats.sync_errors, ppi->stats.followup_errors, ppi->stats.servo_restarts);
+
 	return 0;
 }
 
