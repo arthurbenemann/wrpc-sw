@@ -1451,6 +1451,7 @@ static int ertm14_clkab_sync_task(void)
             if( nsecs < 300000000 )
             {
                 int i;
+                int any_output_pending = 0;
                 for( i = ERTM14_CLKAB_OUT_MIN_ID; i <= ERTM14_CLKAB_OUT_MAX_ID; i++ )
                 {
                     /* check which CLKA/B outputs have changed their configuration and 
@@ -1465,6 +1466,7 @@ static int ertm14_clkab_sync_task(void)
                         board_dbg("[clkab_sync] CLKA%d pending\n", i);
                         clkab_enable_sync( ertm14_current_state, ERTM14_OUT_CLKA, i, 1 );
                         stateA[i] = ERTM14_CLK_SYNC_STATE_WAIT_TRIGGER;
+                        any_output_pending = 1;
                     }
 
                     if( stateB[i] == ERTM14_CLK_SYNC_STATE_RESTART )
@@ -1472,11 +1474,16 @@ static int ertm14_clkab_sync_task(void)
                         board_dbg("[clkab_sync] CLKB%d pending\n", i);
                         clkab_enable_sync( ertm14_current_state, ERTM14_OUT_CLKB, i, 1 );
                         stateB[i] = ERTM14_CLK_SYNC_STATE_WAIT_TRIGGER;
+                        any_output_pending = 1;
                     }
                 }
 
-                fine_pulse_gen_trigger( &board.dds_sync_dev, (1<<ERTM14_PLL_SYNC_CLKA) | ( 1<<ERTM14_PLL_SYNC_CLKB), 0 );
-                clkab_sync_state = CLKAB_SYNC_STATE_WAIT_TRIGGER;
+                if( any_output_pending )
+                {
+                    fine_pulse_gen_trigger( &board.dds_sync_dev, (1<<ERTM14_PLL_SYNC_CLKA) | ( 1<<ERTM14_PLL_SYNC_CLKB), 0 );
+                    clkab_sync_state = CLKAB_SYNC_STATE_WAIT_TRIGGER;
+                }
+
             }
             break;
         case CLKAB_SYNC_STATE_WAIT_TRIGGER:
