@@ -365,6 +365,7 @@ void shell_register_commands(void)
 	REGISTER_WRC_COMMAND(sfp);
 	REGISTER_WRC_COMMAND(stat);
 	REGISTER_WRC_COMMAND(sensors);
+	REGISTER_WRC_COMMAND(ptrack);
 	if (HAS_IP)
 		REGISTER_WRC_COMMAND(ip);
 }

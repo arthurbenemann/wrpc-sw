@@ -26,6 +26,9 @@ void mpll_init(struct spll_main_state *s, int id_ref,
 		      int id_out)
 {
 	/* Frequency branch PI controller */
+
+	s->ps_freeze = 0;
+	s->vco_freeze = 0;
 	s->pi.y_min = 5;
 	s->pi.y_max = 65530;
 	s->pi.anti_windup = 1;
@@ -118,6 +121,9 @@ void mpll_start(struct spll_main_state *s)
 {
 	pll_verbose("MPLL_Start [dac %d]\n", s->dac_index);
 
+	s->ps_freeze = 0;
+	s->vco_freeze = 0;
+
 	s->adder_ref = s->adder_out = 0;
 	s->tag_ref = -1;
 	s->tag_out = -1;
@@ -208,8 +214,11 @@ int mpll_update(struct spll_main_state *s, int tag, int source)
 #endif
 
 		y = pi_update((spll_pi_t *)&s->pi, err);
-		SPLL->DAC_MAIN = SPLL_DAC_MAIN_VALUE_W(y)
-			| SPLL_DAC_MAIN_DAC_SEL_W(s->dac_index);
+		if(!s->vco_freeze)
+		{
+			SPLL->DAC_MAIN = SPLL_DAC_MAIN_VALUE_W(y)
+				| SPLL_DAC_MAIN_DAC_SEL_W(s->dac_index);
+		}
 		if (s->dac_index == 0)
 			spll_log_dac(y);
 
@@ -228,7 +237,7 @@ int mpll_update(struct spll_main_state *s, int tag, int source)
 			s->adder_out -= MPLL_TAG_WRAPAROUND;
 		}
 
-		if (s->locked) {
+		if (s->locked && !s->ps_freeze) {
 			if (s->phase_shift_current < s->phase_shift_target) {
 				s->phase_shift_current++;
 #if defined(CONFIG_WR_SWITCH)

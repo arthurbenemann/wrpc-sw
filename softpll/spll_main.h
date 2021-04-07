@@ -30,6 +30,7 @@ struct spll_main_state {
 	int sample_n;
 	int dac_index;
 	int enabled;
+	int ps_freeze, vco_freeze;
 };
 
 void mpll_init(struct spll_main_state *s, int id_ref,
