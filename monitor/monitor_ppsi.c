@@ -95,6 +95,7 @@ static int wrc_mon_status(void)
 	return 1;
 }
 
+
 int wrc_mon_gui(void)
 {
 	static uint32_t last_jiffies;
@@ -146,8 +147,9 @@ int wrc_mon_gui(void)
 
 		if( i == 0 ) // fixme: independent rx/tx stats for each interface
 		{
-			minic_get_stats(&tx, &rx);
-			cprintf(C_GREY, "(RX: %d, TX: %d)", rx, tx);
+			int rx_er;
+			minic_get_stats(&tx, &rx, &rx_er);
+			cprintf(C_GREY, "(RX: %d, TX: %d, RX errors: %d)", rx, tx, rx_er);
 		}
 	}
 
@@ -286,7 +288,7 @@ int wrc_mon_gui(void)
 	cprintf(C_WHITE, "%27d\n", (int32_t) (s->update_count));
 
 	cprintf(C_GREY, "Extra stats: ");
-	cprintf(C_WHITE, "Sync packet errors: %d followup errors: %d servo restarts: %d\n", ppi->stats.sync_errors, ppi->stats.followup_errors, ppi->stats.servo_restarts);
+	cprintf(C_WHITE, " Sync packet errors: %d followup errors: %d servo restarts: %d\n", ppi->stats.sync_errors, ppi->stats.followup_errors, ppi->stats.servo_restarts);
 
 	return 0;
 }
@@ -368,7 +370,7 @@ int wrc_log_stats(void)
 
 	shw_pps_gen_get_time(&sec, &nsec);
 	wrpc_get_port_state(&state, NULL);
-	minic_get_stats(&tx, &rx);
+	minic_get_stats(&tx, &rx, NULL);
 	pp_printf("lnk:%d rx:%d tx:%d ", state.state, rx, tx);
 	pp_printf("lock:%d ", state.locked ? 1 : 0);
 	pp_printf("ptp:%s ", wrc_ptp_state());
@@ -463,7 +465,7 @@ int wrc_wr_diags(void)
 	wdiag_set_valid(0);
 	
 	/* frame statistics */
-	minic_get_stats(&tx, &rx);
+	minic_get_stats(&tx, &rx, NULL);
 	wdiags_write_cnts(tx,rx);
 
 	/* local time */
@@ -560,7 +562,7 @@ int wrc_diags_dump(struct WRC_DIAGS_WB *buf)
 	buf->VER = 0x12345678;
 	buf->CTRL = 0xcafebabe;
 	/* frame statistics */
-	minic_get_stats(&tx, &rx);
+	minic_get_stats(&tx, &rx, NULL);
 	buf->WDIAG_TXFCNT = tx;
 	buf->WDIAG_RXFCNT = rx;
 

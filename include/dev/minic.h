@@ -24,7 +24,7 @@
 void minic_init(void);
 void minic_disable(void);
 int minic_poll_rx(void);
-void minic_get_stats(int *tx_frames, int *rx_frames);
+void minic_get_stats(int *tx_frames, int *rx_frames, int*rx_errors);
 
 struct wr_ethhdr {
 	uint8_t dstmac[6];
@@ -41,7 +41,7 @@ struct wr_ethhdr_vlan {
 };
 
 struct wr_minic {
-	int tx_count, rx_count;
+	int tx_count, rx_count, rx_errors;
 };
 
 extern struct wr_minic minic;
