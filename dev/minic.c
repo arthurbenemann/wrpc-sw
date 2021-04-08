@@ -134,6 +134,10 @@ int minic_rx_frame(struct wr_ethhdr *hdr, uint8_t * payload, uint32_t buf_size,
 	ptr16_hdr = (uint16_t *)hdr;
 	ptr16_payload = (uint16_t *)payload;
 	/* Read the whole frame till OOB or till the FIFO is empty */
+	oob_cnt = 0;
+	raw_ts  = 0;
+	oob_hdr = RXOOB_TS_INCORRECT;
+
 	do {
 		minic_rxword(&rx_type, &rx_data, &rx_empty, &rx_full);
 
@@ -158,28 +162,37 @@ int minic_rx_frame(struct wr_ethhdr *hdr, uint8_t * payload, uint32_t buf_size,
 			 * beginning of next frame. We check hdr_size > 0 to
 			 * make sure it's not the first received word, i.e. our
 			 * own initial status.*/
+			pp_printf("Rxstat %x\n", rx_data);
 			if (RX_STATUS_ERROR(rx_data))
+			{
 				pp_printf("Warning: Minic received erroneous "
 						"frame\n");
 
-			break;
-		}
-	} while (!rx_empty && rx_type != WRF_OOB);
+			}
+			
 
-	/* Receive OOB, if it's there */
-	oob_cnt = 0;
-	raw_ts  = 0;
-	oob_hdr = RXOOB_TS_INCORRECT;
-	while (!rx_empty && rx_type == WRF_OOB) {
+			break;
+
+
+		} else if ( rx_type == WRF_OOB) {
+
+			pp_printf("rxoob\n");
 		if (oob_cnt == 0)
 			oob_hdr = rx_data;
 		else if (oob_cnt == 1)
 			raw_ts = (rx_data << 16) & 0xffff0000;
 		else if (oob_cnt == 2)
 			raw_ts |= (rx_data & 0x0000ffff);
-		minic_rxword(&rx_type, &rx_data, &rx_empty, &rx_full);
+
 		oob_cnt++;
-	}
+
+		}
+	} while (!rx_empty);
+
+
+	/* Receive OOB, if it's there */
+
+	
 
 	if (oob_cnt == 0 || oob_cnt > RX_OOB_SIZE) {
 		/* in WRPC we expect every Rx frame to contain a valid OOB.
