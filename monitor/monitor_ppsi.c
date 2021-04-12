@@ -220,7 +220,8 @@ int wrc_mon_gui(void)
 		pp_printf("\n");
 
 	}
-
+#ifndef BROADCAST
+	/* If compiled with broadcast this information is meaninless, so don't show */
 	cprintf(C_BLUE, "\nTiming parameters:\n");
 
 	cprintf(C_GREY, "Round-trip time (mu): ");
@@ -258,7 +259,7 @@ int wrc_mon_gui(void)
 
 	cprintf(C_GREY, "Update counter:");
 	cprintf(C_WHITE, "%27d\n", (int32_t) (s->update_count));
-
+#endif
 	return 1;
 }
 
