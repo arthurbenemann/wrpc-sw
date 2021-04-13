@@ -30,14 +30,22 @@ static int autoneg_enabled;
 volatile struct EP_WB *EP;
 
 /* functions for accessing PCS (MDIO) registers */
+#ifdef BROADCAST
+uint16_t pcs_read(int location)
+#else
 static uint16_t pcs_read(int location)
+#endif
 {
 	EP->MDIO_CR = EP_MDIO_CR_ADDR_W(location >> 2);
 	while ((EP->MDIO_ASR & EP_MDIO_ASR_READY) == 0) ;
 	return EP_MDIO_ASR_RDATA_R(EP->MDIO_ASR) & 0xffff;
 }
 
+#ifdef BROADCAST
+void pcs_write(int location, int value)
+#else
 static void pcs_write(int location, int value)
+#endif
 {
 	EP->MDIO_CR = EP_MDIO_CR_ADDR_W(location >> 2)
 	    | EP_MDIO_CR_DATA_W(value)
@@ -139,6 +147,11 @@ int ep_link_up(uint16_t * lpa)
 {
 	uint16_t flags = MDIO_MSR_LSTATUS;
 	volatile uint16_t msr;
+
+#ifdef BROADCAST
+	/* Autonegotiation disabled by default in broadcast mode */
+	autoneg_enabled = ((uint16_t)pcs_read(MDIO_REG_MCR) & (0x1000));
+#endif
 
 	if (autoneg_enabled)
 		flags |= MDIO_MSR_ANEGCOMPLETE;

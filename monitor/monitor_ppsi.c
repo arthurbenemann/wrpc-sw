@@ -76,6 +76,63 @@ static int wrc_mon_status(void)
 	struct wr_servo_state *s =
 			&((struct wr_data *)ppi->ext_data)->servo_state;
 
+#ifdef BROADCAST            
+    cprintf(C_GREY, "\n\nListening_state: ");
+    cprintf(C_BLUE, "%d", WR_DSPOR(ppi)->counter_listening_state);
+    cprintf(C_GREY, "\nwr_link_on_state: ");
+    cprintf(C_BLUE, "%d", WR_DSPOR(ppi)->counter_wrlinkon_state);
+    cprintf(C_GREY, "\nSlave_state: ");
+    cprintf(C_BLUE, "%d", WR_DSPOR(ppi)->counter_slave_state);
+    cprintf(C_BLUE, "\nhandle_announce: ann_pp_lib: ");
+    cprintf(C_GREY, "%d", WR_DSPOR(ppi)->counter_handle_announce);
+    cprintf(C_BLUE, "\nwrModeOn: ");
+    cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wrModeOn);
+    cprintf(C_BLUE, ": parentWrModeOn: ");
+    cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_parentWrModeOn);
+    cprintf(C_BLUE, "\nhandle_followup: fu_st_com: ");
+    cprintf(C_GREY, "%d", WR_DSPOR(ppi)->counter_handle_followup);
+    cprintf(C_BLUE, "\nWR_SERVO: downlink: ");
+    cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_update_downlink_servo);  
+    cprintf(C_BLUE, "\ntimestamp: error++: ");
+    cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_downlink_timestamp_error);  
+    cprintf(C_BLUE, ": count>5: ");
+    cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_downlink_timestamp_errorcount);   
+    cprintf(C_BLUE, ": no_converge: ");
+    cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_ctr_no_converge);
+    cprintf(C_BLUE, "\n\nSERVO_STATES: busy: ");
+    cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_servo_busy); 
+    cprintf(C_BLUE, ": shw_pps_gen_busy: ");
+    cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_shw_pps_gen_busy);
+    cprintf(C_BLUE, ": spll_shifter_busy: ");
+    cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_spll_shifter_busy);
+    cprintf(C_BLUE, ": Before: ");
+    cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_before_servo_states);
+    cprintf(C_BLUE, "\nUninitialized: ");
+    cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_servo_uninitialized); 
+    cprintf(C_BLUE, ": Sync_TAI: ");
+    cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_servo_sync_tai); 
+    cprintf(C_BLUE, ": Sync_nSec: ");
+    cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_servo_sync_nsec); 
+    cprintf(C_BLUE, "\nSync_Phase: ");
+    cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_servo_sync_phase);
+    cprintf(C_BLUE, ": Wait_offset_stable: ");
+    cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_servo_wait_offset_stable); 
+    cprintf(C_BLUE, ": Track_phase: ");
+    cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_servo_track_phase);
+    cprintf(C_BLUE, "\nts_offset: secs: ");
+    cprintf(C_GREY, "%ld", WR_DSPOR(ppi)->ts_offset.secs);
+    cprintf(C_BLUE, "\nts_offset: nsecs: ");
+    cprintf(C_GREY, "%ld", WR_DSPOR(ppi)->ts_offset.scaled_nsecs);
+    cprintf(C_BLUE, "\n\nBEFORE_TO_INIT: ");
+    cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_before_timeout_init_1);
+    cprintf(C_BLUE, ": TO_INIT: ");
+    cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_before_timeout_init_2);
+    cprintf(C_BLUE, "\nBefore_TO: ");
+    cprintf(C_GREY, "%d", WR_DSPOR(ppi)->counter_before_timeout_check);
+    cprintf(C_BLUE, ": ANN_RECIPT|TO_FAULT: ");
+    cprintf(C_GREY, "%d", WR_DSPOR(ppi)->counter_PP_TO_ANN_RECEIPT);
+#endif
+            
 	cprintf(C_BLUE, "\n\nPTP status: ");
 	cprintf(C_WHITE, "%s", wrc_ptp_state());
 
@@ -220,7 +277,8 @@ int wrc_mon_gui(void)
 		pp_printf("\n");
 
 	}
-
+#ifdef BROADCAST
+	/* If compiled with broadcast this information is meaninless, so don't show */
 	cprintf(C_BLUE, "\nTiming parameters:\n");
 
 	cprintf(C_GREY, "Round-trip time (mu): ");
@@ -258,7 +316,7 @@ int wrc_mon_gui(void)
 
 	cprintf(C_GREY, "Update counter:");
 	cprintf(C_WHITE, "%27d\n", (int32_t) (s->update_count));
-
+#endif
 	return 1;
 }
 

@@ -100,8 +100,11 @@ static void wrc_initialize(void)
 	/* Sleep for 1s to make sure WRS v4.2 always realizes that
 	 * the link is down */
 	timer_delay_ms(200);
+#ifdef BROADCAST
+	ep_enable(1, 0); // Auto negociation disable.
+#else	
 	ep_enable(1, 1);
-
+#endif
 	minic_init();
 	shw_pps_gen_init();
 	wrc_ptp_init();
