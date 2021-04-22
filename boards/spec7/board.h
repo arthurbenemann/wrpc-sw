@@ -93,6 +93,7 @@
  
 void spec7_set_pll_wr_mode(int pll_wr_mode);
 int  spec7_init(void);
+int  is_aligned_10mhz(void);
 
 struct spec7_board
 {

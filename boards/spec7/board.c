@@ -25,7 +25,7 @@ static struct gpio_pin pin_pll_wr_mode1_o    = { &board.gpio_aux, 9 };
 static struct gpio_pin pin_pll_clk_sel       = { &board.gpio_aux, 10 };
 static struct gpio_pin pin_eeprom_scl        = { &board.gpio_aux, 11 };
 static struct gpio_pin pin_eeprom_sda        = { &board.gpio_aux, 12 };
-static struct gpio_pin pin_pll_even_odd_n_i  = { &board.gpio_aux, 13 };
+static struct gpio_pin pin_aligned_10mhz_i   = { &board.gpio_aux, 13 };
 static struct gpio_pin pin_pll_sync_done_i   = { &board.gpio_aux, 14 };
 static struct gpio_pin pin_aux_scl           = { &board.gpio_aux, 15 };
 static struct gpio_pin pin_aux_sda           = { &board.gpio_aux, 16 };
@@ -38,7 +38,7 @@ static struct ltc6950_config ltc6950_ext_10mhz_config =
 
 static spll_gain_schedule_t spll_main_ocxo_gain_sched;
 
-#define PLL_EVEN_ODD_TIMEOUT_MS 10000
+#define PLL_EVEN_ODD_TIMEOUT_MS 200000
 #define PLL_SYNC_TIMEOUT_MS 4000
 
 timeout_t pll_even_odd_timeout;
@@ -116,8 +116,8 @@ void spec7_set_pll_wr_mode(int wrc_ptp_mode)
         ltc6950_configure(&board.ltc6950_pll, &ltc6950_ext_10mhz_config);
         while ((ltc6950_read(&board.ltc6950_pll,  0x00) & LTC6950_LOCK) == 0);
         board_dbg("ltc6950 locked.\n");
-#if defined(CONFIG_HPSEC_GM)
-        pll_sync();
+#if defined(CONFIG_TARGET_HPSEC)
+//        align_10mhz();
 #endif
     } else {
         // Forward 125 MHz VCXO_REFCLK at CLK input to outputs 0, 1, 2
@@ -130,14 +130,18 @@ void spec7_set_pll_wr_mode(int wrc_ptp_mode)
     timer_delay_ms(10);
 }
 
-int pll_sync()
+int is_aligned_10mhz()
 {
-    // Used in HPSEC Grand Master mode where external 10MHz generates 125MHz.
-    // 125MHz is not an integer multiple of 10MHz so it has two lock modes: even/odd.
-    // The generated 125MHz must be even/odd alligned with the external 10MHz/1PPS.
+  return gen_gpio_in( &pin_aligned_10mhz_i );
+}
+
+/*
+int align_10mhz()
+{
+    // Used in HPSEC where external 10MHz needs to be phase aligned.
     
     tmo_init(&pll_even_odd_timeout, PLL_EVEN_ODD_TIMEOUT_MS);
-    while (gen_gpio_in( &pin_pll_even_odd_n_i ) == 0) {
+    while (gen_gpio_in( &pin_aligned_10mhz_i ) == 0) {
         // Reset the PLL (RES6950 clears itself)
         board_dbg("Reset ltc6950...\n");
         ltc6950_write( &board.ltc6950_pll, 0x03, 4);
@@ -146,25 +150,12 @@ int pll_sync()
         while ((ltc6950_read(&board.ltc6950_pll,  0x00) & LTC6950_LOCK) == 0);
         timer_delay_ms(1000);  // wait for next PPS
         if ( tmo_expired(&pll_even_odd_timeout)) {
-            pp_printf("TIMEOUT: External 10MHz/1PPS lock to \"even\" 125MHz clock cycle.\n");
+            pp_printf("TIMEOUT: External 10MHz alignment.\n");
             return 0;
         }
     }
-    board_dbg("HPSEC_GM mode: External 10MHz/1PPS lock achieved on \"even\" 125MHz clock cycle\n");
-
-    // Trigger a clk_ref_125m to clk_ref_62m5 divider synchronisation
-    gen_gpio_out( &pin_pll_sync_o, 1);
-    gen_gpio_out( &pin_pll_sync_o, 0);
-
-    tmo_init(&pll_sync_timeout, PLL_SYNC_TIMEOUT_MS);
-    // Wait for sync sequence done
-    while (gen_gpio_in( &pin_pll_sync_done_i ) == 0) {
-        if ( tmo_expired(&pll_sync_timeout)) {
-            pp_printf("TIMEOUT: clk_ref_125m to clk_ref_62m5 divider synchronization.\n");
-            return 0;
-        }
-    }
-    board_dbg("HPSEC_GM mode: clk_ref_125m to clk_ref_62m5 divider synchronization done\n");
+    board_dbg("HPSEC mode: External 10MHz phase aligned.\n");
+*/
 
 /*
     PPSG->ESCR = PPSG_ESCR_SYNC;
@@ -177,7 +168,7 @@ int pll_sync()
         }
     }
     board_dbg("HPSEC_GM mode: synced to external PPS.\n");
-*/
+
     phy_calibration_init();
     while (!phy_calibration_done()) {
         phy_calibration_poll();
@@ -185,6 +176,7 @@ int pll_sync()
 
     return 1;
 }
+*/
 
 int post_pll_lock(int wrc_ptp_mode)
 {
