@@ -65,11 +65,12 @@ static void spec7_spll_setup(void)
 
 #if defined(CONFIG_TARGET_HPSEC)
     gs->n_stages = 2;   // 2 stages: SPEC7 Crysteck => HPSEC Morion MV336
+	spll_set_gain_schedule( gs );
 #else
     gs->n_stages = 1;   // 1 stage: SPEC7 Crysteck
+	//spll_set_gain_schedule( gs );  // Repair: Gain schedule keeps restarting in mode gm
 #endif
 
-	spll_set_gain_schedule( gs );
 }
 
 void spec7_set_pll_wr_mode(int wrc_ptp_mode)
