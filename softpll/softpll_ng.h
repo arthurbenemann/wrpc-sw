@@ -27,13 +27,13 @@
 #define SPLL_ALL_CHANNELS 0xffffffff
 
 #define SPLL_AUX_MODE_SLAVE 0 /* Aux clock is disciplined from the local WR time base */
-#define SPLL_AUX_MODE_TRACKING_SOURCE 1 /* Aux clock is a tracking source for the local WR time base */
+#define SPLL_AUX_MODE_PHASE_MONITOR 1 /* Aux clock phase is monitored by this softPLL using another reference clock */
 
 /* Aux clock flags */
 #define SPLL_AUX_SLAVE_ENABLED (1<<0) /* Locking the particular aux channel to the WR reference is enabled */
 #define SPLL_AUX_SLAVE_LOCKED (1<<1)  /* The particular aux clock is already locked to WR reference */
-#define SPLL_AUX_TRACKING_ENABLED (1<<2) /* The particilar aux clock is used as a tracking source for a WR reference */
-#define SPLL_AUX_TRACKING_READY (1<<3) /* The particilar aux clock is used as a tracking source for a WR reference */
+#define SPLL_AUX_MONITOR_ENABLED (1<<2) /* The particilar aux clock phase is monitored against the local WR reference */
+#define SPLL_AUX_MONITOR_READY (1<<3)
 
 
 /* Channels for spll_measure_frequency() */

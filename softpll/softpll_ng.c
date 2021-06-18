@@ -92,7 +92,7 @@ static inline void update_ptrackers(struct softpll_state *s, int tag_value, int 
 	for( i = 0; i < spll_n_chan_out - 1; i++ )
 	{
 		struct spll_aux_state *aux = &s->aux[i];
-		if( aux->mode != SPLL_AUX_MODE_TRACKING_SOURCE )
+		if( aux->mode != SPLL_AUX_MODE_PHASE_MONITOR )
 			continue;
 
 		if( tag_source == spll_n_chan_ref + i + 1)
@@ -602,10 +602,10 @@ static int spll_update_aux_clocks(void)
 						s->seq_state = AUX_LOCK_PLL;
 						done_sth++;
 					}
-					else if ( s->mode == SPLL_AUX_MODE_TRACKING_SOURCE )
+					else if ( s->mode == SPLL_AUX_MODE_PHASE_MONITOR )
 					{
-						pll_verbose("softpll: enabled tracking aux channel %d\n", ch);
-						s->seq_state = AUX_WAIT_TRACKING_LOCK;
+						pll_verbose("softpll: enabled phase monitor on aux channel %d\n", ch);
+						s->seq_state = AUX_WAIT_MONITOR_LOCK;
 						ptracker_init( &s->pll.tracker, ch + spll_n_chan_ref, PTRACKER_AVERAGE_SAMPLES );
 						ptracker_start( &s->pll.tracker );
 						done_sth++;
@@ -614,20 +614,20 @@ static int spll_update_aux_clocks(void)
 				}
 				break;
 
-			case AUX_WAIT_TRACKING_LOCK:
+			case AUX_WAIT_MONITOR_LOCK:
 				if( s->pll.tracker.ready )
 				{
-					s->seq_state = AUX_TRACKING_READY;
+					s->seq_state = AUX_MONITOR_READY;
 					s->phase_value = s->pll.tracker.phase_val;
 					set_channel_status(ch, 1);
 					done_sth++;
 					break;
 				}
 	
-			case AUX_TRACKING_READY:
+			case AUX_MONITOR_READY:
 				if (!softpll.mpll.locked) 
 				{
-					pll_verbose("softpll: aux tracking channel %d disabled due to PLL LOS\n", ch);
+					pll_verbose("softpll: aux phase monitor channel %d disabled due to PLL LOS\n", ch);
 					set_channel_status(ch, 0);
 					s->seq_state = AUX_DISABLED;
 					done_sth++;
@@ -684,14 +684,14 @@ struct spll_aux_clock_status spll_get_aux_status(int channel )
 		case AUX_LOCK_PLL:
 			rval.flags = SPLL_AUX_SLAVE_ENABLED;
 			break;
-		case AUX_WAIT_TRACKING_LOCK:
-			rval.flags = SPLL_AUX_TRACKING_ENABLED;
+		case AUX_WAIT_MONITOR_LOCK:
+			rval.flags = SPLL_AUX_MONITOR_ENABLED;
 			break;
-		case AUX_TRACKING_READY: 
-			rval.flags = SPLL_AUX_TRACKING_ENABLED | SPLL_AUX_TRACKING_READY;
+		case AUX_MONITOR_READY: 
+			rval.flags = SPLL_AUX_MONITOR_ENABLED | SPLL_AUX_MONITOR_READY;
 			break;
 		case AUX_SLAVE_READY:
-			rval.flags = SPLL_AUX_SLAVE_ENABLED | SPLL_AUX_SLAVE_LOCKED;
+			rval.flags = SPLL_AUX_MONITOR_ENABLED | SPLL_AUX_SLAVE_LOCKED;
 			break;
 	}
 

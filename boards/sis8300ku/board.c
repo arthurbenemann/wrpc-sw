@@ -102,8 +102,8 @@ int wrc_board_early_init()
 	ep_enable( &wrc_endpoint_dev, 1, 1);
 	timer_delay_ms(200);
 
-	spll_set_aux_mode( 0, SPLL_AUX_MODE_TRACKING_SOURCE );
-	spll_set_aux_mode( 1, SPLL_AUX_MODE_TRACKING_SOURCE );
+	spll_set_aux_mode( 0, SPLL_AUX_MODE_PHASE_MONITOR );
+	spll_set_aux_mode( 1, SPLL_AUX_MODE_PHASE_MONITOR );
 	
 	return 0;
 }
