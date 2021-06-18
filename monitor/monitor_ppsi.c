@@ -233,13 +233,13 @@ int wrc_mon_gui(void)
 		if (aux_stat.flags & SPLL_AUX_SLAVE_ENABLED)
 			cprintf(C_GREEN, "enabled");
 
-		if (aux_stat.flags & SPLL_AUX_TRACKING_ENABLED )
-			cprintf(C_GREEN, "tracking source");
+		if (aux_stat.flags & SPLL_AUX_MONITOR_ENABLED )
+			cprintf(C_GREEN, "monitor");
 
 		if (aux_stat.flags & SPLL_AUX_SLAVE_LOCKED)
 			cprintf(C_GREEN, ", locked");
 
-		if( aux_stat.flags & SPLL_AUX_TRACKING_READY )
+		if( aux_stat.flags & SPLL_AUX_MONITOR_READY )
 		{
 			cprintf(C_GREEN, ", ready");
 			cprintf(C_WHITE, " (AUX-to-WR offset: %d ps)", aux_stat.phase );
@@ -525,7 +525,7 @@ int wrc_wr_diags(void)
 	spll_get_num_channels(NULL, &n_out);
 	if (n_out > 8) n_out = 8; /* hardware limit. */
 	for(i = 0; i < n_out; i++) {
-		aux_stat |= (( SPLL_AUX_SLAVE_LOCKED | SPLL_AUX_TRACKING_READY ) & spll_get_aux_status(i).flags) << i;
+		aux_stat |= (( SPLL_AUX_SLAVE_LOCKED | SPLL_AUX_MONITOR_READY ) & spll_get_aux_status(i).flags) << i;
 	}
 	wdiags_write_aux_state(aux_stat);
 	
@@ -606,7 +606,7 @@ int wrc_diags_dump(struct WRC_DIAGS_WB *buf)
 	if (n_out > 8) n_out = 8; /* hardware limit. */
 	aux_stat = 0;
 	for(i = 0; i < n_out; i++) {
-		aux_stat |= (( SPLL_AUX_SLAVE_LOCKED | SPLL_AUX_TRACKING_READY ) & spll_get_aux_status(i).flags) << i;
+		aux_stat |= (( SPLL_AUX_SLAVE_LOCKED | SPLL_AUX_MONITOR_READY ) & spll_get_aux_status(i).flags) << i;
 	}
 	buf->WDIAG_ASTAT = SYSC_WDIAG_ASTAT_AUX_W(aux_stat);
 
