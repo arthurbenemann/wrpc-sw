@@ -297,6 +297,14 @@ void spll_very_init()
 
 	memset( (void *) &softpll, 0, sizeof(struct softpll_state ));
 	softpll.mode = SPLL_MODE_DISABLED;
+
+	uint32_t csr = SPLL->CSR;
+
+	spll_n_chan_ref = SPLL_CSR_N_REF_R(csr);
+	spll_n_chan_out = SPLL_CSR_N_OUT_R(csr);
+
+	if( spll_n_chan_out > 3 ) // fixme: bug in HDL?
+		spll_n_chan_out = 3;
 }
 
 void spll_init(int mode, int slave_ref_channel, int flags)
@@ -672,9 +680,17 @@ static int spll_update_aux_clocks(void)
 struct spll_aux_clock_status spll_get_aux_status(int channel )
 {
 	struct spll_aux_clock_status rval;
+	
 	rval.flags = 0;
+	rval.mode = 0;
+	rval.phase = 0;
+
+	if( channel < 0 || channel >= MAX_CHAN_AUX )
+		return rval;
 
 	int state = softpll.aux[channel].seq_state;
+
+	rval.mode = softpll.aux[channel].mode;
 
 	switch ( state )
 	{
