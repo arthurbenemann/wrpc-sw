@@ -13,14 +13,15 @@
 #include <hw/wrc_diags_regs.h>
 
 static struct mapping_desc *wrcdiag = NULL;
+static int reg_version = -1;
 
-static void unlock_diag(volatile struct WRC_DIAGS_WB *ptr)
+static void unlock_diag(volatile struct wrc_diags *ptr)
 {
 	//reset snapshot bit & keep valid bit as it is
 	ptr->CTRL &= iomemw32(wrcdiag->is_be, 0x1);
 }
 
-static int lock_diag(volatile struct WRC_DIAGS_WB *ptr)
+static int lock_diag(volatile struct wrc_diags *ptr)
 {
 	int loop = 10;
 
@@ -64,7 +65,7 @@ static void print_port_status(uint32_t val)
 	};
 	int i, idx;
 
-	fprintf(stderr, "Port status:\t\t");
+	fprintf(stderr, "Port status:\t\t", val );
 	for (i = 0; i < nbits; ++i) {
 		idx = (val & (1 << i)) ? 1 : 0;
 		fprintf(stderr, "%s, ", pstat_str[i][idx]);
@@ -120,6 +121,11 @@ static void print_rx_frame_count(uint32_t val)
 	fprintf(stderr, "RX frame count:\t\t%d\n", val);
 }
 
+static void print_rx_error_count(uint32_t val)
+{
+	fprintf(stderr, "RX error count:\t\t%d\n", val);
+}
+
 static void print_local_time(uint32_t sec_msw, uint32_t sec_lsw, uint32_t ns)
 {
 	uint64_t sec = (uint64_t)(sec_msw) << 32 | sec_lsw;
@@ -166,6 +172,35 @@ static void print_board_temp(uint32_t val)
 	 	   (int)((val & 0xffff) * 10 * 1000 >> 16));
 }
 
+static void print_aux_clock_status_single( int index, uint32_t r )
+{
+	int mode = (r & WRC_DIAGS_WDIAG_AUX0_DETAIL_STAT_MODE_MASK) >> WRC_DIAGS_WDIAG_AUX0_DETAIL_STAT_MODE_SHIFT;
+
+	char *mode_str = (mode == 0 ? "slave" : "phase monitor");
+
+	int enabled = ( r & WRC_DIAGS_WDIAG_AUX0_DETAIL_STAT_ENABLED) ? 1 : 0;
+	int ready = ( r & WRC_DIAGS_WDIAG_AUX0_DETAIL_STAT_LOCKED) ? 1 : 0;
+
+	int phase = (r & WRC_DIAGS_WDIAG_AUX0_DETAIL_STAT_PHASE_MASK) >> WRC_DIAGS_WDIAG_AUX0_DETAIL_STAT_PHASE_SHIFT;
+
+	fprintf(stderr,"AUX%d: mode %s enabled %d locked %d phase %d ps\n", index, mode_str, enabled, ready, phase );
+}
+
+
+static void print_aux_clock_status( int is_be, volatile struct wrc_diags *d )
+{
+	int i;
+	print_aux_clock_status_single( 0, iomemr32(is_be, d->WDIAG_AUX0_DETAIL_STAT) );
+	print_aux_clock_status_single( 1, iomemr32(is_be, d->WDIAG_AUX1_DETAIL_STAT) );
+	print_aux_clock_status_single( 2, iomemr32(is_be, d->WDIAG_AUX2_DETAIL_STAT) );
+	print_aux_clock_status_single( 3, iomemr32(is_be, d->WDIAG_AUX3_DETAIL_STAT) );
+}
+
+static void print_servo_info( int is_be, volatile struct wrc_diags *d )
+{
+
+}
+
 enum wrcdiag_cmd_id{
 	WRCDIAG_CMD_DIAGS = CMD_USR,
 	WRCDIAG_CMD_SSTAT,
@@ -187,8 +222,8 @@ enum wrcdiag_cmd_id{
 
 static int read_diags(struct cmd_desc *cmdd, struct atom *atoms)
 {
-	volatile struct WRC_DIAGS_WB *ptr =
-		(volatile struct WRC_DIAGS_WB *)wrcdiag->base;
+	volatile struct wrc_diags *ptr =
+		(volatile struct wrc_diags *)wrcdiag->base;
 	int res;
 
 	if (atoms == (struct atom *)VERBOSE_HELP) {
@@ -204,12 +239,15 @@ static int read_diags(struct cmd_desc *cmdd, struct atom *atoms)
 
 	switch (cmdd->id) {
 	case WRCDIAG_CMD_DIAGS:
+		printf("Diag registers layout version: %d\n", reg_version );
 		print_servo_status(iomemr32(wrcdiag->is_be, ptr->WDIAG_SSTAT));
 		print_port_status(iomemr32(wrcdiag->is_be, ptr->WDIAG_PSTAT));
 		print_ptp_state(iomemr32(wrcdiag->is_be, ptr->WDIAG_PTPSTAT));
 		print_aux_state(iomemr32(wrcdiag->is_be, ptr->WDIAG_ASTAT));
 		print_tx_frame_count(iomemr32(wrcdiag->is_be, ptr->WDIAG_TXFCNT));
 		print_rx_frame_count(iomemr32(wrcdiag->is_be, ptr->WDIAG_RXFCNT));
+		if( reg_version >= 2 )
+			print_rx_error_count(iomemr32(wrcdiag->is_be, ptr->WDIAG_RX_ERR_CNT));
 		print_local_time(iomemr32(wrcdiag->is_be, ptr->WDIAG_SEC_MSB),
 				 iomemr32(wrcdiag->is_be, ptr->WDIAG_SEC_LSB),
 				 iomemr32(wrcdiag->is_be, ptr->WDIAG_NS));
@@ -224,6 +262,13 @@ static int read_diags(struct cmd_desc *cmdd, struct atom *atoms)
 		print_phase_setpoint(iomemr32(wrcdiag->is_be, ptr->WDIAG_SETP));
 		print_update_counter(iomemr32(wrcdiag->is_be, ptr->WDIAG_UCNT));
 		print_board_temp(iomemr32(wrcdiag->is_be, ptr->WDIAG_TEMP));
+
+		if(reg_version >= 2)
+		{
+			print_aux_clock_status( wrcdiag->is_be, ptr );
+			print_servo_info( wrcdiag->is_be, ptr );
+		}
+
 		break;
 	case WRCDIAG_CMD_SSTAT:
 		print_servo_status(iomemr32(wrcdiag->is_be, ptr->WDIAG_SSTAT));
@@ -299,8 +344,8 @@ static void wrcdiag_help(char *prog)
 
 static void sig_hndl()
 {
-	volatile struct WRC_DIAGS_WB *ptr =
-		(volatile struct WRC_DIAGS_WB *)wrcdiag->base;
+	volatile struct wrc_diags *ptr =
+		(volatile struct wrc_diags *)wrcdiag->base;
 
 	// Signal occured: free resource and exit
 	fprintf(stderr, "Handle signal: free resource and exit.\n");
@@ -344,15 +389,18 @@ struct cmd_desc wrcdiag_cmd[WRCDIAG_CMD_NB + 1] = {
 	{0, },
 };
 
+
 static int verify_reg_version()
 {
-	volatile struct WRC_DIAGS_WB *ptr =
-		(volatile struct WRC_DIAGS_WB *)wrcdiag->base;
+	volatile struct wrc_diags *ptr =
+		(volatile struct wrc_diags *)wrcdiag->base;
 	uint32_t ver = 0;
 	ver = iomemr32(wrcdiag->is_be, ptr->VER);
-	fprintf(stderr, "Wishbone register version: in FPGA = 0x%x |"
-		" in SW = 0x%x\n", ver, WBGEN2_WRC_DIAGS_VERSION);
-	if(ver != WBGEN2_WRC_DIAGS_VERSION)
+	fprintf(stderr, "Wishbone register version: in FPGA = 0x%x\n", ver);
+	
+	reg_version = ver;
+
+	if(ver != 1 && ver != 2)
 		return -1;
 	else
 		return 0;
@@ -369,7 +417,7 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
-	wrcdiag = dev_map(map_args, sizeof(struct WRC_DIAGS_WB));
+	wrcdiag = dev_map(map_args, sizeof(struct wrc_diags));
 	if (!wrcdiag) {
 		fprintf(stderr, "%s: wrcdiag mmap() failed: %s\n", argv[0],
 			strerror(errno));
