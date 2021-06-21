@@ -81,7 +81,7 @@ static struct ertm14_protocol_op {
 	.offset1 = 1,
 	.length1 = 0,
 	.offset2 = 0,
-	.length2 = sizeof(struct WRC_DIAGS_WB),
+	.length2 = sizeof(struct wrc_diags_regs_v1),
     },
     {
 	.opcode = ertm14_get_wrc_nco,

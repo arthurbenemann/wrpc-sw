@@ -17,7 +17,7 @@
  * (the board state structures are shared with the MMC MCUs)
  */
 #if defined(CONFIG_TARGET_ERTM14)
-#include "hw/wrc_diags_regs.h"
+#include "hw/wrc_diags_regs_v1.h"
 #include "ertm15_rf_distr.h"
 #endif
 
@@ -236,6 +236,6 @@ struct ertm14_version_info {
 };
 
 /* FIXME: this is not the best place for this declaration */
-int wrc_diags_dump(struct WRC_DIAGS_WB *buf);
+int wrc_diags_dump(struct wrc_diags_regs_v1 *buf);
 
 #endif /*  __BOARD_STATE_ERTM14_H */
