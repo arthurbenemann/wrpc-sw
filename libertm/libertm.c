@@ -113,7 +113,7 @@ static struct ertm_voltages voltages_defaults = {
 };
 struct ertm_wr_status wr_status_default = {
 	/* FIXME: copied, not #include'd, from wrc_diags_regs.h */
-	/* eventually replace by struct WRC_DIAGS_WB */
+	/* eventually replace by struct wrc_diags_regs_v1 */
 	.VER		= 0xdeadbabe,	/* [0x0]: REG Version register */
 	.CTRL		= 0,   		/* [0x4]: REG Ctrl */
 	.WDIAG_SSTAT	= 0,  		/* [0x8]: REG WRPC Diag: servo status */
@@ -418,7 +418,7 @@ void board_state_to_host_order(struct ertm14_board_state *board, struct ertm14_b
 	}
 }
 
-static void diags_to_host(struct WRC_DIAGS_WB *diags, struct WRC_DIAGS_WB *host)
+static void diags_to_host(struct wrc_diags_regs_v1 *diags, struct wrc_diags_regs_v1 *host)
 {
 	int i;
 	int ndiags = sizeof(*diags) / sizeof(uint32_t);
@@ -443,12 +443,12 @@ int ertm_get_board_config(struct ertm_status *st, struct ertm14_board_state *bs)
 	return 0;
 }
 
-int ertm_get_wr_diags(struct ertm_status *st, struct WRC_DIAGS_WB *wrc_diags)
+int ertm_get_wr_diags(struct ertm_status *st, struct wrc_diags_regs_v1 *wrc_diags)
 {
 	int res;
 
 	struct uart_link *link = &st->link;
-	struct WRC_DIAGS_WB d, *diags = &d;
+	struct wrc_diags_regs_v1 d, *diags = &d;
 
 	res = ertm_proto_cycle(link, ertm14_get_wrc_diags, NULL, diags);
 	if (res < 0)
@@ -1115,7 +1115,7 @@ int ertm_rf_nco_reset_enable(struct ertm_status *handle, int enable)
 
 int ertm_wr_diags(struct ertm_status *handle, struct ertm_wr_status *status)
 {
-	struct WRC_DIAGS_WB *s = (struct WRC_DIAGS_WB *)status;
+	struct wrc_diags_regs_v1 *s = (struct wrc_diags_regs_v1 *)status;
 	return ertm_get_wr_diags(handle, s);
 }
 
