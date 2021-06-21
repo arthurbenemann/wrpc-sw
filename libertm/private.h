@@ -14,6 +14,9 @@
 #include "board-state.h"
 #include "common-uart-link.h"
 
+#include "hw/wrc_diags_regs.h"
+#include "hw/wrc_diags_regs_v1.h"
+
 struct ertm_state {
 	struct ertm_board_info		board_info;
 	struct ertm14_board_state	board_state;
@@ -24,7 +27,7 @@ struct ertm_state {
 	struct ertm_nco_reset		nco_reset;
 	union {
 		struct ertm_wr_status	wr_status;
-		struct WRC_DIAGS_WB	diags_wb;
+		struct wrc_diags_regs_v1	diags_wb;
 	};
 	int				ptp_enabled;
 
