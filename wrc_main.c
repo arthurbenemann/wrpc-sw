@@ -33,6 +33,7 @@
 #include <dev/rxts_calibrator.h>
 #include <dev/flash.h>
 #include <dev/gpio.h>
+#include <dev/wdiags.h>
 
 #include <wrc_ptp.h>
 #include <system_checks.h>
@@ -79,6 +80,7 @@ static void wrc_initialize(void)
 	spll_very_init();
 	usleep_init();
 	netif_init();
+	wdiags_init();
 
 	wrc_board_early_init();
 
