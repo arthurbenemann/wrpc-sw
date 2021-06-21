@@ -30,7 +30,8 @@ obj-$(CONFIG_EMBEDDED_NODE) += \
 	dev/storage.o \
 	dev/fine_pulse_generator.o \
 	dev/netif.o \
-	dev/leds.o
+	dev/leds.o \
+	dev/wdiags.o
 
 obj-$(CONFIG_WR_NODE) += \
 	dev/sensors.o \
