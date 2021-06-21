@@ -20,6 +20,7 @@
 #include <dev/onewire.h>
 #include <dev/endpoint.h>
 #include <dev/netif.h>
+#include <dev/wdiags.h>
 #include "sensors.h"
 #include "wrc_ptp.h"
 #include "hal_exports.h"
@@ -27,6 +28,7 @@
 #include "shell.h"
 #include "revision.h"
 #include "hw/wrc_diags_regs.h"
+#include "hw/wrc_diags_regs_v1.h"
 
 #define WRC_MONITOR_REFRESH_PERIOD (1 * TICS_PER_SECOND)
 #define WRC_DIAG_REFRESH_PERIOD (1 * TICS_PER_SECOND)
@@ -338,7 +340,7 @@ uint32_t wrc_stats_last;
 int wrc_log_stats(void)
 {
 	struct hal_port_state state;
-	int tx, rx;
+	int tx, rx, rx_errors;
 	struct spll_aux_clock_status aux_stat;
 	uint64_t sec;
 	uint32_t nsec;
@@ -370,7 +372,7 @@ int wrc_log_stats(void)
 
 	shw_pps_gen_get_time(&sec, &nsec);
 	wrpc_get_port_state(&state, NULL);
-	minic_get_stats(&tx, &rx, NULL);
+	minic_get_stats(&tx, &rx, &rx_errors);
 	pp_printf("lnk:%d rx:%d tx:%d ", state.state, rx, tx);
 	pp_printf("lock:%d ", state.locked ? 1 : 0);
 	pp_printf("ptp:%s ", wrc_ptp_state());
@@ -452,7 +454,7 @@ int wrc_wr_diags(void)
 {
 	struct hal_port_state ps;
 	static uint32_t last_jiffies;
-	int tx, rx;
+	int tx, rx, rx_errors;
 	uint64_t sec;
 	uint32_t nsec;
 	int n_out;
@@ -479,8 +481,8 @@ int wrc_wr_diags(void)
 	wdiag_set_valid(0);
 	
 	/* frame statistics */
-	minic_get_stats(&tx, &rx, NULL);
-	wdiags_write_cnts(tx,rx);
+	minic_get_stats(&tx, &rx, &rx_errors);
+	wdiags_write_cnts(tx,rx,rx_errors);
 
 	/* local time */
 	shw_pps_gen_get_time(&sec, &nsec);
@@ -529,20 +531,48 @@ int wrc_wr_diags(void)
 		3: WR_SYNC_PHASE,
 		4: WR_TRACK_PHASE,
 		5: WR_WAIT_OFFSET_STABLE */
-		
+
 		wdiags_write_servo_state(wr_mode, servostate, ss->picos_mu,
 					 ss->delta_ms, asym, ss->offset,
-					 ss->cur_setpoint,ss->update_count);
+					 ss->cur_setpoint,ss->update_count, 0, 0); // fixme: add wdiags v2
 	}
-	
+
 	/* auxiliar channels (if any) */
 	spll_get_num_channels(NULL, &n_out);
 	if (n_out > 8) n_out = 8; /* hardware limit. */
 	for(i = 0; i < n_out; i++) {
 		aux_stat |= (( SPLL_AUX_SLAVE_LOCKED | SPLL_AUX_MONITOR_READY ) & spll_get_aux_status(i).flags) << i;
 	}
+
 	wdiags_write_aux_state(aux_stat);
+
+
 	
+	for(i = 0; i < n_out - 1; i++)
+	{
+		int mode;
+		int enabled;
+		int ready;
+		struct spll_aux_clock_status st = spll_get_aux_status( i );
+
+		if( st.mode == SPLL_AUX_MODE_SLAVE )
+		{
+			mode = 0;
+			enabled = st.flags & SPLL_AUX_SLAVE_ENABLED ? 1 : 0;
+			ready = st.flags & SPLL_AUX_SLAVE_LOCKED ? 1 : 0 ;
+		}
+		else
+		{
+			mode = 1;
+			enabled = st.flags & SPLL_AUX_MONITOR_ENABLED ? 1 : 0;
+			ready = st.flags & SPLL_AUX_MONITOR_READY ? 1 : 0 ;
+		}
+
+		wdiags_write_aux_clock_details( i, mode, st.phase, enabled, ready );
+	}
+
+
+
 	/* temperature */
 	temp = wrc_temp_get("pcb");
 	wdiags_write_temp(temp);
@@ -564,7 +594,7 @@ int wrc_wr_diags(void)
  *  do not write directly to syscon, but to an arbitrary address.
  *  That will clean the code here *enormously*
  */
-int wrc_diags_dump(struct WRC_DIAGS_WB *buf)
+int wrc_diags_dump(struct wrc_diags_regs_v1 *buf)
 {
 	struct hal_port_state ps;
 	int tx, rx;
@@ -588,8 +618,8 @@ int wrc_diags_dump(struct WRC_DIAGS_WB *buf)
 
 	/* port state (from hal) */
 	wrpc_get_port_state(&ps, NULL);
-	buf->WDIAG_PSTAT  = (ps.state ? SYSC_WDIAG_PSTAT_LINK : 0);
-	buf->WDIAG_PSTAT |= (ps.locked ? SYSC_WDIAG_PSTAT_LOCKED : 0);
+	buf->WDIAG_PSTAT  = (ps.state ? WRC_DIAGS_WDIAG_PSTAT_LINK : 0);
+	buf->WDIAG_PSTAT |= (ps.locked ? WRC_DIAGS_WDIAG_PSTAT_LOCKED : 0);
 
 	/* port PTP State (from ppsi) */
 	buf->WDIAG_PTPSTAT = SYSC_WDIAG_PTPSTAT_PTPSTATE_W((uint8_t)ppi->state);
@@ -604,7 +634,7 @@ int wrc_diags_dump(struct WRC_DIAGS_WB *buf)
 		uint64_t mu = ss->picos_mu;
 		uint64_t dms = ss->delta_ms;
 
-		buf->WDIAG_SSTAT   = wr_mode ? SYSC_WDIAG_SSTAT_WR_MODE : 0;
+		buf->WDIAG_SSTAT   = wr_mode ? WRC_DIAGS_WDIAG_SSTAT_WR_MODE : 0;
 		buf->WDIAG_SSTAT  |= SYSC_WDIAG_SSTAT_SERVOSTATE_W(servostate);
 		buf->WDIAG_MU_MSB  = 0xFFFFFFFF & (mu>>32);
 		buf->WDIAG_MU_LSB  = 0xFFFFFFFF &  mu;
@@ -622,7 +652,7 @@ int wrc_diags_dump(struct WRC_DIAGS_WB *buf)
 	for(i = 0; i < n_out; i++) {
 		aux_stat |= (( SPLL_AUX_SLAVE_LOCKED | SPLL_AUX_MONITOR_READY ) & spll_get_aux_status(i).flags) << i;
 	}
-	buf->WDIAG_ASTAT = SYSC_WDIAG_ASTAT_AUX_W(aux_stat);
+	buf->WDIAG_ASTAT = WRC_DIAGS_WDIAG_ASTAT_AUX_W(aux_stat);
 
 	/* temperature */
 	temp = wrc_temp_get("pcb");
