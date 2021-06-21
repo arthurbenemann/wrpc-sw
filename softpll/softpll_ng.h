@@ -56,6 +56,7 @@
 struct spll_aux_clock_status
 {
 	uint32_t flags;
+	int mode;
 	int phase;
 };
 
