@@ -83,6 +83,12 @@
 #define FSM_EARLY_LINK_UP_TIMEOUT_MS 100
 #define FSM_STABILIZE_TIMEOUT_MS 100
 
+// TX Target phase for SPEC7 is measured TXOUTCLK_OUT of the PHY.
+// For SPEC7 clk_ref_62m5 and TXOUTCLK_OUT are phase locked but have an offset.
+// Add a safe offset such that the TxData and TxK (clk_ref_62m5 domain) are
+// safely clocked into the PHY (TXOUTCLK_OUT domain).
+#define TX_PHASE_OFFSET 0
+
 struct wrc_port_tx_setup_state
 {
     int state;
@@ -254,12 +260,13 @@ static int tx_fsm_update(void)
             {
                 //pr_info("Using phase from file :%d\n",
                 //fsm->cal_saved_phase);
-                fsm->expected_phase = fsm->cal_saved_phase;
+                fsm->expected_phase = fsm->cal_saved_phase + TX_PHASE_OFFSET;
                 fsm->tollerance = 150; /*ps, bins are 200 ps wide*/
             }
-            else // find a sane default
+            else // find a sane default; TXOUTCLK_OUT and clk_ref_62m5 should have small
+                 // phase offset. Take half the period to be safe.
             {
-                fsm->expected_phase = 10;
+                fsm->expected_phase = 8000;
                 fsm->tollerance = 350; // fixme: this works for PHY oversampling at 5 Gbps (must be made generic at some time...)
             }
             fsm->expected_phase_valid = 1;
