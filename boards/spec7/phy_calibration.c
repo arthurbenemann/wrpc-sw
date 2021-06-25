@@ -1,11 +1,39 @@
+/*
+ * This work is part of the White Rabbit project
+ *
+ * Copyright (C) 2021 Nikhef (www.Nikhef.nl)
+ * Author: Peter Jansweijer <peterj@nikhef.nl> based on work
+ * from Tomasz Wlostowski <tomasz.wlostowski@cern.ch>
+ *
+ * This program is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+/*
+    PHY Calibration code.
+    Specific for Kintex-7 devices using wr_gtx_phy_family7_lp
+    (based on CPLL)
+*/
+
+#include <string.h>
 #include "board.h"
 #include "dev/syscon.h"
 #include "dev/endpoint.h"
 #include <softpll_ng.h>
 #include "storage.h"
 #include "util.h"
-
-#include <wrc-task.h>
+#include "wrc-debug.h"
+#include "wrc-task.h"
 
 #include <hw/endpoint_regs.h>
 #include <hw/endpoint_mdio.h>
@@ -59,7 +87,7 @@
 // For SPEC7 clk_ref_62m5 and TXOUTCLK_OUT are phase locked but have an offset.
 // Add a safe offset such that the TxData and TxK (clk_ref_62m5 domain) are
 // safely clocked into the PHY (TXOUTCLK_OUT domain).
-#define TX_PHASE_OFFSET 2000
+#define TX_PHASE_OFFSET 0
 
 struct wrc_port_tx_setup_state
 {
@@ -106,7 +134,7 @@ static void tx_fsm_init(struct wrc_port_tx_setup_state *fsm)
     fsm->cal_file_updated = 0;
     fsm->cnt = 0;
 
-    if( !storage_get_calibration_parameter( CAL_PARAM_PHY_TARGET_TX_PHASE, &fsm->cal_saved_phase ) )
+    if( !storage_get_calibration_parameter( CAL_PARAM_PHY_TARGET_TX_PHASE, (uint32_t *)&fsm->cal_saved_phase ) )
     {
         phy_dbg("read tx target phase :%d ps\n", fsm->cal_saved_phase);
         fsm->cal_saved_phase_valid = 1;
@@ -115,7 +143,7 @@ static void tx_fsm_init(struct wrc_port_tx_setup_state *fsm)
     tmo_init(&fsm->spll_lock_timeout, FSM_SPLL_LOCK_TIMEOUT_MS);
 }
 
-static int tx_fsm_update()
+static int tx_fsm_update(void)
 {
     struct wrc_port_tx_setup_state *fsm = &tx_state;
 
@@ -296,8 +324,6 @@ static int tx_fsm_update()
 
     case TX_SETUP_DONE:
     {
-        int early_link_up = ep_pcs_read(&wrc_endpoint_dev, MDIO_REG_LPC_PHY_STAT) & MDIO_REG_LPC_PHY_STAT_LINK_UP;
-
         return 1;
         break;
     }
@@ -307,17 +333,15 @@ static int tx_fsm_update()
 }
 
 
-static void rx_fsm_init(  )
+static void rx_fsm_init(struct wrc_port_rx_setup_state* fsm)
 {
-    struct wrc_port_rx_setup_state* fsm = &rx_state;
-
     fsm->attempts = 0;
     fsm->state = RX_SETUP_STATE_INIT;
     fsm->prev_link_up = 0;
     memset(fsm->cpos_stat, 0, sizeof(fsm->cpos_stat ));
 }
 
-static int rx_fsm_update(  )
+static int rx_fsm_update(void)
 {
     struct wrc_port_rx_setup_state* fsm = &rx_state;
     struct wrc_port_tx_setup_state* fsm_tx = &tx_state;
@@ -374,8 +398,6 @@ static int rx_fsm_update(  )
 
             int rx_up = dbg0 & MDIO_REG_LPC_PHY_STAT_LINK_UP;
             int rx_aligned = dbg0 & MDIO_REG_LPC_PHY_STAT_LINK_ALIGNED;
-            int rx_comma_pos = (dbg0 >> 9) & 0x1f;
-            int rx_comma_valid = dbg0 & MDIO_REG_LPC_PHY_STAT_COMMA_POS_VALID;
 
             if ( tmo_expired(&fsm->link_timeout) && !rx_up) {
                 fsm->state = RX_SETUP_STATE_INIT;
@@ -415,8 +437,6 @@ static int rx_fsm_update(  )
 
             if ( rx_up && rx_aligned && rx_comma_valid && (rx_comma_pos == DEFAULT_COMMA_POS) )
             {
-                uint16_t dbg0 = ep_pcs_read(&wrc_endpoint_dev, MDIO_REG_LPC_PHY_STAT);
-                int rx_comma_pos = (dbg0 >> 9) & 0x1f;
                 ep_pcs_write(&wrc_endpoint_dev, MDIO_REG_LPC_PHY_CTRL, MDIO_REG_LPC_PHY_CTRL_RX_ENABLE | MDIO_REG_LPC_PHY_CTRL_TX_ENABLE | MDIO_REG_LPC_PHY_CTRL_DMTD_SOURCE_RXRECCLK | MDIO_REG_LPC_PHY_CTRL_COMMA_TARGET_POS(DEFAULT_COMMA_POS) );
                 ep_pcs_write(&wrc_endpoint_dev, MDIO_REG_MCR, MDIO_MCR_SPEED1000_MASK | MDIO_MCR_FULLDPLX_MASK | MDIO_MCR_ANENABLE | MDIO_MCR_ANRESTART  );
                 phy_dbg("RX calibration complete (after %d attempts) comma @ %d taps.\n", fsm->attempts, rx_comma_pos );
