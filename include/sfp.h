@@ -23,6 +23,25 @@ extern int32_t sfp_alpha;
 extern int32_t sfp_deltaTx;
 extern int32_t sfp_deltaRx;
 
+// =======
+int sfp_sel_page2(void);
+
+/* Reads SFP 0xA0 or 0xA2, select an address on a page */
+int sfp_rd(uint8_t i2c_addr, uint8_t addr, uint8_t page, uint8_t *value);
+
+/* Write SFP 0Xa0 or 0xA2, select an address on a page and write byte */
+int sfp_wr(uint8_t i2c_addr, uint8_t addr, uint8_t page, uint8_t value);
+
+/* Dump SFP 0xA2 memory 0x00 to 0xFF (first selecting a page for readout) */
+int sfp_dump(char *memdump, uint8_t i2c_addr, uint8_t page);
+
+int sfp_wr_ch(uint8_t ch);
+int sfp_rd_ch(uint8_t *ch_number, int *ch_wl);
+int sfp_rd_ch_stat(uint8_t *stat);
+
+/* Reads SFP the laser waventlength (page 0xA0, 2 bytes, address 0x3D) */
+int sfp_read_laser_wavelength(int *laser_wavelength);
+// =======
 /* Match plugged SFP with a DB entry */
 int sfp_match(int force);
 
