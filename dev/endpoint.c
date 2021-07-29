@@ -108,8 +108,10 @@ void ep_reset_phy(struct wr_endpoint_device* dev)
 /* Reset the GTP Transceiver - it's important to do the GTP phase alignment every time
    we start up the software, otherwise the calibration RX/TX deltas may not be correct */
 	ep_pcs_write(dev, MDIO_REG_MCR, MDIO_MCR_PDOWN);	/* reset the PHY */
-	if (!IS_WR_NODE_SIM)
-		timer_delay_ms(200);
+	
+	pp_printf("Running long PHY reset...\n");
+	timer_delay_ms(10000);
+	pp_printf("PHY reset complete\n");
 	ep_pcs_write(dev, MDIO_REG_MCR, MDIO_MCR_RESET);	/* reset the PHY */
 	ep_pcs_write(dev, MDIO_REG_MCR, 0);	/* reset the PHY */
 
