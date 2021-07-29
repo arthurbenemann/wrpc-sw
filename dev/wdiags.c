@@ -120,6 +120,11 @@ void wdiags_write_temp(uint32_t temp)
 
 void wdiags_init()
 {
+	int i;
+
+	for( i = 0; i < 64; i++ )
+		wdiag_write( i * 4, 0 );
+
 	wdiag_write( WRC_DIAGS_VER, WDIAGS_VERSION );
 }
 
@@ -145,3 +150,15 @@ void wdiags_write_aux_clock_details( int clk_id, uint32_t mode, uint32_t phase, 
 	wdiag_write( reg, v );
 }
 
+void wdiags_write_bitslide(int bitslide)
+{
+	wdiag_write( WRC_DIAGS_WDIAG_BITSLIDE, bitslide );
+}
+
+void wdiags_write_ptp_deltas( int dtxm, int drxm, int dtxs, int drxs )
+{
+	wdiag_write( WRC_DIAGS_WDIAG_DELTA_RX_M, drxm );
+	wdiag_write( WRC_DIAGS_WDIAG_DELTA_RX_S, drxs );
+	wdiag_write( WRC_DIAGS_WDIAG_DELTA_TX_M, dtxm );
+	wdiag_write( WRC_DIAGS_WDIAG_DELTA_TX_S, dtxs );
+}

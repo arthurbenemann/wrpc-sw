@@ -535,6 +535,8 @@ int wrc_wr_diags(void)
 		wdiags_write_servo_state(wr_mode, servostate, ss->picos_mu,
 					 ss->delta_ms, asym, ss->offset,
 					 ss->cur_setpoint,ss->update_count, 0, 0); // fixme: add wdiags v2
+
+		wdiags_write_ptp_deltas( ss->delta_tx_m, ss->delta_rx_m, ss->delta_tx_s, ss->delta_rx_s );
 	}
 
 	/* auxiliar channels (if any) */
@@ -572,6 +574,7 @@ int wrc_wr_diags(void)
 	}
 
 
+	wdiags_write_bitslide( ep_get_bitslide(&wrc_endpoint_dev) );
 
 	/* temperature */
 	temp = wrc_temp_get("pcb");

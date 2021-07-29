@@ -105,6 +105,14 @@
 /* WRPC Diag: Servo restart count */
 #define WRC_DIAGS_WDIAG_SERVO_RESTART_COUNT 0x6cUL
 
+#define WRC_DIAGS_WDIAG_BITSLIDE 0x70UL
+
+#define WRC_DIAGS_WDIAG_DELTA_RX_M 0x74UL
+#define WRC_DIAGS_WDIAG_DELTA_RX_S 0x78UL
+#define WRC_DIAGS_WDIAG_DELTA_TX_M 0x7cUL
+#define WRC_DIAGS_WDIAG_DELTA_TX_S 0x80UL
+
+
 struct wrc_diags {
   /* [0x0]: REG (rw) Version register */
   uint32_t VER;
@@ -189,6 +197,8 @@ struct wrc_diags {
 
   /* [0x6c]: REG (ro) WRPC Diag: Servo restart count */
   uint32_t WDIAG_SERVO_RESTART_COUNT;
+
+  uint32_t WDIAG_BITSLIDE;
 };
 
 #endif /* __CHEBY__WRC_DIAGS__H__ */
