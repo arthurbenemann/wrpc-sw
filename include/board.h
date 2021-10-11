@@ -19,6 +19,8 @@
 
 #if defined(CONFIG_TARGET_GENERIC_PHY_8BIT) || defined(CONFIG_TARGET_GENERIC_PHY_16BIT)
 #  include "boards/generic/board.h"
+#elif defined(CONFIG_TARGET_SPEC_SILABS)
+#  include "boards/spec_silabs/board.h"
 #elif defined(CONFIG_TARGET_WR_SWITCH)
 #  include "boards/wr-switch/board.h"
 #elif defined(CONFIG_TARGET_AFCZ)

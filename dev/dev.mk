@@ -31,6 +31,7 @@ obj-$(CONFIG_EMBEDDED_NODE) += \
 	dev/fine_pulse_generator.o \
 	dev/netif.o \
 	dev/leds.o \
+	dev/si57x.o \
 	dev/wdiags.o
 
 obj-$(CONFIG_WR_NODE) += \

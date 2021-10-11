@@ -44,6 +44,9 @@ config TARGET_WR2RF_VME
 	help
 	  WR2RF-VME Board (v1)
 
+config TARGET_SPEC_SILABS
+	bool "SPEC Board with a silabs aux oscillator (TEST)"
+
 endchoice
 
 config WR_NODE
