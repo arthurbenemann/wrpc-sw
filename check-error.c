@@ -14,6 +14,8 @@
  */
 #include <stdio.h>
 
+#undef CONFIG_DISALLOW_LONG_DIVISION
+
 extern void __you_should_not_call_printf_from_wrpc_sw(void);
 extern void __you_should_not_divide_ll_in_wrpc_sw(void);
 extern void __please_call_pp_printf_not_mprintf(void);
