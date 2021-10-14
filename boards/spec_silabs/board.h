@@ -20,6 +20,7 @@
 #define BASE_UART	0x20500
 #define BASE_ONEWIRE	0x20600
 #define BASE_SI57X_INTERFACE	0x28000
+#define BASE_WDIAGS_PRIV	0x20900
 
 /* Board-specific parameters */
 #define TICS_PER_SECOND 1000
