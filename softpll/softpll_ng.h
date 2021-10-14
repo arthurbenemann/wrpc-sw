@@ -78,7 +78,7 @@ void spll_shutdown(void);
 void spll_get_num_channels(int *n_ref, int *n_out);
 
 /* Starts locking output channel (out_channel) */
-void spll_start_channel(int out_channel);
+int spll_start_channel(int out_channel);
 
 /* Stops locking output channel (out_channel) */
 void spll_stop_channel(int out_channel);

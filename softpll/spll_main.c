@@ -50,7 +50,7 @@ void mpll_init(struct spll_main_state *s, int id_ref,
 #endif
 	s->enabled = 0;
 
-	s->frequency_lock_threshold = 100;
+	s->frequency_lock_threshold = 1000;
 
 	/* Freqency branch lock detection */
 	s->ld.threshold = 1200;

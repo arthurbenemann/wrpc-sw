@@ -422,14 +422,14 @@ void spll_shutdown()
 	SPLL->EIC_IDR = 1;
 }
 
-void spll_start_channel(int channel)
+int spll_start_channel(int channel)
 {
 	struct softpll_state *s = (struct softpll_state *) &softpll;
 
 	if (s->seq_state != SEQ_READY || !channel) {
 		pll_verbose("Can't start channel %d, the PLL is not ready\n",
 			  channel);
-		return;
+		return -1;
 	}
 
 	struct spll_main_state *m = &s->aux[channel - 1].pll.dmtd;
@@ -437,8 +437,11 @@ void spll_start_channel(int channel)
 	m->div_cnt = 0;
 	m->div_ref = s->aux[channel - 1].div_ref;
 	m->div_fb = s->aux[channel - 1].div_fb;
-
+	
 	mpll_start(&s->aux[channel - 1].pll.dmtd);
+	m->frequency_lock_threshold = 100; // HACK: make this programmable (we need higher threshold for the main VCO than for the AUXes, esp. silabs)
+
+	return 0;
 }
 
 void spll_stop_channel(int channel)
@@ -568,9 +571,9 @@ void spll_show_stats()
 
 		pp_printf("softpll: AUX%d [ratio %d/%d = %d Hz]: ph %d seq %d en %d lock %d samples %d nref %d nout %d ERR=%d Y=%d\n", 
 				ch-1,
-				s->pll.dmtd.div_fb,
-				s->pll.dmtd.div_ref,
-				REF_CLOCK_FREQ_HZ * s->pll.dmtd.div_fb / s->pll.dmtd.div_ref,
+				s->div_fb,
+				s->div_ref,
+				REF_CLOCK_FREQ_HZ * s->div_fb / s->div_ref,
 				s->phase_value,
 				s->seq_state,
 				s->pll.dmtd.enabled,
@@ -638,8 +641,10 @@ static int spll_update_aux_clocks(void)
 					if( s->mode == SPLL_AUX_MODE_SLAVE )
 					{
 						pll_verbose("softpll: enabled slave aux channel %d\n", ch);
-						spll_start_channel(ch);
-						s->seq_state = AUX_LOCK_PLL;
+						if( !spll_start_channel(ch) )
+						{
+							s->seq_state = AUX_LOCK_PLL;
+						}
 						done_sth++;
 					}
 					else if ( s->mode == SPLL_AUX_MODE_PHASE_MONITOR )
