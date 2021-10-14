@@ -13,6 +13,8 @@ ALL   += wrpc-vuart
 ALL   += wr-streamers
 ALL   += wrpc-diags
 ALL   += gensdbfs
+ALL   += softpll-debug-dump
+
 
 ifneq ($(EB),no)
 ALL += eb-w1-write
@@ -62,6 +64,9 @@ wr-streamers: wr-streamers.c
 	$(CC) $(CFLAGS)  $^ $(LDFLAGS) -o $@
 
 wrpc-diags: wrpc-diags.c
+	$(CC) $(CFLAGS)  $^ $(LDFLAGS) -o $@
+
+softpll-debug-dump: softpll-debug-dump.c
 	$(CC) $(CFLAGS)  $^ $(LDFLAGS) -o $@
 
 wrpc-vuart: wrpc-vuart.c
