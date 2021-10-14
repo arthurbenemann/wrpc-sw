@@ -132,6 +132,7 @@ int spll_get_debug_queue_samples( uint32_t *buf, int size, int undersample );
 void spll_debug_queue_purge(void);
 
 void spll_set_aux_mode( int channel, int mode );
+void spll_set_aux_frequency_ratio( int channel, int div_ref, int div_fb );
 
 /*
  * Aux and main state:
@@ -142,6 +143,8 @@ void spll_set_aux_mode( int channel, int mode );
 struct spll_aux_state {
 	int mode; /* SPLL_AUX_MODE* */
 	int seq_state;
+	int div_ref;
+	int div_fb;
 	int32_t phase_value;
 	union {
 		struct spll_main_state dmtd;

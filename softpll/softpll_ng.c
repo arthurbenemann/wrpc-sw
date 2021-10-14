@@ -431,6 +431,13 @@ void spll_start_channel(int channel)
 			  channel);
 		return;
 	}
+
+	struct spll_main_state *m = &s->aux[channel - 1].pll.dmtd;
+
+	m->div_cnt = 0;
+	m->div_ref = s->aux[channel - 1].div_ref;
+	m->div_fb = s->aux[channel - 1].div_fb;
+
 	mpll_start(&s->aux[channel - 1].pll.dmtd);
 }
 
@@ -542,6 +549,8 @@ void spll_show_stats()
 	if (s->seq_state >= SEQ_STATES_NR)
 		statename = "<Unknown>";
 
+	pp_printf("softpll: n_ref %d n_out %d\n", spll_n_chan_ref, spll_n_chan_out);
+
 	if (softpll.mode > 0)
 		    pp_printf("softpll: irqs %d seq %s mode %d "
 		     "alignment_state %d HL%d ML%d HY=%d MY=%d DelCnt=%d setpoint:%d\n",
@@ -550,6 +559,29 @@ void spll_show_stats()
 			      s->helper.ld.locked, s->mpll.locked,
 			      s->helper.pi.y, s->mpll.pi.y,
 			      s->delock_count, s->mpll.phase_shift_current);
+
+	int ch;
+
+	for (ch = 1; ch < spll_n_chan_out; ch++)
+	{
+		struct spll_aux_state *s = (struct spll_aux_state *) &softpll.aux[ch - 1];
+
+		pp_printf("softpll: AUX%d [ratio %d/%d = %d Hz]: ph %d seq %d en %d lock %d samples %d nref %d nout %d ERR=%d Y=%d\n", 
+				ch-1,
+				s->pll.dmtd.div_fb,
+				s->pll.dmtd.div_ref,
+				REF_CLOCK_FREQ_HZ * s->pll.dmtd.div_fb / s->pll.dmtd.div_ref,
+				s->phase_value,
+				s->seq_state,
+				s->pll.dmtd.enabled,
+				s->pll.dmtd.locked,
+				s->pll.dmtd.sample_n,
+				s->pll.dmtd.n_ref,
+				s->pll.dmtd.n_out,
+				s->pll.dmtd.pi.x,
+				s->pll.dmtd.pi.y );
+
+	}
 }
 
 int spll_shifter_busy(int channel)
@@ -874,9 +906,9 @@ int spll_get_debug_queue_samples( uint32_t *buf, int count, int undersample )
 	{
 		uint32_t v = SPLL->DFR_HOST_R0;
 
-		int tag = (v & DBG_TAG_MASK) >> DBG_TAG_SHIFT;
+		uint32_t h = v >> 24;
 
-		if(pass || tag == DBG_EVENT)
+		if(pass || (h & DBG_EVENT) )
 		{
 			*buf++ = v;
 			n_ents ++;
@@ -903,6 +935,12 @@ int spll_get_debug_queue_samples( uint32_t *buf, int count, int undersample )
 void spll_set_aux_mode( int channel, int mode )
 {
 	softpll.aux[channel].mode = mode;
+}
+
+void spll_set_aux_frequency_ratio( int channel, int div_ref, int div_fb )
+{
+	softpll.aux[channel].div_fb = div_fb;
+	softpll.aux[channel].div_ref = div_ref;
 }
 
 int spll_pshifter_freeze(int freeze)
