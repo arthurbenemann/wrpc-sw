@@ -132,7 +132,7 @@ GIT_USR = $(shell whoami)@$(shell hostname)
 endif
 
 all: tools $(OUTPUT).elf $(arch-files-y)
-all: libertm
+#all: libertm
 
 .PRECIOUS: %.elf %.bin
 .PHONY: all tools clean gitmodules $(PPSI)/ppsi.o extest liblinux
