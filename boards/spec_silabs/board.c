@@ -8,6 +8,8 @@
 #include "dev/si57x.h"
 #include "storage.h"
 
+#include <softpll/softpll_ng.h>
+
 static struct wr_si57x_interface_device si57x;
 
 #define SI57X_I2C_ADDR 0x55
@@ -74,11 +76,17 @@ int wrc_board_early_init()
 	timer_delay_ms(10);
 
 	si57x_read( &si57x, 0, regs, 16 ); 
-
 	uint32_t f_xtal = 0;
 
 	si57x_get_xtal_frequency( &si57x, &f_xtal );
-	si57x_set_frequency( &si57x, f_xtal, 100000000 );
+
+	// set Si570 to 100 MHz, hw interface VCO gain = 3 (~20 ppm)
+	si57x_set_frequency( &si57x, f_xtal, 100000000, 3 );
+
+	spll_set_aux_mode( 0, SPLL_AUX_MODE_SLAVE );
+	spll_set_aux_frequency_ratio( 0, 5, 4); // 100 MHz / 4 = 125 MHz / 5
+
+	timer_delay_ms(100); // do we really need this?
 
 	return 0;
 }
