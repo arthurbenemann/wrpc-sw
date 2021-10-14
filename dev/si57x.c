@@ -178,7 +178,7 @@ void si57x_reset(struct wr_si57x_interface_device *dev )
 }
 
 
-int si57x_set_frequency( struct wr_si57x_interface_device *dev, uint32_t f_xtal, uint32_t freq_hz )
+int si57x_set_frequency( struct wr_si57x_interface_device *dev, uint32_t f_xtal, uint32_t freq_hz, int vco_gain )
 {
 	uint8_t regs[16];
 	uint64_t rfreq;
@@ -206,9 +206,11 @@ int si57x_set_frequency( struct wr_si57x_interface_device *dev, uint32_t f_xtal,
 
 	timer_delay_ms(10);
 
+	board_dbg("Si57x: VCO Gain=%d\n", vco_gain);
+
 	writel( (uint32_t) ( rfreq & 0xffffffffULL), dev->base_addr + SI570_REG_RFREQL );
 	writel( (uint32_t) ( rfreq >> 32) | (((n1-1) & 0xff) << 8) | (hsdiv << 16), dev->base_addr + SI570_REG_RFREQH );
-	writel( SI570_CR_ENABLE | SI570_CR_CLK_DIV_W(200) | SI570_CR_I2C_ADDR_W ( ( dev->i2c_addr << 1 ) ) | SI570_CR_GAIN_W(2), dev->base_addr + SI570_REG_CR );
+	writel( SI570_CR_ENABLE | SI570_CR_CLK_DIV_W(200) | SI570_CR_I2C_ADDR_W ( ( dev->i2c_addr << 1 ) ) | SI570_CR_GAIN_W(vco_gain), dev->base_addr + SI570_REG_CR );
 
 	si57x_read( dev, 135, &r135, 1 );
 	si57x_read( dev, 137, &r137, 1 );
