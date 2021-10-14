@@ -110,7 +110,7 @@ void ep_reset_phy(struct wr_endpoint_device* dev)
 	ep_pcs_write(dev, MDIO_REG_MCR, MDIO_MCR_PDOWN);	/* reset the PHY */
 	
 	pp_printf("Running long PHY reset...\n");
-	timer_delay_ms(10000);
+	timer_delay_ms(500);
 	pp_printf("PHY reset complete\n");
 	ep_pcs_write(dev, MDIO_REG_MCR, MDIO_MCR_RESET);	/* reset the PHY */
 	ep_pcs_write(dev, MDIO_REG_MCR, 0);	/* reset the PHY */
