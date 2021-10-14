@@ -25,13 +25,10 @@ integral/proportional gains on the response of the system.
 #define DBG_PERIOD 3
 #define DBG_SAMPLE_ID 6
 
-#define DBG_TAG_MASK 0xf0
-#define DBG_TAG_SHIFT 4
-
-#define DBG_EVENT 0x40
-#define DBG_HELPER 0x20		/* Sample source: Helper PLL */
-#define DBG_EXT 0x10		/* Sample source: External Reference PLL */
-#define DBG_MAIN 0x00		/* ...          : Main PLL */
+#define DBG_EVENT 	0x40
+#define DBG_HELPER 	(6 << 3)		/* Sample source: Helper PLL */
+#define DBG_EXT		(7 << 3)		/* Sample source: External Reference PLL */
+#define DBG_MAIN(ch) ((ch) << 3)		/* ...          : Main PLL (or aux)      */
 
 #define DBG_EVT_START 1			/* PLL has just started */
 #define DBG_EVT_LOCKED 2		/* PLL has just become locked */
