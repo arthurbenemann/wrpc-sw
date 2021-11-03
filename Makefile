@@ -9,6 +9,11 @@ endif
 
 export CROSS_COMPILE
 export CONFIG_ABSCAL
+export CONFIG_BROADCAST
+export CONFIG_MON_TO_DEBUG
+export CONFIG_PARENTWRMODEOFF
+export CONFIG_TRACK_PHASE_NOT_FOUND
+export CONFIG_WRPC_FAULTS
 
 CC =		$(CROSS_COMPILE)gcc
 LD =		$(CROSS_COMPILE)ld
@@ -128,8 +133,15 @@ endif
 OUTPUT-$(CONFIG_WR_SWITCH) = rt_cpu
 OUTPUT := $(OUTPUT-y)
 
-broadcast: CFLAGS += -DBROADCAST
-broadcast: all
+CFLAGS-$(CONFIG_MON_TO_DEBUG) += -DMON_TO_DEBUG
+CFLAGS-$(CONFIG_PARENTWRMODEOFF) += -DPARENTWRMODEOFF
+CFLAGS-$(CONFIG_TRACK_PHASE_NOT_FOUND) += -DTRACK_PHASE_NOT_FOUND
+CFLAGS-$(CONFIG_BROADCAST) += -DBROADCAST
+CFLAGS-$(CONFIG_WRPC_FAULTS) += -DCONFIG_WRPC_FAULTS
+CFLAGS += $(CFLAGS-y)
+
+#broadcast: CFLAGS += -DBROADCAST
+#broadcast: all
 
 GIT_VER = $(shell git describe --always --dirty | sed  's;^wr-switch-sw-;;')
 GIT_USR = $(shell git config --get-all user.name)
@@ -168,7 +180,8 @@ $(obj-ppsi): gitmodules
 	fi
 	$(MAKE) $(BC) -C $(PPSI) ppsi.o WRPCSW_ROOT=.. \
 		CROSS_COMPILE=$(CROSS_COMPILE) CONFIG_NO_PRINTF=y
-		USER_CFLAGS="$(PPSI_USER_CFLAGS)"
+		USER_CFLAGS="$(CFLAGS)"
+		#USER_CFLAGS="$(PPSI_USER_CFLAGS)"
 
 sdb-lib/libsdbfs.a:
 	$(MAKE) -C sdb-lib

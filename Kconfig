@@ -608,3 +608,32 @@ config PPSI
 	boolean
 	help
 	  Select this option for the ppsi engine (now only option)
+
+config BROADCAST
+  	depends on WR_NODE
+       	default n
+        boolean "Use broadcast mode"
+	help
+	  Use broadcast (KM3NeT mode)
+
+config MON_TO_DEBUG 
+  	depends on BROADCAST
+       	default n
+        boolean "Monitoring to debug"
+	help
+	  monitoring in broadcast mode
+
+config PARENTWRMODEOFF
+  	depends on BROADCAST
+       	default n
+        boolean "Disable parentWrModeOn check"
+
+config TRACK_PHASE_NOT_FOUND
+  	depends on BROADCAST
+       	default n
+        boolean "Reboot servo state if TRACKPHASE not found"
+
+config WRPC_FAULTS
+  	depends on WR_NODE
+       	default n
+        boolean "Applies a correction to the timestamps"

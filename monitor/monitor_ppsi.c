@@ -76,7 +76,9 @@ static int wrc_mon_status(void)
 	struct wr_servo_state *s =
 			&((struct wr_data *)ppi->ext_data)->servo_state;
 
-#ifdef BROADCAST            
+#ifdef MON_TO_DEBUG
+    cprintf(C_GREY, "\n\nFIRMWARE to TEST 3");
+
     cprintf(C_GREY, "\n\nListening_state: ");
     cprintf(C_BLUE, "%d", WR_DSPOR(ppi)->counter_listening_state);
     cprintf(C_GREY, "\nwr_link_on_state: ");
@@ -94,9 +96,9 @@ static int wrc_mon_status(void)
     cprintf(C_BLUE, "\nWR_SERVO: downlink: ");
     cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_update_downlink_servo);  
     cprintf(C_BLUE, "\ntimestamp: error++: ");
-    cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_downlink_timestamp_error);  
-    cprintf(C_BLUE, ": count>5: ");
     cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_downlink_timestamp_errorcount);   
+    cprintf(C_BLUE, ": count>5: ");
+    cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_downlink_timestamp_error);  
     cprintf(C_BLUE, ": no_converge: ");
     cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_ctr_no_converge);
     cprintf(C_BLUE, "\n\nSERVO_STATES: busy: ");
@@ -131,6 +133,9 @@ static int wrc_mon_status(void)
     cprintf(C_GREY, "%d", WR_DSPOR(ppi)->counter_before_timeout_check);
     cprintf(C_BLUE, ": ANN_RECIPT|TO_FAULT: ");
     cprintf(C_GREY, "%d", WR_DSPOR(ppi)->counter_PP_TO_ANN_RECEIPT);
+
+    cprintf(C_BLUE, "\n\next_specific: 0x");
+    cprintf(C_GREY, "%04x", WR_DSPOR(ppi)->mon_ext_specific);
 #endif
             
 	cprintf(C_BLUE, "\n\nPTP status: ");
@@ -193,8 +198,8 @@ int wrc_mon_gui(void)
 		cprintf(C_RED,   "Link down ");
 
 	minic_get_stats(&tx, &rx);
-	cprintf(C_GREY, "(RX: %d, TX: %d)", rx, tx);
-
+	// TMP KM3 cprintf(C_GREY, "(RX: %d, TX: %d)", rx, tx);
+        cprintf(C_GREY, "(RX %d, TX %d)", rx, tx);
 	if (!state.state) {
 		return 1;
 	}
@@ -251,9 +256,11 @@ int wrc_mon_gui(void)
 	if (wrc_mon_status() == 0)
 		return 1;
 
-	cprintf(C_GREY, "Servo state:               ");
+	// TMP KM3 cprintf(C_GREY, "Servo state:               ");
+	cprintf(C_GREY, "Servo state               ");
 	cprintf(C_WHITE, "%s\n", s->servo_state_name);
-	cprintf(C_GREY, "Phase tracking:            ");
+	// TMP KM3 cprintf(C_GREY, "Phase tracking:            ");
+	cprintf(C_GREY, "Phase tracking            ");
 	if (s->tracking_enabled)
 		cprintf(C_GREEN, "ON\n");
 	else
@@ -265,7 +272,8 @@ int wrc_mon_gui(void)
 	spll_get_num_channels(NULL, &n_out);
 
 	for(i = 0; i < n_out; i++) {
-		cprintf(C_GREY, "Aux clock %d status:        ", i);
+		// TMP KM3 cprintf(C_GREY, "Aux clock %d status:        ", i);
+		cprintf(C_GREY, "Aux clock %d status        ", i);
 
 		aux_stat = spll_get_aux_status(i);
 
@@ -277,7 +285,7 @@ int wrc_mon_gui(void)
 		pp_printf("\n");
 
 	}
-#ifdef BROADCAST
+#ifndef BROADCAST
 	/* If compiled with broadcast this information is meaninless, so don't show */
 	cprintf(C_BLUE, "\nTiming parameters:\n");
 
