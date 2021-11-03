@@ -72,9 +72,15 @@ char *format_time(uint64_t sec, int format)
 	switch(format) {
 	case TIME_FORMAT_LEGACY:
 	default:
+#ifdef BROADCAST
+                sprintf(buf, "%s, %s %d, %d, %02d,%02d,%02d", _days[t.tm_wday],
+                        _months[t.tm_mon], t.tm_mday, t.tm_year + YEAR0,
+                        t.tm_hour, t.tm_min, t.tm_sec);
+#else
 		sprintf(buf, "%s, %s %d, %d, %02d:%02d:%02d", _days[t.tm_wday],
 			_months[t.tm_mon], t.tm_mday, t.tm_year + YEAR0,
 			t.tm_hour, t.tm_min, t.tm_sec);
+#endif
 		break;
 	case TIME_FORMAT_SYSLOG:
 		sprintf(buf, "%s %2d %02d:%02d:%02d", _months[t.tm_mon],

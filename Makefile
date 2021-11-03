@@ -9,6 +9,9 @@ endif
 
 export CROSS_COMPILE
 export CONFIG_ABSCAL
+export CONFIG_BROADCAST
+export CONFIG_MON_TO_DEBUG
+export CONFIG_PARENTWRMODEOFF
 
 CC =		$(CROSS_COMPILE)gcc
 LD =		$(CROSS_COMPILE)ld
@@ -120,7 +123,7 @@ OBJS = $(obj-y)
 
 ifeq ($(MAKECMDGOALS), broadcast)
 	OUTPUT-$(CONFIG_WR_NODE) = wrc_broadcast
-	BC = broadcast
+	BC = broadcast 
 else
 	OUTPUT-$(CONFIG_WR_NODE)   = wrc
 endif
@@ -128,8 +131,14 @@ endif
 OUTPUT-$(CONFIG_WR_SWITCH) = rt_cpu
 OUTPUT := $(OUTPUT-y)
 
+CFLAGS-$(CONFIG_MON_TO_DEBUG) += -DCONFIG_MON_TO_DEBUG=1
+CFLAGS-$(CONFIG_BROADCAST) += -DCONFIG_BROADCAST
+CFLAGS-$(CONFIG_PARENTWRMODEOFF) += -DCONFIG_PARENTWRMODEOFF=1
+CFLAGS-$(CONFIG_T1_SELF_CORR) += -DCONFIG_T1_SELF_CORR
 broadcast: CFLAGS += -DBROADCAST
 broadcast: all
+#mon_to_debug: CFLAGS += -DMON_TO_DEBUG
+#mon_to_debug: all
 
 GIT_VER = $(shell git describe --always --dirty | sed  's;^wr-switch-sw-;;')
 GIT_USR = $(shell git config --get-all user.name)
