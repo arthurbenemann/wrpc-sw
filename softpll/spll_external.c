@@ -112,15 +112,15 @@ int external_align_fsm(volatile struct spll_external_state *s)
 #if defined(CONFIG_WR_SWITCH)
 			else if (ljd_present) {
 				uint32_t f_ext;
-				int ljd_ad9516_stat;
-				/* reset ljd ad9516 */
+				int ext_ad9516_stat;
+				/* reset ext ad9516 */
 				SPLL->ECCR |= SPLL_ECCR_EXT_REF_PLLRST;
 				timer_delay(10);
 				SPLL->ECCR &= (~SPLL_ECCR_EXT_REF_PLLRST);
 				timer_delay(10);
-				ljd_ad9516_stat = ljd_ad9516_init();
+				ext_ad9516_stat = ext_ad9516_init();
 				f_ext = spll_measure_frequency(SPLL_OSC_EXT);
-				if (!ljd_ad9516_stat && (f_ext > 9999000) && (f_ext < 10001000)) {
+				if (!ext_ad9516_stat && (f_ext > 9999000) && (f_ext < 10001000)) {
 					s->align_state = ALIGN_STATE_WAIT_PLOCK;
 					pp_printf("External AD9516 locked\n");
 				}

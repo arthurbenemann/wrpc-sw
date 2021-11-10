@@ -18,8 +18,10 @@
 #include <wrc.h>
 
 #include "board.h"
+#include "board-wrs.h"
 #include "syscon.h"
 #include "gpio-wrs.h"
+#include "ext-board.h"
 
 #include "rt_ipc.h"
 
@@ -68,6 +70,10 @@ struct ad9516_reg {
 #define SPI_CTRL_RXNEG		(1<<9)
 #define SPI_CTRL_GO_BSY		(1<<8)
 #define SPI_CTRL_CHAR_LEN(x)	((x) & 0x7f)
+
+#define GPIO_PLL_RESET_N 1
+#define GPIO_SYS_CLK_SEL 0
+#define GPIO_PERIPH_RESET_N 3
 
 #define CS_PLL	0 /* AD9516 on SPI CS0 */
 
@@ -215,8 +221,17 @@ static void ad9516_sync_outputs(void *spi_base)
 	ad9516_write_reg(spi_base, 0x232, 0x0);
 
 }
+int ext_ad9516_locked (void)
+{
+	//Checks register 1F in the firts position (0) if it is locked the value will be 1
+	if ((ad9516_read_reg((void *)BASE_SPI_EXT_BOARD,  0x1f) & 1))
+		return 1;
 
-int ad9516_init(int scb_version, int ljd_present)
+	return 0;
+}
+
+
+int ad9516_init(int scb_version)
 {
 	pp_printf("Initializing AD9516 PLL...\n");
 
@@ -240,47 +255,43 @@ int ad9516_init(int scb_version, int ljd_present)
 		pp_printf("Error: AD9516 PLL not responding.\n");
 		return -1;
 	}
-
-	if( scb_version >= 34)	//New SCB v3.4. 10MHz Output.
-		ad9516_load_regset(spi_base, ad9516_base_config_34, ARRAY_SIZE(ad9516_base_config_34), 0);
-	else 				//Old one
-		ad9516_load_regset(spi_base, ad9516_base_config_33, ARRAY_SIZE(ad9516_base_config_33), 0);
-
-	/* Set R divider value depending on Low-Jitter Daughterboard presence */
-	if (ljd_present)
-		ad9516_load_regset(spi_base, ad9516_ref_ljd, ARRAY_SIZE(ad9516_ref_tcxo), 1);
-	else
-		ad9516_load_regset(spi_base, ad9516_ref_tcxo, ARRAY_SIZE(ad9516_ref_tcxo), 1);
+	
+	/* Load Register configuration for the WRS-LJ main AD9516 */
+	ad9516_load_regset(spi_base, ad9516_base_config_34_20, ARRAY_SIZE(ad9516_base_config_34_20), 0);
+	
+	/* Set R divider value*/
+	ad9516_load_regset(spi_base, ad9516_ref_tcxo_20, ARRAY_SIZE(ad9516_ref_tcxo_20), 1);
 	ad9516_wait_lock(spi_base);
 
 	ad9516_sync_outputs(spi_base);
 
-	if( scb_version >= 34) {	//New SCB v3.4. 10MHz Output.
+	/*Set output dividers*/
+	ad9516_set_output_divider(spi_base, 0, 8, 0);
+	ad9516_set_output_divider(spi_base, 1, 8, 0);
 
-		ad9516_set_output_divider(spi_base, 2, 4, 0);  	// OUT2. 187.5 MHz. - not anymore
-		ad9516_set_output_divider(spi_base, 3, 4, 0);  	// OUT3. 187.5 MHz. - not anymore
+	ad9516_set_output_divider(spi_base, 2, 8, 0);
+	ad9516_set_output_divider(spi_base, 3, 8, 0);
 
-		ad9516_set_output_divider(spi_base, 4, 1, 0);  	// OUT4. 500 MHz.
+	ad9516_set_output_divider(spi_base, 4, 8, 0);
+	ad9516_set_output_divider(spi_base, 5, 8, 0);
 
-		/*The following PLL outputs have been configured through the ad9516_base_config_34 register,
+	ad9516_set_output_divider(spi_base, 6, 2, 0);
+	// ad9516_set_output_divider(spi_base, 7, 3, 0);
+
+	ad9516_set_output_divider(spi_base, 8, 20, 0);
+	ad9516_set_output_divider(spi_base, 9, 8, 0);
+	/*The following PLL outputs have been configured through the ad9516_base_config_34 register,
 		 * so it doesn't need to replicate the configuration:
 		 *
 		 * Output 6 => 62.5 MHz
 		 * Output 7	=> 62.5 MHz
-		 * Output 8	=> 10 MHz
-		 * Output 9	=> 10 MHz
+		 * Output 8	=> 25 MHz
+		 * Output 9	=> 62.5 MHz
 		 */
 
-	} else {	//Old one
-
-		ad9516_set_output_divider(spi_base, 9, 4, 0);  /* AUX/SWCore = 187.5 MHz */ //not needed anymore
-		ad9516_set_output_divider(spi_base, 7, 8, 0); /* REF = 62.5 MHz */
-		ad9516_set_output_divider(spi_base, 4, 8, 0);  /* GTX = 62.5 MHz */
-	}
-
 	ad9516_sync_outputs(spi_base);
-	ad9516_set_vco_divider(spi_base, 3);
-	
+	ad9516_set_vco_divider(spi_base, 3); 
+
 	pp_printf("AD9516 locked.\n");
 
 	gpio_out(GPIO_SYS_CLK_SEL, 1); /* switch the system clock to the PLL reference */
@@ -290,17 +301,24 @@ int ad9516_init(int scb_version, int ljd_present)
 	return 0;
 }
 
-int ljd_ad9516_init (void) {
- 	pp_printf("Initializing Low-Jitter Daughterboard AD9516 PLL...\n");
-	oc_spi_init((void *)BASE_SPI_LJD_BOARD);
-	void *spi_base = (void *)BASE_SPI_LJD_BOARD;
+int ext_ad9516_init (void) {
+ 	pp_printf("Initializing External AD9516 PLL...\n");
+	oc_spi_init((void *)BASE_SPI_EXT_BOARD);
+	void *spi_base = (void *)BASE_SPI_EXT_BOARD;
 
+	
+	/* reset the PLL */
+	gpio_out(GPIO_EXT_PLL_RESET_N, 0);
+	timer_delay(10);
+	gpio_out(GPIO_EXT_PLL_RESET_N, 1);
+	timer_delay(10);
+	
 	/* Use unidirectional SPI mode */
 	ad9516_write_reg((void *)spi_base, 0x000, 0x99);
 
 	/* Check the presence of the chip */
 	if (ad9516_read_reg((void *)spi_base, 0x3) != 0xc3) {
-		pp_printf("Error: Low-Jitter Daughterboard AD9516 PLL not responding.\n");
+		pp_printf("Error: External AD9516 PLL not responding.\n");
 		return -1;
 	}
 	ad9516_write_reg(spi_base, 0x018, 0x0); // reset VCO calibration
@@ -308,12 +326,13 @@ int ljd_ad9516_init (void) {
 	ad9516_write_reg(spi_base, 0x232, 0x1);
 	ad9516_write_reg(spi_base, 0x232, 0x0);
 	
-  	ad9516_set_vco_divider(spi_base, 3);
-	ad9516_load_regset(spi_base, ad9516_ljd_base_config, ARRAY_SIZE(ad9516_ljd_base_config), 1);
-	 
-	ad9516_set_output_divider(spi_base, 6, 8, 0);  	// OUT6. 62.5MHz
-	ad9516_set_output_divider(spi_base, 8, 20, 0);  // OUT6. 62.5MHz
+  	//ad9516_set_vco_divider(spi_base, 3);
+	ad9516_load_regset(spi_base, ad9516_ext_base_config, ARRAY_SIZE(ad9516_ext_base_config), 1);
 
+	ad9516_write_reg(spi_base, 0x018, 0x0); // reset VCO calibration
+	ad9516_write_reg(spi_base, 0x232, 0x0);
+	ad9516_write_reg(spi_base, 0x232, 0x1);
+	ad9516_write_reg(spi_base, 0x232, 0x0);
 	return 0;
 }
 

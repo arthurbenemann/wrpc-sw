@@ -14,9 +14,10 @@
 #include "revision.h"
 #include "system_checks.h"
 #include "gpio-wrs.h"
+#include "ext-board.h"
 
 
-int scb_ver = 33;		/* SCB version */
+int scb_ver = 35;		/* SCB version */
 
 extern struct spll_stats stats;
 
@@ -36,25 +37,32 @@ int main(void)
 	_endram = ENDRAM_MAGIC;
 	uart_init_hw();
 	pp_printf("\n");
-	pp_printf("WR Switch Real Time Subsystem (c) CERN 2011 - 2014\n");
+	pp_printf("WR Switch Real Time Subsystem (c) CERN 2011 - 2021\n");
 	pp_printf("Revision: %s, built: %s %s.\n",
 	      build_revision, build_date, build_time);
 	pp_printf("SCB version: %d. %s\n", scb_ver,(scb_ver>=34)?"10 MHz SMC Output.":"" );
 	pp_printf("Start counter %d\n", stats.start_cnt);
 	/* Low-jitter Daughterboard detection */
 	ljd_present = gpio_in(GPIO_LJD_BOARD_DETECT);
-	if (ljd_present) {
-		pp_printf("\n--- WRS Low jitter board detected. ---\n");
-		pp_printf("Allow 1 hour of warming up before starting measurements\n");
-	}
-	pp_printf("--\n");
+	
+	pp_printf("\n--- WRS Low jitter detected. ---\n");
+	pp_printf("Allow 1 hour of warming up before starting measurements\n");
 
-	if (stats.start_cnt > 1) {
-		pp_printf("!!spll does not work after restart!!\n");
-		/* for sure problem is in calling second time ad9516_init,
-		 * but not only */
-	}
-	ad9516_init(scb_ver, ljd_present);
+	gpio_out(GPIO_MAIN_VCO_ENABLE, 1);
+
+	 pp_printf("\n");
+	 pp_printf("WR Switch Real Time Subsystem (c) CERN 2011 - 2014\n");
+	 pp_printf("Low jitter version.\n");
+	 pp_printf("Revision: %s, built: %s %s.\n",
+	    build_revision, build_date, build_time);
+	 pp_printf("Start counter %d\n", stats.start_cnt);
+
+	 if (stats.start_cnt > 1) {
+	 	pp_printf("!!spll does not work after restart!!\n");
+	 	/* for sure problem is in calling second time ad9516_init,
+	 	 * but not only */
+	 }
+	ad9516_init(scb_ver);
 	rts_init();
 	rtipc_init();
 	spll_very_init();
