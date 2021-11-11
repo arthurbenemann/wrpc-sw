@@ -167,9 +167,3 @@ const struct ad9516_reg ad9516_ref_ljd[] = {
 };
 
 
-/* Config for 10 MHz reference from HO exp board (RDiv = 1, use REF2) */
-const struct ad9516_reg ad9516_ref_tcxo_ho[] = {
-{0x0011, 0x01},
-{0x0012, 0x00}, /* RDiv = 2 */
-{0x001C, 0x44}  /* Use REF2 */
-};
