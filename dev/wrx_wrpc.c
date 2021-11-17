@@ -144,6 +144,44 @@ int wrxExecute(void) {
     case WRX_COMMAND_SET_TUNEWORD:
         sfp_set_tune_word(cmd->params.tuneWord);
         break;
+    case WRX_COMMAND_GET_TSFPINFO:
+        {
+            tsfp_tuning_info_t tsfp_info;
+            if (tsfp_supported(&tsfp_info)) 
+            {
+                info->cmdreply.tsfpInfo.first_freq = tsfp_info.first_freq;
+                info->cmdreply.tsfpInfo.last_freq = tsfp_info.last_freq;
+                info->cmdreply.tsfpInfo.grid = tsfp_info.grid;
+                info->cmdreply.tsfpInfo.options = tsfp_info.options;
+            } else {
+                info->cmdreply.tsfpInfo.first_freq = 0;
+                info->cmdreply.tsfpInfo.last_freq = 0;
+                info->cmdreply.tsfpInfo.grid = 0;
+                info->cmdreply.tsfpInfo.options = 0;
+            }
+            info->cmdcode = WRX_COMMAND_GET_TUNEINFO;            
+        }
+        break;
+    case WRX_COMMAND_GET_TSFPSTATUS:
+        {
+            tsfp_tuning_status_t tsfp_status;
+            if (tsfp_get_status(&tsfp_status))
+            {
+                info->cmdreply.tsfpStatus.freq_err = tsfp_status.freq_err;
+                info->cmdreply.tsfpStatus.wl_err = tsfp_status.wl_err;
+                info->cmdreply.tsfpStatus.channel = tsfp_status.channel;
+                info->cmdreply.tsfpStatus.wavelength = tsfp_status.wavelength;
+                info->cmdreply.tsfpStatus.status = tsfp_status.status;
+            } else {
+                info->cmdreply.tsfpStatus.freq_err = 0;
+                info->cmdreply.tsfpStatus.wl_err = 0;
+                info->cmdreply.tsfpStatus.channel = 0;
+                info->cmdreply.tsfpStatus.wavelength = 0;
+                info->cmdreply.tsfpStatus.status = 0;
+            }
+            info->cmdcode = WRX_COMMAND_GET_TUNEINFO;            
+        }
+        break;
     case WRX_COMMAND_SET_THRESHOLD:
         //printf("Request to set threhsold index %d to %d\n",
             //cmd->params.threshold.index, cmd->params.threshold.value);

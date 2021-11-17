@@ -126,6 +126,14 @@ static void sfp_select_page(uint8_t page)
     sfp_i2c_mod_write(0xA2, 0x7F, &page, 1);
 }
 
+uint8_t sfp_a2_read_u8(uint8_t reg) 
+{
+    uint8_t data;
+    sfp_i2c_mod_read(0xA2, reg, &data, 1);
+    return data;
+}
+
+
 void sfp_a2_read_u16(uint8_t reg, uint16_t * value) {
     uint8_t data[2];
 
@@ -225,8 +233,6 @@ int sfp_read_part_id(char *part_id)
 }
 
 
-
-
 // ====================================================================
 // Extension for wavelength tuning
 // ====================================================================
@@ -250,39 +256,47 @@ static int _tuning_procedure = -1;
 
 int sfp_get_tuning_procedure(void)
 {
-  if (_tuning_procedure != -1) goto end;
- 
-#ifndef SFP_TUNING_SIMULATE
-  uint32_t oui;
-  
-  if  (sfp_read_oui(&oui) != 0)
-  {
-      goto end;
-  }
-  
-  switch (oui)
-  {
-  case OUI_OESOLTIONS:
-    _tuning_procedure = SFP_TUNING_PROC_OESOLUTIONS;
-    break;
-  case OUI_LUMENTUM:
-    _tuning_procedure = SFP_TUNING_PROC_LUMENTUM;
-    break;
-  case OUI_JDSU:
-    _tuning_procedure = SFP_TUNING_PROC_JDSU;
-    break;
-  default:
-    _tuning_procedure = SFP_TUNING_PROC_NONE;
-    break;
-  }
-#else
-  _tuning_procedure = SFP_TUNING_PROC_SIMULATION;
-#endif
-  
-end:
-  return _tuning_procedure;
-}
+    if (_tuning_procedure != -1)
+        goto end;
 
+#ifndef SFP_TUNING_SIMULATE
+    uint32_t oui;
+    tsfp_init();
+
+    if (tsfp_supported(NULL))
+    {
+        // old interface bw compatible tuning
+        _tuning_procedure = SFP_TUNING_PROC_TSFP;
+        goto end;
+    }
+
+    if (sfp_read_oui(&oui) != 0)
+    {
+        goto end;
+    }
+
+    switch (oui)
+    {
+    case OUI_OESOLTIONS:
+        _tuning_procedure = SFP_TUNING_PROC_OESOLUTIONS;
+        break;
+    case OUI_LUMENTUM:
+        _tuning_procedure = SFP_TUNING_PROC_LUMENTUM;
+        break;
+    case OUI_JDSU:
+        _tuning_procedure = SFP_TUNING_PROC_JDSU;
+        break;
+    default:
+        _tuning_procedure = SFP_TUNING_PROC_NONE;
+        break;
+    }
+#else
+    _tuning_procedure = SFP_TUNING_PROC_SIMULATION;
+#endif
+
+end:
+    return _tuning_procedure;
+}
 
 static void sfp_do_tune_word(int32_t * tw, bool write)
 {
@@ -348,6 +362,15 @@ static void sfp_do_tune_word(int32_t * tw, bool write)
             *tw = (tmp[1] << 8) | tmp[0];
         }
         break;
+    case SFP_TUNING_PROC_TSFP:
+        if (write) 
+        {
+            tsfp_tune_grid(*tw);
+        } else {
+            tsfp_tuning_status_t sts;
+            tsfp_get_status(&sts);
+            tw = sts.channel;
+        }
     default:
         if (!write) {
             *tw = 0x80000000;
@@ -369,4 +392,111 @@ void sfp_set_tune_word(int32_t tw)
 {
     // printf("Request to set %d as tuneword\n", tw);
     sfp_do_tune_word(&tw, true);
+}
+
+
+// ====================================================================
+// Extension for wavelength tuning using SFF8690
+// ====================================================================
+#define TSFP_OPTIONS_HI_ADDR            0x65
+#define TSFP_OPTIONS_HI_SUPPORTED       0x20
+
+#define TSFP_PAGE                       0x2
+#define TSFP_TDISC_ADDR                 128
+#define TSFP_LFF_ADDR                   134
+#define TSFP_LLF_ADDR                   138
+#define TSFP_LGRID_ADDR                 140
+#define TSFP_CHNO_SET                   144
+#define TSFP_WL_SET                     146
+#define TSFP_DITHERING_SET              151
+#define TSFP_DITHERING_SET_DISABLE      0x1
+#define TSFP_FREQ_ERROR                 152
+#define TSFP_WL_ERROR                   154
+#define TSFP_CUR_STATUS                 168
+#define TSFP_LATCH_STATUS               172
+
+static bool _tsfp_initialized = false;
+static bool _tsfp_supported = false;
+static tsfp_tuning_info_t _tune_info;
+
+void tsfp_init()
+{
+    if (_tsfp_initialized) return;
+    uint8_t t;
+    _tsfp_supported = false;
+    _tsfp_initialized = true;
+    if (sfp_read_a0_mid(TSFP_OPTIONS_HI_ADDR, 1, &t) < 0) return;
+    if (!(t & TSFP_OPTIONS_HI_SUPPORTED)) return;
+
+    sfp_select_page(TSFP_PAGE);
+
+    _tune_info.options = sfp_a2_read_u8(TSFP_TDISC_ADDR);
+    if (_tune_info.options & TSFP_OPTIONS_TUNABLE_BY_CHANNEL)
+    {
+        sfp_a2_read_u16(TSFP_LFF_ADDR, &_tune_info.first_freq);
+        sfp_a2_read_u16(TSFP_LLF_ADDR, &_tune_info.last_freq);
+        sfp_a2_read_u16(TSFP_LGRID_ADDR, &_tune_info.grid);
+    }
+    else 
+    {
+        _tune_info.first_freq = 0;
+        _tune_info.last_freq = 0;
+        _tune_info.grid = 0;
+    }
+    _tsfp_supported = true;
+}
+
+bool tsfp_supported(tsfp_tuning_info_t * info)
+{
+    if (!_tsfp_supported) return false;
+    if (info) *info = _tune_info;
+    return true;
+}
+
+bool tsfp_tune_grid(uint16_t chno)
+{
+    if (!_tsfp_supported) return false;
+    if (!(_tune_info.options & TSFP_OPTIONS_TUNABLE_BY_CHANNEL)) return false;
+    if (chno == 0) return false;
+    unsigned int max = 1 + (_tune_info.last_freq - _tune_info.first_freq) / (_tune_info.grid);
+    if (chno > max) return false;
+    sfp_select_page(TSFP_PAGE);
+    sfp_a2_write_u16(TSFP_CHNO_SET, chno);
+    return true;
+}
+
+bool tsfp_tune_wl(uint16_t wl)
+{
+    if (!_tsfp_supported) return false;
+    if (!(_tune_info.options & TSFP_OPTIONS_TUNABLE_BY_WAVELENGTH)) return false;
+    sfp_select_page(TSFP_PAGE);
+    sfp_a2_write_u16(TSFP_WL_SET, wl);
+    return true;
+}
+
+bool tsfp_disable_dithering(bool disable)
+{
+    if (!_tsfp_supported) return false;
+    if (!(_tune_info.options & TSFP_OPTIONS_TX_DITHER_SUPPORT)) return false;
+    sfp_select_page(TSFP_PAGE);
+    sfp_a2_write_u8(TSFP_DITHERING_SET, disable ? TSFP_DITHERING_SET_DISABLE : 0);
+    return true;
+}
+
+bool tsfp_get_status(tsfp_tuning_status_t * tune_status)
+{
+    if (!_tsfp_supported) return false;
+    tsfp_tuning_status_t s;
+
+    // cheapskate status
+    sfp_select_page(TSFP_PAGE);
+
+    s.status = sfp_a2_read_u8(TSFP_CUR_STATUS) | (sfp_a2_read_u8(TSFP_LATCH_STATUS) << 8);
+    s.status |= TSFP_DITHERING_SET_DISABLE & sfp_a2_read_u8(TSFP_DITHERING_SET);
+    sfp_a2_read_u16(TSFP_FREQ_ERROR, (uint16_t*)&s.freq_err);
+    sfp_a2_read_u16(TSFP_WL_ERROR, (uint16_t*)&s.wl_err);
+    sfp_a2_read_u16(TSFP_WL_SET, &s.wavelength);
+    sfp_a2_read_u16(TSFP_CHNO_SET, &s.channel);
+
+    *tune_status = s;
 }
