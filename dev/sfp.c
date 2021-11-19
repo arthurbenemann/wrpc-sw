@@ -399,8 +399,8 @@ void sfp_set_tune_word(int32_t tw)
 // Extension for wavelength tuning using SFF8690
 // ====================================================================
 #define TSFP_OPTIONS_HI_ADDR            0x65
-#define TSFP_OPTIONS_HI_SUPPORTED       0x20
-
+// bit 6 (0 based) is set to indicate tundable SFP
+#define TSFP_OPTIONS_HI_SUPPORTED       0x40
 #define TSFP_PAGE                       0x2
 #define TSFP_TDISC_ADDR                 128
 #define TSFP_LFF_ADDR                   134
@@ -426,6 +426,7 @@ void tsfp_init()
     _tsfp_supported = false;
     _tsfp_initialized = true;
     if (sfp_read_a0_mid(TSFP_OPTIONS_HI_ADDR, 1, &t) < 0) return;
+    pp_printf("TSFP options: %02x\n",t);
     if (!(t & TSFP_OPTIONS_HI_SUPPORTED)) return;
 
     sfp_select_page(TSFP_PAGE);
