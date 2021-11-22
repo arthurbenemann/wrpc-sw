@@ -102,14 +102,20 @@ void sfp_set_tune_word(int32_t tune_word);
 #define TSFP_OPTIONS_TUNABLE_BY_WAVELENGTH  0x1
 
 /**
- * @brief Generating tuning information stub.
+ * @brief Tuning infomration from SFF 8690 
+ * 
+ * Table 4-3:
+ * 
+ * first_freq = LFL1 x 1e4 + LFL2 (in 0.1 GHz)
+ * last_freq  = LFH1 x 1e4 + LFH2 (in 0.1 GHz)
+ * grid = LGrid
  * 
  */
 typedef struct 
 {
-    uint16_t    first_freq;     //!< First frequency in steps of 0.1 GHz
-    uint16_t    last_freq;      //!< Last frequency in steps of 0.1 GHz
-    uint16_t    grid;           //!< Grid spacing in steps of 0.1 GHz
+    uint32_t    first_freq;     //!< First frequency in steps of 0.1 GHz
+    uint32_t    last_freq;      //!< Last frequency in steps of 0.1 GHz
+    int16_t     grid;           //!< Grid spacing in steps of 0.1 GHz
     uint8_t     options;        //!< Options, mask of TSFP_OPTIONS_*
 } tsfp_tuning_info_t;
 

@@ -61,14 +61,15 @@ void wrxUpdate(int linkStatus)
     info->brdTemp     = temp >> 16;
     info->brdTempFrac = temp & 0xffff;
 
-    sfp_read_temp(&sfp_temp, &sfp_temp_frac);
+    //sfp_read_temp(&sfp_temp, &sfp_temp_frac);
+    
     info->sfpTemp     = sfp_temp;
     info->sfpTempFrac = sfp_temp_frac;
 
-    sfp_a2_read_u16(SFP_ADC_RX_POWER, &rx_input_power);
+    //sfp_a2_read_u16(SFP_ADC_RX_POWER, &rx_input_power);
     info->rxInputPower = rx_input_power;
 
-    sfp_a2_read_u16(SFP_ADC_TX_POWER, &tx_output_power);
+    //sfp_a2_read_u16(SFP_ADC_TX_POWER, &tx_output_power);
     info->txOutputPower = tx_output_power;
 
     // LINK_WENT_UP and LINK_UP are odd, LINK_WENT_DOWN and LINK_DOWN are even

@@ -19,6 +19,8 @@
 #include "sfp.h"
 #include "storage.h"
 
+#define DEBUG_I2C            
+
 /* Calibration data (from EEPROM if available) */
 int32_t sfp_alpha = 73622176; /* default values if could not read EEPROM */
 int32_t sfp_deltaTx = 0;
@@ -69,11 +71,11 @@ static void sfp_i2c_mod_write(uint8_t addr, uint8_t reg, uint8_t * data, uint8_t
     mi2c_put_byte(WRPC_SFP_I2C, addr);
     mi2c_put_byte(WRPC_SFP_I2C, reg);
 #ifdef DEBUG_I2C    
-    printf("Writing to %02x, reg=%02x:", addr, reg);
+    pp_printf("Writing to %02x, reg=%02x:", addr, reg);
 #endif
     while (len > 0) {
 #ifdef DEBUG_I2C    
-        printf(" %02x", *data);
+        pp_printf(" %02x", *data);
 #endif
         mi2c_put_byte(WRPC_SFP_I2C, *data);
         len--;
@@ -90,7 +92,7 @@ static void sfp_i2c_mod_write(uint8_t addr, uint8_t reg, uint8_t * data, uint8_t
 static void sfp_i2c_mod_read(uint8_t addr, uint8_t reg, uint8_t * data, uint8_t len)
 {
 #ifdef DEBUG_I2C    
-    printf("Reading from %02x, reg=%02x: ", addr, reg);
+    pp_printf("Reading from %02x, reg=%02x: ", addr, reg);
 #endif
   
     mi2c_start(WRPC_SFP_I2C);
@@ -106,7 +108,7 @@ static void sfp_i2c_mod_read(uint8_t addr, uint8_t reg, uint8_t * data, uint8_t 
         
         mi2c_get_byte(WRPC_SFP_I2C, data, len == 1);
 #ifdef DEBUG_I2C            
-        printf(" %02x", *data);
+        pp_printf(" %02x", *data);
 #endif        
         len--;
         data++;
@@ -174,6 +176,10 @@ void sfp_read_temp(uint8_t * sfp_temp, uint8_t * sfp_temp_frac) {
 
 static int sfp_read_chksum(int start, int end, int offset, int len, uint8_t *values)
 {
+#ifdef DEBUG_I2C    
+    pp_printf("Reading from 0xA0, from area %d to %d, with offset %d and len %d: ", start, end, offset, len);
+#endif
+
 	int i;
 	uint8_t data, sum;
 	mi2c_init(WRPC_SFP_I2C);
@@ -192,12 +198,21 @@ static int sfp_read_chksum(int start, int end, int offset, int len, uint8_t *val
 	mi2c_put_byte(WRPC_SFP_I2C, 0xA1);
 	for (i = start + 1; i < end; ++i) {
 		mi2c_get_byte(WRPC_SFP_I2C, &data, 0);
+#ifdef DEBUG_I2C            
+        pp_printf(" %02x", data);
+#endif        
+
 		sum = (uint8_t) ((uint16_t) sum + data) & 0xff;
 		if (i >= offset && i < offset + len)	//Part Number
 			values[i - offset] = data;
 	}
 	mi2c_get_byte(WRPC_SFP_I2C, &data, 1);	//final word, checksum
 	mi2c_stop(WRPC_SFP_I2C);
+
+#ifdef DEBUG_I2C        
+    pp_printf(", done (sum=%d, data=%d)!\n", sum, data);
+#endif
+
 
 	if (sum == data)
 		return 0;
@@ -398,13 +413,15 @@ void sfp_set_tune_word(int32_t tw)
 // ====================================================================
 // Extension for wavelength tuning using SFF8690
 // ====================================================================
-#define TSFP_OPTIONS_HI_ADDR            0x65
+#define TSFP_OPTIONS_HI_ADDR            65
 // bit 6 (0 based) is set to indicate tundable SFP
 #define TSFP_OPTIONS_HI_SUPPORTED       0x40
 #define TSFP_PAGE                       0x2
 #define TSFP_TDISC_ADDR                 128
-#define TSFP_LFF_ADDR                   134
-#define TSFP_LLF_ADDR                   138
+#define TSFP_LFL1_ADDR                  132
+#define TSFP_LFL2_ADDR                  134
+#define TSFP_LFH1_ADDR                  136
+#define TSFP_LFH2_ADDR                  138
 #define TSFP_LGRID_ADDR                 140
 #define TSFP_CHNO_SET                   144
 #define TSFP_WL_SET                     146
@@ -434,9 +451,16 @@ void tsfp_init()
     _tune_info.options = sfp_a2_read_u8(TSFP_TDISC_ADDR);
     if (_tune_info.options & TSFP_OPTIONS_TUNABLE_BY_CHANNEL)
     {
-        sfp_a2_read_u16(TSFP_LFF_ADDR, &_tune_info.first_freq);
-        sfp_a2_read_u16(TSFP_LLF_ADDR, &_tune_info.last_freq);
-        sfp_a2_read_u16(TSFP_LGRID_ADDR, &_tune_info.grid);
+        uint16_t t;
+        sfp_a2_read_u16(TSFP_LFL1_ADDR, &t);
+        _tune_info.first_freq = t * 10000;
+        sfp_a2_read_u16(TSFP_LFL2_ADDR, &t);
+        _tune_info.first_freq += t;
+        sfp_a2_read_u16(TSFP_LFH1_ADDR, &t);
+        _tune_info.last_freq = t * 10000;
+        sfp_a2_read_u16(TSFP_LFH2_ADDR, &t);
+        _tune_info.last_freq += t;
+        sfp_a2_read_u16(TSFP_LGRID_ADDR, (uint16_t*)&_tune_info.grid);
     }
     else 
     {
