@@ -159,7 +159,7 @@ int wrxExecute(void) {
                 info->cmdreply.tsfpInfo.grid = 0;
                 info->cmdreply.tsfpInfo.options = 0;
             }
-            info->cmdcode = WRX_COMMAND_GET_TUNEINFO;            
+            info->cmdcode = WRX_COMMAND_GET_TSFPINFO;
         }
         break;
     case WRX_COMMAND_GET_TSFPSTATUS:
@@ -179,7 +179,7 @@ int wrxExecute(void) {
                 info->cmdreply.tsfpStatus.wavelength = 0;
                 info->cmdreply.tsfpStatus.status = 0;
             }
-            info->cmdcode = WRX_COMMAND_GET_TUNEINFO;            
+            info->cmdcode = WRX_COMMAND_GET_TSFPSTATUS;
         }
         break;
     case WRX_COMMAND_SET_THRESHOLD:
