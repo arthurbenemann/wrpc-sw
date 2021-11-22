@@ -123,7 +123,7 @@ typedef struct
  * @brief Initializes the tsfp. Call this before any other tsfp_* function,
  * including tsfp_supported.
  */
-void tsfp_init();
+void tsfp_init(void);
 
 /**
  * @brief   Returns whether or not this transceiver supportsa the SFF8690 tunable SFP standard. 

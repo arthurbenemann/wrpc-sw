@@ -19,7 +19,7 @@
 #include "sfp.h"
 #include "storage.h"
 
-#define DEBUG_I2C            
+// #define DEBUG_I2C            
 
 /* Calibration data (from EEPROM if available) */
 int32_t sfp_alpha = 73622176; /* default values if could not read EEPROM */
@@ -161,6 +161,11 @@ void sfp_a2_write_u16(uint8_t reg, uint16_t value) {
     
     sfp_i2c_mod_write(0xA2, reg, data, 2);
     
+}
+
+
+static void sfp_a2_write_u8(uint8_t reg, uint8_t value) {
+    sfp_i2c_mod_write(0xA2, reg, &value, 1);
 }
 
 
@@ -383,9 +388,13 @@ static void sfp_do_tune_word(int32_t * tw, bool write)
             tsfp_tune_grid(*tw);
         } else {
             tsfp_tuning_status_t sts;
-            tsfp_get_status(&sts);
-            tw = sts.channel;
+            if(tsfp_get_status(&sts)) {
+                *tw = (int32_t)sts.channel;
+            } else {
+                *tw = 0;
+            }
         }
+        break;
     default:
         if (!write) {
             *tw = 0x80000000;
@@ -436,7 +445,7 @@ static bool _tsfp_initialized = false;
 static bool _tsfp_supported = false;
 static tsfp_tuning_info_t _tune_info;
 
-void tsfp_init()
+void tsfp_init(void)
 {
     if (_tsfp_initialized) return;
     uint8_t t;
@@ -487,6 +496,8 @@ bool tsfp_tune_grid(uint16_t chno)
     if (chno > max) return false;
     sfp_select_page(TSFP_PAGE);
     sfp_a2_write_u16(TSFP_CHNO_SET, chno);
+    sfp_a2_read_u16(TSFP_CHNO_SET, &chno);
+
     return true;
 }
 
@@ -522,6 +533,6 @@ bool tsfp_get_status(tsfp_tuning_status_t * tune_status)
     sfp_a2_read_u16(TSFP_WL_ERROR, (uint16_t*)&s.wl_err);
     sfp_a2_read_u16(TSFP_WL_SET, &s.wavelength);
     sfp_a2_read_u16(TSFP_CHNO_SET, &s.channel);
-
     *tune_status = s;
+    return true;
 }
