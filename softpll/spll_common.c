@@ -17,6 +17,10 @@
 int pi_update(spll_pi_t *pi, int x)
 {
 	int i_new, y;
+
+	if(x > ( (1 << TAG_BITS) - 100000 ) ){
+		x -= (1 <<TAG_BITS);
+	} 
 	pi->x = x;
 	i_new = pi->integrator + x;
 

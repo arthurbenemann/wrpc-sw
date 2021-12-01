@@ -10,12 +10,7 @@
 
 #include "board.h"
 
-#define GPIO_SYS_CLK_SEL	0
-#define GPIO_PLL_RESET_N	1
-#define GPIO_PERIPH_RESET_N	3
-#define GPIO_LJD_BOARD_DETECT	4
 
-extern int ljd_present;
 
 struct GPIO_WB
 {

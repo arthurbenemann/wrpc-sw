@@ -150,7 +150,6 @@ struct spll_fifo_log {
 };
 #define FIFO_LOG_LEN 16
 
-extern int ljd_present;
 
 #endif // __SOFTPLL_NG_H
 

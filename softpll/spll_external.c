@@ -13,6 +13,8 @@
 #include <wrc.h>
 #include "softpll_ng.h"
 #include "irq.h"
+#include "gpio-wrs.h"
+#include "ext-board.h"
 
 #define ALIGN_SAMPLE_PERIOD 100000
 #define ALIGN_TARGET 0
@@ -20,17 +22,13 @@
 #define EXT_PERIOD_NS 100
 #define EXT_FREQ_HZ 10000000
 // fixme: make configurable
-#define EXT_PPS_LATENCY_PS 30000	// for regular ext channel
-#define EXT_PPS_LATENCY_LJD_PS 63000	// for low-jitter daughterboard
+#define EXT_PPS_LATENCY_PS 16000
 
 
 void external_init(volatile struct spll_external_state *s, int ext_ref,
 			  int realign_clocks)
 {
     int idx = spll_n_chan_ref + spll_n_chan_out;
-
-    if (ljd_present)
-      idx++;
 
     helper_init(s->helper, idx);
     mpll_init(s->main, idx, spll_n_chan_ref);
@@ -89,7 +87,7 @@ static int align_sample(int channel, int *v)
 static inline int get_pps_latency(int sel)
 {
 	if (sel)
-		return EXT_PPS_LATENCY_LJD_PS;
+		return EXT_PPS_LATENCY_PS;
 	else
 		return EXT_PPS_LATENCY_PS;
 }
@@ -98,42 +96,47 @@ int external_align_fsm(volatile struct spll_external_state *s)
 {
 	int v, done_sth = 0;
 	static int timeout;
+	uint32_t f_ext = 0;
+	uint32_t f_vco = 0;
 
 	switch(s->align_state) {
 		case ALIGN_STATE_EXT_OFF:
 			break;
 
 		case ALIGN_STATE_WAIT_CLKIN:
-			if(!ljd_present && !(SPLL->ECCR & SPLL_ECCR_EXT_REF_STOPPED) ) {
+			if(!(SPLL->ECCR & SPLL_ECCR_EXT_REF_STOPPED)) {
 				SPLL->ECCR |= SPLL_ECCR_EXT_REF_PLLRST;
 				s->align_state = ALIGN_STATE_WAIT_PLOCK;
 				done_sth++;
 			}
-#if defined(CONFIG_WR_SWITCH)
-			uint32_t f_ext;
-			int ext_ad9516_stat;
-			/* reset ext ad9516 */
-			SPLL->ECCR |= SPLL_ECCR_EXT_REF_PLLRST;
-			timer_delay(10);
-			SPLL->ECCR &= (~SPLL_ECCR_EXT_REF_PLLRST);
-			timer_delay(10);
-			ext_ad9516_stat = ext_ad9516_init();
+
 			f_ext = spll_measure_frequency(SPLL_OSC_EXT);
-			pp_printf("\nFrequency %i\n",f_ext);
-			if (!ext_ad9516_stat && (f_ext > 9999000) && (f_ext < 10001000)) {
-				s->align_state = ALIGN_STATE_WAIT_PLOCK;
-				pp_printf("External AD9516 locked\n");
+			pp_printf("Meas ext freq: %d\n",f_ext);
+			f_vco = spll_measure_frequency(SPLL_OSC_REF);
+			pp_printf("Meas vco freq: %d\n",f_vco);
+
+			if ((f_ext > 9999000) && (f_ext < 10001000))
+			{
+				if (!ext_ad9516_init()) {
+					s->align_state = ALIGN_STATE_WAIT_PLOCK;
+					pp_printf("External AD9516 programmed\n");
+				}else{
+					pp_printf("Something went wrong programming the GM PLL\n");
+				}
 			}
-#endif
+			
 			break;
 
 		case ALIGN_STATE_WAIT_PLOCK:
 			SPLL->ECCR &= (~SPLL_ECCR_EXT_REF_PLLRST);
 			if(SPLL->ECCR & SPLL_ECCR_EXT_REF_STOPPED )
 				s->align_state = ALIGN_STATE_WAIT_CLKIN;
-			else if(SPLL->ECCR & SPLL_ECCR_EXT_REF_LOCKED)
-				s->align_state = ALIGN_STATE_START;
-			done_sth++;
+			else if(ext_ad9516_locked())
+				{
+					pp_printf("External AD9516 locked.\n");	
+					s->align_state = ALIGN_STATE_START;
+				}
+				done_sth++;
 			break;
 
 		case ALIGN_STATE_START:
@@ -205,8 +208,8 @@ int external_align_fsm(volatile struct spll_external_state *s)
 					s->align_shift += s->align_step;
 					mpll_set_phase_shift(s->main, s->align_shift);
 				} else if (v == s->align_target) {
-					s->align_shift += get_pps_latency(ljd_present);
-					mpll_set_phase_shift(s->main, s->align_shift);
+					s->align_shift += EXT_PPS_LATENCY_PS;
+				mpll_set_phase_shift(s->main, s->align_shift);
 					s->align_state = ALIGN_STATE_COMPENSATE_DELAY;
 				}
 				done_sth++;

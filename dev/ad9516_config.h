@@ -159,11 +159,3 @@ const struct ad9516_reg ad9516_ref_ext[] = {
 {0x001C, 0x46}  /* Use REF1 */
 };
 
-/* Config for Low-Jitter Daughterboard */
-const struct ad9516_reg ad9516_ref_ljd[] = {
-{0x0011, 0x02},
-{0x0012, 0x00}, /* RDiv = 4 */
-{0x001C, 0x46}  /* Use REF1 */
-};
-
-

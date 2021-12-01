@@ -239,6 +239,9 @@ int ad9516_init(int scb_version)
 	
 	void *spi_base = (void *)BASE_SPI;
 
+	gpio_out(GPIO_EXT_PLL_RESET_N, 0);
+	timer_delay(10);
+
 	gpio_out(GPIO_SYS_CLK_SEL, 0); /* switch to the standby reference clock, since the PLL is off after reset */
 
 	/* reset the PLL */
