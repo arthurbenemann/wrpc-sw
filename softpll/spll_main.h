@@ -13,6 +13,8 @@
 #ifndef __SPLL_MAIN_H
 #define __SPLL_MAIN_H
 
+#include "spll_common.h"
+
 /* State of the Main PLL */
 /* NOTE: Please increment WRPC_SHMEM_VERSION if you change this structure */
 struct spll_main_state {

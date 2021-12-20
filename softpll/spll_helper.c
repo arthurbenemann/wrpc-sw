@@ -11,6 +11,13 @@
 
 #include "softpll_ng.h"
 
+const int helper_precomp_coefs [] = 
+{ /*b0*/ 60648,
+  /*b1*/ 60648,
+  /*b2*/ 0,
+  /*a1*/ 55760,
+  /*a2*/ 0};
+   
 void helper_init(struct spll_helper_state *s, int ref_channel)
 {
 
@@ -21,8 +28,8 @@ void helper_init(struct spll_helper_state *s, int ref_channel)
 	s->pi.kp = -150;//(int)(0.3 * 32.0 * 16.0);	// / 2;
 	s->pi.ki = -2;//(int)(0.03 * 32.0 * 3.0);	// / 2;
 #else
-	s->pi.kp = 150;
-	s->pi.ki = 2;
+	s->pi.kp = 150; // default 150;
+	s->pi.ki = 2; // default 2
 #endif
 	s->pi.anti_windup = 1;
 
@@ -100,6 +107,8 @@ void helper_start(struct spll_helper_state *s)
 
 	pi_init((spll_pi_t *)&s->pi);
 	ld_init((spll_lock_det_t *)&s->ld);
+
+	biquad_init(&s->precomp, helper_precomp_coefs, 16);
 
 	spll_enable_tagger(s->ref_src, 1);
 	spll_debug(DBG_EVENT | DBG_HELPER, DBG_EVT_START, 1);

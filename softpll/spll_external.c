@@ -146,9 +146,9 @@ int external_align_fsm(volatile struct spll_external_state *s)
 				enable_irq();
 				s->align_state = ALIGN_STATE_START_MAIN;
 				done_sth++;
-			} else if (time_after(timer_get_tics(), timeout + 5*TICS_PER_SECOND)) {
-				pll_verbose("EXT: timeout, restarting\n");
-				s->align_state = ALIGN_STATE_WAIT_CLKIN;
+			//} else if (time_after(timer_get_tics(), timeout + 5*TICS_PER_SECOND)) {
+			//	pll_verbose("EXT: timeout, restarting\n");
+			//	s->align_state = ALIGN_STATE_WAIT_CLKIN;
 			}
 			break;
 
@@ -156,14 +156,14 @@ int external_align_fsm(volatile struct spll_external_state *s)
 			SPLL->AL_CR = 2;
 			if(s->helper->ld.locked && s->main->ld.locked) {
 				PPSG->CR = PPSG_CR_CNT_EN | PPSG_CR_PWIDTH_W(10);
-				PPSG->ADJ_NSEC = 3;
+				PPSG->ADJ_NSEC = 5;
 				PPSG->ESCR = PPSG_ESCR_SYNC;
 				s->align_state = ALIGN_STATE_INIT_CSYNC;
 				pll_verbose("EXT: DMTD locked.\n");
 				done_sth++;
-			} else if (time_after(timer_get_tics(), timeout + 5*TICS_PER_SECOND)) {
-				pll_verbose("EXT: timeout, restarting\n");
-				s->align_state = ALIGN_STATE_WAIT_CLKIN;
+			//} else if (time_after(timer_get_tics(), timeout + 5*TICS_PER_SECOND)) {
+			//	pll_verbose("EXT: timeout, restarting\n");
+			//	s->align_state = ALIGN_STATE_WAIT_CLKIN;
 			}
 			break;
 
@@ -188,10 +188,10 @@ int external_align_fsm(volatile struct spll_external_state *s)
 			if(align_sample(1, &v)) {
 				v %= ALIGN_SAMPLE_PERIOD;
 				if(v == 0 || v >= ALIGN_SAMPLE_PERIOD / 2) {
-					s->align_target = EXT_PERIOD_NS;
+					s->align_target = 0;
 					s->align_step = -100;
 				} else if (s > 0) {
-					s->align_target = 0;
+					s->align_target = ALIGN_SAMPLE_PERIOD-EXT_PERIOD_NS;
 					s->align_step = 100;
 				}
 
