@@ -86,7 +86,7 @@ static void sighandler(int sig)
 	 * This will not work for gcc v10+
 	 */
 #if defined(__GNUC__)
-	#if defined(__GNUC__) && (__GNUC___ > 10 || (__GNUC__ == 10 && __GNUC_MINOR__ >= 0))
+	#if defined(__GNUC__) && (__GNUC__ > 10 || (__GNUC__ == 10 && __GNUC_MINOR__ >= 0))
 		printf("\nEXIT: Signal %s received\n", strsignal(sig));
 	#else
 		printf("\nEXIT: Signal %s received\n", sys_siglist[sig]);
