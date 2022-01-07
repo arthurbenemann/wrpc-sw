@@ -608,3 +608,10 @@ config PPSI
 	boolean
 	help
 	  Select this option for the ppsi engine (now only option)
+
+config BROADCAST
+  	bool "Use KM3NeT Broadcast mode"
+	depends on WR_NODE
+    default n
+	help
+	  Compile with KM3NeT specific broadcast mode (breaks 'standard' WR mode!)
