@@ -52,6 +52,7 @@ cflags-$(CONFIG_PPSI) += \
 	-I$(PPSI)/proto-ext-whiterabbit \
 	-Iboards/spec
 
+
 # in order to build tools/wrpc-dump, we need these flags, even for wrs builds
 cflags-y += \
 	-I$(PPSI)/arch-wrpc/include \
@@ -65,6 +66,9 @@ obj-$(CONFIG_PPSI) += $(obj-ppsi)
 obj-$(CONFIG_EMBEDDED_NODE) += \
 	monitor/monitor_ppsi.o \
 	lib/ppsi-wrappers.o
+
+# KM3NeT specific broadcast mdoe
+cflags-$(CONFIG_BROADCAST) += -DBROADCAST
 
 cflags-$(CONFIG_LM32) += -mmultiply-enabled -mbarrel-shift-enabled
 ldflags-$(CONFIG_LM32) = -mmultiply-enabled -mbarrel-shift-enabled \
@@ -118,18 +122,11 @@ WRC-O-FLAGS-$(CONFIG_LM32) = --gc-sections -e _start
 
 OBJS = $(obj-y)
 
-ifeq ($(MAKECMDGOALS), broadcast)
-	OUTPUT-$(CONFIG_WR_NODE) = wrc_broadcast
-	BC = broadcast
-else
-	OUTPUT-$(CONFIG_WR_NODE)   = wrc
-endif
+OUTPUT-$(CONFIG_WR_NODE) = wrc
 
 OUTPUT-$(CONFIG_WR_SWITCH) = rt_cpu
 OUTPUT := $(OUTPUT-y)
 
-broadcast: CFLAGS += -DBROADCAST
-broadcast: all
 
 GIT_VER = $(shell git describe --always --dirty | sed  's;^wr-switch-sw-;;')
 GIT_USR = $(shell git config --get-all user.name)
