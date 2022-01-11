@@ -34,7 +34,8 @@
 #define BASE_AUXWB            (DEV_BASE + 0x8000)
 
 /* SPEC7 WB bus behind wr-cores Aux WB bus */
-#define BASE_GPIO            (BASE_AUXWB + 0x000)
+#define BASE_GPIO              (BASE_AUXWB + 0x000)
+#define BASE_SIT5359_INTERFACE (BASE_AUXWB + 0x080)
 
 /* Board-specific parameters */
 #define TICS_PER_SECOND 1000
@@ -110,6 +111,7 @@ void board_pre_pll_lock(int pll_wr_mode);
 int  pll_sync(void);
 int  spec7_init(void);
 
+/*
 struct spec7_board
 {
     struct gpio_device gpio_aux;
@@ -120,6 +122,7 @@ struct spec7_board
 
     int pll_wr_mode;
 };
+*/
 
 void sdb_find_devices(void);
 void sdb_print_devices(void);
