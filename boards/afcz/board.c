@@ -468,7 +468,7 @@ static int measure_vcxo_freq( int cm_channel, int cm_ref, int gate_freq, int n_s
 	int f_min = 0, f_max = 0;
 	int tune_min = 3000;
 	int tune_max = 65535;
-	int tune_step = 1; //(tune_max-tune_min) / n_steps;
+	int tune_step = (tune_max-tune_min) / n_steps;
 
 	wb_cm_configure( &board.clk_mon, cm_ref, 5, gate_freq );
 	wb_cm_set_ref_frequency( &board.clk_mon, CPU_CLOCK );
@@ -539,10 +539,14 @@ int afcz_check_clocks()
 	//check_vco_freq( AFCZ_CM_CHANNEL_CLK_REF,  AFCZ_CM_CHANNEL_CLK_RX, set_main_dac );
 
     board_dbg("Check REF VCXO (Si570)\n");
-    measure_vcxo_freq( AFCZ_CM_CHANNEL_CLK_REF, AFCZ_CM_CHANNEL_CLK_RX, 10000000, 10, 62500000, set_main_dac, NULL, NULL );
+	set_dmtd_dac(32768);
+    timer_delay_ms(10);
+	measure_vcxo_freq( AFCZ_CM_CHANNEL_CLK_REF, AFCZ_CM_CHANNEL_CLK_DMTD, 10000000, 4, 62500000, set_main_dac, NULL, NULL );
 
 	board_dbg("Check DMTD VCXO\n");
-    measure_vcxo_freq( AFCZ_CM_CHANNEL_CLK_DMTD, AFCZ_CM_CHANNEL_CLK_RX, 100000, 10, 62500000, set_dmtd_dac, NULL, NULL );
+	set_main_dac(32768);
+	timer_delay_ms(10);
+    measure_vcxo_freq( AFCZ_CM_CHANNEL_CLK_DMTD, AFCZ_CM_CHANNEL_CLK_REF, 100000, 4, 62500000, set_dmtd_dac, NULL, NULL );
 
 	return 0;
 }
@@ -614,8 +618,8 @@ static void sfp_setup(void)
 
 }
 
-
-static void afcz_read_persistent_mac(void)
+#if 0
+static void afczv1_read_persistent_mac(void)
 {
 	uint8_t mac_addr[6];
 
@@ -651,6 +655,55 @@ static void afcz_read_persistent_mac(void)
 		mac_addr[4], mac_addr[5]);
 	ep_set_mac_addr( &board.ep_btrain, mac_addr );
 }
+#endif
+
+static void afczv2_read_dna_mac( uint8_t *mac )
+{
+	uint32_t id, ver, nrw, nro;
+	uint32_t sn;
+	uint32_t dna[3];
+	diag_read_info(&id, &ver, &nrw, &nro );
+	board_dbg("diags: id %d ver %d nrw %d nro %d\n", id, ver, nrw, nro );
+	diag_read_word(nro - 4, DIAG_RO_BANK, &dna[0] );
+	diag_read_word(nro - 3, DIAG_RO_BANK, &dna[1] );
+	diag_read_word(nro - 2, DIAG_RO_BANK, &dna[2] );
+	diag_read_word(nro - 1, DIAG_RO_BANK, &sn );
+
+	board_dbg("S/N %x DNA %08x %08x %08x\n", sn, dna[0], dna[1], dna[2] );
+
+	// well, we can't do anything else than generate this crap from the device's DNA. The serial numbers
+	// provided by the MMC don't appear to be really UNIQUE...
+	uint32_t seed = dna[0] ^ dna[1] ^ dna[2];
+	mac[0] = 0x22;
+	mac[1] = 0x33;
+	mac[2] = (seed >> 24) & 0xff;
+	mac[3] = (seed >> 16) & 0xff;
+	mac[4] = (seed >> 8) & 0xff;
+	mac[5] = seed & 0xff;
+}
+
+
+static void afczv2_read_persistent_mac(void)
+{
+	uint8_t mac_addr[6];
+
+	afczv2_read_dna_mac( mac_addr );
+	board_dbg("Local MAC address from device DNA: %02x:%02x:%02x:%02x:%02x:%02x\n",
+		mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3],
+		mac_addr[4], mac_addr[5]);
+	ep_set_mac_addr( &wrc_endpoint_dev, mac_addr );
+	
+	/* ugly hack, but what can I do about this crappy card (with 8 network interfaces)
+	   having a single MAC address chip? */
+
+	mac_addr[2] += 1;
+
+	board_dbg("B-Train MAC address from device DNA: %02x:%02x:%02x:%02x:%02x:%02x\n",
+		mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3],
+		mac_addr[4], mac_addr[5]);
+	ep_set_mac_addr( &board.ep_btrain, mac_addr );
+}
+
 
 
 int wrc_board_early_init()
@@ -658,8 +711,12 @@ int wrc_board_early_init()
 //	wb_gpio_create( &board.gpio_aux, 0x48000 );
 	board_dbg("WR Core AFCZ port starting up\n");    
 
+
 	wr_si57x_interface_init( &board.si57x, (void *) BASE_SI57X_INTERFACE, SI57X_I2C_ADDR );
+	
+#if defined(CONFIG_TARGET_AFCZ_V1)
 	tca9548_select_channels( &board.si57x.master, 0x70, 1 << AFCZ_I2C_MUX_CHANNEL_SI570 );
+#endif
 
 	uint8_t regs[16];
 
@@ -674,6 +731,7 @@ int wrc_board_early_init()
 	si57x_get_xtal_frequency( &board.si57x, &f_xtal );
 	si57x_set_frequency( &board.si57x, f_xtal, 125000000 );
 
+#if defined(CONFIG_TARGET_AFCZ_V1)
 	idt8v_clock_mux_init ( &board.clk_mux, &board.si57x.master, IDT8V_I2C_ADDR );
 	idt8v_configure_io ( &board.clk_mux, AFCZ_IC33_CLK_SI570_1_IN, 1, 1, 0);
 	idt8v_configure_io ( &board.clk_mux, AFCZ_IC33_CLK_SI570_2_IN, 1, 1, 0);
@@ -681,12 +739,14 @@ int wrc_board_early_init()
 	idt8v_configure_io ( &board.clk_mux, AFCZ_IC33_FPGA_CLK_GTX_CUST2_OUT, 0, 0, AFCZ_IC33_CLK_SI570_1_IN);
     idt8v_configure_io ( &board.clk_mux, AFCZ_IC33_FPGA_FMC2_CLK2_BIDIR_OUT, 0, 0, AFCZ_IC33_CLK_SI570_1_IN);
 	idt8v_configure_io ( &board.clk_mux, 10, 0, 0, AFCZ_IC33_CLK_SI570_1_IN);
-	
 	idt8v_commit_configuration ( &board.clk_mux );
+#endif
 
 	wb_cm_init( &board.clk_mon, BASE_CLOCK_MONITOR, 6 );
 
+#if defined(CONFIG_TARGET_AFCZ_V1)
 	sfp_setup();
+#endif
 
 	net_rst();
 	ep_init( &wrc_endpoint_dev, (void *) BASE_WR_ENDPOINT_MAIN );
@@ -694,7 +754,14 @@ int wrc_board_early_init()
 	netif_register_device( "wru0", "default", &wrc_endpoint_dev );
 	netif_register_device( "wru1", "btrain", &board.ep_btrain );
 
-	afcz_read_persistent_mac();
+#if defined (CONFIG_TARGET_AFCZ_V1)
+	afczv1_read_persistent_mac();
+#endif
+
+#if defined (CONFIG_TARGET_AFCZ_V2)
+	afczv2_read_persistent_mac();
+#endif
+
 
 	/* Sleep for 1s to make sure WRS v4.2 always realizes that
 	 * the link is down */
@@ -703,26 +770,28 @@ int wrc_board_early_init()
 	ep_enable( &board.ep_btrain, 1, 1);
 	timer_delay_ms(200);
 
+#if defined(CONFIG_TARGET_AFCZ_V1)
 	tca9548_select_channels( &board.si57x.master, 0x70, 1 << AFCZ_I2C_MUX_CHANNEL_SI570 );
+#endif
 
-#if 1
+#if 0
 	set_dmtd_dac(32767);
 	set_main_dac(30000);
 
 	ep_reset_phy(&wrc_endpoint_dev);
-	//afcz_check_clocks();
+	afcz_check_clocks();
 
 // cross-check the REF and DDMTD clocks
 
-/*	wb_cm_configure( &board.clk_mon, AFCZ_CM_CHANNEL_CLK_DMTD, 5, 1000000 );
+	wb_cm_configure( &board.clk_mon, AFCZ_CM_CHANNEL_CLK_DMTD, 5, 1000000 );
 	wb_cm_set_ref_frequency( &board.clk_mon, CPU_CLOCK );
 	wb_cm_restart( &board.clk_mon );
 	timer_delay_ms(4000);
 	wb_cm_read(  &board.clk_mon );
 	wb_cm_show(  &board.clk_mon );
-	}*/
 
 #endif
+
 	return 0;
 }
 
