@@ -21,7 +21,9 @@
 #  include "boards/generic/board.h"
 #elif defined(CONFIG_TARGET_WR_SWITCH)
 #  include "boards/wr-switch/board.h"
-#elif defined(CONFIG_TARGET_AFCZ)
+#elif defined(CONFIG_TARGET_AFCZ_V1)
+#  include "boards/afcz/board.h"
+#elif defined(CONFIG_TARGET_AFCZ_V2)
 #  include "boards/afcz/board.h"
 #elif defined(CONFIG_TARGET_ERTM14)
 #  include "boards/ertm14/board.h"
