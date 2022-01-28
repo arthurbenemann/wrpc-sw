@@ -27,7 +27,7 @@ void mpll_init(struct spll_main_state *s, int id_ref,
 {
 	/* Frequency branch PI controller */
 	s->pi.y_min = 5;
-	s->pi.y_max = 65530;
+	s->pi.y_max = (1 << DAC_BITS) - 5;
 	s->pi.anti_windup = 1;
 	s->pi.bias = 30000;
 	s->pi.shift = PI_FRACBITS;
