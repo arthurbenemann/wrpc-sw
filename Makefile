@@ -9,6 +9,7 @@ endif
 
 export CROSS_COMPILE
 export CONFIG_ABSCAL
+export CONFIG_BROADCAST
 
 CC =		$(CROSS_COMPILE)gcc
 LD =		$(CROSS_COMPILE)ld
