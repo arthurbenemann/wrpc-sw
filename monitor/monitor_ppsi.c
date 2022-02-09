@@ -76,6 +76,13 @@ static int wrc_mon_status(void)
 	struct wr_servo_state *s =
 			&((struct wr_data *)ppi->ext_data)->servo_state;
 
+#ifdef BROADCAST
+	cprintf(C_BLUE, "\n\nCTR Incorrect timestamps: ");
+ 	cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_incorrect_timestamp);
+	cprintf(C_BLUE, "\nCTR Consecutive incorrect timestamps ");
+ 	cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_consecutive_incorrect_timestamp);
+#endif
+
 	cprintf(C_BLUE, "\n\nPTP status: ");
 	cprintf(C_WHITE, "%s", wrc_ptp_state());
 
