@@ -233,7 +233,7 @@ static int tx_fsm_update()
                 //pr_info("Using phase from file :%d\n",
                 //fsm->cal_saved_phase);
                 fsm->expected_phase = fsm->cal_saved_phase + TX_PHASE_OFFSET;
-                fsm->tollerance = 150; /*ps, bins are 200 ps wide*/
+                fsm->tollerance = 200; /*ps, bins are 200 ps wide*/
             }
             else // find a sane default
             {
