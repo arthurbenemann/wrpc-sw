@@ -59,7 +59,7 @@
 // For SPEC7 clk_ref_62m5 and TXOUTCLK_OUT are phase locked but have an offset.
 // Add a safe offset such that the TxData and TxK (clk_ref_62m5 domain) are
 // safely clocked into the PHY (TXOUTCLK_OUT domain).
-#define TX_PHASE_OFFSET 2000
+#define TX_PHASE_OFFSET 0
 
 struct wrc_port_tx_setup_state
 {
