@@ -237,10 +237,12 @@ void ep_set_autonegotiation(bool autoneg)
 	val = pcs_read(MDIO_REG_ECTRL);
 	if(autoneg)
 	{
+		puts("Enabeling auto-negotiation");
 		val |= MDIO_MCR_ANENABLE | MDIO_MCR_ANRESTART;
 	}
 	else
 	{
+		puts("Disabling auto-negotiation");
 		val &= ~(MDIO_MCR_ANENABLE | MDIO_MCR_ANRESTART);
 	}
 	pcs_write(MDIO_REG_ECTRL, val);
