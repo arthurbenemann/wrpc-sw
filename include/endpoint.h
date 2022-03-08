@@ -7,6 +7,7 @@
 #define __ENDPOINT_H
 
 #include <stdint.h>
+#include <stdbool.h>
 
 typedef enum {
 	AND = 0,
