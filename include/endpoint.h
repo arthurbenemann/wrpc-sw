@@ -31,7 +31,8 @@ int ep_cal_pattern_enable(void);
 int ep_cal_pattern_disable(void);
 int ep_timestamper_cal_pulse(void);
 int ep_sfp_enable(int ena);
-
+int ep_get_autonegotiation();
+void ep_set_autonegotiation(bool autoneg);
 void pfilter_init_default(void);
 
 #endif

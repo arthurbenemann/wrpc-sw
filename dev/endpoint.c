@@ -223,3 +223,27 @@ int ep_sfp_enable(int ena)
 
 	return 0;
 }
+
+int ep_get_autonegotiation()
+{
+       return autoneg_enabled;
+}
+
+void ep_set_autonegotiation(bool autoneg)
+{
+	// this only works for the non-broadcast version
+#ifndef BROADCAST
+	uint32_t val;
+	val = pcs_read(MDIO_REG_ECTRL);
+	if(autoneg)
+	{
+		val |= MDIO_MCR_ANENABLE | MDIO_MCR_ANRESTART;
+	}
+	else
+	{
+		val &= ~(MDIO_MCR_ANENABLE | MDIO_MCR_ANRESTART);
+	}
+	pcs_write(MDIO_REG_ECTRL, val);
+	autoneg_enabled = autoneg;
+#endif
+}

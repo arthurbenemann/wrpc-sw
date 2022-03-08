@@ -81,6 +81,14 @@ void wrxUpdate(int linkStatus)
         info->status &= ~WRX_STATUS_LINK_UP;
     }
 
+    bool autonegotiation = ep_get_autonegotiation();
+    if(!autonegotiation) {
+        info->status &= ~WRX_STATUS_AUTONEG_ON;
+    }
+    else {
+        info->status |= WRX_STATUS_AUTONEG_ON;
+    } 
+
     struct pp_instance * ppi = &ppi_static;
 
     info->pState = ppi->state;
@@ -123,16 +131,15 @@ int wrxExecute(void) {
         memcpy((void *)info->cmdreply.sfpVendorSN, sfp_pn, 16);
         info->cmdcode = WRX_COMMAND_GET_SFP_VENDOR_SN;
         break;
-/*
     case WRX_COMMAND_AUTONEG_OFF:
-        pcs_write(MDIO_REG_MCR, 0x0160);
+        ep_set_autonegotiation(false);
         info->cmdcode = WRX_COMMAND_AUTONEG_OFF;
         break;
     case WRX_COMMAND_AUTONEG_ON:
-        pcs_write(MDIO_REG_MCR, 0x1140);
+        ep_set_autonegotiation(true);
         info->cmdcode = WRX_COMMAND_AUTONEG_ON;
         break;
-*/  case WRX_COMMAND_GET_TUNEINFO:
+    case WRX_COMMAND_GET_TUNEINFO:
         // need 2 find transceiver type, and such...
         info->cmdreply.tuneInfo.tuneproc = sfp_get_tuning_procedure();
         sfp_a2_read_u16(SFP_ADC_LASER_TEMP, &tmp);
