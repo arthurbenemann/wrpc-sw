@@ -234,18 +234,16 @@ void ep_set_autonegotiation(bool autoneg)
 	// this only works for the non-broadcast version
 #ifndef BROADCAST
 	uint32_t val;
-	val = pcs_read(MDIO_REG_ECTRL);
+	val = pcs_read(MDIO_REG_MCR);
 	if(autoneg)
 	{
-		puts("Enabeling auto-negotiation");
 		val |= MDIO_MCR_ANENABLE | MDIO_MCR_ANRESTART;
 	}
 	else
 	{
-		puts("Disabling auto-negotiation");
 		val &= ~(MDIO_MCR_ANENABLE | MDIO_MCR_ANRESTART);
 	}
-	pcs_write(MDIO_REG_ECTRL, val);
+	pcs_write(MDIO_REG_MCR, val);
 	autoneg_enabled = autoneg;
 #endif
 }
