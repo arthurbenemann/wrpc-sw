@@ -9,6 +9,7 @@
 #include "spll_defs.h"
 #include "spll_common.h"
 #include "hw/pps_gen_regs.h"
+#include <wrpc.h>
 
 struct spec7_board board;
 
@@ -27,8 +28,8 @@ static struct gpio_pin pin_eeprom_scl        = { &board.gpio_aux, 11 };
 static struct gpio_pin pin_eeprom_sda        = { &board.gpio_aux, 12 };
 static struct gpio_pin pin_pll_even_odd_n_i  = { &board.gpio_aux, 13 };
 static struct gpio_pin pin_pll_sync_done_i   = { &board.gpio_aux, 14 };
-static struct gpio_pin pin_aux_scl           = { &board.gpio_aux, 15 };
-static struct gpio_pin pin_aux_sda           = { &board.gpio_aux, 16 };
+static struct gpio_pin pin_aux_scl           = { &board.gpio_aux, 15 }; // la23_p, fmc d23, j1002-10
+static struct gpio_pin pin_aux_sda           = { &board.gpio_aux, 16 }; // la06_p, fmc c10, j1002-11
 
 #include "configs/ltc6950_defs.h" 
 static struct ltc6950_config ltc6950_base_config =
@@ -45,6 +46,82 @@ timeout_t pll_even_odd_timeout;
 timeout_t pll_sync_timeout;
 
 //volatile struct softpll_state softpll;
+
+// ======================================
+// GPIO Control functions
+// ======================================
+
+int gpio_control_poll()
+{
+    static int prev_servo_state = 0;
+    static int prev_link_state = 0;
+    int link_state = 0;
+
+	uint8_t io_stat;
+    uint64_t sec;
+    uint32_t nsec;
+
+    extern struct pp_instance ppi_static;
+    struct pp_instance *ppi = &ppi_static;
+    struct wr_servo_state *s =
+			&((struct wr_data *)ppi->ext_data)->servo_state;
+
+    if (prev_servo_state != WR_TRACK_PHASE && s->state == WR_TRACK_PHASE) {
+        shw_pps_gen_get_time(&sec, &nsec);
+        board_dbg("TRACK_PHASE: '%s'\n",format_time(sec, TIME_FORMAT_LEGACY));
+        io_stat = pca9554_read_reg(&board.gpio_tim_main_board, PCA9554_REG_IN);
+        pca9554_write_reg(&board.gpio_tim_main_board, PCA9554_REG_OUT, io_stat | TIM_MAIN_BOARD_LED_1);
+    }
+    if (prev_servo_state == WR_TRACK_PHASE && s->state != WR_TRACK_PHASE) {
+        shw_pps_gen_get_time(&sec, &nsec);
+        board_dbg("LOST TRACK_PHASE: '%s'\n",format_time(sec, TIME_FORMAT_LEGACY));
+        io_stat = pca9554_read_reg(&board.gpio_tim_main_board, PCA9554_REG_IN);
+        pca9554_write_reg(&board.gpio_tim_main_board, PCA9554_REG_OUT, io_stat & ~TIM_MAIN_BOARD_LED_1);
+    }
+
+    link_state = ep_link_up( &wrc_endpoint_dev, NULL);
+    if (!prev_link_state && link_state) {
+        shw_pps_gen_get_time(&sec, &nsec);
+        board_dbg("Link up: '%s'\n",format_time(sec, TIME_FORMAT_LEGACY));
+        io_stat = pca9554_read_reg(&board.gpio_tim_main_board, PCA9554_REG_IN);
+        pca9554_write_reg(&board.gpio_tim_main_board, PCA9554_REG_OUT, io_stat | TIM_MAIN_BOARD_LED_0);
+	} else if (prev_link_state && !link_state) {
+        shw_pps_gen_get_time(&sec, &nsec);
+        board_dbg("Link down: '%s'\n",format_time(sec, TIME_FORMAT_LEGACY));
+        io_stat = pca9554_read_reg(&board.gpio_tim_main_board, PCA9554_REG_IN);
+        pca9554_write_reg(&board.gpio_tim_main_board, PCA9554_REG_OUT, io_stat & ~TIM_MAIN_BOARD_LED_0);
+	}
+
+    prev_servo_state = s->state;
+    prev_link_state = link_state;
+
+    return 0;
+}
+
+void gpio_control_init()
+{
+	int i;
+	uint8_t io_stat;
+    extern struct pp_instance ppi_static;
+    struct pp_instance *ppi = &ppi_static;
+    struct wr_servo_state *s =
+			&((struct wr_data *)ppi->ext_data)->servo_state;
+
+    board_dbg("Initializing GPIO control...\n");
+    pca9554_write_reg(&board.gpio_tim_main_board, PCA9554_REG_CONFIG, 0x00);  // Configure all IO as output
+    pca9554_write_reg(&board.gpio_tim_main_board, PCA9554_REG_OUT, 0x00);     // LEDs, SEL_GROUP_0/1 and SEL_IRIG_B all '0'
+
+    for( i = 0 ; i < 5; i++ )
+	{
+        io_stat = pca9554_read_reg(&board.gpio_tim_main_board, PCA9554_REG_OUT);
+        pca9554_write_reg(&board.gpio_tim_main_board, PCA9554_REG_OUT, io_stat | TIM_MAIN_BOARD_LED_3);
+        timer_delay_ms(100);
+        pca9554_write_reg(&board.gpio_tim_main_board, PCA9554_REG_OUT, io_stat & ~TIM_MAIN_BOARD_LED_3);
+        timer_delay_ms(100);
+    }
+}
+
+// ======================================
 
 static void spec7_spll_setup(void)
 {
@@ -210,11 +287,15 @@ int wrc_board_early_init()
     /* create and initialize UID eeprom I2C bus */
     i2c_eeprom_create(&wrc_uid_dev, &dev_i2c_eeprom, UID_EEPROM_ADR, 1);
 
+    pca9554_gpio_init( &board.gpio_tim_main_board, &dev_i2c_aux, PCA9554_ADR );
+
     return 0;
 }
 
 int wrc_board_init()
 {
+	int i;
+	uint8_t io_stat;
 	uint8_t mac_addr[6];
 	/*
 	 * Read MAC addr from Unique-ID, IC D12, 24AA025E48
@@ -226,6 +307,9 @@ int wrc_board_init()
 	ep_set_mac_addr(&wrc_endpoint_dev, mac_addr);
 	ep_pfilter_init_default(&wrc_endpoint_dev);
 
+    pca9554_write_reg(&board.gpio_tim_main_board, PCA9554_REG_CONFIG, 0x00);  // Configure all IO as output
+    pca9554_write_reg(&board.gpio_tim_main_board, PCA9554_REG_OUT, 0x00);     // LEDs, SEL_GROUP_0/1 and SEL_IRIG_B all '0'
+
     return 0;
 }
 
@@ -235,6 +319,7 @@ extern void phy_calibration_init();
 int wrc_board_create_tasks()
 {
     wrc_task_create( "phy-cal", phy_calibration_init, phy_calibration_poll );
+    wrc_task_create( "pgpio_control", gpio_control_init, gpio_control_poll );
 
     return 0;
 }

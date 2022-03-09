@@ -8,6 +8,7 @@
 
 #include "dev/gpio.h"
 #include "dev/ltc6950.h"
+#include "dev/pca9554.h"
 
 /*
  * This is meant to be automatically included by the Makefile,
@@ -84,6 +85,17 @@
 #define UID_EEPROM_ADR 0x51
 #define UID_OFFSET 0xfa
 
+#define PCA9554_ADR 0x23
+
+// Timing main board LEDs and other IO on I2C GPIO
+#define TIM_MAIN_BOARD_LED_0         WBGEN2_GEN_MASK(0, 1)
+#define TIM_MAIN_BOARD_LED_1         WBGEN2_GEN_MASK(1, 1)
+#define TIM_MAIN_BOARD_LED_2         WBGEN2_GEN_MASK(2, 1)
+#define TIM_MAIN_BOARD_LED_3         WBGEN2_GEN_MASK(3, 1)
+#define TIM_MAIN_BOARD_SEL_GROUP_0   WBGEN2_GEN_MASK(4, 1)
+#define TIM_MAIN_BOARD_SEL_GROUP_1   WBGEN2_GEN_MASK(5, 1)
+#define TIM_MAIN_BOARD_SEL_IRIG_B    WBGEN2_GEN_MASK(6, 1)
+
 #define SDBFS_REC 5
 
 // PLL WR_MODE options:
@@ -101,6 +113,8 @@ struct spec7_board
     struct spi_bus spi_ltc6950;
 
     struct ltc6950_device ltc6950_pll;
+
+	struct pca9554_gpio_device gpio_tim_main_board;
 
     int pll_wr_mode;
 };
