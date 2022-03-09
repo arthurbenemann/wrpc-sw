@@ -29,14 +29,17 @@
 #include "dev/i2c_eeprom.h"
 #include "dev/syscon.h"
 #include "dev/endpoint.h"
+#include "dev/pps_gen.h"
 #include "storage.h"
 #include "softpll_ng.h"
+#include <wrpc.h>
 
 struct
 {
     struct gpio_device gpio_aux;
     struct spi_bus spi_ltc6950;
     struct ltc695x_device ltc6950_pll;
+    struct pca9554_gpio_device gpio_tim_main_board;
     int pll_wr_mode;
 } board;
 
@@ -55,6 +58,8 @@ static struct gpio_pin pin_eeprom_scl        = { &board.gpio_aux, 11 };
 static struct gpio_pin pin_eeprom_sda        = { &board.gpio_aux, 12 };
 static struct gpio_pin pin_pll_even_odd_n_i  = { &board.gpio_aux, 13 };
 static struct gpio_pin pin_pll_sync_done_i   = { &board.gpio_aux, 14 };
+static struct gpio_pin pin_aux_scl           = { &board.gpio_aux, 15 }; // la23_p, fmc d23, j1002-10
+static struct gpio_pin pin_aux_sda           = { &board.gpio_aux, 16 }; // la06_p, fmc c10, j1002-11
 
 #include "configs/ltc6950_defs.h" 
 static struct ltc695x_config ltc6950_base_config =
@@ -72,6 +77,79 @@ timeout_t pll_sync_timeout;
 #undef CONFIG_HPSEC_GM
 
 //volatile struct softpll_state softpll;
+
+// ======================================
+// GPIO Control functions
+// ======================================
+
+int gpio_control_poll()
+{
+    static int prev_servo_state = 0;
+    static int prev_link_state = 0;
+    int link_state = 0;
+
+    uint8_t io_stat;
+    uint64_t sec;
+    uint32_t nsec;
+
+    extern struct pp_instance ppi_static;
+    struct pp_instance *ppi = &ppi_static;
+//    struct wr_servo_state *s =
+//			&((struct wr_data *)ppi->ext_data)->servo_state;
+    int curr_servo_state = ppi->servo->state;
+
+    if (prev_servo_state != WRH_TRACK_PHASE && curr_servo_state == WRH_TRACK_PHASE) {
+        shw_pps_gen_get_time(&sec, &nsec);
+        board_dbg("TRACK_PHASE: '%s'\n",format_time(sec, TIME_FORMAT_LEGACY));
+        io_stat = pca9554_read_reg(&board.gpio_tim_main_board, PCA9554_REG_IN);
+        pca9554_write_reg(&board.gpio_tim_main_board, PCA9554_REG_OUT, io_stat | TIM_MAIN_BOARD_LED_0);
+    }
+    if (prev_servo_state == WRH_TRACK_PHASE && curr_servo_state != WRH_TRACK_PHASE) {
+        shw_pps_gen_get_time(&sec, &nsec);
+        board_dbg("LOST TRACK_PHASE: '%s'\n",format_time(sec, TIME_FORMAT_LEGACY));
+        io_stat = pca9554_read_reg(&board.gpio_tim_main_board, PCA9554_REG_IN);
+        pca9554_write_reg(&board.gpio_tim_main_board, PCA9554_REG_OUT, io_stat & ~TIM_MAIN_BOARD_LED_0);
+    }
+
+    link_state = ep_link_up( &wrc_endpoint_dev, NULL);
+    if (!prev_link_state && link_state) {
+        shw_pps_gen_get_time(&sec, &nsec);
+        board_dbg("Link up: '%s'\n",format_time(sec, TIME_FORMAT_LEGACY));
+        io_stat = pca9554_read_reg(&board.gpio_tim_main_board, PCA9554_REG_IN);
+        pca9554_write_reg(&board.gpio_tim_main_board, PCA9554_REG_OUT, io_stat | TIM_MAIN_BOARD_LED_1);
+	} else if (prev_link_state && !link_state) {
+        shw_pps_gen_get_time(&sec, &nsec);
+        board_dbg("Link down: '%s'\n",format_time(sec, TIME_FORMAT_LEGACY));
+        io_stat = pca9554_read_reg(&board.gpio_tim_main_board, PCA9554_REG_IN);
+        pca9554_write_reg(&board.gpio_tim_main_board, PCA9554_REG_OUT, io_stat & ~TIM_MAIN_BOARD_LED_1);
+	}
+
+    prev_servo_state = curr_servo_state;
+    prev_link_state = link_state;
+
+    return 0;
+}
+
+void gpio_control_init()
+{
+    int i;
+    uint8_t io_stat;
+
+    board_dbg("Initializing GPIO control...\n");
+    pca9554_write_reg(&board.gpio_tim_main_board, PCA9554_REG_CONFIG, 0x00);  // Configure all IO as output
+    pca9554_write_reg(&board.gpio_tim_main_board, PCA9554_REG_OUT, 0x00);     // LEDs, SEL_GROUP_0/1 and SEL_IRIG_B all '0'
+
+    for( i = 0 ; i < 5; i++ )
+        {
+        io_stat = pca9554_read_reg(&board.gpio_tim_main_board, PCA9554_REG_OUT);
+        pca9554_write_reg(&board.gpio_tim_main_board, PCA9554_REG_OUT, io_stat | TIM_MAIN_BOARD_LED_3);
+        timer_delay_ms(100);
+        pca9554_write_reg(&board.gpio_tim_main_board, PCA9554_REG_OUT, io_stat & ~TIM_MAIN_BOARD_LED_3);
+        timer_delay_ms(100);
+    }
+}
+
+// ======================================
 
 void board_pre_pll_lock(int wrc_ptp_mode)
 {
@@ -166,18 +244,6 @@ int pll_sync(void)
     }
     board_dbg("HPSEC_GM mode: clk_ref_125m to clk_ref_62m5 divider synchronization done\n");
 
-/*
-    PPSG->ESCR = PPSG_ESCR_SYNC;
-    tmo_init(&pll_sync_timeout, PLL_SYNC_TIMEOUT_MS);
-    // Wait for PPS sync sequence done
-    while (PPSG->ESCR & PPSG_ESCR_SYNC == 0) {
-        if ( tmo_expired(&pll_sync_timeout)) {
-            pp_printf("TIMEOUT: External PPS alignment.\n");
-            return 0;
-        }
-    }
-    board_dbg("HPSEC_GM mode: synced to external PPS.\n");
-*/
     phy_calibration_init();
     while (!phy_calibration_done()) {
         phy_calibration_poll();
@@ -185,30 +251,6 @@ int pll_sync(void)
 
     return 1;
 }
-
-/*
-int post_pll_lock(int wrc_ptp_mode)
-{
-#if defined(CONFIG_HPSEC_GM)
-    // Sync external PPS when in HPSEC_GM mode
-    PPSG->ESCR = PPSG_ESCR_SYNC;
-    tmo_init(&pll_sync_timeout, PLL_SYNC_TIMEOUT_MS);
-    // Wait for PPS sync sequence done
-    while (PPSG->ESCR & PPSG_ESCR_SYNC == 0) {
-        if ( tmo_expired(&pll_sync_timeout)) {
-            pp_printf("TIMEOUT: External PPS alignment.\n");
-            return 0;
-        }
-    }
-    board_dbg("HPSEC_GM mode: synced to external PPS.\n");
-#endif
-
-    if (wrc_ptp_mode == WRC_MODE_MASTER)
-        //phy_calibration_init();
-
-    return 1;
-}
-*/
 
 int spec7_init()
 {
@@ -252,7 +294,9 @@ int spec7_init()
 }
 
 struct i2c_bus            dev_i2c_eeprom;
+struct i2c_bus            dev_i2c_aux;
 struct i2c_eeprom_device  wrc_eeprom_dev;
+struct i2c_eeprom_device  wrc_uid_dev;
 
 int wrc_board_early_init()
 {
@@ -265,6 +309,12 @@ int wrc_board_early_init()
          &pin_eeprom_sda );
     bb_i2c_init(&dev_i2c_eeprom);
 
+    /* create and initialize auxiliary I2C bus */
+    bb_i2c_create(&dev_i2c_aux,
+         &pin_aux_scl,
+         &pin_aux_sda );
+    bb_i2c_init(&dev_i2c_aux);
+
     i2c_eeprom_create(&wrc_eeprom_dev, &dev_i2c_eeprom, 0x50, 2);
     storage_i2ceeprom_create( &wrc_storage_dev, &wrc_eeprom_dev );
 
@@ -273,26 +323,26 @@ int wrc_board_early_init()
      */
     storage_mount( &wrc_storage_dev );
 
+    /* create and initialize UID eeprom I2C bus */
+    i2c_eeprom_create(&wrc_uid_dev, &dev_i2c_eeprom, UID_EEPROM_ADR, 1);
+
+    /* Initialize I2C bus multiplexer */
+    pca9554_gpio_init( &board.gpio_tim_main_board, &dev_i2c_aux, PCA9554_ADR );
+
     return 0;
 }
 
 int wrc_board_init()
 {
 	uint8_t mac_addr[6];
-	/*
-	 * Try reading MAC addr stored in flash
-	 */
-	if (storage_get_persistent_mac(0, mac_addr) == -1) {
-		board_dbg("Failed to get MAC address from the flash. Using fallback address.\n");
-		mac_addr[0] = 0x22;
-		mac_addr[1] = 0x33;
-		mac_addr[2] = 0x44;	/* fallback MAC if get_persistent_mac fails */
-		mac_addr[3] = 0x55;
-		mac_addr[4] = 0x66;
-		mac_addr[5] = 0x77;
-	}
+	/* Read MAC addr from Unique-ID, IC D12, 24AA025E48 */
+	i2c_eeprom_read(&wrc_uid_dev, UID_OFFSET , mac_addr, sizeof(mac_addr));
+	board_dbg("MAC addr: %x:%x:%x:%x:%x:%x\n",mac_addr[0],mac_addr[1],mac_addr[2],mac_addr[3],mac_addr[4],mac_addr[5]);
 	ep_set_mac_addr(&wrc_endpoint_dev, mac_addr);
 	ep_pfilter_init_default(&wrc_endpoint_dev);
+
+    pca9554_write_reg(&board.gpio_tim_main_board, PCA9554_REG_CONFIG, 0x00);  // Configure all IO as output
+    pca9554_write_reg(&board.gpio_tim_main_board, PCA9554_REG_OUT, 0x00);     // LEDs, SEL_GROUP_0/1 and SEL_IRIG_B all '0'
 
     return 0;
 }
@@ -300,6 +350,7 @@ int wrc_board_init()
 int wrc_board_create_tasks()
 {
     wrc_task_create( "phy-cal", phy_calibration_init, phy_calibration_poll );
+    wrc_task_create( "pgpio_control", gpio_control_init, gpio_control_poll );
 
     return 0;
 }
