@@ -18,6 +18,7 @@ obj-$(CONFIG_EMBEDDED_NODE) += \
 	dev/spi_flash.o \
 	dev/iuart.o \
 	dev/ltc695x.o \
+	dev/pca9554.o \
 	dev/ad9520.o \
 	dev/i2c_eeprom.o \
 	dev/sdbfs.o \
