@@ -8,6 +8,7 @@
 
 #include "dev/gpio.h"
 #include "dev/ltc695x.h"
+#include "dev/pca9554.h"
 
 /*
  * This is meant to be automatically included by the Makefile,
@@ -62,11 +63,31 @@
 /* I2C address of the storage eeprom */
 #define FMC_EEPROM_ADR 0x50
 
+/* I2C address of the Unique ID EEPROM and Unique ID address */
+#define UID_EEPROM_ADR 0x51
+#define UID_OFFSET 0xfa
+
+/* I2C address of the I2C multiplexer */
+#define PCA9554_ADR 0x23
+
+// Timing main board LEDs and other IO on I2C GPIO
+#define TIM_MAIN_BOARD_LED_0         WBGEN2_GEN_MASK(0, 1)
+#define TIM_MAIN_BOARD_LED_1         WBGEN2_GEN_MASK(1, 1)
+#define TIM_MAIN_BOARD_LED_2         WBGEN2_GEN_MASK(2, 1)
+#define TIM_MAIN_BOARD_LED_3         WBGEN2_GEN_MASK(3, 1)
+#define TIM_MAIN_BOARD_SEL_GROUP_0   WBGEN2_GEN_MASK(4, 1)
+#define TIM_MAIN_BOARD_SEL_GROUP_1   WBGEN2_GEN_MASK(5, 1)
+#define TIM_MAIN_BOARD_SEL_IRIG_B    WBGEN2_GEN_MASK(6, 1)
+
+#define SDBFS_REC 5
+
 // PLL WR_MODE options:
 #  define PLL_WR_MODE_MASTER 1
 #  define PLL_WR_MODE_SLAVE 2
 #  define PLL_WR_MODE_GM 3
  
+void gpio_control_init(void);
+int gpio_control_poll(void);
 void board_pre_pll_lock(int pll_wr_mode);
 int  spec7_init(void);
 
@@ -74,5 +95,8 @@ extern int phy_calibration_poll(void);
 extern void phy_calibration_init(void);
 extern void phy_calibration_disable(void);
 extern int phy_calibration_done(void);
+
+void sdb_find_devices(void);
+void sdb_print_devices(void);
 
 #endif /* __BOARD_SPEC7_H */
