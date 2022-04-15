@@ -63,9 +63,6 @@ static struct ltc695x_config ltc6950_ext_10mhz_config =
 timeout_t pll_even_odd_timeout;
 timeout_t pll_sync_timeout;
 
-//#define CONFIG_HPSEC_GM
-#undef CONFIG_HPSEC_GM
-
 //volatile struct softpll_state softpll;
 
 void board_pre_pll_lock(int wrc_ptp_mode)
@@ -78,7 +75,7 @@ void board_pre_pll_lock(int wrc_ptp_mode)
         case WRC_MODE_GM || WRC_MODE_ABSCAL:
             // Default reference design locks local VCXO to external 10 MHz
             pll_wr_mode = PLL_WR_MODE_SLAVE;
-#if defined(CONFIG_HPSEC_GM)
+#if defined(CONFIG_TARGET_HPSEC)
             // When HPSEC is used in GM mode then HPSEC locks to external
             // 10 MHz via LTC6950 and WRC_MODE *must* be free running master.
             // Note: WRC_MODE_GM tries to align the local VCXO with the
@@ -88,7 +85,7 @@ void board_pre_pll_lock(int wrc_ptp_mode)
             break;
         case WRC_MODE_MASTER:
             pll_wr_mode = PLL_WR_MODE_MASTER;
-#if defined(CONFIG_HPSEC_GM)
+#if defined(CONFIG_TARGET_HPSEC)
             // When HPSEC is used in GM mode then HPSEC locks to external
             // 10 MHz via LTC6950 and WRC_MODE *must* be free running master.
             pll_wr_mode = PLL_WR_MODE_GM;
