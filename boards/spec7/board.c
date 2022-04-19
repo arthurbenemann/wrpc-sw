@@ -48,6 +48,8 @@ static struct gpio_pin pin_eeprom_scl        = { &board.gpio_aux, 11 };
 static struct gpio_pin pin_eeprom_sda        = { &board.gpio_aux, 12 };
 //static struct gpio_pin pin_pll_even_odd_n_i  = { &board.gpio_aux, 13 };
 //static struct gpio_pin pin_pll_sync_done_i   = { &board.gpio_aux, 14 };
+static struct gpio_pin pin_aux_scl           = { &board.gpio_aux, 15 };
+static struct gpio_pin pin_aux_sda           = { &board.gpio_aux, 16 };
 
 #include "configs/ltc6950_defs.h" 
 static struct ltc695x_config ltc6950_base_config =
@@ -190,6 +192,7 @@ int spec7_init()
     return 0;
 }
 
+struct i2c_bus            dev_i2c_aux;
 struct i2c_eeprom_device  wrc_uid_dev;
 
 int wrc_board_early_init()
@@ -202,6 +205,12 @@ int wrc_board_early_init()
          &pin_eeprom_scl,
          &pin_eeprom_sda );
     bb_i2c_init(&i2c_wrc_eeprom);
+
+    /* create and initialize auxiliary I2C bus */
+    bb_i2c_create(&dev_i2c_aux,
+         &pin_aux_scl,
+         &pin_aux_sda );
+    bb_i2c_init(&dev_i2c_aux);
 
     i2c_eeprom_create(&wrc_eeprom_dev, &i2c_wrc_eeprom, FMC_EEPROM_ADR, 2);
     storage_i2ceeprom_create( &wrc_storage_dev, &wrc_eeprom_dev );
