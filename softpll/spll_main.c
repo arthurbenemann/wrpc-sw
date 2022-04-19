@@ -116,7 +116,8 @@ static inline void mpll_handle_gain_schedule( struct spll_main_state *s )
 		s->ld.lock_changed = 0;
 		s->ld.locked = 0;
 		s->gain_sched->locked_d = 0;
-	}
+		board_dbg("Gain schedule stage: %d, Kp: %d, ki: %d, shift: %d\n",s->gain_sched->current_stage, stage->kp,stage->ki, stage->shift);
+        }
 
 	s->gain_sched->locked_d = s->ld.locked;
 }
@@ -150,7 +151,8 @@ void mpll_start(struct spll_main_state *s)
 		s->pi.shift = s->gain_sched->stages[0].shift;
 		s->ld.lock_samples = s->gain_sched->stages[0].lock_samples;
 		s->ld.lock_cnt = 0;
-	}
+		board_dbg("Gain schedule stage: 0, Kp: %d, ki: %d, shift: %d\n",s->gain_sched->stages[0].kp,s->gain_sched->stages[0].ki,s->gain_sched->stages[0].shift);
+        }
 
 
 	pi_init((spll_pi_t *)&s->pi);
