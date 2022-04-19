@@ -399,7 +399,9 @@ void spll_init(int mode, int slave_ref_channel, int flags)
 	if(mode == SPLL_MODE_DISABLED)
 		return;
 
+#if !defined(CONFIG_TARGET_HPSEC)
 	softpll.mpll.gain_sched = NULL;
+#endif
 	
 	SPLL->EIC_IER = 1;
 	SPLL->OCER |= 1;
