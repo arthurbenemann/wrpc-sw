@@ -65,7 +65,7 @@ struct s_sfpinfo {
 
 void storage_init(int i2cif, int i2c_addr);
 
-int storage_sfpdb_erase(void);
+int32_t storage_sfpdb_erase(void);
 int storage_match_sfp(struct s_sfpinfo *sfp);
 int storage_get_sfp(struct s_sfpinfo *sfp, uint8_t add, uint8_t pos);
 
