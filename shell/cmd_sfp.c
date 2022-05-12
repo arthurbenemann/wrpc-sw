@@ -86,7 +86,7 @@ static int cmd_sfp(const char *args[])
 			return -EIO;
 		}
 		return 0;
-	} else if (args[5] && !strcasecmp(args[0], "add")) {
+	} else if (args[4] && !strcasecmp(args[0], "add")) {
 		temp = strnlen(args[1], SFP_PN_LEN);
 		for (i = 0; i < temp; ++i)
 			sfp.pn[i] = args[1][i];
