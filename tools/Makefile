@@ -20,7 +20,7 @@ ALL-$(CONFIG_WRPC_PPSI)  += wrpc-dump
 
 ALL+= $(ALL-y)
 
-ifneq ($(EB),no)
+ifneq ($(EB_TOOLS),no)
 ALL += eb-w1-write
 endif
 ifneq ($(SDBFS),no)
