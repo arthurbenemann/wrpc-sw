@@ -72,6 +72,21 @@ config TARGET_HPSEC
 	help
 	  SPEC7 (Zynq-7000) with High Precision Secondairy External Clock
 
+config TARGET_CLB_V2
+	bool "CLB_V2"
+	help
+	  KM3NeT Central Logic Board (Version 2 based on Kintex-7)
+
+config TARGET_CLB_V3
+	bool "CLB_V3"
+	help
+	  KM3NeT Central Logic Board (Version 3 based on Artix-7)
+
+config TARGET_CLB_V4
+	bool "CLB_V4"
+	help
+	  KM3NeT Central Logic Board (Version 4 based on Kintex-7)
+
 config TARGET_PXIE_FMC
 	bool "ZU7 PXIe FMC Carrier"
 	help
