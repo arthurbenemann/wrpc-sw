@@ -18,6 +18,9 @@ obj-$(CONFIG_TARGET_ERTM14) += \
 	boards/ertm14/wrpc-uart-link.o \
 	boards/ertm14/sdbfs-custom-image.o
 
+obj-$(CONFIG_TARGET_CLB_V2) += boards/clbv2/board.o boards/clbv2/phy_calibration.o
+obj-$(CONFIG_TARGET_CLB_V3) += boards/clbv3/board.o
+obj-$(CONFIG_TARGET_CLB_V4) += boards/clbv4/board.o boards/clbv4/phy_calibration.o
 obj-$(CONFIG_TARGET_PXIE_FMC) += boards/pxie-fmc/board.o
 obj-$(CONFIG_TARGET_WR2RF_VME) += boards/wr2rf-vme/board.o  boards/wr2rf-vme/sdbfs-custom-image.o boards/ertm14/phy_calibration.o
 

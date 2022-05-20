@@ -43,6 +43,12 @@
 #  include "boards/ertm14/board.h"
 #elif defined(CONFIG_TARGET_SIS8300KU)
 #  include "boards/sis8300ku/board.h"
+#elif defined(CONFIG_TARGET_CLB_V2)
+#  include "boards/clbv2/board.h"
+#elif defined(CONFIG_TARGET_CLB_V3)
+#  include "boards/clbv3/board.h"
+#elif defined(CONFIG_TARGET_CLB_V4)
+#  include "boards/clbv4/board.h"
 #elif defined(CONFIG_TARGET_PXIE_FMC)
 #  include "boards/pxie-fmc/board-config.h"
 #elif defined(CONFIG_TARGET_WR2RF_VME)
