@@ -235,9 +235,10 @@ static int tx_fsm_update()
                 fsm->expected_phase = fsm->cal_saved_phase + TX_PHASE_OFFSET;
                 fsm->tollerance = 200; /*ps, bins are 200 ps wide*/
             }
-            else // find a sane default
+            else // find a sane default; TXOUTCLK_OUT and clk_ref_62m5 should have small
+                 // phase offset. Take half the period to be safe.
             {
-                fsm->expected_phase = 10;
+                fsm->expected_phase = 8000;
                 fsm->tollerance = 350; // fixme: this works for PHY oversampling at 5 Gbps (must be made generic at some time...)
             }
             fsm->expected_phase_valid = 1;
