@@ -70,13 +70,13 @@ int gpio_control_poll()
         shw_pps_gen_get_time(&sec, &nsec);
         board_dbg("TRACK_PHASE: '%s'\n",format_time(sec, TIME_FORMAT_LEGACY));
         io_stat = pca9554_read_reg(&board.gpio_tim_main_board, PCA9554_REG_IN);
-        pca9554_write_reg(&board.gpio_tim_main_board, PCA9554_REG_OUT, io_stat | TIM_MAIN_BOARD_LED_1);
+        pca9554_write_reg(&board.gpio_tim_main_board, PCA9554_REG_OUT, io_stat | TIM_MAIN_BOARD_LED_0);
     }
     if (prev_servo_state == WR_TRACK_PHASE && s->state != WR_TRACK_PHASE) {
         shw_pps_gen_get_time(&sec, &nsec);
         board_dbg("LOST TRACK_PHASE: '%s'\n",format_time(sec, TIME_FORMAT_LEGACY));
         io_stat = pca9554_read_reg(&board.gpio_tim_main_board, PCA9554_REG_IN);
-        pca9554_write_reg(&board.gpio_tim_main_board, PCA9554_REG_OUT, io_stat & ~TIM_MAIN_BOARD_LED_1);
+        pca9554_write_reg(&board.gpio_tim_main_board, PCA9554_REG_OUT, io_stat & ~TIM_MAIN_BOARD_LED_0);
     }
 
     link_state = ep_link_up( &wrc_endpoint_dev, NULL);
@@ -84,12 +84,12 @@ int gpio_control_poll()
         shw_pps_gen_get_time(&sec, &nsec);
         board_dbg("Link up: '%s'\n",format_time(sec, TIME_FORMAT_LEGACY));
         io_stat = pca9554_read_reg(&board.gpio_tim_main_board, PCA9554_REG_IN);
-        pca9554_write_reg(&board.gpio_tim_main_board, PCA9554_REG_OUT, io_stat | TIM_MAIN_BOARD_LED_0);
+        pca9554_write_reg(&board.gpio_tim_main_board, PCA9554_REG_OUT, io_stat | TIM_MAIN_BOARD_LED_1);
 	} else if (prev_link_state && !link_state) {
         shw_pps_gen_get_time(&sec, &nsec);
         board_dbg("Link down: '%s'\n",format_time(sec, TIME_FORMAT_LEGACY));
         io_stat = pca9554_read_reg(&board.gpio_tim_main_board, PCA9554_REG_IN);
-        pca9554_write_reg(&board.gpio_tim_main_board, PCA9554_REG_OUT, io_stat & ~TIM_MAIN_BOARD_LED_0);
+        pca9554_write_reg(&board.gpio_tim_main_board, PCA9554_REG_OUT, io_stat & ~TIM_MAIN_BOARD_LED_1);
 	}
 
     prev_servo_state = s->state;
