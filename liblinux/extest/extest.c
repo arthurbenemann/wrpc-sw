@@ -84,7 +84,11 @@ static void sighandler(int sig)
 	 * we use sys_siglist[] instead of strsignal() to stay compatible
 	 * with old versions of glibc
 	 */
+#if _POSIX_C_SOURCE >= 200809L
+	 printf("\nEXIT: Signal %s received\n",strsignal(sig));
+#else
 	printf("\nEXIT: Signal %s received\n", sys_siglist[sig]);
+#endif
 	free(_cmdlist);
 	if (user_sig_hndl)
 		user_sig_hndl();
