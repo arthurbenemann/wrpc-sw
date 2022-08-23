@@ -609,9 +609,25 @@ config PPSI
 	help
 	  Select this option for the ppsi engine (now only option)
 
-config BROADCAST
-  	bool "Use KM3NeT Broadcast mode"
+
+
+
+choice
+	prompt "KM3NET Broadcast mode"
 	depends on WR_NODE
-    default n
+
+config BROADCAST_OFF
+	bool "Off - standard WhiteRabbit"
 	help
-	  Compile with KM3NeT specific broadcast mode (breaks 'standard' WR mode!)
+		No broadcast mode
+
+config BROADCAST_BASE
+	bool "Base - DU/CU"
+	help
+		Broadcast mode for base modules
+
+config BROADCAST_DOM
+	bool "Node - DOM"
+	help
+		Broadcast mode for DOMs and other nodes
+endchoice

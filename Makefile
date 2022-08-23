@@ -9,7 +9,8 @@ endif
 
 export CROSS_COMPILE
 export CONFIG_ABSCAL
-export CONFIG_BROADCAST
+export CONFIG_BROADCAST_NODE
+export CONFIG_BROADCAST_BASE
 
 CC =		$(CROSS_COMPILE)gcc
 LD =		$(CROSS_COMPILE)ld
@@ -68,8 +69,9 @@ obj-$(CONFIG_EMBEDDED_NODE) += \
 	monitor/monitor_ppsi.o \
 	lib/ppsi-wrappers.o
 
-# KM3NeT specific broadcast mdoe
-cflags-$(CONFIG_BROADCAST) += -DBROADCAST
+# KM3NeT specific broadcast modes
+cflags-$(CONFIG_BROADCAST_NODE) += -DBROADCAST -DBROADCAST_NODE
+cflags-$(CONFIG_BROADCAST_BASE) += -DBROADCAST -DBROADCAST_BASE
 
 cflags-$(CONFIG_LM32) += -mmultiply-enabled -mbarrel-shift-enabled
 ldflags-$(CONFIG_LM32) = -mmultiply-enabled -mbarrel-shift-enabled \
