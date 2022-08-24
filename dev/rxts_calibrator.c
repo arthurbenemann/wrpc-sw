@@ -263,11 +263,11 @@ int calib_t24p(int mode, uint32_t *value)
 	int ret;
 
 	if (mode == WRC_MODE_SLAVE)
-#ifdef BROADCAST_NODE
+#ifdef BROADCAST
 		ret = 0;
 #else
 		ret = calib_t24p_slave(value);
-#endif // BROADCAST_NODE
+#endif // BROADCAST
 	else
 		ret = calib_t24p_master(value);
 
