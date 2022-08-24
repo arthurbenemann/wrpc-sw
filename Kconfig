@@ -560,6 +560,12 @@ config TRACE_PHY
 	default 1 if TRACE_PHY_ENABLE
 	default 0
 
+config INSITU_CALIB
+	bool "Enable tools needed for In-Situ calibration of fiber"
+	default n
+	help
+	  Add tools needed for insitu calibration
+
 comment "wrpc-sw is tainted if you change the following options"
 config DEVELOPER
 	depends on WR_NODE

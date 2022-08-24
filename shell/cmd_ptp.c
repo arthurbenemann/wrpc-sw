@@ -22,6 +22,13 @@
 #define HAS_PTP_OPT_OVERWRITE_ATTRIBUTES 0
 #endif
 
+#ifdef CONFIG_INSITU_CALIB
+#define HAS_INSITU_CALIB 1
+#else
+#define HAS_INSITU_CALIB 0
+#endif
+
+
 #define USE_CMD_PARAM -1
 
 struct subcmd {
