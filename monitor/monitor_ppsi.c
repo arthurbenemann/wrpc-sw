@@ -76,12 +76,12 @@ static int wrc_mon_status(void)
 	struct wr_servo_state *s =
 			&((struct wr_data *)ppi->ext_data)->servo_state;
 
-#ifdef BROADCAST
+#ifdef BROADCAST_NODE
 	cprintf(C_BLUE, "\n\nCTR Incorrect timestamps: ");
  	cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_incorrect_timestamp);
 	cprintf(C_BLUE, "\nCTR Consecutive incorrect timestamps ");
  	cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_consecutive_incorrect_timestamp);
-#endif
+#endif // BROADCAST_NODE
 
 	cprintf(C_BLUE, "\n\nPTP status: ");
 	cprintf(C_WHITE, "%s", wrc_ptp_state());
@@ -227,7 +227,7 @@ int wrc_mon_gui(void)
 		pp_printf("\n");
 
 	}
-#ifndef BROADCAST
+#ifndef BROADCAST_NODE
 	/* If compiled with broadcast this information is meaninless, so don't show */
 	cprintf(C_BLUE, "\nTiming parameters:\n");
 
@@ -266,7 +266,7 @@ int wrc_mon_gui(void)
 
 	cprintf(C_GREY, "Update counter:");
 	cprintf(C_WHITE, "%27d\n", (int32_t) (s->update_count));
-#endif
+#endif // BROADCAST_NODE
 	return 1;
 }
 
