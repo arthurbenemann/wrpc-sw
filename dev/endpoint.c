@@ -34,7 +34,7 @@ volatile struct EP_WB *EP;
 uint16_t pcs_read(int location) // KM3NeT
 #else
 static uint16_t pcs_read(int location)
-#endif
+#endif // BROADCAST
 {
 	EP->MDIO_CR = EP_MDIO_CR_ADDR_W(location >> 2);
 	while ((EP->MDIO_ASR & EP_MDIO_ASR_READY) == 0) ;
@@ -45,7 +45,7 @@ static uint16_t pcs_read(int location)
 void pcs_write(int location, int value) // KM3NeT
 #else
 static void pcs_write(int location, int value)
-#endif
+#endif // BROADCAST
 {
 	EP->MDIO_CR = EP_MDIO_CR_ADDR_W(location >> 2)
 	    | EP_MDIO_CR_DATA_W(value)
@@ -151,7 +151,7 @@ int ep_link_up(uint16_t * lpa)
 #ifdef BROADCAST
         /* Autonegotiation disabled by default in broadcast mode */
         autoneg_enabled = ((uint16_t)pcs_read(MDIO_REG_MCR) & (0x1000));
-#endif
+#endif // BROADCAST
 
 	if (autoneg_enabled)
 		flags |= MDIO_MSR_ANEGCOMPLETE;
@@ -245,5 +245,5 @@ void ep_set_autonegotiation(bool autoneg)
 	}
 	pcs_write(MDIO_REG_MCR, val);
 	autoneg_enabled = autoneg;
-#endif
+#endif // BROADCAST
 }

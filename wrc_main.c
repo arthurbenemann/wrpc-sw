@@ -105,7 +105,7 @@ static void wrc_initialize(void)
         ep_enable(1, 0); // Auto negociation disable.
 #else
         ep_enable(1, 1);
-#endif
+#endif // BROADCAST
 
 	minic_init();
 	shw_pps_gen_init();
