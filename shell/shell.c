@@ -87,6 +87,12 @@
 #define HAS_LATENCY_PROBE 0
 #endif
 
+#ifdef CONFIG_INSITU_CALIB
+#define HAS_INSITU_CALIB 1
+#else
+#define HAS_INSITU_CALIB 0
+#endif
+
 static char cmd_buf[SH_MAX_LINE_LEN + 1];
 static int cmd_pos = 0, cmd_len = 0;
 static int state = SH_PROMPT;
@@ -427,6 +433,8 @@ void shell_register_commands(void)
 	REGISTER_WRC_COMMAND(gui);
 	REGISTER_WRC_COMMAND(help);
 	REGISTER_WRC_COMMAND(init);
+	if (HAS_INSITU_CALIB)
+		REGISTER_WRC_COMMAND(insitu);
 	if (HAS_IP)
 		REGISTER_WRC_COMMAND(ip);
 	if (HAS_CMD_LEAPSEC)

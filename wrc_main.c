@@ -59,6 +59,9 @@
 #include "lib/lldp.h"
 #endif
 
+#ifdef CONFIG_INSITU_CALIB
+#include "lib/insitu.h"
+#endif
 
 uint32_t cal_phase_transition = 2389;
 
@@ -302,6 +305,12 @@ static void create_tasks(void)
 	 * unplugged */
 	wrc_task_create("sfp_dom", NULL, sfp_dom_update);
 #endif
+
+#ifdef CONFIG_INSITU_CALIB
+	/* Helper task for batch insitu calibration */
+	wrc_task_create("insitu", NULL, insitu_task);
+#endif
+
 }
 
 int main(void) __attribute__ ((weak));

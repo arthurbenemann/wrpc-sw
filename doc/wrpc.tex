@@ -2173,6 +2173,27 @@ the build of WRPC.
   \code{init show} & prints all commands from the script stored in
     Flash/EEPROM \\
 
+  \code{insitu <on|off|crtt>} & parameter \textit{on} enables printout of t1-t4
+                                timestamps.
+                                Parameter \textit{crtt} enables printout of
+                                round trip time corrected by deltas.
+                                Parameter \textit{off} disables printout of
+                                timestamps and round trip times.
+                                Executing this command without a parameter
+                                toggles between \textit{on} and \textit{off}
+                                functionality.
+                                Available if \texttt{CONFIG\_INSITU\_CALIB} is
+                                set. \\
+  \code{insitu run <ch\_start> <ch\_end> <step> <samples>} & starts automatic
+                                sweep over number of tunable SFP's channels.
+                                From channel \textit{ch\_start} to (including)
+                                channel \textit{ch\_end} with a defined
+                                \textit{step}.
+                                Get number of <samples> for each channel.
+                                Available if \texttt{CONFIG\_INSITU\_CALIB} is
+                                set. \\
+  \code{insitu stop} & stops automatic sweep over number of channels\\
+
   \code{ip get} & \\
   \code{ip set <ip>} & reports or sets the IPv4 address of the WRPC (only
     available if \texttt{CONFIG\_IP} is set at build time \\
