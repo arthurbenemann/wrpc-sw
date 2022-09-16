@@ -83,6 +83,16 @@ static int wrc_mon_status(void)
  	cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_consecutive_incorrect_timestamp);
 #endif // BROADCAST_NODE
 
+#ifdef BROADCAST_BASE
+/* ONLY FOR TESTS */
+        cprintf(C_BLUE, "\n\nCTR wr-present_1: ");
+        cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr-present_1);
+        cprintf(C_BLUE, "\n\nCTR wr-present_2: ");
+        cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr-present_2);
+        cprintf(C_BLUE, "\n\nCTR wr-present_3: ");
+        cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr-present_3);
+#endif // BROADCAST_BASE
+
 	cprintf(C_BLUE, "\n\nPTP status: ");
 	cprintf(C_WHITE, "%s", wrc_ptp_state());
 
