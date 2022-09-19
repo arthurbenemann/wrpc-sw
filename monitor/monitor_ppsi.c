@@ -86,11 +86,11 @@ static int wrc_mon_status(void)
 #ifdef BROADCAST_BASE
 /* ONLY FOR TESTS */
         cprintf(C_BLUE, "\n\nCTR wr-present_1: ");
-        cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr-present_1);
+        cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_present_1);
         cprintf(C_BLUE, "\n\nCTR wr-present_2: ");
-        cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr-present_2);
+        cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_present_2);
         cprintf(C_BLUE, "\n\nCTR wr-present_3: ");
-        cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr-present_3);
+        cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_present_3);
 #endif // BROADCAST_BASE
 
 	cprintf(C_BLUE, "\n\nPTP status: ");
