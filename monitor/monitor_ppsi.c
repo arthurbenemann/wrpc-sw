@@ -108,11 +108,21 @@ static int wrc_mon_status(void)
         cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_present_00_1);
         cprintf(C_BLUE, "\nCTR wr-present_00_2: ");
         cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_present_00_2);
-        cprintf(C_BLUE, "\nCTR wr-present_00_3: ");
-        cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_present_00_3);
-        cprintf(C_BLUE, "\nCTR wr-present_00_4: ");
-        cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_present_00_4);
 
+        cprintf(C_BLUE, "\n\nCTR wr-s-lock 1: ");
+        cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_s_lock_1);
+        cprintf(C_BLUE, "\n\nCTR wr-s-lock 2: ");
+        cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_s_lock_2);
+        cprintf(C_BLUE, "\n\nCTR wr-s-lock 3: ");
+        cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_s_lock_3);
+        cprintf(C_BLUE, "\n\nCTR wr-s-lock 4: ");
+        cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_s_lock_4);
+        cprintf(C_BLUE, "\n\nCTR wr-s-lock 5: ");
+        cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_s_lock_5);
+        cprintf(C_BLUE, "\n\nCTR wr-s-lock 6: ");
+        cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_s_lock_6);
+        cprintf(C_BLUE, "\n\nCTR wr-s-lock 7: ");
+        cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_s_lock_7);
 #endif // BROADCAST_BASE
 
 	cprintf(C_BLUE, "\n\nPTP status: ");
