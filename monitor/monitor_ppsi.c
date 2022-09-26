@@ -83,7 +83,7 @@ static int wrc_mon_status(void)
  	cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_consecutive_incorrect_timestamp);
 #endif // BROADCAST_NODE
 
-#ifdef BROADCAST_BASE
+#if defined(BROADCAST_BASE) && defined(BC_EXTRA_MON)
 /* ONLY FOR TESTS */
         cprintf(C_BLUE, "\n\nCTR wr-present_0_1: ");
         cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_present_0_1);
@@ -93,7 +93,6 @@ static int wrc_mon_status(void)
         cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_present_0_3);
         cprintf(C_BLUE, "\nCTR wr-present_0_4: ");
         cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_present_0_4);
-
 
         cprintf(C_BLUE, "\n\nCTR wr-present_1: ");
         cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_present_1);
@@ -111,20 +110,20 @@ static int wrc_mon_status(void)
 
         cprintf(C_BLUE, "\n\nCTR wr-s-lock 1: ");
         cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_s_lock_1);
-        cprintf(C_BLUE, "\n\nCTR wr-s-lock 2: ");
+        cprintf(C_BLUE, "\nCTR wr-s-lock 2: ");
         cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_s_lock_2);
-        cprintf(C_BLUE, "\n\nCTR wr-s-lock 3: ");
+        cprintf(C_BLUE, "\nCTR wr-s-lock 3: ");
         cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_s_lock_3);
-        cprintf(C_BLUE, "\n\nCTR wr-s-lock 4: ");
+        cprintf(C_BLUE, "\nCTR wr-s-lock 4: ");
         cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_s_lock_4);
-        cprintf(C_BLUE, "\n\nCTR wr-s-lock 5: ");
+        cprintf(C_BLUE, "\nCTR wr-s-lock 5: ");
         cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_s_lock_5);
-        cprintf(C_BLUE, "\n\nCTR wr-s-lock 6: ");
+        cprintf(C_BLUE, "\nCTR wr-s-lock 6: ");
         cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_s_lock_6);
-        cprintf(C_BLUE, "\n\nCTR wr-s-lock 7: ");
+        cprintf(C_BLUE, "\nCTR wr-s-lock 7: ");
         cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_s_lock_7);
-#endif // BROADCAST_BASE
-
+#endif // BROADCAST_BASE && BC_EXTRA_MON
+	
 	cprintf(C_BLUE, "\n\nPTP status: ");
 	cprintf(C_WHITE, "%s", wrc_ptp_state());
 

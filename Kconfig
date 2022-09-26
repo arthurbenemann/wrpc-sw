@@ -609,9 +609,6 @@ config PPSI
 	help
 	  Select this option for the ppsi engine (now only option)
 
-
-
-
 choice
 	prompt "KM3NET Broadcast mode"
 	depends on WR_NODE
@@ -631,3 +628,9 @@ config BROADCAST_DOM
 	help
 		Broadcast mode for DOMs and other nodes
 endchoice
+
+config BROADCAST_BASE_EXTRA_MON
+	depends on BROADCAST_BASE
+	bool "Base - DU/CU - Extra Monitoring"
+	help
+		Broadcast mode for base modules with extra monitoring for tests

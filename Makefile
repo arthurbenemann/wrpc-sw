@@ -11,6 +11,7 @@ export CROSS_COMPILE
 export CONFIG_ABSCAL
 export CONFIG_BROADCAST_NODE
 export CONFIG_BROADCAST_BASE
+export CONFIG_BROADCAST_BASE_EXTRA_MON
 
 CC =		$(CROSS_COMPILE)gcc
 LD =		$(CROSS_COMPILE)ld
@@ -72,6 +73,7 @@ obj-$(CONFIG_EMBEDDED_NODE) += \
 # KM3NeT specific broadcast modes
 cflags-$(CONFIG_BROADCAST_NODE) += -DBROADCAST -DBROADCAST_NODE
 cflags-$(CONFIG_BROADCAST_BASE) += -DBROADCAST -DBROADCAST_BASE
+cflags-$(CONFIG_BROADCAST_BASE_EXTRA_MON) += -DBC_EXTRA_MON
 
 cflags-$(CONFIG_LM32) += -mmultiply-enabled -mbarrel-shift-enabled
 ldflags-$(CONFIG_LM32) = -mmultiply-enabled -mbarrel-shift-enabled \
