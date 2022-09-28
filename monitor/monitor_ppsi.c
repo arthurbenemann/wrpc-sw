@@ -87,41 +87,81 @@ static int wrc_mon_status(void)
 /* ONLY FOR TESTS */
         cprintf(C_BLUE, "\n\nCTR wr-present_0_1: ");
         cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_present_0_1);
-        cprintf(C_BLUE, "\nCTR wr-present_0_2: ");
+        cprintf(C_BLUE, " 0_2: ");
         cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_present_0_2);
-        cprintf(C_BLUE, "\nCTR wr-present_0_3: ");
+        cprintf(C_BLUE, " 0_3: ");
         cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_present_0_3);
-        cprintf(C_BLUE, "\nCTR wr-present_0_4: ");
+        cprintf(C_BLUE, " 0_4: ");
         cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_present_0_4);
-
-        cprintf(C_BLUE, "\n\nCTR wr-present_1: ");
+        cprintf(C_BLUE, " 1: ");
         cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_present_1);
-        cprintf(C_BLUE, "\nCTR wr-present_2: ");
+        cprintf(C_BLUE, " 2: ");
         cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_present_2);
-        cprintf(C_BLUE, "\nCTR wr-present_3: ");
+        cprintf(C_BLUE, " 3: ");
         cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_present_3);
-        cprintf(C_BLUE, "\nCTR wr-present_4: ");
+        cprintf(C_BLUE, " 4: ");
         cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_present_4);
-
-        cprintf(C_BLUE, "\n\nCTR wr-present_00_1: ");
+        cprintf(C_BLUE, " 00_1: ");
         cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_present_00_1);
-        cprintf(C_BLUE, "\nCTR wr-present_00_2: ");
+        cprintf(C_BLUE, " 00_2: ");
         cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_present_00_2);
 
         cprintf(C_BLUE, "\n\nCTR wr-s-lock 1: ");
         cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_s_lock_1);
-        cprintf(C_BLUE, "\nCTR wr-s-lock 2: ");
+        cprintf(C_BLUE, " 2: ");
         cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_s_lock_2);
-        cprintf(C_BLUE, "\nCTR wr-s-lock 3: ");
+        cprintf(C_BLUE, " 3: ");
         cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_s_lock_3);
-        cprintf(C_BLUE, "\nCTR wr-s-lock 4: ");
+        cprintf(C_BLUE, " 4: ");
         cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_s_lock_4);
-        cprintf(C_BLUE, "\nCTR wr-s-lock 5: ");
+        cprintf(C_BLUE, " 5: ");
         cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_s_lock_5);
-        cprintf(C_BLUE, "\nCTR wr-s-lock 6: ");
+        cprintf(C_BLUE, " 6: ");
         cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_s_lock_6);
-        cprintf(C_BLUE, "\nCTR wr-s-lock 7: ");
+        cprintf(C_BLUE, " 7: ");
         cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_s_lock_7);
+
+        cprintf(C_BLUE, "\n\nCTR wr-locked 1: ");
+        cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_locked_1);
+        cprintf(C_BLUE, " 2: ");
+        cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_locked_2);
+
+	cprintf(C_BLUE, "\n\nCTR wr-resp-calib-req 1: ");
+        cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_resp_calib_req_1);
+        cprintf(C_BLUE, " 2: ");
+        cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_resp_calib_req_2);
+
+        cprintf(C_BLUE, "\n\nCTR wr-calibration 00: ");
+        cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_calibration_00);
+        cprintf(C_BLUE, " 0: ");
+        cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_calibration_0);
+        cprintf(C_BLUE, " 1: ");
+        cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_calibration_1);
+        cprintf(C_BLUE, " 2: ");
+        cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_calibration_2);
+        cprintf(C_BLUE, " 3: ");
+        cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_calibration_3);
+        cprintf(C_BLUE, " 4: ");
+        cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_calibration_4);
+        cprintf(C_BLUE, " 5: ");
+        cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_calibration_5);
+        cprintf(C_BLUE, " 6: ");
+        cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_calibration_6);
+        cprintf(C_BLUE, " 7: ");
+        cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_calibration_7);
+        cprintf(C_BLUE, " 8: ");
+        cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_calibration_8);
+
+        cprintf(C_BLUE, "\n\nCTR wr-calibrated 1: ");
+        cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_calibrated_1);
+        cprintf(C_BLUE, " 2: ");
+        cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_calibrated_2);
+
+        cprintf(C_BLUE, "\n\nCTR wr-link-on 1: ");
+        cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_link_on_1);
+        cprintf(C_BLUE, " 2: ");
+        cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_link_on_2);
+
 #endif // BROADCAST_BASE && BC_EXTRA_MON
 	
 	cprintf(C_BLUE, "\n\nPTP status: ");
