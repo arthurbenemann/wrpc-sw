@@ -2371,6 +2371,21 @@ the build of WRPC.
 
   \code{sfp show} & prints all SFP transceivers stored in database \\
 
+  \code{sfp info} & prints detailed information about the plugged SFP.
+                    Can show monitoring data like temperature, RX and TX power
+                    if supported.
+                    For tunable SFP's another additional set of parameters is
+                    displayed like: supported channels, current channel or
+                    wavelength.\\
+
+  \code{sfp tune <channel|wavelength>} & tunes the TX of a plugged SFP. Command
+                                         can take \textit{channel}
+                                         (not an ITU channel!) or
+                                         \textit{wavelength} in nm.
+                                         Available if
+                                         \texttt{CONFIG\_INSITU\_CALIB} is set.
+                                         \\
+
   \code{stat <on|off>} & without parameter, toggles reporting of loggable
     statistics. You can pass \texttt{on} or \texttt{off} as argument as an
     alternative to toggling \\

@@ -31,6 +31,13 @@
 #include "dev/endpoint.h"
 
 #include "sfp.h"
+#include "libwr/sfp_lib.h"
+
+#ifdef CONFIG_INSITU_CALIB
+#define HAS_INSITU_CALIB 1
+#else
+#define HAS_INSITU_CALIB 0
+#endif
 
 // extern struct shw_sfp_header sfp_header;
 extern struct shw_sfp_dom sfp_dom;
@@ -72,12 +79,53 @@ void print_info(void)
 		tmp = ((sfp_dom->rx_pow[0] << 8) + sfp_dom->rx_pow[1]);
 		pp_printf("RX power: %d.%04d mW\n", tmp / 10000, tmp % 10000);
 	}
+
+	if (HAS_INSITU_CALIB) {
+		uint8_t tmp8;
+		uint16_t tmp16;
+		uint32_t first_freq_in_01;
+		uint32_t last_freq_in_01;
+
+		pp_printf("SFP tunable: %s\n",
+			  sfp_header->options[1] & SFP_OPTION_TUNABLE
+				? "true" : "false");
+		sfp_a2_select_page(SFP_A2_PAGE_CONTROL_FUNC);
+		tmp8 = sfp_a2_read_u8(SFP_A2_CTRL_DITHERING_REG);
+		pp_printf("Dither TX: %s\n",
+			  tmp8 & SFP_DITHER_TX ? "true" : "false");
+		pp_printf("Tunable by channel: %s\n",
+			  tmp8 & SFP_TUNABLE_CHANNEL ? "true" : "false");
+		pp_printf("Tunable by wavelength: %s\n",
+			  tmp8 & SFP_TUNABLE_WAVELENGTH ? "true" : "false");
+		first_freq_in_01 = sfp_a2_read_u16(SFP_A2_CTRL_LFL1_REG) * 10000
+				   + sfp_a2_read_u16(SFP_A2_CTRL_LFL2_REG);
+		pp_printf("Laser first freq: %ld.%04ld THz\n",
+			  first_freq_in_01 / 10000,
+			  first_freq_in_01 % 10000);
+		last_freq_in_01 = sfp_a2_read_u16(SFP_A2_CTRL_LFH1_REG) * 10000
+				   + sfp_a2_read_u16(SFP_A2_CTRL_LFH2_REG);
+		pp_printf("Laser last freq: %ld.%04ld THz\n",
+			  last_freq_in_01 / 10000,
+			  last_freq_in_01 % 10000);
+		tmp16 = sfp_a2_read_u16(SFP_A2_CTRL_LGRID_REG);
+		pp_printf("Laser's grid support: %d.%d GHz\n",
+			  tmp16 / 10, tmp16 % 10);
+		pp_printf("Channels supported: 1..%ld\n",
+			  1 + (last_freq_in_01 - first_freq_in_01) / tmp16);
+		tmp16 = sfp_a2_read_u16(SFP_A2_CTRL_CHNO_SET_REG);
+		pp_printf("Current channel number: %d\n", tmp16);
+		tmp16 = sfp_a2_read_u16(SFP_A2_CTRL_WL_SET_REG);
+		pp_printf("Current wavelength: %d.%02d nm\n", tmp16 / 20,
+			  (tmp16 % 20) * 5);
+	}
 }
 
 static int cmd_sfp(const char *args[])
 {
 	int8_t sfpcount = 1, i, temp, ret;
 	struct s_sfpinfo sfp;
+	struct shw_sfp_header *sfp_header;
+	sfp_header = sfp_info.sfp_header;
 
 	if (!args[0]) {
 		pp_printf("Wrong parameter\n");
@@ -166,6 +214,16 @@ static int cmd_sfp(const char *args[])
 	} else if (!strcasecmp(args[0], "info")) {
 		/* DOM data is updated periodically by a task */
 		print_info();
+	} else if (HAS_INSITU_CALIB && !strcasecmp(args[0], "tune")) {
+		if (!(sfp_header->options[1] & SFP_OPTION_TUNABLE)) {
+			pp_printf("SFP not tunable!\n");
+			return -ENODEV;
+		}
+		if (!args[1]) {
+		    pp_printf("tune args: %d\n", atoi(args[1]));
+		    return -EINVAL;
+		}
+		sfp_tune_ch(args[1]);
 	} else {
 		pp_printf("Wrong parameter\n");
 		return -EINVAL;
