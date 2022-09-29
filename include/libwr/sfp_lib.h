@@ -1,9 +1,11 @@
 #ifndef __LIBWR_SHW_SFPLIB_H
 #define __LIBWR_SHW_SFPLIB_H
 
-//address from AT24C01 datasheet (1k, all address lines shorted to the ground)
+/* address from AT24C01 datasheet (1k, all address lines shorted to the ground)
+ * Equivalent of 0xA0. */
 #define I2C_SFP_ADDRESS 0x50
-// From SFF-8472, but right-shifted one bit as I2C addresses are only 7 bits.
+/* From SFF-8472, but right-shifted one bit as I2C addresses are only 7 bits.
+ * Equivalent of 0xA2. */
 #define I2C_SFP_DOM_ADDRESS 0x51
 
 #define SFP_FLAG_CLASS_DATA	(1 << 0)
@@ -32,6 +34,44 @@
 					address change sequence before
 					accessing information at 2-wire serial
 					address A2h. */
+
+#define SFP_OPTION_TUNABLE	(1 << 6)
+#define SFP_DITHER_TX		(1 << 2)
+#define SFP_TUNABLE_CHANNEL	(1 << 1)
+#define SFP_TUNABLE_WAVELENGTH	(1 << 0)
+
+
+/* ====================================================================
+ * Extension for wavelength tuning using SFF8690
+ * ====================================================================
+ */
+#define SFP_A2_PAGE_SELECT_REG		127
+#define SFP_A2_CTRL_DITHERING_REG	128
+#define SFP_A2_CTRL_LFL1_REG		132
+#define SFP_A2_CTRL_LFL2_REG		134
+#define SFP_A2_CTRL_LFH1_REG		136
+#define SFP_A2_CTRL_LFH2_REG		138
+#define SFP_A2_CTRL_LGRID_REG		140
+#define SFP_A2_CTRL_CHNO_SET_REG	144
+#define SFP_A2_CTRL_WL_SET_REG		146
+#define SFP_A2_CTRL_TX_DITHER_REG	151
+#define SFP_A2_CTRL_FREQ_ERR_REG	152
+#define SFP_A2_CTRL_WL_ERR_REG		154
+#define SFP_A2_CTRL_CUR_STATUS_REG	168
+#define SFP_A2_CTRL_LATCH_STATUS_REG	172
+
+
+#define SFP_A2_PAGE_CONTROL_FUNC		0x2
+#define SFP_A2_CTRL_TX_DITHER_FLAG		(1 << 0)
+#define SFP_A2_CTRL_CUR_STATUS_TEC_FAULT	(1 << 6)
+#define SFP_A2_CTRL_CUR_STATUS_WL_UNLOCK	(1 << 5)
+#define SFP_A2_CTRL_CUR_STATUS_TXTUNE 		(1 << 4)
+
+#define SFP_A2_CTRL_LATCH_STATUS_TEC_FAULT		6
+#define SFP_A2_CTRL_LATCH_STATUS_WL_UNLOCKED		5
+#define SFP_A2_CTRL_LATCH_STATUS_BAD_CH			4
+#define SFP_A2_CTRL_LATCH_STATUS_NEW_CH			3
+#define SFP_A2_CTRL_LATCH_STATUS_UNSUPP_TX_DITHER	2
 
 
 struct shw_sfp_caldata {

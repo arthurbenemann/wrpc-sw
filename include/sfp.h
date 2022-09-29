@@ -53,4 +53,11 @@ int sfp_match(int force);
 /* update dom data */
 int sfp_dom_update(void);
 
+void sfp_a2_select_page(uint8_t page);
+uint8_t sfp_a2_read_u8(uint8_t reg);
+uint16_t sfp_a2_read_u16(uint8_t reg);
+void sfp_a2_write_u8(uint8_t reg, uint8_t value);
+void sfp_a2_write_u16(uint8_t reg, uint16_t value);
+int sfp_tune_ch(const char *args);
+
 #endif

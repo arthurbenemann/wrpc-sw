@@ -501,6 +501,15 @@ config SFP_DOM
 	  bias current, temperature. If CMD_SFP_INFO is not selected, it is
 	  possible to read monitoring data via wrpc-dump.
 
+config CMD_SFP_TUNABLE
+	depends on WR_NODE
+	boolean "Add 'sfp tune' command to tune SFP channel/wavelength"
+	default n
+	help
+	  This enables extensions to sfp command, which allows changing
+	  channel/wavelength of SFPs that support it.
+	  Also adds extra info to 'sfp info' command.
+
 config CMD_LEAPSEC
 	depends on WR_NODE
 	boolean "Add 'leapsec' command to control leapsecond value"

@@ -2389,10 +2389,25 @@ the build of WRPC.
 
   Erases the SFP database stored in the Flash/EEPROM.
 
+\item[sfp info] \mbox{}
+
+  Prints detailed information about the plugged SFP.
+  Command is available if \texttt{CONFIG\_CMD\_SFP\_INFO} is set.
+  Can show monitoring data like temperature, RX and TX power if supported
+  (available if \texttt{CONFIG\_SFP\_DOM} is set).
+  For tunable SFP's another additional set of parameters is displayed like:
+  supported channels, current channel or wavelength.
+
 \item[sfp match] \mbox{}
 
   Prints the ID of a currently used SFP transceiver and tries to load
   the calibration parameters for it.
+
+\item[sfp tune <channel|wavelength>] \mbox{}
+
+  Tunes the TX of a plugged SFP. Command can take \textit{channel}
+  (SFP channel, not an ITU channel!) or \textit{wavelength} in nm.
+  Available if \texttt{CONFIG\_CMD\_SFP\_TUNABLE} is set.
 
 \item[sfp show] \mbox{}
 
