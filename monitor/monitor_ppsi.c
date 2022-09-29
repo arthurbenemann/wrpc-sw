@@ -656,6 +656,9 @@ int wrc_mon_gui(void)
 	uint32_t now;
 	struct pp_servo *s = SRV(ppg->pp_instances);
 
+	/* update on timeout or servo update */
+	now = timer_get_tics();
+
 	/* print new values only if time elapsed or servo's update_count
 	 * increased */
 	if (prev_gui_description != gui_description) {
@@ -666,14 +669,12 @@ int wrc_mon_gui(void)
 		if (gui_description & DESCRIPTION_SERVO) {
 			print_servo_description();
 		}
-		next_update_ticks = 0;
+		next_update_ticks = now;
 		term_clear_to_end();
 		prev_gui_description = gui_description;
 		return 1;
 	}
 
-	/* update on timeout or servo update */
-	now = timer_get_tics();
 	if (time_before(now, next_update_ticks)
 	    && last_servo_count == s->update_count)
 		return 0;
