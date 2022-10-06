@@ -2321,8 +2321,17 @@ the build of WRPC.
     subcommands in a single \texttt{ptp} command. With no arguments,
     the command reports the current values.\\
 
-  \code{ptrack <enable|disable>} & print status, enable or disable phase tracking.
-    Useful for demos.\\
+  \code{ptrack <enable|disable|insitu>} & print status, enable or disable phase
+                                          tracking. Parameter \textit{disable}
+                                          is useful for demos. Using parameter
+                                          \textit{insitu} disables
+                                          synchronization for WR. In such case
+                                          a device only syntonize to the master.
+                                          This command does not affect standard
+                                          PTP-mode.
+                                          Parameter \textit{insitu} is available
+                                          if \texttt{CONFIG\_INSITU\_CALIB} is
+                                          set. \\
 
   \code{refresh} & changes the update time period of the gui and stat commands.
     Default period is 1 second. If you set the period to 0, the log message is

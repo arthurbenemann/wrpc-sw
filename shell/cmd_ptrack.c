@@ -20,6 +20,14 @@
 extern int wrc_phase_tracking;
 extern struct pp_globals *ppg;
 
+char *track_label[] = {
+	"OFF",
+	"ON",
+#ifdef CONFIG_INSITU_CALIB
+	"insitu (synthonization only)",
+#endif
+};
+
 static int cmd_ptrack(const char *args[])
 {
 	struct pp_instance *ppi = ppg->pp_instances;
@@ -31,9 +39,13 @@ static int cmd_ptrack(const char *args[])
 	else if (args[0] && !strcasecmp(args[0], "disable")) {
 		wrh_servo_enable_tracking(0);
 	}
+	else if (HAS_INSITU_CALIB
+		 && args[0] && !strcasecmp(args[0], "insitu")) {
+		wrh_servo_enable_tracking(2);
+	}
 
 	if (ppi->protocol_extension==PPSI_EXT_WR && ppi->extState==PP_EXSTATE_ACTIVE)
-		pp_printf("phase tracking %s\n", WRH_SRV(ppi)->tracking_enabled?"ON":"OFF");
+		pp_printf("phase tracking %s\n", track_label[WRH_SRV(ppi)->tracking_enabled]);
 #endif
 
 #if CONFIG_HAS_EXT_L1SYNC
