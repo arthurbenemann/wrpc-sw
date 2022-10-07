@@ -59,6 +59,10 @@ struct subcmd {
 	{"tsource",  wrc_ptp_set_time_source, USE_CMD_PARAM},
 #endif /* CONFIG_PTP_OPT_OVERWRITE_ATTRIBUTES */
 #endif /* CONFIG_CMD_PTP_ADV */
+#ifdef CONFIG_INSITU_CALIB
+	{"sync_int",  wrc_ptp_set_sync_interval, USE_CMD_PARAM},
+	{"delay_req_int",  wrc_ptp_set_delay_req_interval, USE_CMD_PARAM},
+#endif /* CONFIG_INSITU_CALIB */
 #ifdef CONFIG_ABSCAL
 	{"abscal", wrc_ptp_set_mode, WRC_MODE_ABSCAL},
 #endif
@@ -95,6 +99,10 @@ static int cmd_ptp(const char *args[])
 				wrc_ptp_set_clock_allan_variance(USE_CMD_PARAM);
 				wrc_ptp_set_time_source(USE_CMD_PARAM);
 			}
+		}
+		if (HAS_INSITU_CALIB) {
+			wrc_ptp_get_sync_interval();
+			wrc_ptp_get_delay_req_interval();
 		}
 		return 0;
 	}

@@ -2266,7 +2266,8 @@ the build of WRPC.
     (requires external 10MHz and 1-PPS reference), Master or Slave. After
     setting the mode, \texttt{ptp start} must be re-issued \\
 
-  \code{ptp <prio1|prio2|domain|class}\\\code{|accuracy|allan|tsource> <val>}
+  \code{ptp <prio1|prio2|domain|class}\\\code{|accuracy|allan|tsource}\\
+  \code{|sync\_int|delay\_req\_int> <val>}
                 & sets various parametes of PTP. For details see below.
                 Use these subcommands with caution. Setting the mode with
                 \texttt{ptp} command may affect the already set parameters using
@@ -2280,6 +2281,16 @@ the build of WRPC.
   \code{ptp accuracy <1-255>} & sets \textit{clock accuracy} used by PTP \\
   \code{ptp allan <0-65535>}  & sets \textit{clock allan variance} used by PTP \\
   \code{ptp tsource <0-255>}  & sets \textit{time source} used by PTP \\
+  \code{ptp sync\_int <n>}  & sets logarithm to the base 2 of the mean interval
+                              of \textit{sync message transmission}
+                              used by PTP.
+                              Available if \texttt{CONFIG\_INSITU\_CALIB} is
+                              set. \\
+   \code{ptp delay\_req\_int <n>}  & sets logarithm to the base 2 of the mean
+                                    interval of \textit{delay request message
+                                    transmission} used by PTP.
+                                    Available if \texttt{CONFIG\_INSITU\_CALIB}
+                                    is set. \\
 
   \code{ptp start} & starts WR PTP daemon \\
 
