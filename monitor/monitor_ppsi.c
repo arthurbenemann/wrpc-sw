@@ -162,6 +162,24 @@ static int wrc_mon_status(void)
         cprintf(C_BLUE, " 2: ");
         cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_link_on_2);
 
+        cprintf(C_BLUE, "\n\nCTR sync_tai: ");
+        cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_sync_tai);
+        cprintf(C_BLUE, "\nCTR sync_nsec: ");
+        cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_sync_nsec);       
+	cprintf(C_BLUE, "\nCTR sync_phase: ");
+        cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_sync_phase);
+	cprintf(C_BLUE, "\nCTR wait_offset_stable _0_: ");
+        cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_wait_offset_stable_0);
+	cprintf(C_BLUE, "_1_: ");
+        cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_wait_offset_stable_1);
+	cprintf(C_BLUE, "_2_: ");
+        cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_wait_offset_stable_2);
+	cprintf(C_BLUE, "_3_: ");
+        cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_wait_offset_stable_3);
+	cprintf(C_BLUE, "\nCTR track_phase: ");
+        cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_track_phase);
+
+
 #endif // BROADCAST_BASE && BC_EXTRA_MON
 	
 	cprintf(C_BLUE, "\n\nPTP status: ");
