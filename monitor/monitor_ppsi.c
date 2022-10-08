@@ -106,7 +106,7 @@ static int wrc_mon_status(void)
         cprintf(C_BLUE, " 00_2: ");
         cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_present_00_2);
 
-        cprintf(C_BLUE, "\n\nCTR wr-s-lock 1: ");
+        cprintf(C_BLUE, "\nCTR wr-s-lock 1: ");
         cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_s_lock_1);
         cprintf(C_BLUE, " 2: ");
         cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_s_lock_2);
@@ -121,17 +121,17 @@ static int wrc_mon_status(void)
         cprintf(C_BLUE, " 7: ");
         cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_s_lock_7);
 
-        cprintf(C_BLUE, "\n\nCTR wr-locked 1: ");
+        cprintf(C_BLUE, "\nCTR wr-locked 1: ");
         cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_locked_1);
         cprintf(C_BLUE, " 2: ");
         cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_locked_2);
 
-	cprintf(C_BLUE, "\n\nCTR wr-resp-calib-req 1: ");
+	cprintf(C_BLUE, "\nCTR wr-resp-calib-req 1: ");
         cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_resp_calib_req_1);
         cprintf(C_BLUE, " 2: ");
         cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_resp_calib_req_2);
 
-        cprintf(C_BLUE, "\n\nCTR wr-calibration 00: ");
+        cprintf(C_BLUE, "\nCTR wr-calibration 00: ");
         cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_calibration_00);
         cprintf(C_BLUE, " 0: ");
         cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_calibration_0);
@@ -152,12 +152,12 @@ static int wrc_mon_status(void)
         cprintf(C_BLUE, " 8: ");
         cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_calibration_8);
 
-        cprintf(C_BLUE, "\n\nCTR wr-calibrated 1: ");
+        cprintf(C_BLUE, "\nCTR wr-calibrated 1: ");
         cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_calibrated_1);
         cprintf(C_BLUE, " 2: ");
         cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_calibrated_2);
 
-        cprintf(C_BLUE, "\n\nCTR wr-link-on 1: ");
+        cprintf(C_BLUE, "\nCTR wr-link-on 1: ");
         cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_link_on_1);
         cprintf(C_BLUE, " 2: ");
         cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_link_on_2);
@@ -168,16 +168,23 @@ static int wrc_mon_status(void)
         cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_sync_nsec);       
 	cprintf(C_BLUE, "\nCTR sync_phase: ");
         cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_sync_phase);
-	cprintf(C_BLUE, "\nCTR wait_offset_stable _0_: ");
+	cprintf(C_BLUE, "\nCTR wait_offset_stable _0_:");
         cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_wait_offset_stable_0);
-	cprintf(C_BLUE, "_1_: ");
+	cprintf(C_BLUE, " _1_:");
         cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_wait_offset_stable_1);
-	cprintf(C_BLUE, "_2_: ");
+	cprintf(C_BLUE, " _2_:");
         cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_wait_offset_stable_2);
-	cprintf(C_BLUE, "_3_: ");
+	cprintf(C_BLUE, " _3_:");
         cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_wait_offset_stable_3);
 	cprintf(C_BLUE, "\nCTR track_phase: ");
         cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_track_phase);
+
+	cprintf(C_BLUE, "\n\nCTR pps_gen_busy: ");
+        cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_pps_gen_busy);
+	cprintf(C_BLUE, "\nCTR spll_shifter_busy: ");
+        cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_spll_shifter_busy);
+	cprintf(C_BLUE, "\nCTR not busy: ");
+        cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_not_busy);
 
 
 #endif // BROADCAST_BASE && BC_EXTRA_MON
