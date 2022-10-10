@@ -162,6 +162,15 @@ static int wrc_mon_status(void)
         cprintf(C_BLUE, " 2: ");
         cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_link_on_2);
 
+	cprintf(C_BLUE, "\n\nCTR : wr_servo_init 0: ");
+        cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_servo_init_0);
+	cprintf(C_BLUE, " 1: ");
+        cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_servo_init_1);
+	cprintf(C_BLUE, "\nFLAGS after init: ");
+        cprintf(C_GREY, "%d", WR_DSPOR(ppi)->servo_flags_at_init);
+	cprintf(C_BLUE, "\nFLAGS NOW: ");
+        cprintf(C_GREY, "%d", s->flags);
+
         cprintf(C_BLUE, "\n\nCTR sync_tai: ");
         cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_sync_tai);
         cprintf(C_BLUE, "\nCTR sync_nsec: ");
@@ -185,8 +194,6 @@ static int wrc_mon_status(void)
         cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_spll_shifter_busy);
 	cprintf(C_BLUE, "\nCTR not busy: ");
         cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_not_busy);
-
-
 #endif // BROADCAST_BASE && BC_EXTRA_MON
 	
 	cprintf(C_BLUE, "\n\nPTP status: ");
