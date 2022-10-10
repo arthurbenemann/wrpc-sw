@@ -144,7 +144,7 @@ static int wrc_mon_status(void)
         cprintf(C_BLUE, " 4: ");
         cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_calibration_4);
         cprintf(C_BLUE, " 5: ");
-        cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_calibration_5);
+        cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_calibration_5); 
         cprintf(C_BLUE, " 6: ");
         cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_calibration_6);
         cprintf(C_BLUE, " 7: ");
