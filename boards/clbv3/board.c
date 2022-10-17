@@ -81,13 +81,6 @@ int wrc_board_early_init()
 	/*
 	 * Mount SDBFS filesystem from storage.
 	 */
-// #### TEMP_FIX ####
-// #### Fixes RISC Crash due to SDBFS not present when EEPROM is clean ####
-	uint32_t base = 0;
-	storage_sdbfs_format( &wrc_storage_dev, base, 0 );
-	//storage_sdbfs_erase( &wrc_storage_dev, base, 0 );
-// #### END_TEMP_FIX ####
-
 	storage_mount( &wrc_storage_dev );
 
 	return 0;
