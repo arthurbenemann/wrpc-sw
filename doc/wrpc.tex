@@ -21,6 +21,7 @@
 \usepackage{multirow}
 \usepackage[toc]{appendix}
 \newcommand{\newparagraph}[1]{\paragraph{#1}\mbox{}\\}
+\usepackage{placeins}
 
 \definecolor{wrlblue}{RGB}{165,195,210}
 \definecolor{wrlgray}{RGB}{209,211,212}
@@ -2835,6 +2836,283 @@ Start the build of the toolchain.
 make
 \end{lstlisting}
 The output will be copied to the specified \texttt{<install\_dir>}.
+
+% --------------------------------------------------------------------------
+\newpage
+\section{In-situ calibration}
+\label{appendix:insitu}
+
+This section describes how to configure and use insitu calibration in WRPC.
+
+\subsection{In-situ configuration}
+
+To configure all needed means for in-situ calibration, make sure the option
+\texttt{CONFIG\_INSITU\_CALIB} and \texttt{CONFIG\_CMD\_SFP\_INFO} are selected
+in the dot-config.
+Enabling this configuration options has number of side effects.
+It adds the following commands:
+
+\begin{lstlisting}
+sfp tune <channel|wavelength>
+insitu <on|off|crtt|run|stop>
+ptp sync_int <n>
+ptp delay_req_int <n>
+ptrack insitu
+\end{lstlisting}
+
+The output of the command \texttt{sfp info} is extended by extra information
+specific to tunable SFPs:
+\begin{lstlisting}
+SFP tunable: true
+Dither TX: false
+Tunable by channel: true
+Tunable by wavelength: true
+Laser first freq: 191.7000 THz
+Laser last freq: 196.1000 THz
+Laser's grid support: 50.0 GHz
+Channels supported: 1..89
+Current channel number: 1
+Current wavelength: 1563.85 nm
+\end{lstlisting}
+
+\subsection{Getting timestamps}
+This subsection describes obligatory and optional steps to get input for further
+calculations.
+
+As a first step it is recommended to disable the assymetry of a link. It can be
+done by setting alpha to 0 for the used SFP in the local database.
+To achieve this, get the Vendor PN of the SFP by:
+\begin{lstlisting}
+wrc# sfp info
+[...]
+Vendor PN: FTLX6872MCC
+[...]
+\end{lstlisting}
+Then add it to the SFPs database:
+\begin{lstlisting}
+wrc# sfp add FTLX6872MCC 200000 300000 0 0
+\end{lstlisting}
+Please note that in this example deltas are set to an example values. Last two
+zeros set the alpha to 0 (disable assymetry).
+
+The second optional step is to avoid White Rabbit synchronization, only layer-1
+syntonization will be used.
+This can be done with the command:
+\begin{lstlisting}
+ptrack insitu
+\end{lstlisting}
+This can reduce the time between start the procedure and printout of usable data.
+It is useful to run this command before the regular synchronization happens.
+
+The next optional step is to configure SFP to the desired channel or
+wavelength for transmission using the \texttt{sfp tune} command:
+\begin{lstlisting}
+sfp tune <channel|wavelength>
+\end{lstlisting}
+For example to set wavelength to 1563.85nm:
+\begin{lstlisting}
+sfp tune 1563.85
+\end{lstlisting}
+
+To get the t1-t4 timestamps please execute the following command:
+\begin{lstlisting}
+insitu on
+\end{lstlisting}
+This will give the output to the console like:
+\begin{lstlisting}
+t1t2: 1661513034.690862958848 3030.150239945501
+t3t4: 3030.189306224000 1661513034.729982850925
+t1t2: 1661513035.526964302848 3030.986341289504
+t3t4: 3031.966333168000 1661513036.507009794932
+\end{lstlisting}
+
+Alternatively the calculations of the round trip time can be done on WRPC
+with the addition to the delta correction. To display these values instead
+execute the command:
+\begin{lstlisting}
+insitu crtt
+\end{lstlisting}
+This will give an example output:
+\begin{lstlisting}
+t3t4t2t1: 0.000053613578
+t3t4t2t1: 0.000053613573
+t3t4t2t1: 0.000053613578
+\end{lstlisting}
+
+If needed the rate of issuing delay-request messages can be changed with
+a command:
+\begin{lstlisting}
+ptp delay_req_int <n>
+\end{lstlisting}
+Parameter\texttt{n} is a logarithm to the base 2 of the mean interval of delay
+request message transmission.
+In practice it affects the rate of t3-t4 printouts or round trip time corrected
+with deltas, based on what is to be printed.
+
+To wrap up this section, as an example the following commands can be executed
+to get the round trip times every 500ms using channel 1 of SFP:
+\begin{lstlisting}
+ptrack insitu
+sfp tune 1
+ptp delay_req_int -1
+insitu crtt
+\end{lstlisting}
+The delays similar to the below will start appearing on the console:
+\begin{lstlisting}
+t3t4t2t1: 0.000053613578
+t3t4t2t1: 0.000053613573
+t3t4t2t1: 0.000053613578
+\end{lstlisting}
+
+\subsection{Sweep over many channels}
+It is possible to sweep over several SFP's channels in one go with a command:
+\begin{lstlisting}
+insitu run <ch_start> <ch_end> <step> <samples>
+\end{lstlisting}
+Where:
+\begin{itemize*}
+  \item \texttt{ch\_start} is the first channel to be set
+  \item \texttt{ch\_end} is the last channel to be set
+  \item \texttt{step} defines the increment of channel
+  \item \texttt{samples} defines number of delay-response messages to be
+        collected for each channel
+\end{itemize*}
+
+The following command run the test for channels 1, 3, 5, 7.
+Change of a channel will happen after 100 of t3-t4 timestamps is collected.
+The presence and the format of timestamps can be changed with
+the \texttt{insitu} command.
+\begin{lstlisting}
+insitu run 1 7 2 100
+\end{lstlisting}
+
+After this command is triggered it is possible to request printout of
+round trip time corrected with deltas instead of t1-t4 timestamps.
+It can be done with a command:
+\begin{lstlisting}
+insitu crtt
+\end{lstlisting}
+
+The sweep can generate a significant amount of data to the console.
+The output of the virtual console can be redirected to a file by e.g. command:
+\begin{lstlisting}
+$ ./spec-vuart 2>&1 | tee output_file.txt
+\end{lstlisting}
+
+\subsection{Combining results into a plot}
+
+Scripts used in this subsection can be found in the directory
+\texttt{tools/insitu} in \textit{wrpc-sw} repository.
+
+If wrpc is configured to output t1-t4 timestamps,
+the \texttt{insitu\_process\_data.py} script can be used to calculate one way
+time difference and round trip time
+(please note that it is not corrected with delta values).
+
+\begin{lstlisting}
+$ ./insitu_process_data.py output_file.txt
+\end{lstlisting}
+
+Script will generate files:
+\begin{itemize*}
+  \item \texttt{output\_file.txt.t1} -- with columns: \texttt{t1}, \texttt{t2},
+        \texttt{t2-t1}
+  \item \texttt{output\_file.txt.t3} -- with columns: \texttt{t3}, \texttt{t4},
+        \texttt{t4-t3}
+  \item \texttt{output\_file.txt.tx} -- with columns: \texttt{t2-t1},
+        \texttt{t4-t3}, \texttt{(t2-t1)+(t4-t3)}
+\end{itemize*}
+
+The same script can be used on an output from one channel or from an output of
+a sweep over several channels (command \texttt{insitu run}).
+
+To generate a plot out of the generated files the following scripts can be used:
+\begin{itemize*}
+  \item \texttt{./plot\_t2t1.gnuplot output\_file.txt.t1} -- to plot t2-t1;
+        an example plot can be seen in Figure~\ref{fig:insitu_t2t1}
+  \item \texttt{./plot\_t4t3.gnuplot output\_file.txt.t3} -- to plot t4-t3;
+        an example plot can be seen in Figure~\ref{fig:insitu_t4t3}
+  \item \texttt{./plot\_t2t1t4t3.gnuplot output\_file.txt.tx} -- to plot
+        (t2-t1)+(t4-t3);
+        an example plot can be seen in Figure~\ref{fig:insitu_t2t1t4t3}
+\end{itemize*}
+
+\begin{figure}[!ht]
+  \begin{center}
+    \includegraphics[width=.7\textwidth]{fig/insitu.t1.t2t1.png}
+    \caption{t2-t1 of a sweep over all SFP channels}
+    \label{fig:insitu_t2t1}
+  \end{center}
+\end{figure}
+
+\begin{figure}[!ht]
+  \begin{center}
+    \includegraphics[width=.7\textwidth]{fig/insitu.t3.t4t3.png}
+    \caption{t4-t3 of a sweep over all SFP channels}
+    \label{fig:insitu_t4t3}
+  \end{center}
+\end{figure}
+
+\begin{figure}[!ht]
+  \begin{center}
+    \includegraphics[width=.7\textwidth]{fig/insitu.tx.t2t1t4t3.png}
+    \caption{(t2-t1)+(t4-t3) of a sweep over all SFP channels}
+    \label{fig:insitu_t2t1t4t3}
+  \end{center}
+\end{figure}
+
+\FloatBarrier
+\subsection{Known problems}
+\subsubsection{No channel for SFP selected}
+If the message like below appears in the console, make sure that SFPs is
+configured to use a non-zero channel.
+\begin{lstlisting}
+Warning: tx not terminated infinite mcr=0x1001410
+Warning: tx timestamp never became available
+\end{lstlisting}
+
+Check which channel is selected:
+\begin{lstlisting}
+wrc# sfp info
+[...]
+Current channel number 1
+Current wavelength 1563.85 nm
+\end{lstlisting}
+If needed set the channel to e.g. \texttt{1} by the command:
+\begin{lstlisting}
+sfp tune 1
+\end{lstlisting}
+
+
+\subsubsection{WRPC stays in PTP mode}
+
+It was observed that every few tunes the WRPC goes to the PTP mode.
+For an unknown reason PPSi does not set the link as White Rabbit.
+It can be observed especially when sweeping SFP channels with \texttt{sfp run}
+command. In such case both syntonization and synchronization is done.
+
+To workaround this problem, please unplug/plug the fiber or restart PPSi by
+executing commands \texttt{ptp stop} followed by \texttt{ptp start}.
+
+% from scratch the toolchain for RISC-V.
+% Firstly, clone the \texttt{riscv-gnu-toolchain} repo and checkout the tag
+% \texttt{2022.03.09} (or commit \texttt{051b9f7d}). This will allow to build
+% the GCC 11.1.0 for the RISC-V architecture.
+% \begin{lstlisting}
+% git clone https://github.com/riscv/riscv-gnu-toolchain -b 2022.03.09
+% \end{lstlisting}
+% Run the configuration script with parameters to specify the installation
+% directory and the details for the RISC-V architecture.
+% The selected options use soft-float (\texttt{ilp32}) and allow to use
+% compressed instruction set.
+% \begin{lstlisting}
+% ./configure --prefix=<install_dir> --with-arch=rv32i --with-abi=ilp32
+% \end{lstlisting}
+% Start the build of the toolchain.
+% \begin{lstlisting}
+% make
+% \end{lstlisting}
+% The output will be copied to the specified \texttt{<install\_dir>}.
 
 
 % --------------------------------------------------------------------------
