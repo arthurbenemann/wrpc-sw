@@ -156,7 +156,7 @@ void insitu_print_t3_t4(struct pp_instance *ppi)
 	    pp_printf("t3t4t2t1: %s\n", time_to_string(&pp_time_tmp));
 	}
 
-	if (n_samples_curr >= n_samples && insitu_task_state == i_acq)
+	if (n_samples_curr > n_samples && insitu_task_state == i_acq)
 	    insitu_task_state = i_acq_done;
     }
 }
