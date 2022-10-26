@@ -296,7 +296,7 @@ int sfp_tune_ch(const char *args)
 	}
 
 	tmp8 = sfp_a2_read_u8(SFP_A2_CTRL_CUR_STATUS_REG);
-	pp_printf("Status reg 0x%02x, TX tune %d\n", tmp8, tmp8 & SFP_A2_CTRL_CUR_STATUS_TXTUNE);
+	pp_printf("Status reg 0x%02x, TX tune %d, Unlocked %d\n", tmp8, tmp8 & SFP_A2_CTRL_CUR_STATUS_TXTUNE, tmp8 & SFP_A2_CTRL_CUR_STATUS_WL_UNLOCK);
 	tmp8 = sfp_a2_read_u8(SFP_A2_CTRL_LATCH_STATUS_REG);
 	pp_printf("latch reg 0x%02x\n", tmp8);
 	tmp16 = sfp_a2_read_u16(SFP_A2_CTRL_FREQ_ERR_REG);
