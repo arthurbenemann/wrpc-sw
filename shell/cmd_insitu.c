@@ -30,17 +30,26 @@ enum insitu_log_val_enum {
     log_crtt,
 };
 
+enum insitu_task_sel_enum {
+    run,
+    measurement,
+};
+
 static enum insitu_task_state_enum insitu_task_state = i_idle;
 static enum insitu_log_val_enum wrc_insitu_logging = log_off;
+static enum insitu_task_sel_enum insitu_task_sel = run;
 
 static void insitu_onetime_params(void);
-static int insitu_pharse(const char *args[]);
+static int insitu_pharse_run(const char *args[]);
+static int insitu_pharse_measurement(const char *args[]);
 
 static int ch_start = 0;
 static int ch_end = 0;
 static int ch_step = 0;
 static int n_samples = 0;
+static int n_measurements = 0;
 static int n_samples_curr = 0;
+static int n_measurement_curr = 1;
 static int ch_curr = 0;
 
 static void insitu_help(void)
@@ -79,7 +88,9 @@ static int cmd_insitu(const char *args[])
 		wrc_insitu_logging = log_off;
 		pp_printf("insitu log off\n");
 	} else if (!strcasecmp(args[0], "run")) {
-		return insitu_pharse(args);
+		return insitu_pharse_run(args);
+	} else if (!strcasecmp(args[0], "meas")) {
+		return insitu_pharse_measurement(args);
 	} else if (!strcasecmp(args[0], "stop")) {
 		insitu_task_state = i_idle;
 		/* Turn off logging */
@@ -182,7 +193,7 @@ int insitu_task(void)
 
     next_update_ticks = now + TICS_PER_SECOND;
 
-    if (ch_curr > ch_end) {
+    if ((insitu_task_sel == run  && ch_curr > ch_end) || (insitu_task_sel == measurement && n_measurement_curr > n_measurements)) {
 	insitu_task_state = i_idle;
 	/* Turn off logging */
 	wrc_insitu_logging = 0;
@@ -203,28 +214,38 @@ int insitu_task(void)
     n_samples_curr = 0;
 
     /* Set correct channel */
-    ch_curr += ch_step;
-
+    if (insitu_task_sel == run) {
+      ch_curr += ch_step;
+    } else {
+    /* insitu_task_sel == measurement then toggle between start and end */
+      pp_printf("measurement %d channel %d\n", n_measurement_curr, ch_curr);
+      if (ch_curr == ch_start) {
+         ch_curr = ch_end;
+      } else {
+         ch_curr = ch_start;
+         n_measurement_curr++;
+      }
+    }
 
     return 1;
 }
 
-static int insitu_pharse(const char *args[])
+static int insitu_pharse_run(const char *args[])
 {
     if (!args[1])
-	goto missing_param_start;
+	goto missing_param_run_start;
     ch_start = atoi(args[1]);
 
     if (!args[2])
-	goto missing_param_end;
+	goto missing_param_run_end;
     ch_end = atoi(args[2]);
 
     if (!args[3])
-	goto missing_param_step;
+	goto missing_param_run_step;
     ch_step = atoi(args[3]);
 
     if (!args[4])
-	goto missing_param_samples;
+	goto missing_param_run_samples;
     n_samples = atoi(args[4]);
 
     pp_printf("start: %d end: %d step: %d samples %d\n", ch_start, ch_end, ch_step, n_samples);
@@ -232,20 +253,64 @@ static int insitu_pharse(const char *args[])
     /* We probably want to get samples */
     wrc_insitu_logging = 1;
 
+    insitu_task_sel = run;
     insitu_task_state = i_acq_done;
     n_samples_curr = 0;
     ch_curr = ch_start;
 
     return 0;
 
-missing_param_start:
+missing_param_run_start:
     pp_printf("param missing:channel start\n");
-missing_param_end:
+missing_param_run_end:
     pp_printf("param missing:channel end\n");
-missing_param_step:
+missing_param_run_step:
     pp_printf("param missing:channel step\n");
-missing_param_samples:
-    pp_printf("param missing:Numer of samples\n");
+missing_param_run_samples:
+    pp_printf("param missing:Number of samples\n");
+
+    return -EINVAL;
+}
+
+static int insitu_pharse_measurement(const char *args[])
+{
+    if (!args[1])
+	goto missing_param_measurement_ch1;
+    ch_start = atoi(args[1]);
+
+    if (!args[2])
+	goto missing_param_measurement_ch2;
+    ch_end = atoi(args[2]);
+
+    if (!args[3])
+	goto missing_param_measurement_samples;
+    n_samples = atoi(args[3]);
+
+    if (!args[4])
+	goto missing_param_measurement_measurements;
+    n_measurements = atoi(args[4]);
+
+    pp_printf("channel 1: %d channel 2: %d samples %d measurements %d\n", ch_start, ch_end, n_samples, n_measurements);
+
+    /* We probably want to get samples */
+    wrc_insitu_logging = 1;
+
+    insitu_task_sel = measurement;
+    insitu_task_state = i_acq_done;
+    n_samples_curr = 0;
+    n_measurement_curr = 1;
+    ch_curr = ch_start;
+
+    return 0;
+
+missing_param_measurement_ch1:
+    pp_printf("param missing:channel 1\n");
+missing_param_measurement_ch2:
+    pp_printf("param missing:channel 2\n");
+missing_param_measurement_samples:
+    pp_printf("param missing:Number of samples\n");
+missing_param_measurement_measurements:
+    pp_printf("param missing:Number of measurements\n");
 
     return -EINVAL;
 }
