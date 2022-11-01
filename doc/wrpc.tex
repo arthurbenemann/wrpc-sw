@@ -98,7 +98,7 @@ basicstyle=\footnotesize\ttfamily, backgroundcolor=\color{light-gray}, label=lst
   \tts{\href{http://www.ohwr.org/projects/wr-cores/repository/entry/#1?rev=\wrpcrelease}{#1}}}
 
 \title{White Rabbit PTP Core User's Manual}
-\author{Grzegorz Daniluk \\Dimitrios Lampridis \\Adam Wujek \hfill CERN (BE-CO-HT)}
+\author{Grzegorz Daniluk \\Dimitrios Lampridis \\Adam Wujek \hfill CERN (BE-CO-HT) \\ Peter Jansweijer \hfill Nikhef}
 
 \begin{document}
 \input{version.tex}
@@ -2193,6 +2193,15 @@ the build of WRPC.
                                 Get number of <samples> for each channel.
                                 Available if \texttt{CONFIG\_INSITU\_CALIB} is
                                 set. \\
+  \code{insitu meas <ch\_1> <ch\_2> <samples> <measurements>} & starts a
+                                delayCoefficient ($\alpha$) measurement.
+                                Measurements alternate between ch\_1 and ch\_2.
+                                For each channel round trip delay samples are
+                                recorded. DelayCoefficient ($\alpha$) can be
+                                determined for each ch\_1, ch\_2 measurement
+                                set.
+                                Available if \texttt{CONFIG\_INSITU\_CALIB} is
+                                set. \\
   \code{insitu stop} & stops automatic sweep over number of channels\\
 
   \code{ip get} & \\
@@ -2854,7 +2863,7 @@ It adds the following commands:
 
 \begin{lstlisting}
 sfp tune <channel|wavelength>
-insitu <on|off|crtt|run|stop>
+insitu <on|off|crtt|run|meas|stop>
 ptp sync_int <n>
 ptp delay_req_int <n>
 ptrack insitu
@@ -2879,7 +2888,7 @@ Current wavelength: 1563.85 nm
 This subsection describes obligatory and optional steps to get input for further
 calculations.
 
-As a first step it is recommended to disable the assymetry of a link. It can be
+As a first step it is recommended to disable the asymmetry of a link. It can be
 done by setting alpha to 0 for the used SFP in the local database.
 To achieve this, get the Vendor PN of the SFP by:
 \begin{lstlisting}
@@ -2893,7 +2902,7 @@ Then add it to the SFPs database:
 wrc# sfp add FTLX6872MCC 200000 300000 0 0
 \end{lstlisting}
 Please note that in this example deltas are set to an example values. Last two
-zeros set the alpha to 0 (disable assymetry).
+zeros set the alpha to 0 (disable asymmetry).
 
 The second optional step is to avoid White Rabbit synchronization, only layer-1
 syntonization will be used.
@@ -3062,6 +3071,110 @@ To generate a plot out of the generated files the following scripts can be used:
 \end{figure}
 
 \FloatBarrier
+
+\subsection{Measure delayCoefficient ($\alpha$)}
+The delayCoefficient ($\alpha$) can be measured using the 'three one-way delays (TOWD) procedure'.
+Round trip delay measurements are sampled for different laser wavelengths (tunable SFP channels).
+Depending on the location of the tunable laser SFP (at the timeTransmitter or at the timeReceiver) the reverse or forward channel is kept at the same (common) wavelength.
+First channel 1 is selected and a number of round trip delay samples are recorded.
+Next channel 2 is selected and round trip delay samples are recorded.
+Multiple of these channel 1, channel 2 measurement sets can be recorded for statistics.
+
+During the measurements, no asymmetry must be active and there must be only layer-1 syntonization:
+\begin{lstlisting}
+sfp add FTLX6872MCC 200000 300000 0 0
+ptrack insitu
+\end{lstlisting}
+Please note that in this example deltas are set to an example values. Last two
+zeros set the alpha to 0 (disable asymmetry).
+
+Now alternate between channel 1 and 2 and sample the round trip delays:
+\begin{lstlisting}
+insitu meas <ch_1> <ch_2> <samples> <measurements>
+\end{lstlisting}
+Where:
+\begin{itemize*}
+	\item \texttt{ch\_1} is the channel used for wavelength 1
+	\item \texttt{ch\_2} is the channel used for wavelength 2
+	\item \texttt{samples} defines number of round trip delay samples to collect
+	\item \texttt{measurements} defines number channel 1, 2 measurement sets to be collected
+\end{itemize*}
+
+The following command alternates channels 4 and channel 53 and measures 5 round trip delay samples for each.
+This is repeated until 10 sets of measurements for channel 4 and channel 53 are recorded:
+\begin{lstlisting}
+insitu meas 4 53 5 10
+\end{lstlisting}
+
+The measurement can generate a significant amount of data to the console.
+The output of the virtual console can be redirected to a file by e.g. command:
+\begin{lstlisting}
+$ ./spec-vuart 2>&1 | tee output_file.txt
+\end{lstlisting}
+
+The intitu meas ouput file can be analyzed using a python script.
+This script analyzes the recorded round trip delays and calculates the delayCoefficient from the sets of averaged round trip delay measurements for ch\_1 and ch\_2.
+The laser wavelengths in use are needed in order to be able to calculate the delayCoefficient:
+
+\begin{lstlisting}
+$ ./insitu_process_meas.py output_file.txt lambda_1 lambda_2 lambda_common
+\end{lstlisting}
+
+The above example used channel 4 and 53 while the setup uses channel 7 as common.
+For the FTLX6872MCC tunable SFP these channels translate into:
+
+\begin{lstlisting}
+$ channel 4   1562.65 nm
+$ channel 53  1542.95 nm
+$ channel 7   1561.40 nm
+\end{lstlisting}
+
+So the python script is called with the following example parameters:
+\begin{lstlisting}
+$ ./insitu_process_meas.py output_file.txt 1562.65 1542.95 1561.40
+\end{lstlisting}
+
+The delayCoeffcient per measurement is plotted to idendity possible outliers.
+The script outputs a 'output\_file.txt.delayCoefficients' file.
+By default the delayCoefficients are calculated for both lambda 1 and lambda 2, based on a tunable SFP that is located in the timeReceiver.
+At the end of the file the delayCoefficients are reported in float as well as in int64 format (H: 9 digits high, L: 9 digits low).
+
+\begin{lstlisting}
+----------------------------------------------
+Tunebale timeReceiver
+Lambda 1: 1562.65 Lambda 2: 1542.95 Lambda common: 1561.4
+delayCoefficient_l1 mean: -4.4385843031531915e-06
+delayCoefficient_l1 std:  7.918387688235417e-08
+delayCoefficient_l1_H: -20469
+delayCoefficient_l1_L: 357172462
+----------------------------------------------
+delayCoefficient_l2 mean: 6.551808875455434e-05
+delayCoefficient_l2 std:  1.1689171974928994e-06
+delayCoefficient_l2_H: 302148
+delayCoefficient_l2_L: 853863462
+\end{lstlisting}
+
+The int64 formatted numbers can be directly used as input for the asymmetry parameter. For channel 4 (i.e. lambda 1):
+
+\begin{lstlisting}
+sfp tune 4
+sfp add FTLX6872MCC 200000 300000 -20469 357172462
+sfp match
+\end{lstlisting}
+or for channel 53 (i.e. lambda 2):
+\begin{lstlisting}
+sfp tune 53
+sfp add FTLX6872MCC 200000 300000 3021489 853863462
+sfp match
+\end{lstlisting}
+
+Don't forget to enable phase tracking before returning to normal White Rabbit operation:
+
+\begin{lstlisting}
+ptrack enable
+ptp start
+\end{lstlisting}
+
 \subsection{Known problems}
 \subsubsection{No channel for SFP selected}
 If the message like below appears in the console, make sure that SFPs is
