@@ -24,11 +24,11 @@
   #define HAS_FIFO_LOG 1
 #else
   #define HAS_FIFO_LOG 0
-  extern struct spll_fifo_log *fifo_log;
+  extern struct spll_fifo_log fifo_log[];
 #endif
 
-int spll_n_chan_ref, spll_n_chan_out;
-int spll_ljd_present = 0;
+unsigned char spll_n_chan_ref, spll_n_chan_out;
+unsigned char spll_ljd_present = 0;
 
 #define MAIN_CHANNEL (spll_n_chan_ref)
 
@@ -304,15 +304,14 @@ void spll_very_init()
 
 void spll_init(int mode, int slave_ref_channel, int flags)
 {
-	static const char *modes[] = { "", "grandmaster", "freemaster", "slave", "disabled" };
-	volatile int dummy;
+	static const char * const modes[] = { "", "grandmaster", "freemaster", "slave", "disabled" };
+	int dummy;
 	int i;
 
 	struct softpll_state *s = (struct softpll_state *) &softpll;
 
 	disable_irq();
 
-	
 	uint32_t csr = SPLL->CSR;
 
 	spll_n_chan_ref = SPLL_CSR_N_REF_R(csr);

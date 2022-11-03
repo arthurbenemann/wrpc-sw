@@ -19,8 +19,7 @@
 #include "wrc_ptp.h"
 #include "wrc_global.h"
 
-enum ip_status *ip_status = &wrc_global_link.ip_status;
-static uint8_t *myIP = wrc_global_link.ip_addr;
+#define myIP      wrc_global_link.ip_addr
 
 /* bootp: bigger buffer, UDP based */
 static uint8_t __bootp_queue[512];
@@ -102,7 +101,7 @@ static int bootp_poll(void)
 	len = ptpd_netif_recvfrom(bootp_socket, &addr,
 				  buf, sizeof(buf), NULL);
 
-	if (*ip_status != IP_TRAINING)
+	if (ip_status != IP_TRAINING)
 		return 0;
 
 	/* no extra traffic when abscal is in progress */
@@ -130,7 +129,7 @@ static int icmp_poll(void)
 				  buf, sizeof(buf), NULL);
 	if (len <= 0)
 		return 0;
-	if (*ip_status == IP_TRAINING)
+	if (ip_status == IP_TRAINING)
 		return 0;
 
 	/* check the destination IP */
@@ -175,8 +174,8 @@ int ipv4_poll(void)
 {
 	int ret = 0;
 
-	if (*link_status == NETIF_LINK_WENT_UP && *ip_status == IP_OK_BOOTP)
-		*ip_status = IP_TRAINING;
+	if (link_status == NETIF_LINK_WENT_UP && ip_status == IP_OK_BOOTP)
+		ip_status = IP_TRAINING;
 	ret = bootp_poll();
 
 	ret += icmp_poll();
@@ -201,7 +200,7 @@ void setIP(unsigned char *IP)
 
 	ip = (myIP[0] << 24) | (myIP[1] << 16) | (myIP[2] << 8) | (myIP[3]);
 	if (ip == 0)
-		*ip_status = IP_TRAINING;
+		ip_status = IP_TRAINING;
 	bootp_retry = 0;
 }
 

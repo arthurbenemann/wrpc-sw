@@ -15,6 +15,7 @@
 #include "hal_exports.h"
 #include <wrpc.h>
 #include "wrc.h"
+#include "wrc_global.h"
 #include "ptpd_netif.h"
 
 #include "board.h"
@@ -241,7 +242,7 @@ int ptpd_netif_recvfrom(struct wrpc_socket *s, struct wr_sockaddr *from, void *d
 	q->avail += wrap_copy_in(data, q, size, data_length);
 
 	from->ethertype = ntohs(hdr.ethtype);
-	from->vlan = *wrc_vlan_number; /* has been checked in rcvd frame */
+	from->vlan = wrc_vlan_number; /* has been checked in rcvd frame */
 	memcpy(from->mac, hdr.srcmac, 6);
 	memcpy(from->mac_dest, hdr.dstmac, 6);
 
@@ -282,9 +283,9 @@ int ptpd_netif_sendto(struct wrpc_socket * sock, struct wr_sockaddr *to, void *d
 
 	memcpy(hdr.dstmac, to->mac, 6);
 	memcpy(hdr.srcmac, s->local_mac, 6);
-	if (*wrc_vlan_number) {
+	if (wrc_vlan_number) {
 		hdr.ethtype = htons(0x8100);
-		hdr.tag = htons(*wrc_vlan_number | (sock->prio << 13));
+		hdr.tag = htons(wrc_vlan_number | (sock->prio << 13));
 		hdr.ethtype_2 = sock->bind_addr.ethertype; /* net order */
 	} else {
 		hdr.ethtype = sock->bind_addr.ethertype;
@@ -334,9 +335,9 @@ int net_bh_poll(void)
 		payload += 4;
 		recvd -= 4;
 	}
-	if ((ntohs(tag) & 0xfff) != *wrc_vlan_number) {
+	if ((ntohs(tag) & 0xfff) != wrc_vlan_number) {
 		net_verbose("%s: want vlan %i, got %i: discard\n",
-				    __func__, *wrc_vlan_number,
+				    __func__, wrc_vlan_number,
 				    ntohs(tag) & 0xfff);
 			return 0;
 	}

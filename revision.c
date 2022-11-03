@@ -9,11 +9,6 @@
  */
 #include "softpll_ng.h"
 #include "revision.h"
-const char *const build_revision = stats.commit_id;
-
-const char *const build_date = stats.build_date;
-const char *const build_time = stats.build_time;
-const char *const build_by = stats.build_by;
 
 /*
  * On the switch, we export softpll internal status to the ARM cpu, for SNMP.

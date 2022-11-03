@@ -10,7 +10,7 @@
 #include <wrc.h>
 #include "endianness.h"
 #include "dev/endpoint.h"
-
+#include "wrc_global.h"
 #include "ipv4.h"
 
 #define BOOTP_OP	(UDP_END)
@@ -93,7 +93,7 @@ int process_bootp(uint8_t * buf, int len)
 	if (memcmp(buf + BOOTP_CHADDR, mac, 6))
 		return 0;
 
-	*ip_status = IP_OK_BOOTP;
+	ip_status = IP_OK_BOOTP;
 	setIP(buf + BOOTP_YIADDR);
 
 	getIP(ip);

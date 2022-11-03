@@ -9,6 +9,8 @@
 #ifndef __CONSOLE_H
 #define __CONSOLE_H
 
+#include <stdint.h>
+
 #define CONSOLE_FLAGS_MODE_BINARY (1<<0)
 #define CONSOLE_FLAGS_MODE_TTY    (1<<1)
 #define CONSOLE_FLAGS_INSERT_CRLF (1<<2)

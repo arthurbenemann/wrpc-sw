@@ -110,6 +110,4 @@ SECTIONS
     /* First location in stack is highest address in STACK */
     PROVIDE(_fstack = ORIGIN(stack) + LENGTH(stack));
     PROVIDE(_end = .);
-    /* This may be missing, according to .config */
-    PROVIDE(fifo_log = 0);
 }

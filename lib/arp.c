@@ -13,6 +13,7 @@
 #include "dev/endpoint.h"
 #include "ipv4.h"
 #include "ptpd_netif.h"
+#include "wrc_global.h"
 
 static uint8_t __arp_queue[128];
 static struct wrpc_socket __static_arp_socket = {
@@ -92,7 +93,7 @@ int arp_poll(void)
 	struct wr_sockaddr addr;
 	int len;
 
-	if (*ip_status == IP_TRAINING)
+	if (ip_status == IP_TRAINING)
 		return 0;		/* can't do ARP w/o an address... */
 
 	if ((len = ptpd_netif_recvfrom(arp_socket,

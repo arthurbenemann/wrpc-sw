@@ -10,7 +10,7 @@
 #include <wrc.h>
 #include "shell.h"
 #include "dev/syscon.h"
-#include "revision.h"
+#include "softpll_ng.h"
 
 #ifdef CONFIG_DEVELOPER
 #define SUPPORT " (unsupported developer build)"
@@ -31,18 +31,17 @@
 #define ARCH_STRING "LM32"
 #endif
 
-
 static int cmd_ver(const char *args[])
 {
 	int hwram = sysc_get_memsize();
 
-	pp_printf("WR Core build: %s%s\n", build_revision, SUPPORT);
+	pp_printf("WR Core build: %s" SUPPORT "\n", stats.commit_id);
 	 /* may be empty if build with CONFIG_DETERMINISTIC_BINARY */
 	if (DETERMINISTIC_BINARY)
 		pp_printf("Deterministic binary build\n");
 	else
-		pp_printf("Built: %s %s by %s\n", build_date, build_time,
-			  build_by);
+		pp_printf("Built: %s %s by %s\n",
+			  stats.build_date, stats.build_time, stats.build_by);
 	pp_printf("Built for %s, %d kB RAM, stack is %d bytes\n", ARCH_STRING,
 		  CONFIG_RAMSIZE / 1024, CONFIG_STACKSIZE);
 	/* hardware reports memory size, with a 16kB granularity */

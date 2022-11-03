@@ -302,7 +302,7 @@ void dump_one_field(void *addr, const struct dump_info *info, char *info_prefix)
 		break;
 
 	case dump_type_link_up_status:
-		i = wrpc_get_l32(p);
+		i = wrpc_get_8(p);
 
 		switch(i) {
 		ENUM_TO_P_IN_CASE(NETIF_LINK_DOWN, char_p);
@@ -764,9 +764,9 @@ void dump_mem_wrpc_global(void *mapaddr, unsigned long wrc_global_off)
 	dump_many_fields(mapaddr + wrc_global_off, "wrc_global", "wrc_global");
 
 	tmp_off = wrpc_get_pointer(mapaddr + wrc_global_off, "wrc_global",
-				   "link_status");
+				   "global_link");
 	if (tmp_off) {
-		prefix = "wrc_global.link_status";
+		prefix = "wrc_global.global_link";
 		printf("%s at 0x%lx\n", prefix, tmp_off);
 		/* verify version */
 		expected_version = wrpc_get_l32(mapaddr + tmp_off +

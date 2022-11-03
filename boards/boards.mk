@@ -12,10 +12,10 @@ obj-$(CONFIG_TARGET_WR2RF_VME) += boards/wr2rf-vme/board.o  boards/wr2rf-vme/sdb
 boards/ertm14/sdbfs-custom-image.o: boards/ertm14/sdbfs-custom-image.h
 boards/wr2rf-vme/sdbfs-custom-image.o: boards/wr2rf-vme/sdbfs-custom-image.h
 
-boards/ertm14/sdbfs-custom-image.h: boards/ertm14/sdbfs
+boards/ertm14/sdbfs-custom-image.h: boards/ertm14/sdbfs tools
 	./tools/gensdbfs -c boards/ertm14/sdbfs-custom-image.h boards/ertm14/sdbfs boards/ertm14/sdbfs-custom-image.bin
 
-boards/wr2rf-vme/sdbfs-custom-image.h: boards/wr2rf-vme/sdbfs
+boards/wr2rf-vme/sdbfs-custom-image.h: boards/wr2rf-vme/sdbfs tools
 	./tools/gensdbfs -c boards/wr2rf-vme/sdbfs-custom-image.h boards/wr2rf-vme/sdbfs boards/wr2rf-vme/sdbfs-custom-image.bin
 
 boards-clean:

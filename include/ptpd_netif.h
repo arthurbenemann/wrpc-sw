@@ -18,8 +18,6 @@
 #define PTPD_SOCK_UDP		0 /* wrong name, it should be "WRPC" */
 #define PTPD_SOCK_RAW_ETHERNET 	1 /* but used in ppsi, which I won't change */
 
-extern int *link_status;
-
 // GCC-specific
 #ifndef PACKED
 #  define PACKED __attribute__((packed))

@@ -41,12 +41,12 @@
 /* Internal to IP stack: */
 unsigned int ipv4_checksum(unsigned short *buf, int shorts);
 
-enum ip_status {
+enum ip_status_t {
 	IP_TRAINING,
 	IP_OK_BOOTP,
 	IP_OK_STATIC,
 };
-extern enum ip_status *ip_status;
+
 void setIP(unsigned char *IP);
 void getIP(unsigned char *IP);
 

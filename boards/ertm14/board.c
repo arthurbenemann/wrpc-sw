@@ -1140,10 +1140,10 @@ void get_version_info(struct ertm14_version_info *bi)
 	/* FIXME: no mac2? */
 	ep_get_mac_addr(&wrc_endpoint_dev, &bi->ertm14_mac1_bytes[0]);
 	/* FIXME: wrpc_sw_version makes no sense here */
-	strncpy(bi->wrpc_sw_commit_id, build_revision, sizeof(bi->wrpc_sw_commit_id));
-	strncpy(bi->wrpc_sw_build_date, build_date, sizeof(bi->wrpc_sw_build_date));
-	strncpy(bi->wrpc_sw_build_time, build_time, sizeof(bi->wrpc_sw_build_time));
-	strncpy(bi->wrpc_sw_build_by, build_by, sizeof(bi->wrpc_sw_build_by));
+	strncpy(bi->wrpc_sw_commit_id, stats.commit_id, sizeof(bi->wrpc_sw_commit_id));
+	strncpy(bi->wrpc_sw_build_date, stats.build_date, sizeof(bi->wrpc_sw_build_date));
+	strncpy(bi->wrpc_sw_build_time, stats.build_time, sizeof(bi->wrpc_sw_build_time));
+	strncpy(bi->wrpc_sw_build_by, stats.build_by, sizeof(bi->wrpc_sw_build_by));
 
 	strncpy(bi->ertm14_firmware_version, ertm14_board_info.git_tag,
 				    sizeof(bi->ertm14_firmware_version));

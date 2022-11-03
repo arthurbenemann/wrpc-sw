@@ -32,7 +32,7 @@ int32_t w1_read_temp(struct w1_dev *dev, unsigned long flags)
 	if (flags & W1_FLAG_NOWAIT)
 		return 0;
 
-	while(wrpc_w1_ops.read_bit(dev->bus) == 0)
+	while(w1_read_bit(dev->bus) == 0)
 		;
 collect:
 	w1_match_rom(dev);

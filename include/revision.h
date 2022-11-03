@@ -16,11 +16,4 @@
  * structure */
 #define WRPC_SHMEM_VERSION 3 /* add wrc_global in the place where spll was */
 
-#ifndef __ASSEMBLY__
-extern const char *const build_revision;
-extern const char *const build_date;
-extern const char *const build_time;
-extern const char *const build_by;
-#endif
-
 #endif /* __REVISION_H__ */

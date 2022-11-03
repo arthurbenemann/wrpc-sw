@@ -177,7 +177,7 @@ struct spll_fifo_log {
 };
 #define FIFO_LOG_LEN 16
 
-extern int spll_ljd_present;
+extern unsigned char spll_ljd_present;
 
 extern volatile struct softpll_state softpll;
 

@@ -26,7 +26,7 @@ typedef enum {
 struct wr_endpoint_device
 {
 	uint8_t mac_addr[6];
-	int flags;
+	uint8_t flags;
 	void *base;
 };
 

@@ -20,7 +20,6 @@
 #endif
 
 #define W1_MAX_DEVICES 8 /* we have no alloc */
-#define ONEWIRE_PORT 0
 
 struct w1_dev {
 	struct w1_bus *bus;
@@ -34,7 +33,6 @@ static inline int w1_class(struct w1_dev *dev)
 
 
 struct w1_bus {
-	unsigned long detail; /* gpio bit or whatever (driver-specific) */
 	struct w1_dev devs[W1_MAX_DEVICES];
 };
 
@@ -43,11 +41,9 @@ struct w1_bus {
  * only have one set of such operations in each build. (i.e., no bus-specific
  * operations, to keep the thing simple and small).
  */
-struct w1_ops {
-	int (*reset)(struct w1_bus *bus);	/* returns 1 on "present" */
-	int (*read_bit)(struct w1_bus *bus);
-	void (*write_bit)(struct w1_bus *bus, int bit);
-};
+extern int w1_reset(struct w1_bus *bus);	/* returns 1 on "present" */
+extern int w1_read_bit(struct w1_bus *bus);
+extern void w1_write_bit(struct w1_bus *bus, int bit);
 
 /* Library functions */
 extern int w1_scan_bus(struct w1_bus *bus);
@@ -95,7 +91,6 @@ extern int w1_write_eeprom_bus(struct w1_bus *bus,
 			     int offset, const uint8_t *buffer, int blen);
 extern int w1_erase_eeprom_bus(struct w1_bus *bus, int offset, int blen);
 
-extern const struct w1_ops wrpc_w1_ops;
 extern struct w1_bus wrpc_w1_bus;
 extern void wrpc_w1_init(void);
 

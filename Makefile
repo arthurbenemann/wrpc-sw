@@ -228,6 +228,7 @@ clean: boards-clean
 		$(LDS) \
 		$(OUTPUT).bin rules-*.bin \
 		$(OUTPUT).bram $(OUTPUT).vhd $(OUTPUT).mif $(OUTPUT)_disasm.S
+	rm -f dump-info.o dump_mem_ppsi_wrpc.o
 	$(MAKE) -C $(PPSI) clean
 	$(MAKE) -C tools clean
 	$(MAKE) -C liblinux clean

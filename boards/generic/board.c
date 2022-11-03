@@ -74,18 +74,19 @@ static int board_get_persistent_mac(uint8_t *mac)
 		return 0;
 
 	/* Get from one-wire (derived from unique id) */
-	w1_scan_bus(&wrpc_w1_bus);
-	for (i = 0; i < W1_MAX_DEVICES; i++) {
-		d = wrpc_w1_bus.devs + i;
-		if (d->rom) {
-			mac[0] = 0x22;
-			mac[1] = 0x33;
-			mac[2] = 0xff & (d->rom >> 32);
-			mac[3] = 0xff & (d->rom >> 24);
-			mac[4] = 0xff & (d->rom >> 16);
-			mac[5] = 0xff & (d->rom >> 8);
-			return 0;
-                }
+	if (HAS_W1) {
+		for (i = 0; i < W1_MAX_DEVICES; i++) {
+			d = wrpc_w1_bus.devs + i;
+			if (d->rom) {
+				mac[0] = 0x22;
+				mac[1] = 0x33;
+				mac[2] = 0xff & (d->rom >> 32);
+				mac[3] = 0xff & (d->rom >> 24);
+				mac[4] = 0xff & (d->rom >> 16);
+				mac[5] = 0xff & (d->rom >> 8);
+				return 0;
+			}
+		}
 	}
 
 	/* Not found */

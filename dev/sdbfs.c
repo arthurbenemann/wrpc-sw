@@ -89,6 +89,11 @@ int sdbfs_open_id(struct sdbfs *fs, uint64_t vid, uint32_t did)
 {
 	struct sdb_device *d;
 
+	if (fs->dev == NULL) {
+		/* No sdb found, so no file */
+		return -ENOENT;
+	}
+
 	sdbfs_scan(fs, 1); /* new scan: get the interconnect and igore it */
 	while ( (d = sdbfs_scan(fs, 0)) != NULL) {
 		if (vid != d->sdb_component.product.vendor_id)

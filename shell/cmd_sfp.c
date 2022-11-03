@@ -32,9 +32,6 @@
 
 #include "sfp.h"
 
-// extern struct shw_sfp_header sfp_header;
-extern struct shw_sfp_dom sfp_dom;
-
 void print_info(void)
 {
 	uint16_t tmp;

@@ -66,7 +66,6 @@ static int cmd_w1(const char *args[])
 	struct w1_dev *d;
 	int32_t temp;
 
-	w1_scan_bus(&wrpc_w1_bus);
 	for (i = 0; i < W1_MAX_DEVICES; i++) {
 		d = wrpc_w1_bus.devs + i;
 		if (d->rom) {

@@ -17,6 +17,7 @@
 
 /* BEGIN OF HACKS */
 #include <pp-printf.h>
+#include "util.h"
 
 #define CONFIG_PRINTF_64BIT
 /* <linux/types.h> -- but if we typedef we get redefined type when hosted */
@@ -35,7 +36,6 @@
 
 #define NUMBER_TYPE uint64_t
 #define SIGNED_NUMBER_TYPE int64_t
-extern uint32_t __div64_32(uint64_t *n, uint32_t base);
 
 /* The unnecessary pointer compare is there
  * to check for type safety (n must be 64bit)
@@ -202,6 +202,7 @@ static char *string(char *buf, char *s, int field_width, int precision, int flag
 }
 
 
+#if 0
 /*
  * Show a '%p' thing.  A kernel extension is that the '%p' is followed
  * by an extra set of alphanumeric characters that are extended format
@@ -224,6 +225,7 @@ static char *pointer(const char *fmt, char *buf, void *ptr, int field_width, int
 	plong = (intptr_t)ptr;
 	return number(buf, plong, 16, field_width, precision, flags);
 }
+#endif
 
 /**
  * vsprintf - Format a string and place it in a buffer
@@ -257,9 +259,6 @@ int pp_vsprintf(char *buf, const char *fmt, va_list args)
 				/* 'z' support added 23/7/1999 S.H.    */
 				/* 'z' changed to 'Z' --davidm 1/25/99 */
 				/* 't' added for ptrdiff_t */
-
-	/* avoid error that pointer is not used */
-	(void) pointer;
 
 	str = buf;
 

@@ -66,6 +66,9 @@ char *format_hex8(char *s, const unsigned char *mac);
 void decode_mac(const char *str, unsigned char *mac);
 void decode_port(const char *str, int *port);
 
+/* div64.c, lifted from the linux kernel through pp_printf or ppsi */
+extern uint32_t __div64_32(uint64_t *n, uint32_t base);
+
 static inline int within_range(int x, int minval, int maxval, int wrap)
 {
     int rv;

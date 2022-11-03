@@ -272,7 +272,6 @@ int mpll_update(struct spll_main_state *s, int tag, int source)
 #ifdef CONFIG_WRPC_PPSI /* use __div64_32 from ppsi library to save libgcc memory */
 static int32_t from_picos(int32_t ps)
 {
-	extern uint32_t __div64_32(uint64_t *n, uint32_t base);
 	uint64_t ups = ps;
 
 	if (ps >= 0) {

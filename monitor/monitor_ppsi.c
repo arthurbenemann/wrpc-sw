@@ -239,7 +239,7 @@ static void print_main_description(void)
 	int ndevs;
 
 	pcprintf(1, 1, C_BLUE, "%s WR PTP Core Sync Monitor %s",
-		 wrc_global_link.wrc_hw_name, build_revision);
+		 wrc_global_link.wrc_hw_name, stats.commit_id);
 	cprintf(C_MAGENTA, "\nEsc or q = exit; r = redraw GUI");
 
 	cprintf(C_BLUE, "\n\nTAI Time:%22sUTC offset:", "");
@@ -334,7 +334,7 @@ static void print_main_data(void)
 
 				getIP(ip);
 				format_ip(buf, ip);
-				switch (*ip_status) {
+				switch (ip_status) {
 				case IP_TRAINING:
 					pcprintf(9, 29, C_RED,   "BOOTP running          ");
 					break;
@@ -351,7 +351,7 @@ static void print_main_data(void)
 			minic_get_stats(&tx, &rx, &rx_err);
 			pcprintf(9, 55, C_MAGENTA, "%7d", rx);
 			pprintf(9, 65, "%7d", tx);
-			pprintf(9, 75, "%4d", *wrc_vlan_number);
+			pprintf(9, 75, "%4d", wrc_vlan_number);
 		}
 
 	}

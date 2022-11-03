@@ -74,13 +74,13 @@ extern struct spll_fifo_log fifo_log[];
 struct wrc_global_link wrc_global_link = {
 	.version = WRC_G_LINK_VERSION,
 	.vlan = CONFIG_VLAN_NR,
-	.ip_status = IP_TRAINING,
+	.ip_state = IP_TRAINING,
 };
 
 const struct wrc_global wrc_global = {
 	.magic = WRC_G_MAGIC,
 	.version = WRC_G_VERSION,
-	.link_status = &wrc_global_link,
+	.global_link = &wrc_global_link,
 	.task_list_max = WRC_MAX_TASKS,
 	.task_list = tasks,
 	.temp_group_list_max = WRC_MAX_TEMPERATURES,
@@ -88,15 +88,14 @@ const struct wrc_global wrc_global = {
 	.temp_group_list = temp_sensors,
 #endif
 	.softpll = &softpll,
+#ifdef CONFIG_SPLL_FIFO_LOG
 	.pll_fifo = fifo_log,
+#endif
 #ifdef CONFIG_CMD_CONFIG
 	.config = _binary__config_bin_start,
 #endif
 	.sfp_info = &sfp_info,
 };
-
-int *link_status = &wrc_global_link.link_up;
-int *wrc_vlan_number = &wrc_global_link.vlan;
 
 static void wrc_initialize(void)
 {
@@ -129,7 +128,6 @@ static void wrc_initialize(void)
 	if (HAS_W1) {
 		/* initialize w1 bus */
 		wrpc_w1_init();
-		wrpc_w1_bus.detail = ONEWIRE_PORT;
 		w1_scan_bus(&wrpc_w1_bus);
 
 		/* initialize w1 temp sensor */
@@ -166,7 +164,7 @@ static void wrc_initialize(void)
 
 static int is_link_up(void)
 {
-	return *link_status == NETIF_LINK_UP;
+	return link_status == NETIF_LINK_UP;
 }
 
 static int wrc_check_link(void)
@@ -181,19 +179,19 @@ static int wrc_check_link(void)
 		gen_gpio_out(&pin_sysc_led_link, 1);
 		sfp_match(0);
 		wrc_ptp_start();
-		*link_status = NETIF_LINK_WENT_UP;
+		link_status = NETIF_LINK_WENT_UP;
 		rv = 1;
 	} else if (prev_state && !state) {
 		wrc_verbose("Link down.\n");
 		wrc_events_ptp_link_down();
 		event_post( WRC_EVENT_LINK_DOWN );
 		gen_gpio_out(&pin_sysc_led_link, 0);
-		*link_status = NETIF_LINK_WENT_DOWN;
+		link_status = NETIF_LINK_WENT_DOWN;
 		wrc_ptp_stop();
 		wrc_ptp_link_down();
 		rv = 1;
 	} else
-		*link_status = (state ? NETIF_LINK_UP : NETIF_LINK_DOWN);
+		link_status = (state ? NETIF_LINK_UP : NETIF_LINK_DOWN);
 
 	prev_state = state;
 

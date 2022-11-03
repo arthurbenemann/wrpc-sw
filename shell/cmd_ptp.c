@@ -25,7 +25,7 @@
 #define USE_CMD_PARAM -1
 
 static const struct subcmd {
-	char *name;
+	const char *name;
 	int (*fun)(int);
 	int arg;
 } subcmd[] = {
@@ -57,12 +57,13 @@ static const struct subcmd {
 #endif
 };
 
-static char *is_run[] = {"stopped", "running"};
-static char *is_mech[] = {[MECH_E2E] = "e2e", [MECH_P2P] = "p2p"};
-static char *is_mode[] = {[WRC_MODE_GM] = "gm", [WRC_MODE_MASTER] = "master",
-			  [WRC_MODE_SLAVE] = "slave"
+static const char * const is_run[] = {"stopped", "running"};
+static const char * const is_mech[] = {[MECH_E2E] = "e2e", [MECH_P2P] = "p2p"};
+static const char * const is_mode[] = {[WRC_MODE_GM] = "gm",
+				       [WRC_MODE_MASTER] = "master",
+				       [WRC_MODE_SLAVE] = "slave"
 #ifdef CONFIG_ABSCAL
- 			  , [WRC_MODE_ABSCAL] = "abscal"
+				       , [WRC_MODE_ABSCAL] = "abscal"
 #endif
 			 };
 

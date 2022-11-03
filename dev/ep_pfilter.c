@@ -21,6 +21,7 @@
 #include <shell.h>
 #include <dev/endpoint.h>
 #include <hw/endpoint_regs.h>
+#include "wrc_global.h"
 
 
 static const uint8_t pfilter_rules_novlan[] =
@@ -38,13 +39,9 @@ void ep_pfilter_init_default(struct wr_endpoint_device *dev)
 	const uint8_t *mac = dev->mac_addr;
 	const uint8_t *vini, *vend, *v;
 	int i;
-	uint32_t latency_ethtype = CONFIG_LATENCY_ETHTYPE;
-
-	if (latency_ethtype == 0)
-		latency_ethtype = 0x88f7; /* reuse PTPv2 type: turn into NOP */
 
 	/* If vlan, use rule-set 1, else rule-set 0 */
-	if (*wrc_vlan_number == 0) {
+	if (wrc_vlan_number == 0) {
 		vini = pfilter_rules_novlan;
 		vend = vini + ARRAY_SIZE(pfilter_rules_novlan);
 	}
@@ -72,24 +69,13 @@ void ep_pfilter_init_default(struct wr_endpoint_device *dev)
                         l &= ~(0xffff << 13);
                         l |= ((mac[midx] << 8) | mac[midx + 1]) << 13;
                 }
-                /*
-                 * Patch in the "latency" ethtype too. This is set at build time
-                 * so there's not need to remember the place or the value.
-                 */
-                if (((l >> 13) & 0xffff) == 0xcafe
-                    && (l & 0x7) == OR) {
-                        mac_dbg("fixing latency eth_type: use 0x%x\n",
-                                        latency_ethtype);
-                        l &= ~(0xffff << 13);
-                        l |= latency_ethtype << 13;
-                }
                 /* If this is the VLAN rule-set, patch the vlan number too */
-                else if (((l >> 13) & 0xffff) == 0x0aaa
+		if (((l >> 13) & 0xffff) == 0x0aaa
                     && ((l >> 7) & 0x1f) == 7) {
                         mac_dbg("fixing VLAN number in rule: use %i\n",
-                                        *wrc_vlan_number);
+                                        wrc_vlan_number);
                         l &= ~(0xffff << 13);
-                        l |= *wrc_vlan_number << 13;
+                        l |= wrc_vlan_number << 13;
                 }
 
                 cmd_word = l | ((uint64_t)h << 32);
