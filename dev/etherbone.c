@@ -6,6 +6,7 @@
  *
  * Released according to the GNU LGPL, version 2.1 or any later version.
  */
+#include "board.h"
 #include "hw/etherbone-config.h"
 
 void eb_setIP(unsigned char *IP)
