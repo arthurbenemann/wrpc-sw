@@ -2,10 +2,8 @@
  * Eeprom support (family 0x43)
  * Cesar Prados, Alessandro Rubini, 2013. GNU GPL2 or later
  */
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <dev/w1.h>
+#include "dev/w1.h"
+#include "dev/syscon.h" /* for usleep */
 
 #define LSB_ADDR(X) ((X) & 0xFF)
 #define MSB_ADDR(X) (((X) & 0xFF00)>>8)

@@ -7,8 +7,8 @@
  * Released according to the GNU GPL, version 2 or any later version.
  */
 #include <wrc.h>
-#include <temperature.h>
-#include <shell.h>
+#include "dev/temperature.h"
+#include "shell.h"
 #include "dev/temp-fake.h"
 
 
@@ -19,7 +19,7 @@ static struct wrc_temp_sensor temp_fake_data[] = {
 	{NULL,}
 };
 
-static int temp_fake_refresh(struct wrc_temp_group *t)
+static int temp_fake_refresh(struct wrc_temp_sensor *t)
 {
 	/* nothing to do */
 	return 0;
@@ -55,7 +55,6 @@ void temp_faketemp_init(void)
 {
 	struct wrc_temp_group tbr;
 
-	tbr.used = 1;
 	tbr.read = temp_fake_refresh;
 	tbr.t = temp_fake_data;
 	wrc_temp_register(&tbr);

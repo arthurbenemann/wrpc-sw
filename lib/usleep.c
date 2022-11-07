@@ -63,7 +63,7 @@ void usleep_init(void)
 }
 
 /* lpj is around 20800 on the spec: the above calculation overflows at 200ms */
-int usleep(useconds_t usec)
+int usleep(unsigned usec)
 {
 	/* Sleep 10ms each time, so we support 20x faster cards */
 	const int step = 10 * 1000;

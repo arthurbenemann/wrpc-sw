@@ -73,8 +73,9 @@ cflags-y =	-ffreestanding -include $(AUTOCONF) -Iinclude \
 			-I. -Isoftpll -Iipc
 cflags-y +=	-I$(CURDIR)/pp_printf
 cflags-$(CONFIG_LTO) += -flto
+
+# Only for lm32
 cflags-$(CONFIG_ARCH_LM32)  +=  -Iinclude/std
-cflags-$(CONFIG_ARCH_RISCV) +=  -Iinclude/std
 
 cflags-$(CONFIG_WRPC_PPSI) += \
 	-I$(PPSI)/arch-wrpc \

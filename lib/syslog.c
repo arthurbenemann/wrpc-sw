@@ -1,13 +1,15 @@
 #include <string.h>
 #include <wrc.h>
 #include <wrpc.h>
+#include "wrc_global.h"
 #include "sensors.h"
 #include "dev/endpoint.h"
 #include "dev/minic.h"
-#include "shell.h"
+#include "dev/temperature.h"
 #include "dev/pps_gen.h"
 #include "dev/netif.h"
 
+#include "shell.h"
 #include "ipv4.h"
 #include "syslog.h"
 /* syslog: a tx-only socket: no queue is there */
@@ -123,7 +125,7 @@ int syslog_poll(void)
 	else
 		s = SRV(ppi);
 
-	if (*ip_status == IP_TRAINING)
+	if (ip_status == IP_TRAINING)
 		return 0;
 	if (!syslog_addr.daddr)
 		return 0;
@@ -141,13 +143,13 @@ int syslog_poll(void)
 		goto send;
 	}
 
-	if (*link_status == NETIF_LINK_WENT_DOWN)
+	if (link_status == NETIF_LINK_WENT_DOWN)
 		down_tics = now;
 	/* Should not happen, but just in case the condition above was not met
 	 * during link down */
-	if (*link_status == NETIF_LINK_DOWN && !down_tics)
+	if (link_status == NETIF_LINK_DOWN && !down_tics)
 		down_tics = now;
-	if (*link_status == NETIF_LINK_UP && down_tics) {
+	if (link_status == NETIF_LINK_UP && down_tics) {
 		down_tics = now - down_tics;
 		len = syslog_header(buf, SYSLOG_DEFAULT_LEVEL, ip);
 		len += pp_sprintf(buf + len, "Link up after %i.%03i s",
@@ -279,7 +281,7 @@ void syslog_report(const char *msg)
 	unsigned char ip[4];
 	int len;
 
-	if (*ip_status == IP_TRAINING)
+	if (ip_status == IP_TRAINING)
 		return;
 	if (!syslog_addr.daddr)
 		return;
