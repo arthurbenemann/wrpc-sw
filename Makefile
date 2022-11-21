@@ -220,7 +220,7 @@ GENRAM_ENDIAN_FLAG-$(CONFIG_ARCH_RISCV) = -l
 	./tools/genramvhd -s $(CONFIG_RAMSIZE) $*.bin > $@
 
 %.mif: tools %.bin
-	./tools/genrammif $*.bin $(CONFIG_RAMSIZE) > $@
+	./tools/genrammif $(GENRAM_ENDIAN_FLAG-y) $*.bin $(CONFIG_RAMSIZE) > $@
 
 $(AUTOCONF): silentoldconfig gitmodules
 

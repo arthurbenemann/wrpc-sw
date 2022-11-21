@@ -112,8 +112,9 @@ static void lldp_add_tlv(int tlv_type) {
 		 * identify a system */
 		char buf[32];
 
-		if (HAS_IP && memcmp(ipWR, "\0\0\0\0", 4)) {
+		if (HAS_IP)
 			getIP(ipWR);
+		if (HAS_IP && memcmp(ipWR, "\0\0\0\0", 4)) {
 			/* NOTE: no subtype */
 			format_ip(buf, ipWR);
 			tlv_len = strlen((char *)buf);
@@ -162,6 +163,8 @@ static void lldp_add_tlv(int tlv_type) {
 		break;
 	case MNG_ADD:
 		/* TODO: fill with MAC if no IP present */
+		if (HAS_IP)
+			getIP(ipWR);
 		if (!HAS_IP || !memcmp(ipWR, "\0\0\0\0", 4)) {
 			/* if no IP present skip this field */
 			break;

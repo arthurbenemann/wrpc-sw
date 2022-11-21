@@ -113,6 +113,19 @@ static void dbg_writel(struct dbg_port *dbg,
 }
 
 /**
+ * Control CPU reset
+ */
+static void dbg_set_cpu_reset(struct dbg_port *dbg, unsigned int rst)
+{
+	dbg_writel (dbg, WRC_CPU_CSR_REG_RESET, rst);
+}
+
+static uint32_t dbg_get_cpu_reset(struct dbg_port *dbg)
+{
+	return dbg_readl (dbg, WRC_CPU_CSR_REG_RESET);
+}
+
+/**
  * Read mail-box
  * @dbg: debug port
  *
@@ -225,6 +238,18 @@ static int dbg_debug_mode_force_set(struct dbg_port *dbg)
 			break;
 		retry--;
 	}
+
+	/* Remove the reset, otherwise the cpu won't be anymore in debug
+	   mode.  */
+	if (dbg_get_cpu_reset(dbg) != 0) {
+		if (!dbg_in_debug_mode(dbg))
+			fprintf(stderr, "Huhh, cpu not in debug\n");
+		fprintf(stderr, "CPU under reset\n");
+		dbg_set_cpu_reset(dbg, 0);
+		if (!dbg_in_debug_mode(dbg))
+			fprintf(stderr, "Huhh, cpu not anymore in debug\n");
+	}
+
 	dbg_writel(dbg, WRC_CPU_CSR_REG_DBG_FORCE, 0);
 
 	if (retry < 0) {
@@ -243,6 +268,8 @@ static int dbg_debug_mode_force_set(struct dbg_port *dbg)
  */
 static uint32_t dbg_read_reg(struct dbg_port *dbg, int reg)
 {
+	if (verbose > 2)
+		printf("dbg_read_reg %d\n", reg);
 	dbg_exec_reg_to_mbx(dbg, reg);
 	dbg_exec_nop(dbg);
 	dbg_exec_nop(dbg);
@@ -272,6 +299,8 @@ static void dbg_write_reg(struct dbg_port *dbg,
  */
 static uint32_t dbg_pc_read_via_ra(struct dbg_port *dbg)
 {
+	if (verbose > 2)
+		printf("dbg_pc_read_via_ra\n");
 	dbg_exec_insn(dbg, 0x000000ef); /* ra = pc + 4 */
 	dbg_exec_nop(dbg);
 	dbg_exec_nop(dbg);
@@ -699,7 +728,7 @@ static int gdb_handle_qRcmd(struct dbg_port *dbg,
 	buf[len] = 0;
 
 	if (strcmp(buf, "help") == 0) {
-		strcpy(buf, "wrpc help\n");
+		strcpy(buf, "usage: csr | reset | port | help\n");
 	}
 	else if (strcmp(buf, "csr") == 0) {
 		uint32_t ra;
@@ -715,6 +744,18 @@ static int gdb_handle_qRcmd(struct dbg_port *dbg,
 		snprintf(buf, sizeof(buf),
 			 "mepc:    %08x\nmcause:  %08x\nmstatus: %08x\n",
 			 mepc, mcause, mstatus);
+	}
+	else if (strcmp(buf, "reset") == 0) {
+		dbg_set_cpu_reset(dbg, 1);
+		dbg_set_cpu_reset(dbg, 0);
+		buf[0] = 0;
+	}
+	else if (strcmp(buf, "port") == 0) {
+		uint32_t v;
+		snprintf(buf, sizeof(buf),
+			 "rst: %04x\ndbg st: %04x\n",
+			 dbg_readl (dbg, WRC_CPU_CSR_REG_RESET),
+			 dbg_readl (dbg, WRC_CPU_CSR_REG_DBG_STATUS));
 	}
 	else {
 		strcpy(buf,"unhandled mon command, try 'mon help'\n");
@@ -1013,7 +1054,7 @@ static int __debugger_recv(int fd, struct gdb_packet *pkt)
 		pkt->data[pkt->size] = c;
 		pkt->size++;
 
-		if (verbose > 2) {
+		if (verbose > 3) {
 			fprintf(stdout, "Building message: [%zu]: %s\n",
 				pkt->size, pkt->data);
 		}
@@ -1135,6 +1176,7 @@ static int debugger_run(struct dbg_port *dbg)
 	}
 	in = &pkt[0];
 	out = &pkt[1];
+
 	ret = dbg_debug_mode_force_set(dbg);
 	if (ret < 0) {
 		fprintf(stderr, "Failed to set debug mode\n");
