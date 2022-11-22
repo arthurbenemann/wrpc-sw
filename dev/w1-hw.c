@@ -58,12 +58,10 @@ void w1_write_bit(struct w1_bus *bus, int bit)
 	__wait_cycle();
 }
 
-struct w1_bus wrpc_w1_bus;
-
 /* Init from sockitowm code */
 #define CLK_DIV_NOR (CPU_CLOCK / 200000 - 1)	/* normal mode */
 #define CLK_DIV_OVD (CPU_CLOCK / 1000000 - 1)	/* overdrive mode (not used) */
-void wrpc_w1_init(void)
+void w1_init(void)
 {
 	IOWR_SOCKIT_OWM_CDR(BASE_ONEWIRE,
 			    ((CLK_DIV_NOR & SOCKIT_OWM_CDR_N_MSK) |

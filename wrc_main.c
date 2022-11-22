@@ -105,6 +105,10 @@ static void wrc_initialize(void)
 	usleep_init();
 	netif_init();
 
+	/* Initialize W1 before board, in case mac address is read from it. */
+	if (HAS_W1)
+		wrc_w1_init();
+
 	wrc_board_early_init();
 
 	wdiags_init();
@@ -125,15 +129,10 @@ static void wrc_initialize(void)
 	minic_init();
 	shw_pps_gen_init();
 
-	if (HAS_W1) {
-		/* initialize w1 bus */
-		wrpc_w1_init();
-		w1_scan_bus(&wrpc_w1_bus);
-
-		/* initialize w1 temp sensor */
-		if (HAS_TEMP_SENSORS && HAS_W1_TEMP)
-			temp_w1_init();
-	}
+	/* initialize w1 temp sensor.  Note that w1 must have been initialized
+	   by board. */
+	if (HAS_TEMP_SENSORS && HAS_W1_TEMP)
+		temp_w1_init();
 
 	if (HAS_TEMP_SENSORS && HAS_TEMP_FAKE)
 		temp_faketemp_init();
@@ -141,11 +140,8 @@ static void wrc_initialize(void)
 	wrc_board_init();
 
 	/* BSP didn't load the calibration parameters? go ahead */
-	if( !storage_is_calibration_loaded() )
-	{
+	if (!storage_is_calibration_loaded())
 		storage_load_calibration();
-	}
-
 
 	wrc_ptp_init();
 	/* try reading t24 phase transition from EEPROM */

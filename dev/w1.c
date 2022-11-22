@@ -6,6 +6,8 @@
 #include <dev/w1.h>
 #include "dev/syscon.h"
 
+struct w1_bus wrpc_w1_bus;
+
 void w1_write_byte(struct w1_bus *bus, int byte)
 {
 	int i;
@@ -136,4 +138,10 @@ void w1_match_rom(struct w1_dev *dev)
 	for (i = 0; i < 64; i+=8) {
 		w1_write_byte(dev->bus, (int)(dev->rom >> i) );
 	}
+}
+
+void wrc_w1_init(void)
+{
+	w1_init();
+	w1_scan_bus(&wrpc_w1_bus);
 }

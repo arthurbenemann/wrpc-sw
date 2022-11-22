@@ -11,6 +11,7 @@
 
 #include "sfp.h"
 #include "dev/i2c_eeprom.h"
+#include "dev/w1.h"
 
 // calibration parameter definitions. Board-specific.
 #define CAL_MAX_PARAMS 8
@@ -86,6 +87,9 @@ extern struct sdbfs wrc_sdbfs;
 
 void storage_spiflash_create(struct storage_device *dev, struct spi_flash_device *flash);
 void storage_i2ceeprom_create(struct storage_device *dev, struct i2c_eeprom_device *eeprom);
+
+/* Return 0 if OK, < 0 on error (no eeprom device).  */
+int storage_w1eeprom_create(struct storage_device *dev, struct w1_bus *bus);
 
 void storage_init( struct i2c_bus *bus, int i2c_addr);
 

@@ -15,18 +15,21 @@ int wrc_board_early_init()
 	uint32_t sdbfs_entry;
 	uint32_t sector_size;
 
+	if (HAS_W1_EEPROM
+	    && storage_w1eeprom_create(&wrc_storage_dev, &wrpc_w1_bus) == 0) {
+		/* Found.  */
+	}
+	else if (EEPROM_STORAGE) {
+		/* EEPROM support */
+		bb_i2c_create(&i2c_wrc_eeprom,
+			      &pin_sysc_fmc_scl,
+			      &pin_sysc_fmc_sda);
+		bb_i2c_init(&i2c_wrc_eeprom);
 
-	if (EEPROM_STORAGE) {
-	/* EEPROM support */
-		bb_i2c_create( &i2c_wrc_eeprom,
-			&pin_sysc_fmc_scl,
-			&pin_sysc_fmc_sda );
-		bb_i2c_init( &i2c_wrc_eeprom );
-
-		i2c_eeprom_create( &wrc_eeprom_dev, &i2c_wrc_eeprom, FMC_EEPROM_ADR, 2);
+		i2c_eeprom_create(&wrc_eeprom_dev, &i2c_wrc_eeprom, FMC_EEPROM_ADR, 2);
 		storage_i2ceeprom_create( &wrc_storage_dev, &wrc_eeprom_dev );
 	} else {
-	/* Flash support */
+		/* Flash support */
 		/*
 		 * declare GPIO pins and configure their directions for bit-banging SPI
 		 * limit SPI speed to 10MHz by setting bit_delay = CPU_CLOCK / 10^6
