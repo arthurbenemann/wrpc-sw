@@ -27,7 +27,7 @@ static const struct storage_rwops i2c_eeprom_rwops = {
 
 void storage_i2ceeprom_create(struct storage_device *dev, struct i2c_eeprom_device *eeprom)
 {
-	dev->name = "eeprom";
+	dev->name = "i2c-eeprom";
 	dev->priv = eeprom;
 	dev->rwops = &i2c_eeprom_rwops;
 	dev->size = 8192;

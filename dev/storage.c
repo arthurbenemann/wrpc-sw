@@ -135,8 +135,8 @@ int storage_sdbfs_format( struct storage_device *dev, uint32_t addr, int force_b
 	}
 
 
-	pp_printf("Formatting SDBFS in %s (base 0x%08x, size 0x%08x)...\n",
-		  dev->name, (unsigned int) base_addr,
+	pp_printf("Formatting SDBFS (base 0x%08x, size 0x%08x)...\n",
+		  (unsigned int) base_addr,
 		  (unsigned int) (SDBFS_REC * dev->block_size) );
 
 	storage_sdbfs_erase(dev, addr, force_base);
@@ -169,6 +169,7 @@ void storage_sdbfs_list(void)
 	struct sdb_device *d;
 	int new = 1;
 
+	pp_printf("sdbfs on %s\n", wrc_storage_dev.name);
 	while ((d = sdbfs_scan(fs, new)) != NULL) {
 		d->sdb_component.product.record_type = '\0';
 		pp_printf("file 0x%08x @ 0x%08x, name %19s\n",
