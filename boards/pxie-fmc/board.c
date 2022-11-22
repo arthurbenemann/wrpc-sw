@@ -13,11 +13,11 @@
 #include "dev/endpoint.h"
 #include "dev/24aa025.h"
 #include "storage.h"
+#include "wrc-debug.h"
 
-struct {
-	struct i2c_eeprom_device conf_eeprom;
-	struct m24aa025_device	 mac_id_eeprom;
-} board;
+static struct i2c_bus i2c_wrc_eeprom;
+static struct i2c_eeprom_device wrc_eeprom_dev;
+static struct m24aa025_device mac_id_eeprom;
 
 int wrc_board_early_init()
 {
@@ -27,8 +27,8 @@ int wrc_board_early_init()
 		&pin_sysc_fmc_sda );
 	bb_i2c_init( &i2c_wrc_eeprom );
 
-	i2c_eeprom_create( &board.conf_eeprom, &i2c_wrc_eeprom, CFG_EEPROM_ADR, 2);
-	storage_i2ceeprom_create( &wrc_storage_dev, &board.conf_eeprom );
+	i2c_eeprom_create( &wrc_eeprom_dev, &i2c_wrc_eeprom, CFG_EEPROM_ADR, 2);
+	storage_i2ceeprom_create( &wrc_storage_dev, &wrc_eeprom_dev);
 
 	/*
 	 * Mount SDBFS filesystem from storage.
@@ -46,9 +46,9 @@ int wrc_board_init()
 	 * MAC address assignment
 	 */
 	/* 1. Try reading from 24AA025E48T unique ID chip */
-	if (m24aa025_init(&board.mac_id_eeprom, &i2c_wrc_eeprom, MAC_CHIP_ADR)) {
+	if (m24aa025_init(&mac_id_eeprom, &i2c_wrc_eeprom, MAC_CHIP_ADR)) {
 		board_dbg("Getting MAC address from Unique ID chip\n");
-		m24aa025_read_mac(&board.mac_id_eeprom, mac_addr);
+		m24aa025_read_mac(&mac_id_eeprom, mac_addr);
 
 	/* 2. Try reading from configuration EEPROM */
 	} else if (storage_get_persistent_mac(0, mac_addr) == -1) {

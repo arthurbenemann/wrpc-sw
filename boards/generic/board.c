@@ -9,6 +9,9 @@
 #include "dev/endpoint.h"
 #include "storage.h"
 
+static struct i2c_bus i2c_wrc_eeprom;
+static struct i2c_eeprom_device wrc_eeprom_dev;
+
 int wrc_board_early_init()
 {
 	int memtype;

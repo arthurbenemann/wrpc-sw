@@ -87,8 +87,6 @@ void timer_init(uint32_t enable);
 
 extern struct spi_bus spi_wrc_flash;
 extern struct spi_flash_device wrc_flash_dev;
-extern struct i2c_bus i2c_wrc_eeprom;
-extern struct i2c_eeprom_device wrc_eeprom_dev;
 
 #define HW_NAME_LENGTH 5 /* 4 letters + '\0' */
 void get_hw_name(char *str);
