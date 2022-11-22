@@ -2,7 +2,7 @@
 EB    ?= no
 SDBFS ?= no
 
-CFLAGS = -Wall -ggdb -I../include -I../liblinux -I../liblinux/extest
+CFLAGS = -Wall -ggdb -I../include -I../liblinux -I../liblinux/extest -Werror
 CFLAGS += -D__GIT_VER__="\"$(GIT_VER)\"" -D__GIT_USR__="\"$(GIT_USR)\""
 CFLAGS += -DBUILD_HOST
 LDFLAGS = $(TOOLS_LDFLAGS) -lutil -L../liblinux -ldevmap -L../liblinux/extest -lextest

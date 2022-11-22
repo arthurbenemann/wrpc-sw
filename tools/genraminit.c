@@ -48,7 +48,6 @@ int main(int argc, char *argv[])
 {
 	FILE *f;
 	unsigned char bytes[4];
-	int tmp;
 	int i;
 	int ram_size;
 	int c;

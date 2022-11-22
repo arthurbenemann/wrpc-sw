@@ -748,10 +748,9 @@ static int gdb_handle_qRcmd(struct dbg_port *dbg,
 	else if (strcmp(buf, "reset") == 0) {
 		dbg_set_cpu_reset(dbg, 1);
 		dbg_set_cpu_reset(dbg, 0);
-		buf[0] = 0;
+		strcpy(buf, "board reset\n");
 	}
 	else if (strcmp(buf, "port") == 0) {
-		uint32_t v;
 		snprintf(buf, sizeof(buf),
 			 "rst: %04x\ndbg st: %04x\n",
 			 dbg_readl (dbg, WRC_CPU_CSR_REG_RESET),
