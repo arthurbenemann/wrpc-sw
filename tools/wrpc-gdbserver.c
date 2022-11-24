@@ -746,8 +746,16 @@ static int gdb_handle_qRcmd(struct dbg_port *dbg,
 			 mepc, mcause, mstatus);
 	}
 	else if (strcmp(buf, "reset") == 0) {
+		/* Reset the cpu.  */
 		dbg_set_cpu_reset(dbg, 1);
+		/* Force debug mode, otherwire it is cleared by reset.  */
+		dbg_writel(dbg, WRC_CPU_CSR_REG_DBG_FORCE, (1 << dbg->cpu));
+		/* Release reset.  */
 		dbg_set_cpu_reset(dbg, 0);
+		/* Release force debug.  */
+		dbg_writel(dbg, WRC_CPU_CSR_REG_DBG_FORCE, 0);
+		if (!dbg_in_debug_mode(dbg))
+		  fprintf(stderr, "Huhh, cpu not in debug\n");
 		strcpy(buf, "board reset\n");
 	}
 	else if (strcmp(buf, "port") == 0) {
@@ -1226,11 +1234,13 @@ static void wrpc_gdbserver_help(char *prog)
 	fprintf(stderr, " -p PORT       listen on tcp port PORT\n");
 	fprintf(stderr, " -v            verbose\n");
 	fprintf(stderr, " -t            enable terminal\n");
+	fprintf(stderr, " -k            keep connection\n");
 }
 
 #define MEMPATH_LEN 128
 int main(int argc, char *argv[])
 {
+	int keep = 0;
 	int gdb_port = 7471;
 	int c, ret, sfd, ret_exit = EXIT_SUCCESS, optval;
 	struct dbg_port dbg;
@@ -1247,7 +1257,7 @@ int main(int argc, char *argv[])
 	}
 
 	memset(&dbg, 0, sizeof(dbg));
-	while ((c = getopt(argc, argv, "hp:vst")) != -1) {
+	while ((c = getopt(argc, argv, "hp:vstk")) != -1) {
 		switch (c) {
 		case 'h':
 		case '?':
@@ -1266,6 +1276,9 @@ int main(int argc, char *argv[])
 			break;
 		case 's':
 			swapping = 1;
+			break;
+		case 'k':
+			keep = 1;
 			break;
 		case 't':
 			flag_term = 1;
@@ -1313,30 +1326,32 @@ int main(int argc, char *argv[])
 		goto out_sock;
 	}
 
-	printf ("Waiting for connection on port %d\n", gdb_port);
-
 	ret = listen(sfd, 1);
 	if (ret < 0) {
-		fprintf(stderr, "Failed to listen: %s\n",
-			strerror(errno));
+		fprintf(stderr, "Failed to listen: %s\n", strerror(errno));
 		ret_exit = EXIT_FAILURE;
 		goto out_bind;
 	}
 
-	dbg.fd = accept(sfd, (struct sockaddr *)&client_addr, &client_len);
-	if (dbg.fd < 0) {
-		fprintf(stderr, "Failed to accept: %s\n",
-			strerror(errno));
-		ret_exit = EXIT_FAILURE;
-		goto out_bind;
-	}
-	fprintf(stdout, "Accepted connection from %s\n",
-		inet_ntoa(client_addr.sin_addr));
+	do {
+		printf ("Waiting for connection on port %d\n", gdb_port);
 
-	ret = debugger_run(&dbg);
-	if (ret < 0) {
-		ret_exit = EXIT_FAILURE;
-	}
+		dbg.fd = accept(sfd, (struct sockaddr *)&client_addr,
+				&client_len);
+		if (dbg.fd < 0) {
+			fprintf(stderr, "Failed to accept: %s\n",
+				strerror(errno));
+			ret_exit = EXIT_FAILURE;
+			break;
+		}
+		fprintf(stdout, "Accepted connection from %s\n",
+			inet_ntoa(client_addr.sin_addr));
+
+		ret = debugger_run(&dbg);
+		if (ret < 0) {
+			ret_exit = EXIT_FAILURE;
+		}
+	} while (keep);
 
 out_bind:
 out_sock:
