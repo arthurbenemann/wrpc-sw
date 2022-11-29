@@ -30,22 +30,22 @@ static int autoneg_enabled;
 volatile struct EP_WB *EP;
 
 /* functions for accessing PCS (MDIO) registers */
-#ifdef BROADCAST
-uint16_t pcs_read(int location) // KM3NeT
-#else
+//#ifdef BROADCAST
+//uint16_t pcs_read(int location) // KM3NeT
+//#else
 static uint16_t pcs_read(int location)
-#endif
+//#endif
 {
 	EP->MDIO_CR = EP_MDIO_CR_ADDR_W(location >> 2);
 	while ((EP->MDIO_ASR & EP_MDIO_ASR_READY) == 0) ;
 	return EP_MDIO_ASR_RDATA_R(EP->MDIO_ASR) & 0xffff;
 }
 
-#ifdef BROADCAST
-void pcs_write(int location, int value) // KM3NeT
-#else
+//#ifdef BROADCAST
+//void pcs_write(int location, int value) // KM3NeT
+//#else
 static void pcs_write(int location, int value)
-#endif
+//#endif
 {
 	EP->MDIO_CR = EP_MDIO_CR_ADDR_W(location >> 2)
 	    | EP_MDIO_CR_DATA_W(value)
@@ -148,10 +148,10 @@ int ep_link_up(uint16_t * lpa)
 	uint16_t flags = MDIO_MSR_LSTATUS;
 	volatile uint16_t msr;
 
-#ifdef BROADCAST
-        /* Autonegotiation disabled by default in broadcast mode */
-        autoneg_enabled = ((uint16_t)pcs_read(MDIO_REG_MCR) & (0x1000));
-#endif
+//#ifdef BROADCAST
+//        /* Autonegotiation disabled by default in broadcast mode */
+//        autoneg_enabled = ((uint16_t)pcs_read(MDIO_REG_MCR) & (0x1000));
+//#endif
 
 	if (autoneg_enabled)
 		flags |= MDIO_MSR_ANEGCOMPLETE;
@@ -232,7 +232,7 @@ int ep_get_autonegotiation()
 void ep_set_autonegotiation(bool autoneg)
 {
 	// this only works for the non-broadcast version
-#ifndef BROADCAST
+//#ifndef //BROADCAST
 	uint32_t val;
 	val = pcs_read(MDIO_REG_MCR);
 	if(autoneg)
@@ -245,5 +245,5 @@ void ep_set_autonegotiation(bool autoneg)
 	}
 	pcs_write(MDIO_REG_MCR, val);
 	autoneg_enabled = autoneg;
-#endif
+//#endif
 }
