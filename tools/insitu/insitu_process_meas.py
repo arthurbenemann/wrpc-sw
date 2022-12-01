@@ -4,7 +4,7 @@
 insitu_process_meas.py: calculates delayCoefficient from data outut by "insitu meas" command
 
 -------------------------------------------------------------------------------
-Copyright (C) 2022 Peter Jansweijer
+Copyright (C) 2022 Nikhef, Peter Jansweijer
     
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
