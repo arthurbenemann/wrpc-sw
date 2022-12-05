@@ -68,6 +68,11 @@ config TARGET_SIS8300KU
 	help
 	  Struck SIS8300KU MTCA.4 Card (Kintex Ultrascale)
 
+config TARGET_BABYWR
+	bool "BABYWR"
+	help
+	  Small M.2 BabyWR (Artix UltraScale+)
+
 config TARGET_PXIE_FMC
 	bool "ZU7 PXIe FMC Carrier"
 	help
