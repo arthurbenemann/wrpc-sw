@@ -34,6 +34,8 @@
 
 /* BABYWR WB bus behind wr-cores Aux WB bus */
 #define BASE_GPIO            (BASE_AUXWB + 0x000)
+#define BASE_SIT5359_REFCLK  (BASE_AUXWB + 0x080)
+#define BASE_SIT5359_DMTD    (BASE_AUXWB + 0x100)
 
 /* Board-specific parameters */
 #define TICS_PER_SECOND 1000
@@ -101,10 +103,12 @@
 
 int  babywr_init(void);
 
+/*
 struct babywr_board
 {
     struct gpio_device gpio_aux;
 };
+*/
 
 void sdb_find_devices(void);
 void sdb_print_devices(void);
