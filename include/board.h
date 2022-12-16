@@ -38,6 +38,8 @@
 #  include "boards/pxie-fmc/board.h"
 #elif defined(CONFIG_TARGET_WR2RF_VME)
 #  include "boards/wr2rf-vme/board.h"
+#elif defined(CONFIG_TARGET_CITY)
+#  include "boards/city/board.h"
 #endif
 
 extern struct wr_endpoint_device wrc_endpoint_dev;

@@ -91,10 +91,16 @@ config TARGET_PXIE_FMC
 	bool "ZU7 PXIe FMC Carrier"
 	help
 	  PXIe FMC Carrier (Zynq Ultrascale+)
+
 config TARGET_WR2RF_VME
 	bool "WR2RF-VME Board (v1)"
 	help
 	  WR2RF-VME Board (v1)
+
+config TARGET_CITY
+	bool "CITY"
+	help
+	  CarrIer for RFoWR Timing and sYnchronization (Zynq-7000)
 
 endchoice
 
