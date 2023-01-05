@@ -83,9 +83,10 @@ static int wrc_mon_status(void)
  	cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_consecutive_incorrect_timestamp);
 #endif // BROADCAST_NODE
 
-#if defined(BROADCAST_BASE) && defined(BC_EXTRA_MON)
+
+//#if defined(BROADCAST_BASE) && defined(BC_EXTRA_MON)
 /* ONLY FOR TESTS */
-        cprintf(C_BLUE, "\n\nCTR wr-present_0_1: ");
+/*        cprintf(C_BLUE, "\n\nCTR wr-present_0_1: ");
         cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_present_0_1);
         cprintf(C_BLUE, " 0_2: ");
         cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_wr_present_0_2);
@@ -195,7 +196,7 @@ static int wrc_mon_status(void)
 	cprintf(C_BLUE, "\nCTR not busy: ");
         cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_not_busy);
 #endif // BROADCAST_BASE && BC_EXTRA_MON
-	
+*/	
 	cprintf(C_BLUE, "\n\nPTP status: ");
 	cprintf(C_WHITE, "%s", wrc_ptp_state());
 
