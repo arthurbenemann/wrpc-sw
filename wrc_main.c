@@ -101,7 +101,7 @@ static void wrc_initialize(void)
 	 * the link is down */
 	timer_delay_ms(200);
 
-#ifdef BROADCAST_NODE // BROADCAST
+#ifdef BROADCAST // BROADCAST
         ep_enable(1, 0); // Auto negociation disable.
 #else
         ep_enable(1, 1);
