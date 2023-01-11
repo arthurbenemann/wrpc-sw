@@ -22,15 +22,15 @@
 #endif
 
 /* Fixed base addresses */
-#define BASE_MINIC		(DEV_BASE + 0x000)
-#define BASE_EP			(DEV_BASE + 0x100)
-#define BASE_SOFTPLL		(DEV_BASE + 0x200)
-#define BASE_PPS_GEN 		(DEV_BASE + 0x300)
-#define BASE_SYSCON		(DEV_BASE + 0x400)
-#define BASE_UART		(DEV_BASE + 0x500)
-#define BASE_ONEWIRE		(DEV_BASE + 0x600)
-#define BASE_WDIAGS_PRIV       	(DEV_BASE + 0x900)
-#define BASE_ETHERBONE_CFG	(DEV_BASE + 0x8000)
+#define BASE_MINIC         (DEV_BASE + 0x000)
+#define BASE_EP            (DEV_BASE + 0x100)
+#define BASE_SOFTPLL       (DEV_BASE + 0x200)
+#define BASE_PPS_GEN       (DEV_BASE + 0x300)
+#define BASE_SYSCON        (DEV_BASE + 0x400)
+#define BASE_UART          (DEV_BASE + 0x500)
+#define BASE_ONEWIRE       (DEV_BASE + 0x600)
+#define BASE_WDIAGS_PRIV   (DEV_BASE + 0x900)
+#define BASE_ETHERBONE_CFG (DEV_BASE + 0x8000)
 
 /* Board-specific parameters */
 #define TICS_PER_SECOND 1000
@@ -39,7 +39,7 @@
 #define CPU_CLOCK 62500000ULL
 
 /* WR Reference clock period (picoseconds) and frequency (Hz) */
-/* GENERIC_PHY_16BIT */
+/* CITY has GENERIC_PHY_16BIT */
 #define NS_PER_CLOCK 16
 #define REF_CLOCK_PERIOD_PS 16000
 #define REF_CLOCK_FREQ_HZ 62500000
@@ -73,16 +73,14 @@
 
 #define SDBFS_REC 5
 
-#define EEPROM_STORAGE 0
+#define EEPROM_STORAGE 1
 
+void sdb_find_devices(void);
+void sdb_print_devices(void);
 
 extern int  phy_calibration_poll(void);
 extern void phy_calibration_init(void);
 extern int  phy_calibration_done(void);
 extern void phy_calibration_disable(void);
-
-
-void sdb_find_devices(void);
-void sdb_print_devices(void);
 
 #endif /* __BOARD_CITY_H */

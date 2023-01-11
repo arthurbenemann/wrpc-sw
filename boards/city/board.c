@@ -1,3 +1,24 @@
+/*
+ * This work is part of the White Rabbit project
+ *
+ * Copyright (C) 2022 Nikhef (www.Nikhef.nl)
+ * Author: Peter Jansweijer <peterj@nikhef.nl> based on work
+ * from Tomasz Wlostowski <tomasz.wlostowski@cern.ch>
+ *
+ * This program is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 #include "board.h"
 #include "wrc.h"
 #include "wrc-debug.h"
@@ -67,28 +88,9 @@ int wrc_board_early_init()
 
 static int board_get_persistent_mac(uint8_t *mac)
 {
-	int i;
-	struct w1_dev *d;
-	
 	/* Try from SDB */
 	if (storage_get_persistent_mac(0, mac) == 0)
 		return 0;
-
-	/* Get from one-wire (derived from unique id) */
-	if (HAS_W1) {
-		for (i = 0; i < W1_MAX_DEVICES; i++) {
-			d = wrpc_w1_bus.devs + i;
-			if (d->rom) {
-				mac[0] = 0x22;
-				mac[1] = 0x33;
-				mac[2] = 0xff & (d->rom >> 32);
-				mac[3] = 0xff & (d->rom >> 24);
-				mac[4] = 0xff & (d->rom >> 16);
-				mac[5] = 0xff & (d->rom >> 8);
-				return 0;
-			}
-		}
-	}
 
 	/* Not found */
 	return -1;
