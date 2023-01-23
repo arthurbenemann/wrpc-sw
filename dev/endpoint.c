@@ -148,10 +148,10 @@ int ep_link_up(uint16_t * lpa)
 	uint16_t flags = MDIO_MSR_LSTATUS;
 	volatile uint16_t msr;
 
-//#ifdef BROADCAST
-//        /* Autonegotiation disabled by default in broadcast mode */
-//        autoneg_enabled = ((uint16_t)pcs_read(MDIO_REG_MCR) & (0x1000));
-//#endif
+#ifdef BROADCAST
+        /* Autonegotiation disabled by default in broadcast mode */
+        autoneg_enabled = ((uint16_t)pcs_read(MDIO_REG_MCR) & (0x1000));
+#endif
 
 	if (autoneg_enabled)
 		flags |= MDIO_MSR_ANEGCOMPLETE;
@@ -231,8 +231,6 @@ int ep_get_autonegotiation()
 
 void ep_set_autonegotiation(bool autoneg)
 {
-	// this only works for the non-broadcast version
-//#ifndef //BROADCAST
 	uint32_t val;
 	val = pcs_read(MDIO_REG_MCR);
 	if(autoneg)
@@ -245,5 +243,4 @@ void ep_set_autonegotiation(bool autoneg)
 	}
 	pcs_write(MDIO_REG_MCR, val);
 	autoneg_enabled = autoneg;
-//#endif
 }

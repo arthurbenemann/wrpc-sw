@@ -236,7 +236,11 @@ static int calib_t24p_slave(uint32_t *value)
 	int retries = 0;
 
 	while (!(rv = rxts_calibration_update(value))) {
+#ifdef BROADCAST // TEST for BM as DOMs do not follow t24p
+		if (retries > CALIB_RETRIES)
+#else
 		if (retries > CALIB_RETRIES || ep_link_up(NULL) == LINK_DOWN)
+#endif
 			return -1;
  		retries++;
 	}
