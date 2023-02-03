@@ -362,8 +362,12 @@ int wrc_board_init()
     sit5359_dev_init(&board.sit5359_refclk);
     sit5359_dev_init(&board.sit5359_dmtd);
 
-    // initialize registers
-    dac2regs(DAC_HALF_SCALE, regs);
+    regs[0] = 0x00; // SiT5339 Reg 0x00 15:8 => DFC-LSW[15:8]
+    regs[1] = 0x00; // SiT5339 Reg 0x00 7:0  => DFC-LSW[7:0]
+    regs[2] = 0x00; // SiT5339 Reg 0x01 15:8 => DFC-MSW[9:8] (PartNo option "I": hardware OE via pin 1)
+    regs[3] = 0x00; // SiT5339 Reg 0x01 7:0  => DFC-MSW[7:0]
+    regs[4] = 0x00; // SiT5339 Reg 0x02 15:8 => not used
+    regs[5] = 0x03; // SiT5339 Reg 0x02 7:0  => Pull Range 25 ppm
     sit5359_i2c_write(&board.sit5359_refclk, 0x00, regs, 6 );
     sit5359_i2c_write(&board.sit5359_dmtd, 0x00, regs, 6 );
 
@@ -400,6 +404,5 @@ int wrc_board_init()
 int wrc_board_create_tasks()
 {
    wrc_task_create( "phy-cal", phy_calibration_init, phy_calibration_poll );
-   wrc_task_create( "pgpio_control", gpio_control_init, gpio_control_poll );
    return 0;
 }
