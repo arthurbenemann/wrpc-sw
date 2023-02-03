@@ -223,7 +223,6 @@ int wrc_board_init()
     regs[3] = 0x00; // SiT5339 Reg 0x01 7:0  => DFC-MSW[7:0]
     regs[4] = 0x00; // SiT5339 Reg 0x02 15:8 => not used
     regs[5] = 0x03; // SiT5339 Reg 0x02 7:0  => Pull Range 25 ppm
-    // write SiT5359 0x02 with Pull Range (2 bytes)
     sit5359_i2c_write(&board.sit5359_refclk, 0x00, regs, 6 );
     sit5359_i2c_write(&board.sit5359_dmtd, 0x00, regs, 6 );
 
@@ -250,5 +249,6 @@ int wrc_board_init()
 
 int wrc_board_create_tasks()
 {
-    return 0;
+   wrc_task_create( "phy-cal", phy_calibration_init, phy_calibration_poll );
+   return 0;
 }
