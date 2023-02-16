@@ -45,6 +45,8 @@ struct wr_sit5359_interface_device
     uint64_t rfreq;
 };
 
+static spll_gain_schedule_t spll_main_ocxo_gain_sched;
+
 #define SIT5359_PIN_SCL 0
 #define SIT5359_PIN_SDA 1
 
@@ -153,22 +155,45 @@ static int sit5359_dev_init( struct wr_sit5359_interface_device *dev )
     // Enable SPLL and Osc Output Enable
     // I2C bus freqency = 1/(4*(30+1)*16ns) = 504 KHz
     writel( SIT5359_CR_SPLL_EN | SIT5359_CR_OSC_OE | SIT5359_CR_CLK_DIV_W(30) | SIT5359_CR_I2C_ADDR_W ( ( dev->i2c_addr << 1 ) ), dev->base_addr + SIT5359_REG_CR );
+
     return 0;
+}
+
+static void babywr_spll_setup(void)
+{
+
+int implement_two_stages = 0; // implement 2-stage ocxo lock later
+
+/* configure a suitable PI gain schedule for the SoftPLL: */
+    spll_gain_schedule_t* gs=  &spll_main_ocxo_gain_sched;
+
+/* we start with the default SiT5359 values (Bandwidth 27 Hz, < 0.6 dB peaking) */
+    gs->stages[0].kp = -450;
+    gs->stages[0].ki = -2;
+    gs->stages[0].lock_samples = 10000;
+    gs->stages[0].shift = 12;
+
+/* once it's locked, the loop bandwidth is switched to ~0.1 Hz to filter out WR link added phase noise */
+    gs->stages[1].kp = -3000;
+    gs->stages[1].ki = -5;
+    gs->stages[1].lock_samples = 10000;
+    gs->stages[1].shift = 16;
+
+    if ( implement_two_stages ) {
+        gs->n_stages = 2;   // 2 stages: OCXO
+        board_dbg("Oscillator gain schedule: Two stage OCXO setup\n");
+        spll_set_gain_schedule( gs );
+    } else {
+        gs->n_stages = 1;   // 1 stage: SiTime 5359
+        board_dbg("Oscillator gain schedule: 1st stage SiTime setup\n");
+        spll_set_gain_schedule( gs );
+    }
 }
 
 static struct gpio_pin pin_eeprom_scl        = { &board.gpio_aux, 0 };
 static struct gpio_pin pin_eeprom_sda        = { &board.gpio_aux, 1 };
 static struct gpio_pin pin_aux_scl           = { &board.gpio_aux, 2 };
 static struct gpio_pin pin_aux_sda           = { &board.gpio_aux, 3 };
-
-int babywr_init()
-{
-    /* most of the I/Os of the slow peripherals (i2c, spi) are bitbanged. First, let's
-       initialize the GPIO controller they're connected to */
-    wb_gpio_create( &board.gpio_aux, BASE_GPIO );
-
-    return 0;
-}
 
 struct i2c_bus            i2c_wrc_eeprom;
 struct i2c_bus            dev_i2c_aux;
@@ -177,8 +202,9 @@ struct i2c_eeprom_device  wrc_uid_dev;
 
 int wrc_board_early_init()
 {
-    /* Initialize SPEC7 clocking */
-    babywr_init();
+    /* most of the I/Os of the slow peripherals (i2c, spi) are bitbanged. First, let's
+       initialize the GPIO controller they're connected to */
+    wb_gpio_create( &board.gpio_aux, BASE_GPIO );
     
     /* create and initialize eeprom I2C bus */
     bb_i2c_create(&i2c_wrc_eeprom,
@@ -205,6 +231,9 @@ int wrc_board_early_init()
 
     wr_sit5359_interface_init( &board.sit5359_refclk, BASE_SIT5359_REFCLK, SIT5359_I2C_ADDR_A0_1 );
     wr_sit5359_interface_init( &board.sit5359_dmtd, BASE_SIT5359_DMTD, SIT5359_I2C_ADDR_A0_0 );
+
+    /* Setup the SoftPLL for the OCXO we have */
+    babywr_spll_setup();
 
     return 0;
 }
