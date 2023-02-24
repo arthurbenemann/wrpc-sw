@@ -38,11 +38,18 @@
 
 /* spll parameter that are board-specific */
 // BABYWR has GENERIC_PHY_16BIT
-#  define BOARD_DIVIDE_DMTD_CLOCKS    0
+#define BOARD_DIVIDE_DMTD_CLOCKS      0
 
-/* BABYWR uses CRYSTEC_CVPD992 for Helper and Main VCXO */
-#define MAIN_CRYSTEK_CVPD922   1
-#define HELPER_CRYSTEK_CVPD922 1
+/* BabyWR uses reference oscilator gain schedule */
+#define BOARD_HAS_SPLL_GAIN_SCHEDULE
+/* BabyWR Kp, Ki parameters for Helper */
+#define BOARD_HAS_SPLL_HELPER_PARAMETERS
+#define BOARD_SPLL_HELPER_Y_MIN          5
+#define BOARD_SPLL_HELPER_Y_MAX          (1 << DAC_BITS) - 5
+#define BOARD_SPLL_HELPER_KP             -450
+#define BOARD_SPLL_HELPER_KI             -2
+#define BOARD_SPLL_HELPER_LOCK_SAMPLES   10000
+#define BOARD_SPLL_HELPER_PI_FRACBITS    PI_FRACBITS
 
 /* Number of reference channels (RX clocks) */
 #define BOARD_MAX_CHAN_REF            1
@@ -73,7 +80,6 @@ int  babywr_init(void);
 
 extern int phy_calibration_poll(void);
 extern void phy_calibration_init(void);
-extern int phy_calibration_done(void);
 extern void phy_calibration_disable(void);
 
 #endif /* __BOARD_BABYWR_H */
