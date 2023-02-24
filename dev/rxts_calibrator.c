@@ -236,11 +236,7 @@ static int calib_t24p_slave(uint32_t *value)
 	int retries = 0;
 
 	while (!(rv = rxts_calibration_update(value))) {
-#ifdef BROADCAST // TEST for BM as DOMs do not follow t24p
-		if (retries > CALIB_RETRIES)
-#else
 		if (retries > CALIB_RETRIES || ep_link_up(NULL) == LINK_DOWN)
-#endif
 			return -1;
  		retries++;
 	}
@@ -267,8 +263,10 @@ int calib_t24p(int mode, uint32_t *value)
 	int ret;
 
 	if (mode == WRC_MODE_SLAVE)
-#ifdef BROADCAST_NODE
-		ret = 0;
+#ifdef BROADCAST
+/* BROADCAST_NODE -> OK
+ * BROADCAST_BASE -> TO TEST */
+		ret = 0;	
 #else
 		ret = calib_t24p_slave(value);
 #endif // BROADCAST_NODE
