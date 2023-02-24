@@ -28,7 +28,6 @@ void helper_very_init( struct spll_helper_state *s )
 
 	/* Phase branch lock detection */
 	s->ld.threshold = 200;
-	s->ld.lock_samples = 10000;
 	s->ld.delock_samples = 100;
 }
 
