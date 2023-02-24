@@ -16,21 +16,31 @@ void helper_init(struct spll_helper_state *s, int ref_channel)
 {
 
 	/* Phase branch PI controller */
+#ifdef BOARD_HAS_SPLL_HELPER_PARAMETERS  // Use board specific Helper parameters
+	s->pi.y_min        = BOARD_SPLL_HELPER_Y_MIN;
+	s->pi.y_max        = BOARD_SPLL_HELPER_Y_MAX;
+	s->pi.kp           = BOARD_SPLL_HELPER_KP;
+	s->pi.ki           = BOARD_SPLL_HELPER_KI;
+	s->ld.lock_samples = BOARD_SPLL_HELPER_LOCK_SAMPLES;
+	s->pi.shift        = BOARD_SPLL_HELPER_PI_FRACBITS;
+#else                                    // Use default Helper parameters
 	s->pi.y_min = 5;
 	s->pi.y_max = (1 << DAC_BITS) - 5;
-#if defined(CONFIG_WR_NODE)
-	s->pi.kp = -150;//(int)(0.3 * 32.0 * 16.0);	// / 2;
-	s->pi.ki = -2;//(int)(0.03 * 32.0 * 3.0);	// / 2;
-#else
-	s->pi.kp = 150;
-	s->pi.ki = 2;
-#endif
-	s->pi.anti_windup = 1;
+	#if defined(CONFIG_WR_NODE)
+	    s->pi.kp = -150;//(int)(0.3 * 32.0 * 16.0);	// / 2;
+	    s->pi.ki = -2;//(int)(0.03 * 32.0 * 3.0);	// / 2;
+	#else
+	    s->pi.kp = 150;
+	    s->pi.ki = 2;
+	#endif
+	s->ld.lock_samples = 10000;
 	s->pi.shift = PI_FRACBITS;
+#endif
+
+	s->pi.anti_windup = 1;
 
 	/* Phase branch lock detection */
 	s->ld.threshold = 200;
-	s->ld.lock_samples = 10000;
 	s->ld.delock_samples = 100;
 	s->ref_src = ref_channel;
 }
