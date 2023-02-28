@@ -103,7 +103,7 @@ static void wrc_initialize(void)
 
 #ifdef BROADCAST // BROADCAST
         ep_enable(1, 0); // Auto negociation not enabled.
-	ep_set_autonegotiation(0); // Test to disable autoneg even if it is not enabled...
+	// ep_set_autonegotiation(0); // Test to disable autoneg even if it is not enabled...
 #else
         ep_enable(1, 1);
 #endif
