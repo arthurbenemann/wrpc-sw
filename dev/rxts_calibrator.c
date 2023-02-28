@@ -263,7 +263,7 @@ int calib_t24p(int mode, uint32_t *value)
 	int ret;
 
 	if (mode == WRC_MODE_SLAVE)
-#ifdef BROADCAST
+#ifdef BROADCAST_NODE
 /* BROADCAST_NODE -> OK
  * BROADCAST_BASE -> TO TEST */
 		ret = 0;	
