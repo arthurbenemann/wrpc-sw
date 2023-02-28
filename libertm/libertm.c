@@ -323,7 +323,7 @@ static int bad_inputs(struct ertm_status *handle,
 	return 0;
 }
 
-int ertm_proto_cycle(struct ertm_status *st,
+int ertm_proto_cycle_unlocked(struct ertm_status *st,
 	int8_t opcode, void *payload, void *answer)
 {
 	int res = 0;
@@ -362,6 +362,24 @@ int ertm_proto_cycle(struct ertm_status *st,
 	memcpy(answer, &r->payload[op->offset2], op->length2);
 
 	return 0;
+}
+
+/* all protocol cycle operations are locked, except set_board_config
+ * and commit_board_config; this locked/unlocked frig is needed because
+ * set_board_config/commit_board_config are not atomic in the wrc,
+ * hence we make them atomic by making of their sequential call in
+ * commit_config a critical section, instead of making ertm_proto_cycle
+ * a single critical region, which would be ideal. Such is life
+ */
+int ertm_proto_cycle(struct ertm_status *st,
+	int8_t opcode, void *payload, void *answer)
+{
+	int ret;
+
+	ertm_mutex_acquire(st);
+	ret = ertm_proto_cycle_unlocked(st, opcode, payload, answer);
+	ertm_mutex_release(st);
+	return ret;
 }
 
 void dds_to_host_order(struct ertm14_dds_state *dds, struct ertm14_dds_state *host)
@@ -626,7 +644,7 @@ static int set_board_config(struct ertm_status *st,
 	copy_config(bstmp, config);
 	bstmp->valid = 1;
 	board_state_to_network_order(bstmp, bstmp);
-	return ertm_proto_cycle(st, ertm14_set_board_config, bstmp, NULL);
+	return ertm_proto_cycle_unlocked(st, ertm14_set_board_config, bstmp, NULL);
 }
 
 static int commit_board_config(struct ertm_status *st,
@@ -636,7 +654,7 @@ static int commit_board_config(struct ertm_status *st,
 
 	copy_config(bstmp, mask);
 	board_state_to_network_order(bstmp, bstmp);
-	return ertm_proto_cycle(st, ertm14_commit_board_config, bstmp, NULL);
+	return ertm_proto_cycle_unlocked(st, ertm14_commit_board_config, bstmp, NULL);
 }
 
 static void update_board_config(struct ertm_status *st,
@@ -749,8 +767,10 @@ static void commit_config(struct ertm_status *handle,
 		break;
 	case ERTM_IMMEDIATE:
 		update_config(bs, next, mask);
+		ertm_mutex_acquire(handle);
 		set_board_config(handle, next);
 		commit_board_config(handle, mask);
+		ertm_mutex_release(handle);
 		clean_config(next);
 		clean_config(mask);
 		break;
