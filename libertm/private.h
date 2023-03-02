@@ -16,6 +16,7 @@
 #include "common-uart-link.h"
 
 #include "hw/wrc_diags_regs.h"
+#include "hw/wr_streamers.h"
 
 struct ertm_state {
 	struct ertm_board_info		board_info;

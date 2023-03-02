@@ -22,6 +22,7 @@
 #include <stdint.h>
 #include <math.h>
 #include <limits.h>
+#include <string.h>
 
 #include <sys/errno.h>
 
@@ -29,6 +30,7 @@
 #include "dev/gpio.h"
 #include "dev/74x595.h"
 #include "dev/ad7888.h"
+#include "util.h"
 #include "ertm15_rf_distr.h"
 
 #ifndef INT32_MAX
@@ -141,6 +143,7 @@ static int rf_switch_set( int path, int channel, int state)
 
 void ertm15_rf_distr_init( struct ertm15_rf_distribution_device *dev, struct ad7888_device *pwr_mon_adc )
 {
+    memset(dev, 0, sizeof(struct ertm15_rf_distribution_device));
     x595_gpio_create ( &gpio_rfsw_ref, 3, &pin_ref_ctrl_updtclk, &pin_ref_ctrl_shftclk, NULL, &pin_ref_ctrl_ser );
     x595_gpio_create ( &gpio_rfsw_lo, 3, &pin_lo_ctrl_updtclk, &pin_lo_ctrl_shftclk, NULL, &pin_lo_ctrl_ser );
 
@@ -243,6 +246,215 @@ static int convert_power( int adc_value )
 
 #define ADC_CHANNEL_MASK 0xf
 
+
+int ertm15_rf_distr_pwrmon_update(  struct ertm15_rf_distribution_device *dev )
+{
+    //pp_printf("ST %d\n", dev->pwr_meas_state);
+    switch(dev->pwr_meas_state)
+    {
+        case PWR_MEAS_STATE_IDLE:
+            return 0;
+
+        case PWR_MEAS_STATE_START:
+            tmo_init( &dev->pwr_meas_tmo, PWR_MEAS_STABILIZE_TMO_MS );
+            dev->pwr_meas_channel = ERTM14_RF_OUT_MIN_ID;
+            dev->pwr_meas_state = PWR_MEAS_STATE_PICK_CHANNEL;
+            dev->pwr_meas_start_tics = timer_get_tics();
+
+            if( dev->pwr_meas_force )
+            {
+                int i;
+
+                // all channels to OFF, so that they are terminated
+                for( i = ERTM14_RF_OUT_MIN_ID; i <= ERTM14_RF_OUT_MAX_ID; i ++ )
+                {
+                    rf_switch_set( ERTM15_RF_REF, i, ERTM15_RF_OUT_OFF );
+                    rf_switch_set( ERTM15_RF_LO, i, ERTM15_RF_OUT_OFF );
+                }
+
+                dev->pwr_ref_valid = 0;
+                dev->pwr_lo_valid = 0;
+            }
+
+            break;
+
+        case PWR_MEAS_STATE_PICK_CHANNEL:
+        {
+            if( ! tmo_expired( &dev->pwr_meas_tmo ) )
+                break;
+
+            tmo_restart( &dev->pwr_meas_tmo );
+
+            if( dev->pwr_meas_force || !(dev->ref_enabled & (1<<dev->pwr_meas_channel) ) )
+                rf_switch_set( ERTM15_RF_REF, dev->pwr_meas_channel, ERTM15_RF_OUT_MONITOR );
+
+            if( dev->pwr_meas_force || !(dev->lo_enabled & (1<<dev->pwr_meas_channel) ) )
+                rf_switch_set( ERTM15_RF_LO, dev->pwr_meas_channel, ERTM15_RF_OUT_MONITOR );
+
+            dev->pwr_meas_state = PWR_MEAS_STATE_START_ADC;
+            break;
+        }
+
+        case PWR_MEAS_STATE_START_ADC:
+        {
+            if( ! tmo_expired( &dev->pwr_meas_tmo ) )
+                break;
+
+            ad7888_start_conversion( dev->pwr_mon_adc, ADC_CHANNEL_MASK );
+            dev->pwr_meas_state = PWR_MEAS_STATE_READ_ADC;
+
+            break;
+        }
+
+        case PWR_MEAS_STATE_READ_ADC:
+        {
+            ad7888_poll( dev->pwr_mon_adc );
+            //pp_printf("CH %d V %x\n", dev->pwr_meas_channel, dev->pwr_mon_adc->channel_valid);
+            if( dev->pwr_mon_adc->channel_valid != ADC_CHANNEL_MASK )
+                break;
+
+            dev->pwr_ref_in = convert_power( dev->pwr_mon_adc->channel[ADC_CH_REF_DDS_PA] );
+            dev->pwr_lo_in = convert_power( dev->pwr_mon_adc->channel[ADC_CH_LO_DDS_PA] );
+
+            int raw_pwr_ref = ad7888_meas_channel( dev->pwr_mon_adc, ADC_CH_REF_DDS_DISTR );
+            int raw_pwr_lo = ad7888_meas_channel( dev->pwr_mon_adc, ADC_CH_LO_DDS_DISTR );
+
+            if(dev->pwr_meas_force || !(dev->ref_enabled & (1<<dev->pwr_meas_channel) ) )
+                dev->pwr_ref_ch[ dev->pwr_meas_channel ] = convert_power( raw_pwr_ref );
+            if(dev->pwr_meas_force || !(dev->lo_enabled & (1<<dev->pwr_meas_channel) ) )
+                dev->pwr_lo_ch[ dev->pwr_meas_channel ] = convert_power( raw_pwr_lo );
+
+            //board_dbg("refin %d loin %d ref%d %d lo%d %d", dev->pwr_ref_in, dev->pwr_lo_in,
+            //dev->pwr_meas_channel, dev->pwr_ref_ch[dev->pwr_meas_channel],
+            //dev->pwr_meas_channel, dev->pwr_lo_ch[dev->pwr_meas_channel] );
+
+            if( dev->pwr_meas_force || !(dev->lo_enabled & (1<<dev->pwr_meas_channel) ) )
+                rf_switch_set( ERTM15_RF_LO, dev->pwr_meas_channel, ERTM15_RF_OUT_OFF );
+            if( dev->pwr_meas_force || !(dev->ref_enabled & (1<<dev->pwr_meas_channel) ) )
+                rf_switch_set( ERTM15_RF_REF, dev->pwr_meas_channel, ERTM15_RF_OUT_OFF );
+
+            if( dev->pwr_meas_channel >= ERTM14_RF_OUT_MAX_ID )
+                dev->pwr_meas_state = PWR_MEAS_STATE_FINISH;
+            else
+            {
+                dev->pwr_meas_channel++;
+                tmo_restart( &dev->pwr_meas_tmo );
+                dev->pwr_meas_state = PWR_MEAS_STATE_PICK_CHANNEL;
+            }
+
+            break;
+
+        }
+
+        case PWR_MEAS_STATE_FINISH:
+        {
+            if( dev->pwr_meas_force ) // restore state of channels that have been squelched during measurement
+            {
+                int i;
+                for( i = ERTM14_RF_OUT_MIN_ID; i <= ERTM14_RF_OUT_MAX_ID; i ++ )
+                {
+                    rf_switch_set( ERTM15_RF_REF, i, dev->ref_enabled & (1<<i) ? ERTM15_RF_OUT_ON : ERTM15_RF_OUT_OFF );
+                    rf_switch_set( ERTM15_RF_LO, i, dev->lo_enabled & (1<<i) ? ERTM15_RF_OUT_ON : ERTM15_RF_OUT_OFF );
+                }
+
+                dev->pwr_lo_valid = ERTM14_ALL_RF_OUT_ID_MASK;
+                dev->pwr_ref_valid = ERTM14_ALL_RF_OUT_ID_MASK;
+            }
+            else
+            {
+                dev->pwr_lo_valid = ERTM14_ALL_RF_OUT_ID_MASK & ~( dev->lo_enabled );
+                dev->pwr_ref_valid = ERTM14_ALL_RF_OUT_ID_MASK & ~( dev->ref_enabled );
+            }
+
+            uint32_t dt = timer_get_tics() - dev->pwr_meas_start_tics;
+            board_dbg("pwr_meas took %d ms, forced=%d\n", dt, dev->pwr_meas_force );
+
+            dev->pwr_meas_force = 0;
+            dev->pwr_meas_state = PWR_MEAS_STATE_DONE;
+            break;
+        }
+
+        default:
+            break;
+    }
+
+    return 0;
+}
+
+int ertm15_rf_distr_measure_power_restart( struct ertm15_rf_distribution_device *dev, int force )
+{
+    if( force )
+    {
+        dev->pwr_meas_force = 1;
+        dev->pwr_lo_valid = 0;
+        dev->pwr_ref_valid = 0;
+        dev->pwr_meas_state = PWR_MEAS_STATE_START;
+        ertm15_rf_distr_pwrmon_update( dev );
+    }
+    else
+    {
+        dev->pwr_meas_state = PWR_MEAS_STATE_START;
+    }
+
+
+    return 0;
+}
+
+int ertm15_rf_distr_measure_power ( struct ertm15_rf_distribution_device *dev )
+{
+    //pp_printf("Restart\n");
+    ertm15_rf_distr_measure_power_restart( dev, 0 );
+
+    while( dev->pwr_meas_state != PWR_MEAS_STATE_DONE )
+        ertm15_rf_distr_pwrmon_update( dev );
+
+    return 0;
+}
+
+#if 0
+    
+    int i;
+    ad7888_start_conversion( dev->pwr_mon_adc, ADC_CHANNEL_MASK );
+
+    while( dev->pwr_mon_adc->channel_valid != ADC_CHANNEL_MASK )
+    {
+        ad7888_poll( dev->pwr_mon_adc );
+        timer_delay_ms(1);
+    }
+
+    dev->pwr_ref_in = convert_power( dev->pwr_mon_adc->channel[ADC_CH_REF_DDS_PA] );
+    dev->pwr_lo_in = convert_power( dev->pwr_mon_adc->channel[ADC_CH_LO_DDS_PA] );
+
+    timer_delay_ms(1);
+
+    for( i = ERTM14_RF_OUT_MIN_ID; i <= ERTM14_RF_OUT_MAX_ID; i ++ )
+    {
+        dev->pwr_ref_valid &= ~(1<<i);
+        if( ! (dev->ref_enabled & (1<<i) ) )
+        {
+            rf_switch_set( ERTM15_RF_REF, i, ERTM15_RF_OUT_MONITOR );
+            timer_delay_ms(10);
+            int raw_pwr = ad7888_meas_channel( dev->pwr_mon_adc, ADC_CH_REF_DDS_DISTR );
+            dev->pwr_ref_ch[ i ] = convert_power( raw_pwr );
+            dev->pwr_ref_valid |= (1<<i);
+            rf_switch_set( ERTM15_RF_REF, i, ERTM15_RF_OUT_OFF );
+        }
+
+        dev->pwr_lo_valid &= ~(1<<i);
+        if( ! (dev->lo_enabled & (1<<i) ) )
+        {
+            rf_switch_set( ERTM15_RF_LO, i, ERTM15_RF_OUT_MONITOR );
+            timer_delay_ms(10);
+            int raw_pwr = ad7888_meas_channel( dev->pwr_mon_adc, ADC_CH_LO_DDS_DISTR );
+            dev->pwr_lo_ch[ i ] = convert_power( raw_pwr );
+            dev->pwr_lo_valid |= (1<<i);
+            rf_switch_set( ERTM15_RF_LO, i, ERTM15_RF_OUT_OFF );
+        }
+    }
+
+    return 0;
+}
+
 int ertm15_rf_distr_measure_power ( struct ertm15_rf_distribution_device *dev )
 {
     int i;
@@ -286,6 +498,8 @@ int ertm15_rf_distr_measure_power ( struct ertm15_rf_distribution_device *dev )
 
     return 0;
 }
+#endif
+
 
 void ertm15_rf_distr_output_enable( struct ertm15_rf_distribution_device *dev, int path, int channel, int enabled )
 {
@@ -312,4 +526,7 @@ void ertm15_update_rf_switches( struct ertm15_rf_distribution_device *dev )
     }
 }
 
-
+int ertm15_rf_distr_is_pwrmon_idle( struct ertm15_rf_distribution_device *dev )
+{
+    return dev->pwr_meas_state == PWR_MEAS_STATE_DONE || dev->pwr_meas_state == PWR_MEAS_STATE_IDLE;
+}

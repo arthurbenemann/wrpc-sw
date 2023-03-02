@@ -19,10 +19,32 @@ static double ampl_factor_to_float(uint8_t ampl_factor)
 {
 	return ampl_factor/256.0;
 }
+
+static int32_t signext32( uint32_t in, int bit )
+{
+	uint32_t mask = ~ ((1<<bit)-1);
+	if( in & (1<<bit) )
+		return in | mask;
+	else
+		return in;
+}
+
+// fixme: I hate handling C strings. Can't we just rewrite this f***ing library in C++?
+static void amp_power_to_string(uint32_t amp_power, char *str, int maxlen )
+{
+	/* register values are in mBm, *not* mdBm;
+	 * hence the *10/1000.0 factor */
+	if( ! (amp_power & ERTM_FLAGS_DDS_POWER_VALID_MASK ))
+		snprintf( str, maxlen, "invalid");
+	else
+		snprintf(str, maxlen, "%5.3f dBm", (signext32( amp_power & 0x7fffffff, 30 ) ) / 100.0 );
+}
+
 void display_dds_state(struct ertm14_dds_state *dds1,
 			struct ertm14_dds_state *dds2)
 {
 	int i;
+	char tmp[1024];
 
 	printf("LO ftw: %08x (%7.3fMHz)%7c", dds1->ftw, (1000.0 * dds1->ftw) / (1L<<32), ' ');
 	printf(" | ");
@@ -32,20 +54,24 @@ void display_dds_state(struct ertm14_dds_state *dds1,
 	printf(" | ");
 	printf("REF level adjust: %6.4f (%3d/256)%3c", ampl_factor_to_float(dds2->ampl_factor), dds2->ampl_factor, ' ');
 	printf("\n");
-	printf("LO pll_out_power: %5.3f dBm%9c",  dds1->amp_power/100.0, ' ');	/* register in mBm, not mdBm! */
+	amp_power_to_string( dds1->amp_power, tmp, sizeof(tmp) );
+	printf("LO pll_out_power: %s%9c",  tmp, ' ');	/* register in mBm, not mdBm! */
 	printf(" | ");
-	printf("REF pll_out_power: %5.3f dBm%9c",  dds2->amp_power/100.0, ' ');	/* ditto */
+	amp_power_to_string( dds2->amp_power, tmp, sizeof(tmp) );
+	printf("REF pll_out_power: %s%9c",  tmp, ' ');	/* ditto */
 	printf("\n");
 	printf("LO sync_state: %4s%17c", ertm_sync_states[dds1->sync_state].label, ' ');
 	printf(" | ");
 	printf("REF sync_state: %4s%17c", ertm_sync_states[dds2->sync_state].label, ' ');
 	printf("\n");
 	for (i = ERTM14_RF_OUT_MIN_ID; i <= ERTM14_RF_OUT_MAX_ID; i++) {
-		printf("LO%02d:   pow: %5.3f dBm  st:%-8s",
-		    i, dds1->out_power[i]/100.0, state_literal[dds1->out_state[i]]);
+		amp_power_to_string( dds1->out_power[i], tmp, sizeof(tmp) );
+		printf("LO%02d:   pow: %-15s st:%-8s",
+		    i, tmp, state_literal[dds1->out_state[i]]);
 		printf(" | ");
-		printf("REF%02d: pow: %5.3f dBm  st:%-8s",
-		    i, dds2->out_power[i]/100.0, state_literal[dds2->out_state[i]]);
+		amp_power_to_string( dds2->out_power[i], tmp, sizeof(tmp) );
+		printf("REF%02d: pow: %-15s st:%-8s",
+		    i, tmp, state_literal[dds2->out_state[i]]);
 		printf("\n");
 	}
 }
@@ -272,6 +298,71 @@ void display_wrc_diags_cooked(struct ertm_wr_status *diags)
 	printf(fmt, "Link Delay Model delta_Tx_S [ps]", diags->WDIAG_DELTA_TX_S);
 	printf(human, "SoftPLL Helper DAC value [0-65535]", diags->WDIAG_SPLL_HY, diags->WDIAG_SPLL_HY);
 	printf(human, "SoftPLL Main DAC value [0-65535]", diags->WDIAG_SPLL_MY, diags->WDIAG_SPLL_MY);
+}
+
+void display_streamer_diags_cooked(struct ertm_streamer_status *diags)
+{
+	char fmt[] = "%-20s\t0x%08x\n";
+	char human[] = "%-20s\t0x%08x (%7d)\n";
+
+	printf(fmt, "Version register", diags->VER);
+	printf(fmt, "SSCR1", diags->SSCR1);
+	printf(fmt, "SSCR2", diags->SSCR2);
+	printf(fmt, "SSCR3", diags->SSCR3);
+
+	printf(fmt, "TX_CFG0", diags->TX_CFG0);
+	printf(fmt, "TX_CFG1", diags->TX_CFG1);
+	printf(fmt, "TX_CFG2", diags->TX_CFG2);
+	printf(fmt, "TX_CFG3", diags->TX_CFG3);
+	printf(fmt, "TX_CFG4", diags->TX_CFG4);
+	printf(fmt, "TX_CFG5", diags->TX_CFG5);
+
+	printf(fmt, "RX_CFG0", diags->RX_CFG0);
+	printf(fmt, "RX_CFG1", diags->RX_CFG1);
+	printf(fmt, "RX_CFG2", diags->RX_CFG2);
+	printf(fmt, "RX_CFG3", diags->RX_CFG3);
+	printf(fmt, "RX_CFG4", diags->RX_CFG4);
+	printf(fmt, "RX_CFG5", diags->RX_CFG5);
+	printf(fmt, "RX_CFG6", diags->RX_CFG6);
+
+	double max_lat = WR_STREAMERS_RX_STAT0_RX_LATENCY_MAX_R(diags->RX_STAT0);
+	max_lat = (max_lat * 8) / 1000.0;
+
+	double min_lat = WR_STREAMERS_RX_STAT1_RX_LATENCY_MIN_R(diags->RX_STAT1);
+	min_lat = (min_lat * 8) / 1000.0;
+
+	int overflow = (WR_STREAMERS_SSCR1_RX_LATENCY_ACC_OVERFLOW & diags->SSCR1) ? 1 : 0;
+
+	// put it all together
+	uint64_t acc_lat = (((uint64_t)diags->RX_STAT11) << 32) | diags->RX_STAT10;
+	uint64_t cnt_lat = (((uint64_t)diags->RX_STAT13) << 32) | diags->RX_STAT12;
+
+	if (cnt_lat > 0)
+	{
+		double avg_lat = (((double)acc_lat) * 8 / 1000) / (double)cnt_lat;
+		printf("Latency [us]    : min=%15g max=%15g avg =%15g "
+			   "(overflow    =%d)\n",
+			   min_lat, max_lat, avg_lat, overflow);
+	}
+	else
+		printf("No frames received, so no latency stats...\n");
+
+	printf("Frames  [number]:\n"
+		   " - tx      = %15" PRIu64 "\n"
+		   " - rx      = %15" PRIu64 "\n"
+		   " - lost    = %15" PRIu64 " (lost blocks =%" PRIu64 ")\n",
+		   (((uint64_t)diags->TX_STAT3) << 32) | diags->TX_STAT2,
+		   (((uint64_t)diags->RX_STAT5) << 32) | diags->RX_STAT4,
+		   (((uint64_t)diags->RX_STAT7) << 32) | diags->RX_STAT6,
+		   (((uint64_t)diags->RX_STAT9) << 32) | diags->RX_STAT8);
+
+	printf("Fixed latency frames [number]:\n"
+		   " - match   = %15"PRIu64"\n"
+		   " - late    = %15"PRIu64"\n"
+		   " - timeout = %15"PRIu64"\n",
+		   (((uint64_t)diags->RX_STAT20) << 32) | diags->RX_STAT20,
+		   (((uint64_t)diags->RX_STAT16) << 32) | diags->RX_STAT16,
+		   (((uint64_t)diags->RX_STAT18) << 32) | diags->RX_STAT18);
 }
 
 static const char *source_name(int sync_source)

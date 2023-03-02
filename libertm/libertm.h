@@ -260,6 +260,99 @@ struct ertm_wr_status
 	uint32_t WDIAG_SPLL_MY; /* [0x88]: REG (ro) WRPC Diag: SoftPLL Main DAC value (MY) */
 };
 
+struct ertm_streamer_status
+{
+/* FIXME: copied, not #include'd, from wr_streamers.h
+ * This structure is read only. It does have the same format as the streamer's memory map but
+ * you can only use it to read the diagnostic values and nothing else. The xxxCFG and
+ * xxxCTRL register are just placeholders, they DO NOTHING */
+
+  /* [0x0]: REG Version register */
+  uint32_t VER;
+  /* [0x4]: REG Statistics status and ctrl register */
+  uint32_t SSCR1;
+  /* [0x8]: REG Statistics status and ctrl register */
+  uint32_t SSCR2;
+  /* [0xc]: REG Statistics status and ctrl register */
+  uint32_t SSCR3;
+  /* [0x10]: REG Rx statistics */
+  uint32_t RX_STAT0;
+  /* [0x14]: REG Rx statistics */
+  uint32_t RX_STAT1;
+  /* [0x18]: REG Tx statistics */
+  uint32_t TX_STAT2;
+  /* [0x1c]: REG Tx statistics */
+  uint32_t TX_STAT3;
+  /* [0x20]: REG Rx statistics */
+  uint32_t RX_STAT4;
+  /* [0x24]: REG Rx statistics */
+  uint32_t RX_STAT5;
+  /* [0x28]: REG Rx statistics */
+  uint32_t RX_STAT6;
+  /* [0x2c]: REG Rx statistics */
+  uint32_t RX_STAT7;
+  /* [0x30]: REG Rx statistics */
+  uint32_t RX_STAT8;
+  /* [0x34]: REG Rx statistics */
+  uint32_t RX_STAT9;
+  /* [0x38]: REG Rx statistics */
+  uint32_t RX_STAT10;
+  /* [0x3c]: REG Rx statistics */
+  uint32_t RX_STAT11;
+  /* [0x40]: REG Rx statistics */
+  uint32_t RX_STAT12;
+  /* [0x44]: REG Rx statistics */
+  uint32_t RX_STAT13;
+  /* [0x48]: REG Tx Config Reg 0 */
+  uint32_t TX_CFG0;
+  /* [0x4c]: REG Tx Config Reg 1 */
+  uint32_t TX_CFG1;
+  /* [0x50]: REG Tx Config Reg 2 */
+  uint32_t TX_CFG2;
+  /* [0x54]: REG Tx Config Reg 3 */
+  uint32_t TX_CFG3;
+  /* [0x58]: REG Tx Config Reg 4 */
+  uint32_t TX_CFG4;
+  /* [0x5c]: REG Tx Config Reg 4 */
+  uint32_t TX_CFG5;
+  /* [0x60]: REG Rx Config Reg 0 */
+  uint32_t RX_CFG0;
+  /* [0x64]: REG Rx Config Reg 1 */
+  uint32_t RX_CFG1;
+  /* [0x68]: REG Rx Config Reg 2 */
+  uint32_t RX_CFG2;
+  /* [0x6c]: REG Rx Config Reg 3 */
+  uint32_t RX_CFG3;
+  /* [0x70]: REG Rx Config Reg 4 */
+  uint32_t RX_CFG4;
+  /* [0x74]: REG Rx Config Reg 5 */
+  uint32_t RX_CFG5;
+  /* [0x78]: REG TxRx Config Override */
+  uint32_t CFG;
+  /* [0x7c]: REG DBG Control register */
+  uint32_t DBG_CTRL;
+  /* [0x80]: REG DBG Data */
+  uint32_t DBG_DATA;
+  /* [0x84]: REG Test value */
+  uint32_t DUMMY;
+  /* [0x88]: REG Reset Register */
+  uint32_t RSTR;
+  /* [0x8c]: REG Rx statistics */
+  uint32_t RX_STAT15;
+  /* [0x90]: REG Rx statistics */
+  uint32_t RX_STAT16;
+  /* [0x94]: REG Rx statistics */
+  uint32_t RX_STAT17;
+  /* [0x98]: REG Rx statistics */
+  uint32_t RX_STAT18;
+  /* [0x9c]: REG Rx statistics */
+  uint32_t RX_STAT19;
+  /* [0xa0]: REG Rx statistics */
+  uint32_t RX_STAT20;
+  /* [0xa4]: REG Rx Config Reg 6 */
+  uint32_t RX_CFG6;
+};
+
 /* as a general rule, all methods in libertm return an integer exit
  * code 0 in case of success and < 0 in case of error, the type of error
  * mapped to an errno value
@@ -306,6 +399,7 @@ int ertm_get_channel_power(struct ertm_status *handle,
 		enum ertm_connector connector, int channel, double *power);		/* power per channel in dBm */
 int ertm_get_channel_power_all(struct ertm_status *handle,
 		enum ertm_connector connector, uint32_t valid_mask, double *power);	/* powers in dBm */
+int ertm_force_measure_channels_power( struct ertm_status *handle );
 int ertm_dds_set_level_adjust(struct ertm_status *handle,
 		enum ertm_connector connector, double level);			/* level in [0,1] */
 int ertm_dds_get_level_adjust(struct ertm_status *handle,
@@ -332,6 +426,9 @@ int ertm_wr_status(struct ertm_status *handle, int *link_up, int *is_locked);
 int ertm_wr_diags(struct ertm_status *handle, struct ertm_wr_status *status);
 
 /* streamer latency and timeout settings */
+int ertm_reset_streamer_diags(struct ertm_status *handle);
+int ertm_streamer_diags(struct ertm_status *handle, struct ertm_streamer_status *status);
+
 int ertm_set_streamers_latency(struct ertm_status *handle, uint32_t cycles16n);
 int ertm_set_streamers_timeout(struct ertm_status *handle, uint32_t cycles16n);
 int ertm_get_streamers_latency_timeout(struct ertm_status *handle,

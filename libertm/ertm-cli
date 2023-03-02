@@ -140,6 +140,53 @@ class ertm_wr_status(Structure):
 	("WDIAG_UCNT", c_uint),
 	("WDIAG_TEMP", c_uint),
     ]
+
+class ertm_streamer_status(Structure):
+    _fields_ = [
+    ("VER", c_uint),
+    ("SSCR1", c_uint),
+    ("SSCR2", c_uint),
+    ("SSCR3", c_uint),
+    ("RX_STAT0", c_uint),
+    ("RX_STAT1", c_uint),
+    ("TX_STAT2", c_uint),
+    ("TX_STAT3", c_uint),
+    ("RX_STAT4", c_uint),
+    ("RX_STAT5", c_uint),
+    ("RX_STAT6", c_uint),
+    ("RX_STAT7", c_uint),
+    ("RX_STAT8", c_uint),
+    ("RX_STAT9", c_uint),
+    ("RX_STAT10", c_uint),
+    ("RX_STAT11", c_uint),
+    ("RX_STAT12", c_uint),
+    ("RX_STAT13", c_uint),
+    ("TX_CFG0", c_uint),
+    ("TX_CFG1", c_uint),
+    ("TX_CFG2", c_uint),
+    ("TX_CFG3", c_uint),
+    ("TX_CFG4", c_uint),
+    ("TX_CFG5", c_uint),
+    ("RX_CFG0", c_uint),
+    ("RX_CFG1", c_uint),
+    ("RX_CFG2", c_uint),
+    ("RX_CFG3", c_uint),
+    ("RX_CFG4", c_uint),
+    ("RX_CFG5", c_uint),
+    ("CFG", c_uint),
+    ("DBG_CTRL", c_uint),
+    ("DBG_DATA", c_uint),
+    ("DUMMY", c_uint),
+    ("RSTR", c_uint),
+    ("RX_STAT15", c_uint),
+    ("RX_STAT16", c_uint),
+    ("RX_STAT17", c_uint),
+    ("RX_STAT18", c_uint),
+    ("RX_STAT19", c_uint),
+    ("RX_STAT20", c_uint),
+    ("RX_CFG6", c_uint)
+    ]
+
 class ertm_nco_reset(Structure):
     _fields_ = [
         ("enabled", c_uint),      
@@ -458,6 +505,12 @@ class ErtmTest(cmd.Cmd):
         buf = ertm_wr_status()
         self.lib.ertm_wr_diags(self.handle, byref(buf))
         self.display.display_wrc_diags_cooked(byref(buf))
+    
+    def do_streamer_diags(self, args):
+        "get WR Streamer (NCO) diagnostics."
+        buf = ertm_streamer_status()
+        self.lib.ertm_streamer_diags(self.handle, byref(buf))
+        self.display.display_streamer_diags_cooked(byref(buf))
 
     def do_wr_status(self, args):
         "get WRC link/lock status."
@@ -482,6 +535,14 @@ class ErtmTest(cmd.Cmd):
             print('usage: wr_enable {master|slave|disable}')
             return
         self.lib.ertm_wr_enable(self.handle, mode)
+
+    def do_force_measure_channels_power(self, args ):
+        "forces an immediate measurement of REF/LO output power. WARNING, will squelch the signals for ~0.5 second!"
+        self.lib.ertm_force_measure_channels_power(self.handle)
+
+    def do_reset_streamer_diags(self, args):
+        "resets WR (NCO) streamer diagnostic counters."
+        self.lib.ertm_reset_streamer_diags(self.handle)
 
     def do_wr_disable(self, args):
         """stop PTP daemon (synonymous to "wr_enable disable")."""
@@ -579,11 +640,14 @@ class ErtmTest(cmd.Cmd):
     do_dc = do_disable_channel
     do_gss = do_get_sync_state
     do_wrd = do_wrc_diags
+    do_strd = do_streamer_diags
+    do_rstrd = do_reset_streamer_diags
     do_temp = do_temperatures
     do_volt = do_voltages
     do_bi = do_board_info
     do_nco = do_nco_status
     do_snco = do_subscribe_nco_reset
+    do_fpm = do_force_measure_channels_power
 
     do_gp = do_get_power
     do_gcp = do_get_channel_power

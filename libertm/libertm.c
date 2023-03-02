@@ -124,26 +124,26 @@ static struct ertm_voltages voltages_defaults = {
 struct ertm_wr_status wr_status_default = {
 	/* FIXME: copied, not #include'd, from wrc_diags_regs.h */
 	/* eventually replace by struct wrc_diags */
-	.VER = 0xdeadbabe,	   /* [0x0]: REG Version register */
-	.CTRL = 0,			   /* [0x4]: REG Ctrl */
-	.WDIAG_SSTAT = 0,	   /* [0x8]: REG WRPC Diag: servo status */
-	.WDIAG_PSTAT = 1,	   /* [0xc]: REG WRPC Diag: Port status */
-	.WDIAG_PTPSTAT = 3,	   /* [0x10]: REG WRPC Diag: PTP state */
-	.WDIAG_ASTAT = 0xa5,   /* [0x14]: REG WRPC Diag: AUX state */
-	.WDIAG_TXFCNT = 0xa5,  /* [0x18]: REG WRPC Diag: Tx PTP Frame cnts */
-	.WDIAG_RXFCNT = 0xa5,  /* [0x1c]: REG WRPC Diag: Rx PTP Frame cnts */
-	.WDIAG_SEC_MSB = 0xa5, /* [0x20]: REG WRPC Diag:local time [msb of s] */
-	.WDIAG_SEC_LSB = 0xa5, /* [0x24]: REG WRPC Diag: local time [lsb of s] */
-	.WDIAG_NS = 0xa5,	   /* [0x28]: REG WRPC Diag: local time [ns] */
-	.WDIAG_MU_MSB = 0xa5,  /* [0x2c]: REG WRPC Diag: Round trip (mu) [msb of ps] */
-	.WDIAG_MU_LSB = 0xa5,  /* [0x30]: REG WRPC Diag: Round trip (mu) [lsb of ps] */
-	.WDIAG_DMS_MSB = 0xa5, /* [0x34]: REG WRPC Diag: Master-slave delay (dms) [msb of ps] */
-	.WDIAG_DMS_LSB = 0xa5, /* [0x38]: REG WRPC Diag: Master-slave delay (dms) [lsb of ps] */
-	.WDIAG_ASYM = 0xa5,	   /* [0x3c]: REG WRPC Diag: Total link asymmetry [ps] */
-	.WDIAG_CKO = 0xa5,	   /* [0x40]: REG WRPC Diag: Clock offset (cko) [ps] */
-	.WDIAG_SETP = 0xa5,	   /* [0x44]: REG WRPC Diag: Phase setpoint (setp) [ps] */
-	.WDIAG_UCNT = 0xa5,	   /* [0x48]: REG WRPC Diag: Update counter (ucnt) */
-	.WDIAG_TEMP = 0xa5,	   /* [0x4c]: REG WRPC Diag: Board temperature [C degree] */
+	.VER		= 0xdeadbabe,	/* [0x0]: REG Version register */
+	.CTRL		= 0,   		/* [0x4]: REG Ctrl */
+	.WDIAG_SSTAT	= 0,  		/* [0x8]: REG WRPC Diag: servo status */
+	.WDIAG_PSTAT	= 1,  		/* [0xc]: REG WRPC Diag: Port status */
+	.WDIAG_PTPSTAT	= 3,		/* [0x10]: REG WRPC Diag: PTP state */
+	.WDIAG_ASTAT	= 0xa5,		/* [0x14]: REG WRPC Diag: AUX state */
+	.WDIAG_TXFCNT	= 0xa5,		/* [0x18]: REG WRPC Diag: Tx PTP Frame cnts */
+	.WDIAG_RXFCNT	= 0xa5,		/* [0x1c]: REG WRPC Diag: Rx PTP Frame cnts */
+	.WDIAG_SEC_MSB	= 0xa5,		/* [0x20]: REG WRPC Diag:local time [msb of s] */
+	.WDIAG_SEC_LSB	= 0xa5,		/* [0x24]: REG WRPC Diag: local time [lsb of s] */
+	.WDIAG_NS	= 0xa5,     	/* [0x28]: REG WRPC Diag: local time [ns] */
+	.WDIAG_MU_MSB	= 0xa5,		/* [0x2c]: REG WRPC Diag: Round trip (mu) [msb of ps] */
+	.WDIAG_MU_LSB	= 0xa5,		/* [0x30]: REG WRPC Diag: Round trip (mu) [lsb of ps] */
+	.WDIAG_DMS_MSB	= 0xa5,		/* [0x34]: REG WRPC Diag: Master-slave delay (dms) [msb of ps] */
+	.WDIAG_DMS_LSB	= 0xa5,		/* [0x38]: REG WRPC Diag: Master-slave delay (dms) [lsb of ps] */
+	.WDIAG_ASYM	= 0xa5,		/* [0x3c]: REG WRPC Diag: Total link asymmetry [ps] */
+	.WDIAG_CKO	= 0xa5,		/* [0x40]: REG WRPC Diag: Clock offset (cko) [ps] */
+	.WDIAG_SETP	= 0xa5,		/* [0x44]: REG WRPC Diag: Phase setpoint (setp) [ps] */
+	.WDIAG_UCNT	= 0xa5,		/* [0x48]: REG WRPC Diag: Update counter (ucnt) */
+	.WDIAG_TEMP	= 0xa5,		/* [0x4c]: REG WRPC Diag: Board temperature [C degree] */
 	.WDIAG_AUX0_DETAIL_STAT = 0xa5,
 	.WDIAG_AUX1_DETAIL_STAT = 0xa5,
 	.WDIAG_AUX2_DETAIL_STAT = 0xa5,
@@ -483,6 +483,19 @@ static void diags_to_host(struct wrc_diags *diags, struct wrc_diags *host)
 	for (i = 0; i < ndiags; i++)
 		dst[i] = ntohl(src[i]);
 }
+
+static void streamer_diags_to_host(struct WR_STREAMERS_WB *diags, struct WR_STREAMERS_WB *host)
+{
+	int i;
+	int ndiags = sizeof(*diags) / sizeof(uint32_t);
+	uint32_t *src = (uint32_t *)diags;
+	uint32_t *dst = (uint32_t *)host;
+
+	for (i = 0; i < ndiags; i++)
+		dst[i] = ntohl(src[i]);
+}
+
+
 /* here, bs **can** (and should) be st->state->board_state */
 int ertm_get_board_config(struct ertm_status *st, struct ertm14_board_state *bs)
 {
@@ -500,6 +513,7 @@ int ertm_get_board_config(struct ertm_status *st, struct ertm14_board_state *bs)
 int ertm_get_wr_diags(struct ertm_status *st, struct wrc_diags *wrc_diags)
 {
 	int res;
+
 	struct wrc_diags d, *diags = &d;
 
 	res = ertm_proto_cycle(st, ertm14_get_wrc_diags, NULL, diags);
@@ -509,6 +523,22 @@ int ertm_get_wr_diags(struct ertm_status *st, struct wrc_diags *wrc_diags)
 
 	return 0;
 }
+
+int ertm_get_streamer_diags(struct ertm_status *st, struct WR_STREAMERS_WB *streamer_diags)
+{
+	int res;
+
+	struct WR_STREAMERS_WB d, *diags = &d;
+
+	res = ertm_proto_cycle(st, ertm14_get_streamers_diags, NULL, diags);
+	if (res < 0)
+		return res;
+
+	streamer_diags_to_host(diags, streamer_diags);
+
+	return 0;
+}
+
 
 void bytes_to_64_mac(uint64_t *mac, uint8_t src[])
 {
@@ -933,11 +963,21 @@ struct ertm14_board_state *get_board_state(struct ertm_status *st)
 	return bs;
 }
 
+static int32_t signext32( uint32_t in, int bit )
+{
+	uint32_t mask = ~ ((1<<bit)-1);
+	printf("MASK %x\n", mask);
+	if( in & (1<<bit) )
+		return in | mask;
+	else
+		return in;
+}
+
 static double amp_power_to_dBm(uint32_t amp_power)
 {
 	/* register values are in mBm, *not* mdBm;
 	 * hence the *10/1000.0 factor */
-	return amp_power / 100.0;
+	return (signext32( amp_power & 0x7fffffff, 30 ) ) / 100.0;
 }
 
 int ertm_get_power(struct ertm_status *handle,
@@ -957,6 +997,10 @@ int ertm_get_power(struct ertm_status *handle,
 	}
 
 	update_board_config(handle, bs);
+
+	if( !( dds->amp_power & ERTM_FLAGS_DDS_POWER_VALID_MASK ) )
+		return -EBUSY;
+
 	*power = amp_power_to_dBm(dds->amp_power);
 	return 0;
 }
@@ -1000,7 +1044,11 @@ int ertm_get_channel_power_all(struct ertm_status *handle,
 	update_board_config(handle, bs);
 	for (i = ERTM_LOREF_MIN_CH; i <= ERTM_LOREF_MAX_CH; i++) {
 		if (valid_mask & (1<<i))
+		{
+			if( ! (dds->out_power[i] & ERTM_FLAGS_DDS_POWER_VALID_MASK) )
+				return -EBUSY;
 		    power[i] = amp_power_to_dBm(dds->out_power[i]);
+	}
 	}
 	return 0;
 }
@@ -1122,7 +1170,7 @@ void nco_to_network_order(struct ertm_nco_reset *nco)
 	nco->connector		= htonl(nco->connector);
 };
 
-int ertm_nco_reset_get_status(struct ertm_status *handle, struct ertm_nco_reset status[2])
+int ertm_nco_reset_get_status(struct ertm_status *handle, struct ertm_nco_reset status[])
 {
 	struct ertm14_board_state *bs = &handle->state->board_state;
 	int res;
@@ -1193,6 +1241,23 @@ int ertm_wr_diags(struct ertm_status *handle, struct ertm_wr_status *status)
 {
 	struct wrc_diags *s = (struct wrc_diags *)status;
 	return ertm_get_wr_diags(handle, s);
+}
+
+int ertm_streamer_diags(struct ertm_status *handle, struct ertm_streamer_status *status)
+{
+	struct WR_STREAMERS_WB *s = (struct WR_STREAMERS_WB *)status;
+	return ertm_get_streamer_diags(handle, s);
+}
+
+int ertm_reset_streamer_diags(struct ertm_status *handle )
+{
+	if (bad_handle(handle))
+		return -ERTM_BAD_HANDLE;
+
+	/* do a call to ptp start/stop */
+	int dummy;
+
+	return ertm_proto_cycle(handle, ertm14_reset_streamers_stats, &dummy, NULL);
 }
 
 int ertm_wr_status(struct ertm_status *handle, int *link_up, int *is_locked)
@@ -1269,4 +1334,15 @@ int ertm_get_streamers_latency_timeout(struct ertm_status *handle,
 	*latency_cycles = bs->streamers_latency_cycles;
 	*timeout_cycles = bs->streamers_timeout_cycles;
 	return 0;
+}
+
+int ertm_force_measure_channels_power( struct ertm_status *handle )
+{
+	if (bad_handle(handle))
+		return -ERTM_BAD_HANDLE;
+
+	/* do a call to ptp start/stop */
+	int dummy;
+
+	return ertm_proto_cycle(handle, ertm14_force_measure_channels_power, &dummy, NULL);
 }

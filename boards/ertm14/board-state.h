@@ -125,6 +125,8 @@
 /* power on flag */
 #define ERTM_FLAGS_POWERED_ON (1<<0)
 
+#define ERTM_FLAGS_DDS_POWER_VALID_MASK (0x80000000)
+
 struct ertm14_dds_state
 {
     uint32_t ftw;
@@ -239,8 +241,5 @@ struct ertm14_version_info {
 	struct ertm14_device_metadata
 			firmware_metadata;
 };
-
-/* FIXME: this is not the best place for this declaration */
-int wrc_diags_dump(struct wrc_diags *buf);
 
 #endif /*  __BOARD_STATE_ERTM14_H */

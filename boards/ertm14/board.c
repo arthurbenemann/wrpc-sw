@@ -402,6 +402,10 @@ void streamers_reset_rx_stats(void);
 int mmc_link_request_state(struct ertm14_mmc_link *link);
 int mmc_link_poll_state(struct ertm14_mmc_link *link, struct ertm14_mmc_state *state, int blocking);
 
+int wrc_ptp_get_servo_state( void );
+int wrc_ptp_get_state( void );
+
+
 uint32_t bswap32(uint32_t v)
 {
     uint32_t rv = 0;
@@ -497,6 +501,7 @@ int bist_summary( struct bist_stage *bist )
 static int ertm_init_complete = 0;
 
 void ertm14_set_pps_out_mode(int mode);
+void ertm15_force_rf_power_measurement(void);
 static void mmc_comm_init(void);
 
 #define LTC6950_ID_VALUE 0x65
@@ -1038,36 +1043,44 @@ static void streamers_init(void)
     streamers_set_rx_timeout( ERTM14_NCO_RESET_DEFAULT_TIMEOUT );
 }
 
+static inline void streamers_writel( uint32_t val, uint32_t reg )
+{
+    writel( val, (void*)(BASE_ERTM14_STREAMERS + reg ) ); 
+}
+
+static inline uint32_t streamers_readl( uint32_t reg )
+{
+    return readl( (void*)(BASE_ERTM14_STREAMERS + reg ) ); 
+}
+
 static void streamers_set_rx_latency( uint32_t lat )
 {
-    uint32_t ver = readl( (void*)BASE_ERTM14_STREAMERS );
-    
-    board_dbg("streamers: set RX latency = %d cycles %p %p\n", lat, BASE_ERTM14_STREAMERS + offsetof( struct WR_STREAMERS_WB, RX_CFG5 ), ver );
-    writel( lat, (void*)(BASE_ERTM14_STREAMERS + offsetof( struct WR_STREAMERS_WB, RX_CFG5 )) );
-    writel( WR_STREAMERS_CFG_OR_RX_FIX_LAT, (void*)(BASE_ERTM14_STREAMERS + offsetof( struct WR_STREAMERS_WB, CFG )) );
+    board_dbg("streamers: set RX latency = %d cycles\n", lat );
+    streamers_writel( lat, offsetof( struct WR_STREAMERS_WB, RX_CFG5 ) );
+    streamers_writel( WR_STREAMERS_CFG_OR_RX_FIX_LAT, offsetof( struct WR_STREAMERS_WB, CFG ) );
 }
 
 int streamers_get_rx_latency(void)
 {
-    return readl( (void*)(BASE_ERTM14_STREAMERS + offsetof( struct WR_STREAMERS_WB, RX_CFG5 )) );
+    return streamers_readl( offsetof( struct WR_STREAMERS_WB, RX_CFG5 ) );
 }
 
 int streamers_get_rx_timeout(void)
 {
-    return readl( (void*)(BASE_ERTM14_STREAMERS + offsetof( struct WR_STREAMERS_WB, RX_CFG6 )) );
+    return streamers_readl( offsetof( struct WR_STREAMERS_WB, RX_CFG6 ) );
 }
 
 static void streamers_set_rx_timeout( uint32_t tmo )
 {
     board_dbg("streamers: set RX timeout = %d cycles\n", tmo );
-    writel( tmo, (void*)(BASE_ERTM14_STREAMERS + offsetof( struct WR_STREAMERS_WB, RX_CFG6 )) );
-    writel( WR_STREAMERS_CFG_OR_RX_FIX_LAT, (void*)(BASE_ERTM14_STREAMERS + offsetof( struct WR_STREAMERS_WB, CFG )) );
+    streamers_writel( tmo, offsetof( struct WR_STREAMERS_WB, RX_CFG6 ));
+    streamers_writel( WR_STREAMERS_CFG_OR_RX_FIX_LAT, offsetof( struct WR_STREAMERS_WB, CFG ));
 }
 
 
 void streamers_reset_rx_stats(void)
 {
-    writel( WR_STREAMERS_SSCR1_RST_STATS, (void*)(BASE_ERTM14_STREAMERS + offsetof( struct WR_STREAMERS_WB, SSCR1 )) );
+    streamers_writel( WR_STREAMERS_SSCR1_RST_STATS, offsetof( struct WR_STREAMERS_WB, SSCR1 ));
 }
 
 void ertm14_apply_config(struct ertm14_board_state *cfg,
@@ -1213,6 +1226,56 @@ static void get_wrc_diags(struct wrc_diags *diags)
 		word[i] = htonl(word[i]);
 }
 
+static void get_streamers_diags(struct WR_STREAMERS_WB *diags)
+{
+        memset( diags, 0, sizeof( struct WR_STREAMERS_WB ) );
+
+        streamers_writel( WR_STREAMERS_SSCR1_SNAPSHOT_STATS, offsetof( struct WR_STREAMERS_WB, SSCR1 ) );
+
+    diags->VER = htonl( streamers_readl( offsetof( struct WR_STREAMERS_WB, VER ) ) );
+    diags->SSCR1 = htonl( streamers_readl( offsetof( struct WR_STREAMERS_WB, SSCR1 ) ) );
+    diags->SSCR2 = htonl( streamers_readl( offsetof( struct WR_STREAMERS_WB, SSCR2 ) ) );
+    diags->SSCR3 = htonl( streamers_readl( offsetof( struct WR_STREAMERS_WB, SSCR3 ) ) );
+    diags->RX_STAT0 = htonl( streamers_readl( offsetof( struct WR_STREAMERS_WB, RX_STAT0 ) ) );
+    diags->RX_STAT1 = htonl( streamers_readl( offsetof( struct WR_STREAMERS_WB, RX_STAT1 ) ) );
+    diags->TX_STAT2 = htonl( streamers_readl( offsetof( struct WR_STREAMERS_WB, TX_STAT2 ) ) );
+    diags->TX_STAT3 = htonl( streamers_readl( offsetof( struct WR_STREAMERS_WB, TX_STAT3 ) ) );
+    diags->RX_STAT4 = htonl( streamers_readl( offsetof( struct WR_STREAMERS_WB, RX_STAT4 ) ) );
+    diags->RX_STAT5 = htonl( streamers_readl( offsetof( struct WR_STREAMERS_WB, RX_STAT5 ) ) );
+    diags->RX_STAT6 = htonl( streamers_readl( offsetof( struct WR_STREAMERS_WB, RX_STAT6 ) ) );
+    diags->RX_STAT7 = htonl( streamers_readl( offsetof( struct WR_STREAMERS_WB, RX_STAT7 ) ) );
+    diags->RX_STAT8 = htonl( streamers_readl( offsetof( struct WR_STREAMERS_WB, RX_STAT8 ) ) );
+    diags->RX_STAT9 = htonl( streamers_readl( offsetof( struct WR_STREAMERS_WB, RX_STAT9 ) ) );
+    diags->RX_STAT10 = htonl( streamers_readl( offsetof( struct WR_STREAMERS_WB, RX_STAT10 ) ) );
+    diags->RX_STAT11 = htonl( streamers_readl( offsetof( struct WR_STREAMERS_WB, RX_STAT11 ) ) );
+    diags->RX_STAT12 = htonl( streamers_readl( offsetof( struct WR_STREAMERS_WB, RX_STAT12 ) ) );
+    diags->RX_STAT13 = htonl( streamers_readl( offsetof( struct WR_STREAMERS_WB, RX_STAT13 ) ) );
+    diags->RX_STAT15 = htonl( streamers_readl( offsetof( struct WR_STREAMERS_WB, RX_STAT15 ) ) );
+    diags->RX_STAT16 = htonl( streamers_readl( offsetof( struct WR_STREAMERS_WB, RX_STAT16 ) ) );
+    diags->RX_STAT17 = htonl( streamers_readl( offsetof( struct WR_STREAMERS_WB, RX_STAT17 ) ) );
+    diags->RX_STAT18 = htonl( streamers_readl( offsetof( struct WR_STREAMERS_WB, RX_STAT18 ) ) );
+    diags->RX_STAT19 = htonl( streamers_readl( offsetof( struct WR_STREAMERS_WB, RX_STAT19 ) ) );
+    diags->RX_STAT20 = htonl( streamers_readl( offsetof( struct WR_STREAMERS_WB, RX_STAT20 ) ) );
+
+    diags->TX_CFG0 = htonl( streamers_readl( offsetof( struct WR_STREAMERS_WB, TX_CFG0 ) ) );
+    diags->TX_CFG1 = htonl( streamers_readl( offsetof( struct WR_STREAMERS_WB, TX_CFG1 ) ) );
+    diags->TX_CFG2 = htonl( streamers_readl( offsetof( struct WR_STREAMERS_WB, TX_CFG2 ) ) );
+    diags->TX_CFG3 = htonl( streamers_readl( offsetof( struct WR_STREAMERS_WB, TX_CFG3 ) ) );
+    diags->TX_CFG4 = htonl( streamers_readl( offsetof( struct WR_STREAMERS_WB, TX_CFG4 ) ) );
+    diags->TX_CFG5 = htonl( streamers_readl( offsetof( struct WR_STREAMERS_WB, TX_CFG5 ) ) );
+
+    diags->RX_CFG0 = htonl( streamers_readl( offsetof( struct WR_STREAMERS_WB, RX_CFG0 ) ) );
+    diags->RX_CFG1 = htonl( streamers_readl( offsetof( struct WR_STREAMERS_WB, RX_CFG1 ) ) );
+    diags->RX_CFG2 = htonl( streamers_readl( offsetof( struct WR_STREAMERS_WB, RX_CFG2 ) ) );
+    diags->RX_CFG3 = htonl( streamers_readl( offsetof( struct WR_STREAMERS_WB, RX_CFG3 ) ) );
+    diags->RX_CFG4 = htonl( streamers_readl( offsetof( struct WR_STREAMERS_WB, RX_CFG4 ) ) );
+    diags->RX_CFG5 = htonl( streamers_readl( offsetof( struct WR_STREAMERS_WB, RX_CFG5 ) ) );
+    diags->RX_CFG6 = htonl( streamers_readl( offsetof( struct WR_STREAMERS_WB, RX_CFG6 ) ) );
+
+    streamers_writel( 0, offsetof( struct WR_STREAMERS_WB, SSCR1 ) );
+}
+
+
 static void get_wrc_sensors(struct wrc_sensor *dst)
 {
 	int nsensors = sizeof(ertm_sensors)/sizeof(ertm_sensors[0]);
@@ -1220,7 +1283,7 @@ static void get_wrc_sensors(struct wrc_sensor *dst)
 
 	memcpy(dst, ertm_sensors, sizeof(ertm_sensors));
 	for (i = 0; i < nsensors; i++)
-		htons(dst[i].value);
+		dst[i].value = htons(dst[i].value);
 }
 
 static void refresh_wrc_nco(struct ertm14_nco_reset *nco, int connector)
@@ -1296,6 +1359,7 @@ static int ertm_process_psnmp(struct uart_packet *rx_pkt, struct uart_packet *tx
 {
 	struct ertm14_board_state *bs;
 	struct wrc_diags *diags;
+        struct WR_STREAMERS_WB *streamer_diags;
 	struct ertm14_nco_reset *nco;
 	struct wrc_sensor *sensors;
 	uint8_t opcode = rx_pkt->payload[0];
@@ -1338,6 +1402,16 @@ static int ertm_process_psnmp(struct uart_packet *rx_pkt, struct uart_packet *tx
 		diags = (struct wrc_diags *)&tx_pkt->payload[0];
 		get_wrc_diags(diags);
 		break;
+        case ertm14_get_streamers_diags:
+		streamer_diags = (struct WR_STREAMERS_WB *)&tx_pkt->payload[0];
+		get_streamers_diags(streamer_diags);
+		break;
+    case ertm14_reset_streamers_stats:
+        streamers_reset_rx_stats();
+        break;
+    case ertm14_force_measure_channels_power:
+        ertm15_force_rf_power_measurement();
+        break;
 	case ertm14_get_wrc_nco:
 		nco = (struct ertm14_nco_reset *)&tx_pkt->payload[op->offset2];
 		get_wrc_nco(nco);
@@ -1580,6 +1654,7 @@ static void ertm14_clkab_sync_init(void)
 static int ertm14_clkab_sync_task(void)
 {
     int evt = event_poll( evth_clkab_sync );
+    ( void ) evt;
     uint8_t *stateA = ertm14_current_state->clka_sync_state;
     uint8_t *stateB = ertm14_current_state->clkb_sync_state;
 
@@ -2257,7 +2332,7 @@ int ertm14_low_level_init(void)
             &pin_pwrmon_adc_din,
             &pin_pwrmon_adc_dout,
             &pin_pwrmon_adc_sclk,
-            100 );
+            5 );
 
         ad7888_create( &board.pwrmon_adc, &board.spi_ad7888 );
 
@@ -2759,26 +2834,54 @@ void ertm15_init_rf_monitor( void )
     tmo_init( &rfmon_timeout, 2000 );
 }
 
+void ertm15_force_rf_power_measurement( void )
+{
+    struct ertm14_board_state *bstate = ertm14_get_current_state();
+
+    int i;
+
+    for( i = ERTM14_RF_OUT_MIN_ID; i <= ERTM14_RF_OUT_MAX_ID; i++ )
+    {
+        bstate->lo.out_power[i] = 0;
+        bstate->ref.out_power[i] = 0;
+    }
+
+    bstate->lo.amp_power = 0;
+    bstate->ref.amp_power = 0;
+
+    ertm15_rf_distr_measure_power_restart( &board.rf_distr, 1 );
+}
+
 int ertm15_update_rf_monitor( void )
 {
-    if( tmo_expired( &rfmon_timeout ) )
+    if( ertm15_rf_distr_is_pwrmon_idle( &board.rf_distr ) )
     {
-        tmo_restart(&rfmon_timeout);
-        ertm15_rf_distr_measure_power ( &board.rf_distr );
-
         struct ertm14_board_state *bstate = ertm14_get_current_state();
 
         int i;
 
         for( i = ERTM14_RF_OUT_MIN_ID; i <= ERTM14_RF_OUT_MAX_ID; i++ )
         {
-            bstate->lo.out_power[i] = board.rf_distr.pwr_lo_ch[i];
-            bstate->ref.out_power[i] = board.rf_distr.pwr_ref_ch[i];
+            bstate->lo.out_power[i] = board.rf_distr.pwr_lo_ch[i] | ERTM_FLAGS_DDS_POWER_VALID_MASK;
+            bstate->ref.out_power[i] = board.rf_distr.pwr_ref_ch[i] | ERTM_FLAGS_DDS_POWER_VALID_MASK;
         }
 
-        bstate->lo.amp_power = board.rf_distr.pwr_lo_in;
-        bstate->ref.amp_power = board.rf_distr.pwr_ref_in;
+        bstate->lo.amp_power = board.rf_distr.pwr_lo_in | ERTM_FLAGS_DDS_POWER_VALID_MASK;
+        bstate->ref.amp_power = board.rf_distr.pwr_ref_in | ERTM_FLAGS_DDS_POWER_VALID_MASK;
     }
+
+    if( tmo_expired( &rfmon_timeout ) )
+    {
+     //   pp_printf("TmoExp st %d ch %d\n",board.rf_distr.pwr_meas_state, board.rf_distr.pwr_meas_channel);
+        if( ertm15_rf_distr_is_pwrmon_idle( &board.rf_distr ) )
+        {
+            // pp_printf("PwrMonRst\n");
+            tmo_restart( &rfmon_timeout );
+            ertm15_rf_distr_measure_power_restart( &board.rf_distr, 0 );
+        }
+    }
+
+    ertm15_rf_distr_pwrmon_update( &board.rf_distr );
 
     return 0;
 }
@@ -2788,7 +2891,6 @@ static int prev_ptp_state = -1;
 
 int ertm14_update_leds( void )
 {
-
     /* White Rabbit Servo */
     enum {
         WR_UNINITIALIZED = 0,
@@ -2841,6 +2943,7 @@ int ertm14_update_leds( void )
 
 
     leds_update();
+
     return 0;
 }
 
@@ -2970,6 +3073,4 @@ void ertm14_sync_pulse_cal(void)
         clkab_enable_sync( ertm14_current_state, ERTM14_OUT_CLKA, i, 0 );
         clkab_enable_sync( ertm14_current_state, ERTM14_OUT_CLKB, i, 0 );
     }
-
-    return 0;
 }

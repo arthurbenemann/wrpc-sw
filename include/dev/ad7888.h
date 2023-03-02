@@ -22,6 +22,7 @@
 #define __AD7888_H
 
 #include <stdint.h>
+#include "util.h"
 
 struct spi_bus;
 
@@ -29,9 +30,10 @@ struct ad7888_device {
     uint16_t channel[8];
     uint16_t channel_valid;
     uint16_t channel_mask;
-    uint8_t current_ch;
+    int8_t current_ch;
     struct spi_bus* bus;
-    uint32_t last_poll_tics;
+    timeout_t poll_tmo;
+    uint8_t conversion_pending;
 };
 
 int ad7888_create( struct ad7888_device *dev, struct spi_bus *bus );

@@ -60,6 +60,7 @@ int ad7888_create( struct ad7888_device *dev, struct spi_bus *bus )
     dev->bus = bus;
     dev->channel_valid = 0;
     dev->current_ch = 0;
+    dev->conversion_pending = 0;
     return 0;
 }
 
@@ -70,14 +71,16 @@ void ad7888_start_conversion( struct ad7888_device *dev, uint16_t channel_mask )
     dev->channel_mask = channel_mask;
     dev->channel_valid = 0;
     dev->current_ch = -1;
-    dev->last_poll_tics = timer_get_tics();
+    tmo_init( &dev->poll_tmo, 1 );
+    dev->conversion_pending = 1;
 
     int ch = first_bit_set_after( dev->channel_mask, dev->current_ch );
-
     //pp_printf("sc %d %d %x\n", ch, dev->current_ch, dev->channel_mask );
 
     if( ch < 0 )
         return;
+
+    dev->current_ch = ch;
 
     bb_spi_cs( dev->bus, 1 );
     bb_spi_xfer( dev->bus, (ch << (3 + 8)), &dummy, 16);
@@ -88,21 +91,29 @@ int ad7888_poll( struct ad7888_device *dev )
 {
     uint64_t rv;
 
+    if( !dev->conversion_pending )
+        return dev->channel_valid;
     if( !dev->channel_mask )
         return 0;
-    if( dev->last_poll_tics == timer_get_tics() )
+    if( !tmo_expired( &dev->poll_tmo ) )
         return 0;
 
     int next_ch = first_bit_set_after( dev->channel_mask, dev->current_ch );
 
+    
     bb_spi_cs( dev->bus, 1 );
     bb_spi_xfer( dev->bus, (next_ch << (3 + 8)), &rv, 16);
     bb_spi_cs( dev->bus, 0);
 
+    tmo_restart( &dev->poll_tmo );
     dev->channel[ dev->current_ch ] = rv & 0xffff;
-    dev->channel_valid |= (1 << dev->current_ch);
 
+    dev->channel_valid |= (1 << dev->current_ch);
     dev->current_ch = next_ch;
+
+    if( next_ch < 0 )
+        dev->conversion_pending = 0;
+
     return dev->channel_valid;
 }
 
