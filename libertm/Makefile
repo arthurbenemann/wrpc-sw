@@ -22,6 +22,7 @@ CFLAGS += "-DGIT_URL=\"$(GIT_URL)\""
 
 LIBS = $(TARGET).a $(TARGET).so libertm_display.so
 LIBOBJS = $(TARGET).o linux-uart-link.o common-uart-link.o udev-serial.o magics.o flock.o
+LIBOBJS += semaph.o
 
 all: libs main udev-find
 libs: $(LIBS)
@@ -44,6 +45,9 @@ ertm14-uart-link.o: $(ERTM_UART_LOCATION)/ertm14-uart-link.c
 	$(CC) $(CFLAGS) -c -o $@ $^ $(LDLIBS) $(LDFLAGS)
 linux-uart-link.o: $(ERTM_BOARD_LOCATION)/common-uart-link.h
 libertm.o: libertm.h private.h
+
+semaph: semaph.o
+semaph: LDLIBS+=-lpthread
 
 libertm_display.so: display.o
 	$(LD) -shared -o $@ $^

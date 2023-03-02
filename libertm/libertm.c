@@ -249,7 +249,13 @@ struct ertm_status *ertm_init(const char *address)
 		errno = ENODEV;
 		return NULL;
 	}
-	if (ertm_open_lock_file(st) < 0) {
+	/* this hardcodes using file lock-based mutexes. This protects
+	 * the critical section from concurrent processes but NOT from
+	 * concurrent threads. In case of thread contention, use
+	 * ertm_semaphore_mutex, implemented in semph.c based on POSIX
+	 * semaphores */
+	st->mutex = ertm_flock_mutex;
+	if (st->mutex->create(st) < 0) {
 		errno = ENODEV;
 		return NULL;
 	}
@@ -391,9 +397,9 @@ int ertm_proto_cycle(struct ertm_status *st,
 {
 	int ret;
 
-	ertm_mutex_acquire(st);
+	st->mutex->acquire(st);
 	ret = ertm_proto_cycle_unlocked(st, opcode, payload, answer);
-	ertm_mutex_release(st);
+	st->mutex->release(st);
 	return ret;
 }
 
@@ -781,10 +787,10 @@ static void commit_config(struct ertm_status *handle,
 		break;
 	case ERTM_IMMEDIATE:
 		update_config(bs, next, mask);
-		ertm_mutex_acquire(handle);
+		handle->mutex->acquire(handle);
 		set_board_config(handle, next);
 		commit_board_config(handle, mask);
-		ertm_mutex_release(handle);
+		handle->mutex->release(handle);
 		clean_config(next);
 		clean_config(mask);
 		break;
