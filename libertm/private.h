@@ -10,6 +10,7 @@
 #include <errno.h>
 #include <string.h>
 #include <stdlib.h>
+#include <semaphore.h>
 #include "libertm.h"
 #include "board-state.h"
 #include "common-uart-link.h"
@@ -42,7 +43,9 @@ struct ertm_status {
 	struct ertm_connection connection;
 	struct ertm_state *state;
 	struct uart_link link;
+	struct ertm_mutex_ops *mutex;
 	int lock;
+	sem_t *semaphore;
 	uint32_t reserved[63];
 };
 
@@ -84,3 +87,16 @@ extern char *ertm_usb_by_function(char *func);
 extern int ertm_open_lock_file(struct ertm_status *st);
 extern int ertm_mutex_acquire(struct ertm_status *st);
 extern int ertm_mutex_release(struct ertm_status *st);
+
+extern int ertm_create_semaphore(struct ertm_status *st);
+extern int ertm_semaphore_acquire(struct ertm_status *st);
+extern int ertm_semaphore_release(struct ertm_status *st);
+
+struct ertm_mutex_ops {
+	int (*create)(struct ertm_status *st);
+	int (*acquire)(struct ertm_status *st);
+	int (*release)(struct ertm_status *st);
+};
+
+extern struct ertm_mutex_ops *ertm_flock_mutex;
+extern struct ertm_mutex_ops *ertm_semaphore_mutex;

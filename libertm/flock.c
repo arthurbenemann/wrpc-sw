@@ -47,6 +47,12 @@ int ertm_mutex_release(struct ertm_status *st)
 	return flock(st->lock, LOCK_UN);
 }
 
+struct ertm_mutex_ops flock_ops = {
+	.create	 = ertm_open_lock_file,
+	.acquire = ertm_mutex_acquire,
+	.release = ertm_mutex_release,
+}, *ertm_flock_mutex = &flock_ops;
+
 static int __attribute__((__unused__))
 flock_main(int argc, char *argv[])
 {
