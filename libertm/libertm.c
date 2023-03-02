@@ -234,6 +234,11 @@ struct ertm_status *ertm_init(const char *address)
 		errno = ENODEV;
 		return NULL;
 	}
+	/* this hardcodes using file lock-based mutexes. This protects
+	 * the critical section from concurrent processes but NOT from
+	 * concurrent threads. In case of thread contention, use
+	 * ertm_semaphore_mutex, implemented in semph.c based on POSIX
+	 * semaphores */
 	st->mutex = ertm_flock_mutex;
 	if (st->mutex->create(st) < 0) {
 		errno = ENODEV;
