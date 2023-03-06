@@ -254,7 +254,7 @@ struct ertm_status *ertm_init(const char *address)
 	 * concurrent threads. In case of thread contention, use
 	 * ertm_semaphore_mutex, implemented in semph.c based on POSIX
 	 * semaphores */
-	st->mutex = ertm_flock_mutex;
+	st->mutex = ertm_semaphore_mutex;
 	if (st->mutex->create(st) < 0) {
 		errno = ENODEV;
 		return NULL;
