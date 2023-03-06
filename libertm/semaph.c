@@ -92,8 +92,3 @@ semaphore_main(int argc, char *argv[])
 	}
 	return 0;
 }
-
-int main(int argc, char *argv[])
-{
-	return semaphore_main(argc, argv);
-}
