@@ -303,7 +303,6 @@ void display_wrc_diags_cooked(struct ertm_wr_status *diags)
 void display_streamer_diags_cooked(struct ertm_streamer_status *diags)
 {
 	char fmt[] = "%-20s\t0x%08x\n";
-	char human[] = "%-20s\t0x%08x (%7d)\n";
 
 	printf(fmt, "Version register", diags->VER);
 	printf(fmt, "SSCR1", diags->SSCR1);
