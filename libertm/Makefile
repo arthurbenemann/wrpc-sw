@@ -34,6 +34,7 @@ $(TARGET).a:
 	$(AR) r $@ $^
 $(TARGET).o: $(TARGET).h
 
+main: LDFLAGS+=-lpthread
 main: main.o libertm.a display.o
 	$(CC) $(CFLAGS) -o $@ $^ $(LDLIBS) $(LDFLAGS) -lm -ludev
 udev-find: udev-find.o libertm.a
