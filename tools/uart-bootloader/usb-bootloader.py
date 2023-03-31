@@ -239,7 +239,10 @@ class DSIBootloader:
         print("Board ID: %s" % board_id)
 
         if board_id != self.target_board:
-            raise Exception('Board identity mismatch. Expected: "%s", got: "%s"' % (self.target_board, board_id))
+            if self.target_board != "default":
+                raise Exception('Board identity mismatch. Expected: "%s", got: "%s"' % (self.target_board, board_id))
+            else:
+                print("The board reports ID '%s', but the target parameter is set to 'default'. This will keep working for a while, but sooner or later, we'll do a stricter board ID check and you'll have to update your flashing scripts." % board_id)
 
         self.cmd_boot_init()
 
