@@ -565,7 +565,7 @@ void spll_show_stats()
 	{
 		struct spll_aux_state *s = (struct spll_aux_state *) &softpll.aux[ch - 1];
 
-		pp_printf("softpll: AUX%d [ratio %d/%d = %d Hz]: ph %d seq %d en %d lock %d samples %d nref %d nout %d ERR=%d Y=%d\n", 
+		pp_printf("softpll: AUX%d [ratio %d/%d = %d Hz]: ph %ld seq %d en %d lock %d samples %d nref %d nout %d ERR=%d Y=%d\n", 
 				ch-1,
 				s->div_fb,
 				s->div_ref,

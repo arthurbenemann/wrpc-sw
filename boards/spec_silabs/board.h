@@ -21,6 +21,7 @@
 #define BASE_ONEWIRE	0x20600
 #define BASE_SI57X_INTERFACE	0x28000
 #define BASE_WDIAGS_PRIV	0x20900
+#define BOARD_USE_EVENTS 0
 
 /* Board-specific parameters */
 #define TICS_PER_SECOND 1000

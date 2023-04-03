@@ -8,9 +8,13 @@
 #include "dev/si57x.h"
 #include "storage.h"
 
+#include <wrc-debug.h>
+
 #include <softpll/softpll_ng.h>
 
 static struct wr_si57x_interface_device si57x;
+static struct i2c_bus i2c_wrc_eeprom;
+static struct i2c_eeprom_device wrc_eeprom_dev;
 
 #define SI57X_I2C_ADDR 0x55
 

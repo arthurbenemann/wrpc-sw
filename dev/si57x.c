@@ -26,6 +26,9 @@
 
 #include "hw/si570_if_wb.h"
 
+#include <wrc-debug.h>
+#include <hw/rawmem.h>
+#include "dev/syscon.h"
 
 #define SI57X_PIN_SCL 0
 #define SI57X_PIN_SDA 1
