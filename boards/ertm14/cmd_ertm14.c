@@ -248,6 +248,22 @@ static void set_pps_mode(const char *mode )
     ertm14_set_pps_out_mode( m );
 }
 
+static void ertm14_dna_cmd(void)
+{
+	volatile unsigned *dna = (volatile unsigned *)BASE_ERTM14_DNA;
+
+	pp_printf("--buildinfo--\n");
+	pp_printf("%s", (const char *)BASE_ERTM14_BUILD_INFO);
+	pp_printf("--dna--\n");
+	if (!(dna[0] & 1))
+		pp_printf ("not valid\n");
+	else {
+		unsigned i;
+		for (i = 1; i < 4; i++)
+			pp_printf("%08x\n", dna[i]);
+	}
+}
+
 /* FIXME: this should be in a .h file */
 extern void phy_calibration_disable(void);
 extern void streamers_reset_rx_stats(void);
@@ -332,6 +348,8 @@ static int cmd_ertm(const char *args[])
         set_pps_mode( args[1] );
     } else if (!strcasecmp(args[0], "ccal")) {
         ertm14_sync_pulse_cal(  );
+    } else if (!strcasecmp(args[0], "dna")) {
+        ertm14_dna_cmd(  );
     }
     ertm14_apply_config( &nstate, &mask, 0 );
     update_config( cstate, &nstate, &mask );
