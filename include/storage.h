@@ -110,6 +110,7 @@ void storage_sdbfs_list(void);
 int storage_is_calibration_loaded(void);
 int storage_get_calibration_parameter( int id, uint32_t *valp );
 int storage_set_calibration_parameter( int id, uint32_t val );
+int storage_set_calibration_parameter_and_save( int id, uint32_t val );
 wrc_cal_data_t* storage_get_calibration_data(void);
 int storage_load_calibration(void);
 int storage_save_calibration(void);

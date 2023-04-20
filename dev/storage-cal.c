@@ -62,7 +62,7 @@ int storage_set_calibration_parameter( int id, uint32_t val )
 		if ( id == cal_data.params[i].id )
 		{
 			cal_data.params[i].value = val;
-			return storage_save_calibration();;
+			return 0;
 		}
 	}
 
@@ -73,6 +73,15 @@ int storage_set_calibration_parameter( int id, uint32_t val )
 	cal_data.params[cal_data.param_count].value = val;
 	cal_data.param_count ++;
 
+	return 0;
+}
+
+int storage_set_calibration_parameter_and_save( int id, uint32_t val )
+{
+	int res = storage_set_calibration_parameter(id, val);
+
+	if (res != 0)
+		return res;
 
 	return storage_save_calibration();
 }
@@ -206,5 +215,5 @@ int storage_phtrans(uint32_t *valp, int write)
 	if( !write )
 		return storage_get_calibration_parameter( CAL_PARAM_T24P, valp );
 	else
-		return storage_set_calibration_parameter( CAL_PARAM_T24P, *valp );
+		return storage_set_calibration_parameter_and_save( CAL_PARAM_T24P, *valp );
 }

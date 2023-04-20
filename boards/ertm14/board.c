@@ -652,6 +652,7 @@ static int ertm14_switch_sys_clock( int use_sys_from_pll )
 static int ertm14_dds_sync_init(void)
 {
     const int n_params = 4;
+    int save_calib = 0;
     struct {
         uint32_t id;
         int channel;
@@ -679,10 +680,14 @@ static int ertm14_dds_sync_init(void)
         {
             val = params[i].default_value_ps;
             storage_set_calibration_parameter( params[i].id, val );
+	    save_calib = 1;
             board_dbg("Sync Unit channel '%s': delay not found in calibration file, using default = %d ps\n", params[i].name, val );
         }
         board.dds_sync_delays[ params[i].channel ] = val;
     }
+
+    if (save_calib)
+	    storage_save_calibration();
 
 // Sync_in: continuous waveform, use external delay line (inside AD9910)
     

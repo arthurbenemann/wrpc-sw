@@ -329,8 +329,7 @@ static int tx_fsm_update(void)
         if( !fsm->cal_saved_phase_valid )
         {
             phy_dbg("[lpdc] Saving established target phase as calibration parameter: %d ps\n", fsm->measured_phase);
-            storage_set_calibration_parameter( CAL_PARAM_PHY_TARGET_TX_PHASE, fsm->measured_phase);
-            storage_save_calibration();
+            storage_set_calibration_parameter_and_save( CAL_PARAM_PHY_TARGET_TX_PHASE, fsm->measured_phase);
         }
 
         fsm->state = TX_SETUP_DONE;
