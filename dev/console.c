@@ -193,7 +193,7 @@ static inline int rbuf_get( struct ring_buffer* buf )
     if( !buf->count )
         return -1;
 
-	int rv = buf->data[buf->tail];
+    int rv = buf->data[buf->tail];
 
     buf->tail++;
     if (buf->tail >= buf->size)
