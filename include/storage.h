@@ -29,6 +29,8 @@
 #define CAL_PARAM_CLKA_SYNC_DELAY_PS ASCII_TO_U32('e', '1', '4', '2')
 #define CAL_PARAM_CLKB_SYNC_DELAY_PS ASCII_TO_U32('e', '1', '4', '3')
 #define CAL_PARAM_CALIBRATION_DATE ASCII_TO_U32('d','a','t','e')
+#define CAL_PARAM_FPGA_DNA_0 ASCII_TO_U32('d','n','a','0')
+#define CAL_PARAM_COMMIT_SHA_0 ASCII_TO_U32('s','h','a','0')
 
 #define SFP_SECTION_PATTERN 0xdeadbeef
 

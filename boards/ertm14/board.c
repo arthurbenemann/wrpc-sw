@@ -2909,6 +2909,84 @@ int ertm14_update_leds( void )
     return 0;
 }
 
+/* Read DNA and commit id from HW and calibration storage.
+   If they don't match, invalidate lptp calibration parameter (as it is
+   highly dependent on the bitstream. */
+static void check_calibration_version(void)
+{
+	volatile unsigned *dna = (volatile unsigned *)BASE_ERTM14_DNA;
+	const char *bi;
+	int valid = 0; /* -1: error, 0: too old, 1: ok */
+	unsigned int sha_0;
+	unsigned int dna_0;
+
+	/* Read DNA from hw. */
+	if (!(dna[0] & 1)) {
+		/* Not expected: DNA not ready... */
+		board_dbg("cannot read DNA (invalid)\n");
+		valid = -1;
+	}
+	else
+		dna_0 = dna[1];
+
+	/* Read commit id from buildinfo.
+	   TODO: instead of storing it as a string, store it as a number ? */
+	/* Find: '\ncommit:' */
+	sha_0 = 0;
+	for (bi = (const char *)BASE_ERTM14_BUILD_INFO; *bi; bi++) {
+		if (memcmp (bi, "\ncommit:", 8) == 0) {
+			bi += 8;
+			for (unsigned j = 0; j < 8; j++) {
+				sha_0 <<= 4;
+				if (bi[j] >= '0' && bi[j] <= '9')
+					sha_0 += bi[j] - '0';
+				else if (bi[j] >= 'a' && bi[j] <= 'f')
+					sha_0 += bi[j] - 'a' + 10;
+				else {
+					valid = -1;
+					break;
+				}
+			}
+			break;
+		}
+	}
+	if (*bi == 0) {
+		board_dbg("cannot find commit in buildinfo\n");
+		valid = -1;
+	}
+
+	/* Now compare with stored calibration, but only if values have been
+	   read.  */
+	if (valid == 0) {
+		uint32_t v;
+		valid = 1;
+		if (storage_get_calibration_parameter(CAL_PARAM_FPGA_DNA_0, &v) != 0
+		    || v != dna_0)
+			valid = 0;
+		if (storage_get_calibration_parameter(CAL_PARAM_COMMIT_SHA_0, &v) != 0
+		    || v != sha_0)
+			valid = 0;
+	}
+	if (valid == 1) {
+		/* Everything is OK. */
+		board_dbg("calibration data are valid\n");
+		return;
+	}
+	/* Clear lptp. */
+	storage_set_calibration_parameter(CAL_PARAM_PHY_TARGET_TX_PHASE, ~0);
+
+	if (valid == 0) {
+		/* Values are too old. */
+		int err;
+		board_dbg("update dna/sha in calibration\n");
+		err = storage_set_calibration_parameter(CAL_PARAM_FPGA_DNA_0, dna_0);
+		err |= storage_set_calibration_parameter(CAL_PARAM_COMMIT_SHA_0, sha_0);
+		/* Will be written when lptp is updated.  */
+		if (err != 0)
+			board_dbg("cannot set dna/sha calibration\n");
+	}
+}
+
 int wrc_board_init()
 {
     ertm14_shell_init();
@@ -2935,6 +3013,8 @@ int wrc_board_init()
     memset(&mask, 0xff, sizeof( struct ertm14_board_state )); // make sure we commit everything to HW
 
     ertm14_apply_config( ertm14_current_state, &mask, 1 );
+
+    check_calibration_version();
 
     return 0;
 }

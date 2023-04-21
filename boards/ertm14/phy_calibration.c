@@ -154,7 +154,8 @@ static void tx_fsm_init(struct wrc_port_tx_setup_state *fsm)
 
     /* FIXME: is cal_saved_phase unsigned? uint32_t? declare it so
      * at the wrc_port_tx_setup_state structure */
-    if( !storage_get_calibration_parameter( CAL_PARAM_PHY_TARGET_TX_PHASE, (uint32_t *)&fsm->cal_saved_phase ) )
+    if( !storage_get_calibration_parameter( CAL_PARAM_PHY_TARGET_TX_PHASE, (uint32_t *)&fsm->cal_saved_phase )
+	&& fsm->cal_saved_phase != -1)
     {
         phy_dbg("[lpdc] TX target phase from calibration data: %d ps\n", fsm->cal_saved_phase);
         fsm->cal_saved_phase_valid = 1;
