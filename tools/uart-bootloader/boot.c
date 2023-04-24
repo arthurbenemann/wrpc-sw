@@ -95,7 +95,7 @@ static void boot_sysc_gpio_set_dir(const struct gpio_pin *pin, int dir)
 
 static void boot_sysc_gpio_set_out(const struct gpio_pin *pin, int value)
 {
-	
+
     if(value)
 		writel( ( 1<< pin->pin), (void*) ( (void*)BASE_SYSCON + SYSC_REG_GPSR) );
 	else
@@ -302,10 +302,10 @@ static uint32_t decode_reset_jump_target( uint32_t pc, uint32_t insn )
 
     return addr;
 #else
-    #error UART bootloader can be only built for the RISC-V CPU target. 
+    #error UART bootloader can be only built for the RISC-V CPU target.
 #endif
 }
-                
+
 
 
 void on_cmd_write_ram(uint8_t *payload, int len)
@@ -449,7 +449,7 @@ void boot_fsm(void)
         case CMD_GO:
             on_cmd_go(rxbuf + 5, len);
             break;
-        
+
         case CMD_EXIT:
             return;
 
@@ -465,7 +465,7 @@ void boot_fsm(void)
     }
 }
 
-void try_flash_boot(void)
+static void try_flash_boot(void)
 {
     uint8_t buf[512];
     uint32_t offset;
@@ -487,6 +487,14 @@ void try_flash_boot(void)
     }
 }
 
+extern void _entry(void);
+
+static void try_app_boot(void)
+{
+    voidfunc_t f = (voidfunc_t)_entry;
+    if (f)
+	    f();
+}
 
 void start_user(void)
 {
@@ -515,6 +523,8 @@ int boot_main(void)
 	for(;;)
     {
         boot_fsm();
+
+	try_app_boot();
 
         #ifdef CONFIG_ERTM14_FLASH
             try_flash_boot();
