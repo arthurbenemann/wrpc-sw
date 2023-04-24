@@ -57,14 +57,6 @@ LDS-$(CONFIG_ARCH_RISCV)  = arch/risc-v/ram.ld
 LDS-$(CONFIG_TARGET_WR_SWITCH) = arch/lm32/ram-wrs.ld
 LDS-$(CONFIG_HOST_PROCESS) =
 
-# Add bootloader
-obj-$(CONFIG_BOOTLOADER) += tools/uart-bootloader/bootloader.o
-ifeq ($(CONFIG_BOOTLOADER),m)
-# Just in case: allow to build a version without a bootloader just with a
-# simple link
-obj-$(CONFIG_ARCH_RISCV) += arch/risc-v/no-bootloader.o
-endif
-
 obj-$(CONFIG_WR_NODE)   += wrc_main.o
 obj-$(CONFIG_WR_NODE_SIM) += wrc_main_sim.o
 obj-$(CONFIG_TARGET_WR_SWITCH) += ipc/minipc-mem-server.o ipc/rt_ipc.o
@@ -113,6 +105,7 @@ ldflags-$(CONFIG_ARCH_LM32) = -mmultiply-enabled -mbarrel-shift-enabled \
 ldflags-$(CONFIG_ARCH_RISCV) = -march=rv32im$(USE-COMP-INSTR-y) -mabi=ilp32 \
 	-nostdlib -T $(LDS-y)
 asflags-$(CONFIG_ARCH_RISCV) += -march=rv32im$(USE-COMP-INSTR-y)_zicsr -mabi=ilp32
+
 arch-files-$(CONFIG_ARCH_LM32) = $(OUTPUT).bram $(OUTPUT).vhd $(OUTPUT).mif
 arch-files-$(CONFIG_ARCH_RISCV) = $(OUTPUT).bram $(OUTPUT).vhd $(OUTPUT).mif
 
@@ -138,6 +131,7 @@ include pp_printf/printf.mk
 include dev/dev.mk
 include softpll/softpll.mk
 include host/host.mk
+include tools/uart-bootloader/boot.mk
 
 # ppsi already has div64 (the same one), so only pick it if not using ppsi.
 ifndef CONFIG_WRPC_PPSI
@@ -146,10 +140,6 @@ endif
 # And always complain if we pick the libgcc division: 64/32 = 32 is enough here.
 obj-$(CONFIG_ARCH_LM32)  += check-error.o
 obj-$(CONFIG_ARCH_RISCV) += check-error.o
-
-
-tools/uart-bootloader/bootloader.o:
-	$(MAKE) -C tools/uart-bootloader bootloader.o
 
 # add system check functions like stack overflow and check reset
 obj-y += system_checks.o
