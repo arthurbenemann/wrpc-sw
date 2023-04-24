@@ -19,6 +19,7 @@
     ( ((( (unsigned long long)baudrate * 8ULL) << (16 - 7)) + \
       (CPU_CLOCK >> 8)) / (CPU_CLOCK >> 7) )
 
+#ifndef IN_BOOTLOADER /* Avoid use of div64_32 */
 static inline uint32_t suart_calc_baud( int baudrate )
 {
 	uint64_t n = (((uint64_t) (baudrate)) << 12 ) + (CPU_CLOCK >> 8);
@@ -31,6 +32,7 @@ void suart_init(struct simple_uart_device *dev, uint32_t base_addr, int baudrate
 	dev->base = (void*) base_addr;
 	writel( suart_calc_baud(baudrate), dev->base + UART_REG_BCR );
 }
+#endif
 
 void suart_init_default_baudrate(struct simple_uart_device *dev, uint32_t base_addr)
 {

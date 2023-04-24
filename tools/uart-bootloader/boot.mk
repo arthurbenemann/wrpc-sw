@@ -7,8 +7,7 @@ BOOTLOADER_OBJS = \
  tools/uart-bootloader/bb_spi.o \
  tools/uart-bootloader/gpio.o \
  tools/uart-bootloader/spi_flash.o \
- tools/uart-bootloader/simple_uart.o \
- tools/uart-bootloader/div64.o
+ tools/uart-bootloader/simple_uart.o
 
 BOOTLOADER_LDFLAGS =  -Os -march=rv32im -mabi=ilp32
 
@@ -29,9 +28,6 @@ tools/uart-bootloader/spi_flash.o: dev/spi_flash.c
 	${CC} $(BOOTLOADER_CFLAGS) -c $^ -o $@
 
 tools/uart-bootloader/simple_uart.o: dev/simple_uart.c
-	${CC} $(BOOTLOADER_CFLAGS) -c $^ -o $@
-
-tools/uart-bootloader/div64.o: pp_printf/div64.c
 	${CC} $(BOOTLOADER_CFLAGS) -c $^ -o $@
 
 
