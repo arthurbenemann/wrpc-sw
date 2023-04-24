@@ -21,7 +21,6 @@
 #include <stdint.h>
 
 #include "board.h"
-#include "pp-printf.h"
 #include "dev/gpio.h"
 #include "dev/bb_spi.h"
 
@@ -172,26 +171,4 @@ void bb_spi_create( struct spi_bus *bus,
     gen_gpio_set_dir( bus->pin_mosi, 1 );
     gen_gpio_set_dir( bus->pin_miso, 0 );
     gen_gpio_set_dir( bus->pin_sck, 1 );
-}
-
-void bb_spi_test(struct spi_bus *bus)
-{
-    pp_printf("Testing SPI bus: CS = 1 pulse, SCK = 2 pulses, MOSI = 3 pulses\n");
-    for(;;)
-    {
-        gen_gpio_out( bus->pin_cs, 1 );
-        gen_gpio_out( bus->pin_cs, 0 );
-
-        gen_gpio_out( bus->pin_sck, 1 );
-        gen_gpio_out( bus->pin_sck, 0 );
-        gen_gpio_out( bus->pin_sck, 1 );
-        gen_gpio_out( bus->pin_sck, 0 );
-
-        gen_gpio_out( bus->pin_mosi, 1 );
-        gen_gpio_out( bus->pin_mosi, 0 );
-        gen_gpio_out( bus->pin_mosi, 1 );
-        gen_gpio_out( bus->pin_mosi, 0 );
-        gen_gpio_out( bus->pin_mosi, 1 );
-        gen_gpio_out( bus->pin_mosi, 0 );
-    }
 }
