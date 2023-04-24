@@ -1,17 +1,29 @@
 OUTPUT_FORMAT("elf32-littleriscv")
 ENTRY(_start)
 
+#ifdef CONFIG_BOOTLOADER
+#define CONFIG_LOADERSIZE 0x2000
+#else
+#define CONFIG_LOADERSIZE 0
+#endif
+	
 MEMORY
 {
     ram :
 	ORIGIN = 0x00000000,
-	LENGTH = CONFIG_RAMSIZE - CONFIG_STACKSIZE - CONFIG_DATASIZE
+	LENGTH = CONFIG_RAMSIZE - CONFIG_STACKSIZE - CONFIG_DATASIZE - CONFIG_LOADERSIZE
     datacopy :
-        ORIGIN = CONFIG_RAMSIZE - CONFIG_STACKSIZE - CONFIG_DATASIZE
+        ORIGIN = CONFIG_RAMSIZE - CONFIG_STACKSIZE - CONFIG_DATASIZE - CONFIG_LOADERSIZE
 	LENGTH = CONFIG_DATASIZE
     stack :
-	ORIGIN = CONFIG_RAMSIZE - CONFIG_STACKSIZE
+	ORIGIN = CONFIG_RAMSIZE - CONFIG_STACKSIZE - CONFIG_LOADERSIZE
 	LENGTH = CONFIG_STACKSIZE
+    loader :
+	ORIGIN = CONFIG_RAMSIZE - CONFIG_LOADERSIZE
+	LENGTH = CONFIG_LOADERSIZE
+    none :
+	ORIGIN = CONFIG_RAMSIZE
+	LENGTH = 0
 }
 
 SECTIONS
@@ -100,10 +112,44 @@ SECTIONS
 #if CONFIG_DATASIZE != 0
     _datacopy = ORIGIN(datacopy);
 #endif
-	
+
     /* End of RAM for checking stack overflows */
     PROVIDE(_endram = ORIGIN(stack));
 
     /* First location in stack is highest address in STACK */
     PROVIDE(_fstack = ORIGIN(stack) + LENGTH(stack));
+
+    /* Then the bootloader (at end of RAM). */
+    loader.text :
+    {
+	*(loader.text)
+	*(loader.rodata)
+	*(loader.srodata)
+    } > loader
+
+    loader.data :
+    {
+	*(loader.data)
+    } > loader
+
+    /* Have _gp point to middle of sdata/sbss to maximize displacement range */
+    . = ALIGN(4);
+    _loader_gp = . + 0x800;
+
+    /* Writable small data segment */
+    loader.data :
+    {
+	*(loader.sdata)
+	*(loader.data)
+    } > none
+
+    loader.bss :
+    {
+	*(loader.sbss)
+	*(loader.bss)
+    } > loader
+
+    _loader_fbss = ADDR(loader.bss);
+    . = ALIGN(4);
+    _loader_end = .;
 }

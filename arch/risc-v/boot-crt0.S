@@ -1,30 +1,17 @@
-#define __ASSEMBLY__
+	.section .text, "ax", @progbits
 
-.section .boot, "ax", @progbits
+	.globl _bootloader_entry
+_bootloader_entry:
 
-.global _start
-_start:
-    j      _entry
-
-.section .text, "ax", @progbits
-
-
-_entry:
-
-    la     gp, _gp                 # Initialize global pointer
+    la     gp, _loader_gp                 # Initialize global pointer
     la     sp, _fstack
 
 # clear the bss segment
-    la     t0, _fbss
-    la     t1, _end
+    la     t0, _loader_fbss
+    la     t1, _loader_end
 1:
-#ifdef __riscv64
-    sd     zero,0(t0)
-    addi   t0, t0, 8
-#else
     sw     zero,0(t0)
     addi   t0, t0, 4
-#endif
     bltu   t0, t1, 1b
 
     call   boot_main

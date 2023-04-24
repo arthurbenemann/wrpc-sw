@@ -819,6 +819,12 @@ config DEFAULT_PRINT_TASK_TIME_THRESHOLD
           functionality. This value can be changed in run-time by the command
           "ps max <msecs>".
 
+config BOOTLOADER
+        bool "Support bootloader"
+	depends on DEVELOPER
+	default y if TARGET_ERTM14
+	default n
+
 
 # CONFIG_WR_NODE
 

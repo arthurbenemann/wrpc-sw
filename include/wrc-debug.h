@@ -23,38 +23,38 @@
    effect is discarded. Calls like format_mac are then eliminated.
    Previously, the test was done within the inline function so the call was
    kept albeit useless. */
-#if (CONFIG_TRACE_ALL || CONFIG_TRACE_MAIN) && !CONFIG_BOOTLOADER
+#if (CONFIG_TRACE_ALL || CONFIG_TRACE_MAIN) && !IN_BOOTLOADER
 WRC_DEFINE_TRACE_MSG("main", main_dbg)
 #else
 #define main_dbg(...)
 #endif
 
-#if (CONFIG_TRACE_ALL || CONFIG_TRACE_STORAGE) && !CONFIG_BOOTLOADER
+#if (CONFIG_TRACE_ALL || CONFIG_TRACE_STORAGE) && !IN_BOOTLOADER
 WRC_DEFINE_TRACE_MSG("storage", storage_dbg)
 #else
 #define storage_dbg(...)
 #endif
 
-#if (CONFIG_TRACE_ALL || CONFIG_TRACE_DEVICES) && !CONFIG_BOOTLOADER
+#if (CONFIG_TRACE_ALL || CONFIG_TRACE_DEVICES) && !IN_BOOTLOADER
 WRC_DEFINE_TRACE_MSG("dev", dev_dbg)
 #else
 #define dev_dbg(...)
 #endif
 
-#if (CONFIG_TRACE_ALL || CONFIG_TRACE_BOARD) && !CONFIG_BOOTLOADER
+#if (CONFIG_TRACE_ALL || CONFIG_TRACE_BOARD) && !IN_BOOTLOADER
 WRC_DEFINE_TRACE_MSG("board", board_dbg)
 #else
 #define board_dbg(...)
 #endif
 
-#if (CONFIG_TRACE_ALL || CONFIG_TRACE_MAC) && !CONFIG_BOOTLOADER
+#if (CONFIG_TRACE_ALL || CONFIG_TRACE_MAC) && !IN_BOOTLOADER
 WRC_DEFINE_TRACE_MSG("mac", mac_dbg)
 #else
 #define mac_dbg(...)
 #endif
 
 
-#if (CONFIG_TRACE_ALL || CONFIG_TRACE_PHY) && !CONFIG_BOOTLOADER
+#if (CONFIG_TRACE_ALL || CONFIG_TRACE_PHY) && !IN_BOOTLOADER
 WRC_DEFINE_TRACE_MSG("phy", phy_dbg)
 #else
 #define phy_dbg(...)

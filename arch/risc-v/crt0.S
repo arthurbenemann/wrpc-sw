@@ -8,13 +8,17 @@
 
 .global _start
 _start:
-    j      _entry
+#if CONFIG_BOOTLOADER
+	j	_bootloader_entry
+#else
+	j      _entry
+#endif
 
 .org 0x8
 
 .extern trap_entry
 _exception_entry:
-    j      trap_entry
+	j      trap_entry
 
 	.org WRPC_MARK
 wrpc_mark:
@@ -58,6 +62,7 @@ hdl_testbench_p:
 	.word  hdl_testbench
 #endif
 
+    .global _entry
     .global _reset_handler
     .type   _reset_handler, @function
 _reset_handler:
