@@ -1,12 +1,6 @@
 OUTPUT_FORMAT("elf32-littleriscv")
 ENTRY(_start)
 
-#ifdef CONFIG_BOOTLOADER
-#define CONFIG_LOADERSIZE 0x2000
-#else
-#define CONFIG_LOADERSIZE 0
-#endif
-	
 MEMORY
 {
     ram :

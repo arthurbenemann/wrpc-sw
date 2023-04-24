@@ -825,6 +825,10 @@ config BOOTLOADER
 	default y if TARGET_ERTM14
 	default n
 
+config LOADERSIZE
+       int
+       default 8192 if TARGET_ERTM14
+       default 0
 
 # CONFIG_WR_NODE
 
