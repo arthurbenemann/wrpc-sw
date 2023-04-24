@@ -16,7 +16,7 @@ void timer_init(int enable)
 	writel( SYSC_TCR_ENABLE, (void*) BASE_SYSCON + SYSC_REG_TCR );
 }
 
-uint32_t timer_get_tics()
+uint32_t timer_get_tics(void)
 {
 	return readl( (void*) BASE_SYSCON + SYSC_REG_TVR );
 }

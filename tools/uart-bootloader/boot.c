@@ -71,7 +71,7 @@
 #define UART_TIMEOUT 500
 
 #define BOOT_BOARD_ID_LENGTH 8
-static const char bootBoardId[BOOT_BOARD_ID_LENGTH] = "e14wrpc5";
+static const unsigned char bootBoardId[BOOT_BOARD_ID_LENGTH] = "e14wrpc5";
 
 uint8_t rxbuf[RX_BUF_SIZE];
 int     boot_wait;
@@ -79,7 +79,7 @@ int     boot_wait;
 static uint32_t orig_reset_vector;
 static uint32_t orig_reset_insn;
 
-typedef void (*voidfunc_t)();
+typedef void (*voidfunc_t)(void);
 void start_user(void);
 
 struct simple_uart_device dev_uart;
@@ -119,7 +119,7 @@ static const struct gpio_pin boot_pin_sysc_spi_ncs = { &boot_syscon_gpio, 11 };
 static const struct gpio_pin boot_pin_sysc_spi_mosi = { &boot_syscon_gpio, 12 };
 static const struct gpio_pin boot_pin_sysc_spi_miso = { &boot_syscon_gpio, 13 };
 
-void  boot_flash_init()
+void  boot_flash_init(void)
 {
     bb_spi_create( &spi_flash,
 		&boot_pin_sysc_spi_ncs,
@@ -167,7 +167,7 @@ crc16(unsigned char *buf, int len)
 int timeout_hit = 0;
 
 
-uint8_t suart_read_blocking()
+uint8_t suart_read_blocking(void)
 {
     uint32_t t_end = timer_get_tics() + UART_TIMEOUT;
 
@@ -216,7 +216,7 @@ void send_reply(uint8_t code, int length, const uint8_t *data)
         suart_write_byte(&dev_uart, buf[i]);
 }
 
-void on_cmd_init()
+void on_cmd_init(void)
 {
     boot_wait = 0;
     send_reply(RSP_OK, 0, NULL);
@@ -248,8 +248,6 @@ uint32_t unpack_le32(uint8_t *p)
 
 void pack_be32(uint8_t *p, uint32_t val)
 {
-    uint32_t rv = 0;
-
     p[3] = val & 0xff;
     p[2] = (val >> 8)& 0xff;
     p[1] = (val >> 16)& 0xff;
@@ -364,7 +362,7 @@ void on_cmd_go(uint8_t *payload, int len)
     f();
 }
 
-void boot_fsm()
+void boot_fsm(void)
 {
     uint32_t t_exit = timer_get_tics() + BOOT_TIMEOUT;
 
@@ -429,7 +427,7 @@ void boot_fsm()
         switch (command)
         {
         case CMD_INIT:
-            on_cmd_init(rxbuf + 5, len);
+	    on_cmd_init();
             break;
 
         case CMD_ERASE_SECTOR:
@@ -467,7 +465,7 @@ void boot_fsm()
     }
 }
 
-void try_flash_boot()
+void try_flash_boot(void)
 {
     uint8_t buf[512];
     uint32_t offset;
@@ -497,12 +495,12 @@ void start_user(void)
     f();
 }
 
-void dev_dbg()
+void dev_dbg(void)
 {
     /* stub to avoid linking errors */
 }
 
-int boot_main()
+int boot_main(void)
 {
     orig_reset_vector = 0x0;
 
