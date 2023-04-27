@@ -1179,6 +1179,56 @@ static void get_wrc_diags(struct wrc_diags *diags)
 		word[i] = htonl(word[i]);
 }
 
+static int spll_dbg_enabled = 0;
+static int spll_dbg_oversample = 0;
+
+static void configure_spll_debug_dump( int enabled, int oversample )
+{
+    spll_dbg_enabled = enabled;
+    spll_dbg_oversample = oversample;
+
+    if( enabled )
+        spll_debug_queue_purge();
+}
+
+static void ertm14_spll_debug_dump_task_init(void)
+{
+    spll_dbg_enabled = 0;
+    spll_dbg_oversample = 8;
+}
+
+static int ertm14_spll_debug_dump_task_poll(void)
+{
+    struct uart_packet tx_pkt;
+    struct ertm14_spll_debug_dump_data *tx_payload;
+    int count = sizeof( *tx_payload ) / sizeof( uint32_t ) - 2;
+
+    if( !spll_dbg_enabled )
+        return 0;
+
+    int r = spll_get_debug_queue_samples( tx_payload->payload, &count, spll_dbg_oversample );
+
+    if( count <= 0 )
+        return 0;
+
+    tx_payload->flags = ERTM14_SPLL_DEBUG_DUMP_HEADER;
+
+    tx_pkt.ptype = ERTM14_UART_PTYPE_SNMP_RESP;
+    tx_pkt.length = sizeof( uint32_t ) * count + 4;
+
+    if( r == -ENOSPC )
+        tx_payload->flags |= ERTM14_SPLL_DEBUG_DUMP_OVERFLOW;
+
+    tx_payload->flags = host_to_be32( tx_payload->flags );
+    for( int i = 0; i < count; i ++ )
+        tx_payload->payload[i] = host_to_be32( tx_payload->payload[i] );
+
+    uart_link_send( &board.control_uart_link, &tx_pkt );
+
+    return 0;
+}
+
+
 static void get_streamers_diags(struct WR_STREAMERS_WB *diags)
 {
         memset( diags, 0, sizeof( struct WR_STREAMERS_WB ) );
@@ -1354,12 +1404,18 @@ static int ertm_process_psnmp(struct uart_packet *rx_pkt, struct uart_packet *tx
 		streamer_diags = (struct WR_STREAMERS_WB *)&tx_pkt->payload[0];
 		get_streamers_diags(streamer_diags);
 		break;
-    case ertm14_reset_streamers_stats:
-        streamers_reset_rx_stats();
-        break;
-    case ertm14_force_measure_channels_power:
-        ertm15_force_rf_power_measurement();
-        break;
+        case ertm14_reset_streamers_stats:
+                streamers_reset_rx_stats();
+                break;
+        case ertm14_force_measure_channels_power:
+                ertm15_force_rf_power_measurement();
+                break;
+        case ertm14_configure_spll_debug_dump:
+        {
+                struct ertm14_spll_debug_dump_request *dbgs = (struct ertm14_spll_debug_dump_request *)&tx_pkt->payload[0];
+                configure_spll_debug_dump( dbgs->enabled, dbgs->undersample );
+                break;
+        }
 	case ertm14_get_wrc_nco:
 		nco = (struct ertm14_nco_reset *)&tx_pkt->payload[op->offset2];
 		get_wrc_nco(nco);
@@ -3008,6 +3064,8 @@ int wrc_board_init()
         wrc_task_create( "mmc15", mmc15_link_init, mmc15_link_poll );
         wrc_task_create( "rf-monitor", ertm15_init_rf_monitor, ertm15_update_rf_monitor );
     }
+
+    wrc_task_create( "spll-dbg", ertm14_spll_debug_dump_task_init, ertm14_spll_debug_dump_task_poll );
 
     struct ertm14_board_state mask;
     memset(&mask, 0xff, sizeof( struct ertm14_board_state )); // make sure we commit everything to HW

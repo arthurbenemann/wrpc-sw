@@ -198,6 +198,25 @@ struct ertm14_nco_reset {
 	uint32_t	unused[7];
 };
 
+struct ertm14_spll_debug_dump_request
+{
+	int enabled;
+	int undersample;
+};
+
+// Must be in sync with common-uart-link.h. I don't want to include it here to prevent dependency hell, but I'm aware
+// I'm probably summoning other, hopefully less evil daemons by doing so.
+#define ERTM14_SPLL_DEBUG_DUMP_MAX_PAYLOAD 512
+
+#define ERTM14_SPLL_DEBUG_DUMP_OVERFLOW 0x80000000
+#define ERTM14_SPLL_DEBUG_DUMP_HEADER   0x0000dead
+
+struct ertm14_spll_debug_dump_data
+{
+	uint32_t flags;
+	uint32_t payload[ ERTM14_SPLL_DEBUG_DUMP_MAX_PAYLOAD / sizeof(uint32_t) - 1 ];
+};
+
 /* FIXME: this is lifted from ertm_board_info; structs *must* match */
 struct ertm14_device_metadata {
 	union {
