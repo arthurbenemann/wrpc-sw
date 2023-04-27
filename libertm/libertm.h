@@ -434,6 +434,10 @@ int ertm_set_streamers_timeout(struct ertm_status *handle, uint32_t cycles16n);
 int ertm_get_streamers_latency_timeout(struct ertm_status *handle,
 	    uint32_t *latency_cycles16n, uint32_t *timeout_cycles16n);
 					/* all in 16ns-cycle units */
+
+int ertm_configure_spll_debug_dump(struct ertm_status *handle, int enabled, int undersample);
+int ertm_read_spll_debug_data( struct ertm_status *handle, uint32_t *buf, size_t *buf_size );
+
 #ifdef __cplusplus
 }
 #endif

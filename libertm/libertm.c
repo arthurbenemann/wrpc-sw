@@ -1345,3 +1345,56 @@ int ertm_force_measure_channels_power( struct ertm_status *handle )
 
 	return ertm_proto_cycle(handle, ertm14_force_measure_channels_power, &dummy, NULL);
 }
+
+int ertm_configure_spll_debug_dump(struct ertm_status *handle, int enabled, int undersample)
+{
+	struct ertm14_spll_debug_dump_request request;
+	
+	request.enabled = htonl(enabled);
+	request.undersample = htonl(undersample);
+
+	int res = ertm_proto_cycle(handle, ertm14_configure_spll_debug_dump, &request, NULL);
+	if (res < 0)
+		return res;
+
+	return 0;
+}
+
+int ertm_read_spll_debug_data( struct ertm_status *handle, uint32_t *buf, size_t *buf_size )
+{
+	int res = 0, i;
+	struct uart_link *link = &handle->link;
+	struct uart_packet pkt;
+	struct ertm14_spll_debug_dump_data *dbgdata = &pkt.payload;
+
+	res = uart_link_recv(link, &pkt, 1000);
+
+	if( res < 0 )
+		return res;
+
+	if (pkt.ptype != ERTM14_UART_PTYPE_SNMP_RESP) {
+		fprintf(stderr, "error (bad packet type != RESP) in uart_link_recv\n");
+		errno = EINVAL;
+		return ERTM_UART_PROTO_ERR;
+	}
+
+	if( !buf_size )
+	{
+		errno = EINVAL;
+		return ERTM_UART_PROTO_ERR;
+	}
+
+	if( *buf_size < pkt.length )
+	{
+		errno = ENOSPC;
+		return ERTM_UART_PROTO_ERR;
+	}
+
+	dbgdata->flags = ntohl( dbgdata->flags );
+	int cnt = pkt.length / sizeof(uint32_t) - 1;
+
+	for(i = 0; i < cnt; i++ )
+		dbgdata->payload[i] = ntohl( dbgdata->payload[i] );
+
+	return 0;
+}
