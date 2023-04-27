@@ -9,6 +9,7 @@
  */
 #include <stdio.h>
 #include <string.h>
+#include <sys/errno.h>
 
 #include <wrc.h>
 #include "board.h"
@@ -854,15 +855,19 @@ void spll_debug_queue_purge(void)
 }
 
 
-int spll_get_debug_queue_samples( uint32_t *buf, int count, int undersample )
+int spll_get_debug_queue_samples( uint32_t *buf, int *count, int undersample )
 {
-	int cnt = count;
+	int cnt = *count;
 	int pass = 1;
 	int und_cnt = 0;
 	int n_ents = 0;
+	int full = SPLL->DFR_HOST_CSR & SPLL_DFR_HOST_CSR_FULL;
 
 	if ( SPLL->DFR_HOST_CSR & SPLL_DFR_HOST_CSR_EMPTY )
+	{
+		*count = 0;
 		return 0;
+	}
 
 	while(cnt > 0)
 	{
@@ -891,7 +896,12 @@ int spll_get_debug_queue_samples( uint32_t *buf, int count, int undersample )
 
 	}
 
-	return n_ents;
+	*count = n_ents;
+
+	if( full )
+		return -ENOSPC;
+
+	return 0;
 }
 
 void spll_set_aux_mode( int channel, int mode )
