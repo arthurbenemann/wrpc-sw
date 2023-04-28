@@ -33,7 +33,6 @@
 #include "dev/ad951x.h"
 #include "dev/ltc695x.h"
 #include "dev/ad9910.h"
-#include "dev/clock_monitor.h"
 #include "dev/24aa025.h"
 #include "dev/ad7888.h"
 #include "dev/spi_flash.h"
@@ -1460,17 +1459,6 @@ static int ertm_process_psnmp(struct uart_packet *rx_pkt, struct uart_packet *tx
 	return 0;
 }
 
-static void ertm14_clock_monitor_init(void)
-{
-    wb_cm_init(&board.ertm14_cmon, BASE_CLOCK_MONITOR, 5);
-    wb_cm_set_ref_frequency( &board.ertm14_cmon, DMTD_CLOCK_FREQ_HZ );
-
-    /* use the DDMTD clock as the reference frequency (we don't care much about accuracy here)
-       as it's always available regardless of the configuration of the I2C/SPI chips. Prescaler of 2
-       and gate freq of 6.25 MHz give fast enough measurements with sufficient digits. */
-    wb_cm_configure(&board.ertm14_cmon, ERTM14_CMON_CLK_DMTD, 2, 6250000 );
-}
-
 static int evth_dds_nco_sync;
 
 static void ertm14_dds_nco_sync_init(void)
@@ -1778,90 +1766,6 @@ static int ertm14_clkab_sync_task(void)
     return 0;
 }
 
-
-// fixme: factor out all this code to a common file (used by sis83k, afcz, ertm)
-static int calc_apr(int meas_min, int meas_max, int f_center )
-{
-	// apr_min is in PPM
-
-	if( f_center < meas_min || f_center > meas_max )
-		f_center = (meas_min + meas_max) / 2;
-
-	int64_t delta_low =  meas_min - f_center;
-	int64_t delta_hi = meas_max - f_center;
-	uint64_t u_delta_low, u_delta_hi;
-	int ppm_lo, ppm_hi;
-
-	if(delta_low >= 0)
-		return -1;
-	if(delta_hi <= 0)
-		return -1;
-
-	/* __div64_32 divides 64 by 32; result is in the 64 argument. */
-	u_delta_low = -delta_low * 1000000LL;
-	__div64_32(&u_delta_low, f_center);
-	ppm_lo = (int)u_delta_low;
-
-	u_delta_hi = delta_hi * 1000000LL;
-	__div64_32(&u_delta_hi, f_center);
-	ppm_hi = (int)u_delta_hi;
-
-	return ppm_lo < ppm_hi ? ppm_lo : ppm_hi;
-}
-
-static int measure_vcxo_freq( int cm_channel, int cm_ref, int gate_freq, int n_steps, uint32_t expected_freq, void (*dac_setter)(int), int *apr, uint32_t *base_freq )
-{
-	int f_min = 0, f_max = 0;
-	int tune_min = 0;
-	int tune_max = 65535;
-	int tune_step = (tune_max-tune_min) / n_steps;
-
-	wb_cm_configure( &board.ertm14_cmon, cm_ref, 5, gate_freq );
-	wb_cm_set_ref_frequency( &board.ertm14_cmon, CPU_CLOCK );
-
-	int tune = tune_min;
-
-	for(;;)
-	{
-
-		dac_setter( tune );
-		timer_delay_ms(1);
-    wb_cm_restart(&board.ertm14_cmon);
-		while( ! (wb_cm_read( &board.ertm14_cmon ) & ( 1<< cm_channel) ) );
-
-		int f = board.ertm14_cmon.freqs[ cm_channel ];
-
-		if( tune == tune_min )
-			f_min = f;
-		else if ( tune == tune_max )
-			f_max = f;
-
-		if(tune == tune_max)
-			break;
-
-		board_dbg("Tune: %d f = %d Hz (deltaF = %d Hz)\n", tune, f, f - expected_freq );
-
-		tune += tune_step;
-		if( tune > tune_max )
-			tune = tune_max;
-	}
-
-	dac_setter( 32768 );
-	timer_delay(1);
-
-    int l_apr = calc_apr(f_min, f_max, 62500000);
-
-    if( apr )
-        *apr = l_apr;
-
-    if( base_freq )
-        *base_freq = (f_min + f_max) / 2;
-
-    board_dbg("VCO ch %d:  Low=%d Hz Hi=%d Hz, APR = %d ppm.\n", cm_channel, f_min, f_max, l_apr );
-
-    return 0;
-}
-
 static void blink_led( struct gpio_pin *pin )
     {
     gen_gpio_out( pin, 1 );
@@ -1884,7 +1788,7 @@ static void ertm14_init_leds(void)
 
 
 static void ertm15_init_leds(void)
-    {
+{
     blink_led(&pin_ertm15_led_ref_green);
     blink_led(&pin_ertm15_led_lo_green);
     blink_led(&pin_ertm15_led_clkb_green);
@@ -1899,25 +1803,6 @@ static void ertm15_init_leds(void)
     led_create( &board.leds.clkb, &pin_ertm15_led_clkb_green, &pin_ertm15_led_clkb_red, LED_TYPE_DUAL_COLOR, LED_OFF );
     led_create( &board.leds.lo, &pin_ertm15_led_lo_green, &pin_ertm15_led_lo_red, LED_TYPE_DUAL_COLOR, LED_OFF );
     led_create( &board.leds.ref, &pin_ertm15_led_ref_green, &pin_ertm15_led_ref_red, LED_TYPE_DUAL_COLOR, LED_OFF );
-    }
-
-static void set_main_dac( int value )
-{
-	spll_set_dac( 0, value );
-}
-
-static void set_dmtd_dac( int value )
-{
-	spll_set_dac( -1, value );
-}
-        
-int ertm15_check_oscillators(void)
-    {
-    board_dbg("Check REF OCXO\n");
-    measure_vcxo_freq( ERTM14_CMON_CLK_REF, ERTM14_CMON_CLK_DMTD, 10000000, 1, 62500000, set_main_dac, NULL, NULL );
-    board_dbg("Check DMTD VCXO\n");
-    measure_vcxo_freq( ERTM14_CMON_CLK_DMTD, ERTM14_CMON_CLK_REF, 100000, 10, 62500000, set_dmtd_dac, NULL, NULL );
-    return 0;
 }
 
 // initializes the eRTM15 LTC6950 PLL & OCXO
@@ -2275,11 +2160,6 @@ int ertm14_low_level_init(void)
         led_action( &board.leds.sync, LED_COLOR_1, LED_OFF );
         led_action( &board.leds.sync, LED_COLOR_2, LED_OFF );
     }
-
-    /* Initialize the clock monitor core - it monitors the frequencies of all clocks coming to the FPGA.
-       We use it to self-diagnose if the board's oscillators are working correctly. */
-    ertm14_clock_monitor_init();
-
 
     if( ! (board.mode & ERTM14_MODE_WITHOUT_ERTM15 ) )
     {

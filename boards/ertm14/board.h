@@ -12,7 +12,6 @@
 #include "dev/ad951x.h"
 #include "dev/ltc695x.h"
 #include "dev/ad9910.h"
-#include "dev/clock_monitor.h"
 #include "dev/24aa025.h"
 #include "dev/ad7888.h"
 #include "dev/leds.h"
@@ -96,10 +95,10 @@ extern unsigned char *BASE_EP;
 #define BASE_EP                     (DEV_BASE + 0x00100)
 #define BASE_MINIC                  (DEV_BASE + 0x00000)
 #define BASE_ONEWIRE                (DEV_BASE + 0x00600)
+#define BASE_CLOCK_MONITOR          (DEV_BASE + 0xa00)
 #define BASE_MMC_UART_14            (BASE_AUXWB + 0x200)
 #define BASE_MMC_UART_15            (BASE_AUXWB + 0x700)
 #define BASE_ERTM14_DDS_SYNC_UNIT   (BASE_AUXWB + 0x300)
-#define BASE_CLOCK_MONITOR          (BASE_AUXWB + 0x100)
 #define BASE_ERTM14_10MHZ_ALIGN_UNIT       (BASE_AUXWB + 0x400)
 #define BASE_ERTM14_RF_FRAME_TRANSCEIVER       (BASE_AUXWB + 0x500)
 #define BASE_ERTM14_STREAMERS       (BASE_AUXWB + 0x600)
@@ -157,8 +156,7 @@ extern unsigned char *BASE_EP;
 struct ertm14_board
 {
     struct gpio_device gpio_aux;
-    struct wb_clock_monitor_device ertm14_cmon;
-
+    
     struct spi_bus spi_pll_main;
     struct spi_bus spi_pll_ext;
     struct spi_bus spi_ltc6950;
