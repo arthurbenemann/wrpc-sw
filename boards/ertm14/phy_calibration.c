@@ -470,7 +470,7 @@ static int rx_fsm_update(void)
                 
 	int rx_aligned = lpc_stat & LPDC_MDIO_STAT_LINK_ALIGNED;
 	int rx_comma_pos = (lpc_stat >> 7) & 0x7f;
-	int rx_comma_valid = (lpc_stat >> 7) & 0x80 ? 1 : 0;
+	int rx_comma_valid = lpc_stat & 0x8000; // fixme update header from cheby
 
 			if ( rx_up && rx_aligned && rx_comma_valid && (rx_comma_pos == DEFAULT_COMMA_POS) )
 			{
