@@ -502,6 +502,14 @@ config W1_TEMP
 	help
 	  Add support for temperature sensors on W1 bus. Adds w1 command.
 
+config FREQUENCY_MONITOR
+	boolean "Add support for built-on clock frequency monitor"
+	default n
+	help
+	  Enables the "freqmon" command in the WRC shell which lets the user check all relevant clock frequencies
+	  (REF, DMTD, RX, AUX, EXT) as well as the oscillators' tuning range. Requires g_with_clock_freq_monitor to be
+	  enabled in the HDL IP instantiation.
+
 config W1_EEPROM
 	depends on W1
 	boolean "Add support for W1 eeprom"
