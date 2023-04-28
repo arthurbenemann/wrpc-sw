@@ -29,4 +29,5 @@ obj-$(CONFIG_CMD_LEAPSEC) +=			shell/cmd_leapsec.o
 obj-$(CONFIG_CMD_REFRESH) +=			shell/cmd_refresh.o
 obj-$(CONFIG_FLASH_INIT) +=			shell/cmd_init.o
 obj-$(CONFIG_VLAN) +=				shell/cmd_vlan.o
+obj-$(CONFIG_FREQUENCY_MONITOR) +=	shell/cmd_freqmon.o
 

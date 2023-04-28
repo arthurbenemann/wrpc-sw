@@ -94,6 +94,13 @@
 #define HAS_GENERIC_SENSORS 0
 #endif
 
+#ifdef CONFIG_FREQUENCY_MONITOR
+#define HAS_FREQUENCY_MONITOR 1
+#else
+#define HAS_FREQUENCY_MONITOR 0
+#endif
+
+
 static char cmd_buf[SH_MAX_LINE_LEN + 1];
 static int cmd_pos = 0, cmd_len = 0;
 static unsigned char state = SH_PROMPT;
@@ -479,4 +486,6 @@ void shell_register_commands(void)
 		REGISTER_WRC_COMMAND(w1r);
 		REGISTER_WRC_COMMAND(w1w);
 	}
+	if( HAS_FREQUENCY_MONITOR )
+		REGISTER_WRC_COMMAND(freqmon);
 }
