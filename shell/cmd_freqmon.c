@@ -180,7 +180,7 @@ static int measure_vcxo_freq(int cm_channel, int n_steps, uint32_t expected_freq
 
         int f = cmon_dev.freqs[cm_channel];
 
-        \ if (tune == tune_min)
+        if (tune == tune_min)
             f_min = f;
         else if (tune == tune_max)
             f_max = f;
