@@ -920,3 +920,8 @@ int spll_vco_freeze(int freeze)
 	softpll.mpll.vco_freeze = freeze;
 	return 0;
 }
+
+int spll_is_ext_supported(void)
+{
+	return (SPLL->ECCR & SPLL_ECCR_EXT_SUPPORTED) ? 1 : 0;
+}

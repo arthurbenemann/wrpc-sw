@@ -133,6 +133,7 @@ int spll_get_debug_queue_samples( uint32_t *buf, int *count, int undersample );
 void spll_debug_queue_purge(void);
 
 void spll_set_aux_mode( int channel, int mode );
+int spll_is_ext_supported(void);
 
 /*
  * Aux and main state:
