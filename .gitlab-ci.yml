@@ -30,10 +30,11 @@ make_all:
     -   make clean
     -   make $f
     -   if ! make -j$NPROC; then
-    -     echo "FAILURE $f"
+    -     echo "FAILURE of $f"
     -     fail="$fail $f"
     -   fi
     - done
+    - echo "FAILED TARGET are $fail"
     - test "$fail" = ""
 
 make_rt_cpu:
