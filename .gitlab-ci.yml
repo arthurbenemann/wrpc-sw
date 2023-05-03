@@ -4,7 +4,7 @@
 # --CROSS_COMPILE_RISCV - prefix for riscv cross compiler
 
 
-image: ${DOCKER_IMAGE_PATH}
+# image: ${DOCKER_IMAGE_PATH}
 
 variables:
   GIT_SUBMODULE_STRATEGY: normal
