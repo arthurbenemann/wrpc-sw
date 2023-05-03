@@ -2,9 +2,13 @@
 EB    ?= no
 SDBFS ?= no
 
-CFLAGS = -Wall -ggdb -I../include -I../liblinux -I../liblinux/extest -Werror
+CFLAGS = -Wall -ggdb -I../include -I../liblinux -I../liblinux/extest 
 CFLAGS += -D__GIT_VER__="\"$(GIT_VER)\"" -D__GIT_USR__="\"$(GIT_USR)\""
 CFLAGS += -DBUILD_HOST
+CFLAGS += -I../libertm
+CFLAGS += -I../boards/ertm14
+CFLAGS += -I../softpll
+
 LDFLAGS = $(TOOLS_LDFLAGS) -lutil -L../liblinux -ldevmap -L../liblinux/extest -lextest
 ALL    = genraminit genramvhd genrammif
 #ALL   += wrpc-w1-read wrpc-w1-write
@@ -13,6 +17,7 @@ ALL   += mapper
 ALL   += wrpc-vuart
 ALL   += wrpc-gdbserver
 ALL   += wrpc-load
+ALL   += wrpc-spll-recorder
 ALL   += wr-streamers
 ALL   += wrpc-diags
 ALL   += gensdbfs
@@ -81,6 +86,9 @@ wrpc-diags: wrpc-diags.c
 
 wrpc-vuart: wrpc-vuart.o vuart_lib.o
 	$(CC) $(CFLAGS) -Werror $^ $(LDFLAGS) -o $@
+
+wrpc-spll-recorder: wrpc-spll-recorder.o
+	$(CC) $(CFLAGS) $^ $(LDFLAGS) -o $@ ../libertm/libertm.a -ludev -lm
 
 wrpc-gdbserver: wrpc-gdbserver.o vuart_lib.o
 	$(CC) $(CFLAGS) -Werror  $^ $(LDFLAGS) -o $@
