@@ -1364,16 +1364,16 @@ int ertm_read_spll_debug_data( struct ertm_status *handle, uint32_t *buf, size_t
 {
 	int res = 0, i;
 	struct uart_link *link = &handle->link;
-	struct uart_packet pkt;
-	struct ertm14_spll_debug_dump_data *dbgdata = &pkt.payload;
+	struct uart_packet *pkt;
+	struct ertm14_spll_debug_dump_data *dbgdata;
 
 	res = uart_link_recv(link, &pkt, 1000);
 
 	if( res < 0 )
 		return res;
 
-	if (pkt.ptype != ERTM14_UART_PTYPE_SNMP_RESP) {
-		fprintf(stderr, "error (bad packet type != RESP) in uart_link_recv\n");
+	if (pkt->ptype != ERTM14_UART_PTYPE_SOFTPLL_LOG) {
+		fprintf(stderr, "error (bad packet type != RESP) in uart_link_recv [got %d exp %d]\n", pkt->ptype, ERTM14_UART_PTYPE_SOFTPLL_LOG);
 		errno = EINVAL;
 		return ERTM_UART_PROTO_ERR;
 	}
@@ -1384,17 +1384,37 @@ int ertm_read_spll_debug_data( struct ertm_status *handle, uint32_t *buf, size_t
 		return ERTM_UART_PROTO_ERR;
 	}
 
-	if( *buf_size < pkt.length )
+	if( *buf_size < pkt->length )
 	{
 		errno = ENOSPC;
 		return ERTM_UART_PROTO_ERR;
 	}
 
+	dbgdata = &pkt->payload;
 	dbgdata->flags = ntohl( dbgdata->flags );
-	int cnt = pkt.length / sizeof(uint32_t) - 1;
+	int cnt = pkt->length / sizeof(uint32_t) - 1;
+
+	if( cnt <= 0 )
+		return ERTM_UART_PROTO_ERR;
+
+	if( (dbgdata->flags & 0xffff) != ERTM14_SPLL_DEBUG_DUMP_HEADER )
+	{
+		errno = EINVAL;
+		return ERTM_UART_PROTO_ERR;
+	}
+
+//	printf("cnt %d res %d plen %d flags %08x\n", cnt, res, pkt->length, dbgdata->flags );
 
 	for(i = 0; i < cnt; i++ )
 		dbgdata->payload[i] = ntohl( dbgdata->payload[i] );
+
+
+	memcpy( buf, dbgdata->payload, cnt * sizeof(uint32_t) );
+
+	*buf_size = cnt;
+
+	if( dbgdata->flags & ERTM14_SPLL_DEBUG_DUMP_OVERFLOW )
+		return ERTM_SPLL_LOG_OVERFLOW;
 
 	return 0;
 }

@@ -15,6 +15,8 @@ extern "C" {
 #endif
 
 #include <stdint.h>
+#include <stdio.h>
+
 #include "ertm-common.h"
 #include "hw/wrc_diags_regs.h"
 
@@ -37,6 +39,7 @@ struct ertm_lib_version {
 #define	ERTM_UART_PROTO_ERR	(-8)
 #define	ERTM_BAD_CLKAB_FREQ	(-9)
 #define	ERTM_BAD_SYNC_SOURCE	(-10)
+#define ERTM_SPLL_LOG_OVERFLOW (-11)
 
 struct ertm_error_codes {
 	int	code;
