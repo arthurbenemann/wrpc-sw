@@ -25,11 +25,16 @@ make_all:
   - ohwrsw
   script:
     - NPROC=$(grep -c ^processor /proc/cpuinfo)
+    - fail=""
     - for f in $(ls configs); do
     -   make clean
     -   make $f
-    -   make -j$NPROC
+    -   if ! make -j$NPROC; then
+    -     echo "FAILURE $f"
+    -     fail="$fail $f"
+    -   fi
     - done
+    - test "$fail" = ""
 
 make_rt_cpu:
   stage: compile
