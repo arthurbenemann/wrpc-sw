@@ -132,7 +132,7 @@ static struct ertm14_protocol_op {
     },
 	{
 	.opcode = ertm14_configure_spll_debug_dump,
-	.offset1 = 1,
+	.offset1 = 4,
 	.length1 = sizeof(struct ertm14_spll_debug_dump_request),
 	.offset2 = 0,
 	.length2 = 0,

@@ -1179,40 +1179,38 @@ static void get_wrc_diags(struct wrc_diags *diags)
 }
 
 static int spll_dbg_enabled = 0;
-static int spll_dbg_oversample = 0;
 
-static void configure_spll_debug_dump( int enabled, int oversample )
+static void configure_spll_debug_dump( int enabled, int undersample )
 {
     spll_dbg_enabled = enabled;
-    spll_dbg_oversample = oversample;
-
     if( enabled )
-        spll_debug_queue_purge();
+    {
+        spll_debug_queue_configure( undersample, 32 ); // fixme: make coalescence threshold configurable? is it worth it?
+    }
 }
 
 static void ertm14_spll_debug_dump_task_init(void)
 {
     spll_dbg_enabled = 0;
-    spll_dbg_oversample = 8;
 }
 
 static int ertm14_spll_debug_dump_task_poll(void)
 {
     struct uart_packet tx_pkt;
-    struct ertm14_spll_debug_dump_data *tx_payload;
-    int count = sizeof( *tx_payload ) / sizeof( uint32_t ) - 2;
+    struct ertm14_spll_debug_dump_data *tx_payload = (struct ertm14_spll_debug_dump_data *) &tx_pkt.payload;
+    int count = 64; //sizeof( *tx_payload ) / sizeof( uint32_t ) - 2;
 
     if( !spll_dbg_enabled )
         return 0;
 
-    int r = spll_get_debug_queue_samples( tx_payload->payload, &count, spll_dbg_oversample );
+    int r = spll_get_debug_queue_samples( tx_payload->payload, &count );
 
     if( count <= 0 )
         return 0;
 
     tx_payload->flags = ERTM14_SPLL_DEBUG_DUMP_HEADER;
 
-    tx_pkt.ptype = ERTM14_UART_PTYPE_SNMP_RESP;
+    tx_pkt.ptype = ERTM14_UART_PTYPE_SOFTPLL_LOG;
     tx_pkt.length = sizeof( uint32_t ) * count + 4;
 
     if( r == -ENOSPC )
@@ -1411,7 +1409,9 @@ static int ertm_process_psnmp(struct uart_packet *rx_pkt, struct uart_packet *tx
                 break;
         case ertm14_configure_spll_debug_dump:
         {
-                struct ertm14_spll_debug_dump_request *dbgs = (struct ertm14_spll_debug_dump_request *)&tx_pkt->payload[0];
+                struct ertm14_spll_debug_dump_request *dbgs = (struct ertm14_spll_debug_dump_request *)&rx_pkt->payload[op->offset1];
+                dbgs->enabled = ntohl( dbgs->enabled ); // fixme: this sucks
+                dbgs->undersample = ntohl( dbgs->undersample );
                 configure_spll_debug_dump( dbgs->enabled, dbgs->undersample );
                 break;
         }
