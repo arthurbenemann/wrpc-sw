@@ -11,8 +11,7 @@ variables:
 
 before_script:
   - pwd
-  - wget -O - https://ohwr.org/project/wrpc-sw/wikis/uploads/9f9224d2249848ed3e854636de9c08dc/riscv-11.2-small.tgz | tar xf -
-  - ls
+  - ls /compilers
   - export PATH=/opt/lm32-gcc/bin:$PATH
 
 stages:
@@ -20,6 +19,8 @@ stages:
 
 make_wrpc_sw:
   stage: compile
+  tags:
+  - ohwrsw
   script:
   - make spec_defconfig
   - make
@@ -33,6 +34,8 @@ make_wrpc_sw:
 
 make_all:
   stage: compile
+  tags:
+  - ohwrsw
   script:
     # to make compare_size.sh work
     - touch size_db.txt
@@ -48,6 +51,8 @@ make_all:
 
 make_rt_cpu:
   stage: compile
+  tags:
+  - ohwrsw
   script:
   - make wr_switch_defconfig
   - make
