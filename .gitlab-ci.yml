@@ -11,8 +11,8 @@ variables:
 
 before_script:
   - pwd
-  - ls /compilers
-  - export PATH=/opt/lm32-gcc/bin:$PATH
+  - ls /compilers/*
+  - PATH=/compilers/riscv-11.2-small/bin:$PATH
 
 stages:
 - compile
@@ -39,8 +39,9 @@ make_all:
   script:
     # to make compare_size.sh work
     - touch size_db.txt
-    - echo "Using `grep -c ^processor /proc/cpuinfo` parallel jobs".
-    - GIT_HASH_START="HEAD~1" MAKEFLAGS="-j `grep -c ^processor /proc/cpuinfo`" ./MAKEALL -c
+    - NPROC=$(grep -c ^processor /proc/cpuinfo)
+    - echo "Using $NPROC parallel jobs".
+    - GIT_HASH_START="HEAD~1" MAKEFLAGS="-j $NPROC" ./MAKEALL -c
   artifacts:
     name: wrpc_sw_ci_${CI_JOB_NAME}_${CI_JOB_ID}
     paths:
