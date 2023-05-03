@@ -148,8 +148,8 @@ void spll_enable_tagger(int channel, int enable)
 	pll_verbose("%s: ch %d, OCER 0x%x, RCER 0x%x\n", __FUNCTION__, channel, SPLL->OCER, SPLL->RCER);
 }
 
-void spll_debug(int what, int value, int last)
+void spll_debug(int src, int what, int value, int last)
 {
 	SPLL->DFR_SPLL =
-	    (last ? 0x80000000 : 0) | (value & 0xffffff) | (what << 24);
+	    (last ? 0x80000000 : 0) | (value & 0xffffff) | (src << 28) | (what << 24);
 }

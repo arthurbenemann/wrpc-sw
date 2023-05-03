@@ -47,7 +47,8 @@ void external_start(struct spll_external_state *s)
 
 	s->align_state = ALIGN_STATE_WAIT_CLKIN;
 	s->enabled = 1;
-	spll_debug (DBG_EVENT | DBG_EXT, DBG_EVT_START, 1);
+
+	spll_debug ( SPLL_DBG_SRC_EXT, SPLL_DBG_SIGNAL_EVENT, SPLL_DBG_EVT_START, 1 );
 }
 
 int external_locked(volatile struct spll_external_state *s)

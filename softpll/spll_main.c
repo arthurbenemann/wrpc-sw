@@ -57,6 +57,7 @@ void mpll_init(struct spll_main_state *s, int id_ref,
 	s->id_ref = id_ref;
 	s->id_out = id_out;
 	s->dac_index = id_out - spll_n_chan_ref;
+	s->dbg_src_id = (s->dac_index == 0) ? SPLL_DBG_SRC_MAIN : SPLL_DBG_SRC_AUX( s->dac_index - 1 );
 
 	if( s->gain_sched )
 	{
@@ -86,7 +87,7 @@ static inline void mpll_handle_gain_schedule( struct spll_main_state *s )
 	}
 	else if ( !s->gain_sched->locked_d && s->ld.locked ) // PLL lock acquired? advance stage
 	{
-		spll_debug(DBG_EVENT | DBG_MAIN, DBG_EVT_GAIN_SWITCH, 0);
+		spll_debug(s->dbg_src_id, SPLL_DBG_SIGNAL_EVENT, SPLL_DBG_EVT_GAIN_SWITCH, 0);
 		if ( s->gain_sched->current_stage == s->gain_sched->n_stages - 1 )
 		{
 			s->locked = 1;
@@ -154,7 +155,7 @@ void mpll_start(struct spll_main_state *s)
 
 	spll_enable_tagger(s->id_ref, 1);
 	spll_enable_tagger(s->id_out, 1);
-	spll_debug(DBG_EVENT | DBG_MAIN, DBG_EVT_START, 1);
+	spll_debug(s->dbg_src_id, SPLL_DBG_SIGNAL_EVENT, SPLL_DBG_EVT_START, 1);
 }
 
 void mpll_stop(struct spll_main_state *s)
@@ -222,11 +223,14 @@ int mpll_update(struct spll_main_state *s, int tag, int source)
 		if (s->dac_index == 0)
 			spll_log_dac(y);
 
-		spll_debug(DBG_MAIN | DBG_REF, s->tag_ref + s->adder_ref, 0);
-		spll_debug(DBG_MAIN | DBG_TAG, s->tag_out + s->adder_out, 0);
-		spll_debug(DBG_MAIN | DBG_ERR, err, 0);
-		spll_debug(DBG_MAIN | DBG_SAMPLE_ID, s->sample_n++, 0);
-		spll_debug(DBG_MAIN | DBG_Y, y, 1);
+		spll_debug(s->dbg_src_id, SPLL_DBG_SIGNAL_PHASE_CURRENT, s->phase_shift_current, 0);
+		spll_debug(s->dbg_src_id, SPLL_DBG_SIGNAL_PHASE_TARGET, s->phase_shift_target, 0);
+		spll_debug(s->dbg_src_id, SPLL_DBG_SIGNAL_TIME_MS, timer_get_tics(), 0);
+		spll_debug(s->dbg_src_id, SPLL_DBG_SIGNAL_REF, s->tag_ref + s->adder_ref, 0);
+		spll_debug(s->dbg_src_id, SPLL_DBG_SIGNAL_TAG, s->tag_out + s->adder_out, 0);
+		spll_debug(s->dbg_src_id, SPLL_DBG_SIGNAL_ERR, err, 0);
+		spll_debug(s->dbg_src_id, SPLL_DBG_SIGNAL_SAMPLE_ID, s->sample_n++, 0);
+		spll_debug(s->dbg_src_id, SPLL_DBG_SIGNAL_Y, y, 1);
 
 		s->tag_out = -1;
 		s->tag_ref = -1;
@@ -258,7 +262,7 @@ int mpll_update(struct spll_main_state *s, int tag, int source)
 
 		ld_update((spll_lock_det_t *)&s->ld, err);
 		if( s->ld.lock_changed) 
-			spll_debug(DBG_EVENT | DBG_MAIN, DBG_EVT_LOCKED, 1);
+			spll_debug(s->dbg_src_id, SPLL_DBG_SIGNAL_EVENT, SPLL_DBG_EVT_LOCK_ACQUIRED, 1);
 
 		mpll_handle_gain_schedule(s);
 

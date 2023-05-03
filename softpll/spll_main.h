@@ -31,6 +31,7 @@ struct spll_main_state {
 	int dac_index;
 	int enabled;
 	int ps_freeze, vco_freeze;
+	int dbg_src_id;
 };
 
 void mpll_init(struct spll_main_state *s, int id_ref,

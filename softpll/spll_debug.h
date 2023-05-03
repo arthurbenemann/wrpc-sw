@@ -18,25 +18,38 @@ integral/proportional gains on the response of the system.
 
 */
 
-#define DBG_Y 0
-#define DBG_ERR 1
-#define DBG_TAG 2
-#define DBG_REF 5
-#define DBG_PERIOD 3
-#define DBG_SAMPLE_ID 6
+#ifndef __SPLL_DEBUG_H
+#define __SPLL_DEBUG_H
 
-#define DBG_TAG_MASK 0xf0
-#define DBG_TAG_SHIFT 4
+#define SPLL_DBG_SIGNAL_Y 0
+#define SPLL_DBG_SIGNAL_ERR 1
+#define SPLL_DBG_SIGNAL_TAG 2
+#define SPLL_DBG_SIGNAL_REF 3
+#define SPLL_DBG_SIGNAL_PERIOD 4
+#define SPLL_DBG_SIGNAL_SAMPLE_ID 5
+#define SPLL_DBG_SIGNAL_EVENT 6
+#define SPLL_DBG_SIGNAL_TIME_MS 7
+#define SPLL_DBG_SIGNAL_PHASE_CURRENT 8
+#define SPLL_DBG_SIGNAL_PHASE_TARGET 9
 
-#define DBG_EVENT 0x40
-#define DBG_HELPER 0x20		/* Sample source: Helper PLL */
-#define DBG_EXT 0x10		/* Sample source: External Reference PLL */
-#define DBG_MAIN 0x00		/* ...          : Main PLL */
+#define SPLL_DBG_MAX_SOURCES 8 // maximum number of "source" PLLs
 
-#define DBG_EVT_START 1			/* PLL has just started */
-#define DBG_EVT_LOCKED 2		/* PLL has just become locked */
-#define DBG_EVT_GAIN_SWITCH 3	/* PLL switched the PI gain (scheduling) */
+#define SPLL_DBG_SRC_HELPER 0
+#define SPLL_DBG_SRC_MAIN   1
+#define SPLL_DBG_SRC_EXT    2
+#define SPLL_DBG_SRC_AUX(n) (3 + ((n)&0x3))		/* ...          : Main PLL aux clock N */
 
+#define SPLL_DBG_LAST_FLAG   0x80
+
+#define SPLL_DBG_EVT_START 1			/* PLL has just started */
+#define SPLL_DBG_EVT_LOCK_ACQUIRED 2		/* PLL has just become locked */
+#define SPLL_DBG_EVT_GAIN_SWITCH 3	/* PLL switched the PI gain (scheduling) */
+#define SPLL_DBG_EVT_LOCK_LOSS 4		/* PLL has just lost lock */
+
+#define SPLL_DBG_EXTRACT_SOURCE(x) ( (x >> 28) & 0x7 )
+#define SPLL_DBG_EXTRACT_SIGNAL(x) ( (x >> 24) & 0xf )
+#define SPLL_DBG_EXTRACT_VALUE(x) (x & 0xffffff)
+#define SPLL_DBG_IS_LAST_RECORD(x) ( x&0x80000000 )
 
 /* Writes a parameter to the debug FIFO.
 
@@ -48,4 +61,8 @@ what: type of the parameter and its' source. For example,
 last: when non-zero, indicates the last parameter in a sample.
 */
 
-void spll_debug(int what, int value, int last);
+void spll_debug(int src, int what, int value, int last);
+
+
+#endif
+
