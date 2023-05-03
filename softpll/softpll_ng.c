@@ -584,9 +584,9 @@ void spll_show_stats(void)
 				s->pll.dmtd.pi.x,
 				s->pll.dmtd.pi.y );
 #else
-		pp_printf("softpll: AUX%d: ph %ld seq %d en %d lock %d samples %d ERR=%d Y=%d\n",
+		pp_printf("softpll: AUX%d: ph %d seq %d en %d lock %d samples %d ERR=%d Y=%d\n",
 				ch-1,
-				s->phase_value,
+                                (int)s->phase_value,
 				s->seq_state,
 				s->pll.dmtd.enabled,
 				s->pll.dmtd.locked,
