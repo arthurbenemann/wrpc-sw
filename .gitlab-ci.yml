@@ -20,8 +20,6 @@ stages:
 
 make_wrpc_sw:
   stage: compile
-  tags:
-    - wrpc_sw
   script:
   - make spec_defconfig
   - make
@@ -35,8 +33,6 @@ make_wrpc_sw:
 
 make_all:
   stage: compile
-  tags:
-    - wrpc_sw
   script:
     # to make compare_size.sh work
     - touch size_db.txt
@@ -52,8 +48,6 @@ make_all:
 
 make_rt_cpu:
   stage: compile
-  tags:
-    - wrpc_sw
   script:
   - make wr_switch_defconfig
   - make
