@@ -27,7 +27,8 @@ make_all:
     - NPROC=$(grep -c ^processor /proc/cpuinfo)
     - for f in $(ls configs); do
     -   make clean
-    -   make -j$NPROC $f
+    -   make $f
+    -   make -j$NPROC
     - done
 
 make_rt_cpu:
