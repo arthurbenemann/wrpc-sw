@@ -77,9 +77,9 @@ int wb_cm_show(struct wb_clock_monitor_device *dev)
 
     for( i = 0; i < dev->n_channels; i++ )
     {
-        if( dev->freq_valid_mask & (1<<i)) 
+        if( dev->freq_valid_mask & (1<<i))
         {
-            pp_printf("Chan %d: %ld Hz\n", i, dev->freqs[i]);
+            pp_printf("Chan %d: %u Hz\n", i, dev->freqs[i]);
         }
     }
     return 0;

@@ -13,7 +13,7 @@ struct wb_clock_monitor_device
     unsigned ref_sel;
     unsigned n_channels;
     unsigned ref_freq;
-    uint32_t freqs[CM_MAX_CHANNELS];
+    unsigned freqs[CM_MAX_CHANNELS];
     uint32_t freq_valid_mask;
 };
 
