@@ -11,7 +11,7 @@ variables:
 
 before_script:
   - pwd
-  - curl https://ohwr.org/project/wrpc-sw/wikis/uploads/9f9224d2249848ed3e854636de9c08dc/riscv-11.2-small.tgz | tar xf -
+  - wget -O - https://ohwr.org/project/wrpc-sw/wikis/uploads/9f9224d2249848ed3e854636de9c08dc/riscv-11.2-small.tgz | tar xf -
   - ls
   - export PATH=/opt/lm32-gcc/bin:$PATH
 
