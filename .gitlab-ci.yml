@@ -10,9 +10,7 @@ variables:
   GIT_SUBMODULE_STRATEGY: normal
 
 before_script:
-  - pwd
-  - ls /compilers/*
-  - PATH=/compilers/riscv-11.2-small/bin:$PATH
+  - PATH=/compilers/riscv-11.2-small/bin:/compilers/lm32-gcc-4.5.3/bin:$PATH
 
 stages:
 - compile
