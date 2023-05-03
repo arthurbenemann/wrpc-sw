@@ -1,11 +1,3 @@
-# NOTE: to be able to run CI define the following env variables:
-# --DOCKER_IMAGE_PATH - the path to docker image
-# --CROSS_COMPILE_LM32 - prefix for lm32 cross compiler
-# --CROSS_COMPILE_RISCV - prefix for riscv cross compiler
-
-
-# image: ${DOCKER_IMAGE_PATH}
-
 variables:
   GIT_SUBMODULE_STRATEGY: normal
 
@@ -25,28 +17,18 @@ make_wrpc_sw:
   artifacts:
     name: wrpc_sw_ci_${CI_JOB_NAME}_${CI_JOB_ID}
     paths:
-    - wrc.bin
     - wrc.elf
-    - wrc.bram
-    - wrc.mif
 
 make_all:
   stage: compile
   tags:
   - ohwrsw
   script:
-    # to make compare_size.sh work
-    - touch size_db.txt
     - NPROC=$(grep -c ^processor /proc/cpuinfo)
-    - echo "Using $NPROC parallel jobs".
-    - GIT_HASH_START="HEAD~1" MAKEFLAGS="-j $NPROC" ./MAKEALL -c
-  artifacts:
-    name: wrpc_sw_ci_${CI_JOB_NAME}_${CI_JOB_ID}
-    paths:
-    - size_info.txt
-    - ./*.elf
-    - ./*.bin
-
+    - for f in $(ls configs); do
+    -   make clean
+    -   make -j$NPROC $f
+    - done
 
 make_rt_cpu:
   stage: compile
