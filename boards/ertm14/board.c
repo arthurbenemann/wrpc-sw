@@ -2972,6 +2972,24 @@ int wrc_board_create_tasks()
     return 0;
 }
 
+// for Tristan:
+// unfinished CLKAB sync pulse setup/hold time calibration routine. The sync pulse
+// resets the clock dividers in the LTC6953 fanouts for CLKA and CLKB outputs, respectively. As the window
+// is pretty narrow (the input clock is 500 MHz), the delays for these sync pulses must be calibrated
+// per board and per bitstream. The following function is expected to ran from shell and with the CLKA (B) output connected
+// to the 10 MHz input port of the eRTM14 (cable length doesn't matter).
+// the idea is as follows
+// - configure the fanout front panel output to 62.5 MHz (same as the REFCLK), so that we can use the DDMTD for phase measurements
+// - sweep the range of sync pulse delays (0-3ns)
+// - generate a test pulse, wait for the divider to sync up
+// - measure the phase of the divided-down CLKA/B front panel clock
+// - look for a 2ns jump
+// - if found, compute a sweet spot for the delay value to respect the tsetup/thold
+// - additional constraint: keep it close to some factory default (so that recalibrating a board after a bitstream update does not
+//   result in wild changes in the CLKAB phase)
+// - store the computed delay values to the calibration parameters.
+// - the same trick is applicable for the calibration of the IOUPDATE pulse for both DDSes:
+//   configure them to exactly 62.5 MHz and loop  back the LO/REF front panel outputs to the 10 MHZ in on ertm14.
 void ertm14_sync_pulse_cal(void)
 {
     pp_printf("Sync Pulse calibration [press X to continue]:\n");
@@ -2987,13 +3005,14 @@ void ertm14_sync_pulse_cal(void)
     uint32_t channel_mask = ( 1 << ERTM14_PLL_SYNC_CLKA ) | ( 1<< ERTM14_PLL_SYNC_CLKB )
                             | ( 1<< ERTM14_DDS_IOUPDATE_LO) | ( 1<< ERTM14_DDS_IOUPDATE_REF);
 
+// fixme: kill PTP when doing the calibration so that it doesn't mess around with the clock phases
+
+// we need PPS output even when no PTP is there for the FPGen to work
     shw_pps_gen_init();
     shw_pps_gen_enable_output(1);
     shw_pps_gen_unmask_output(1);
 
     ertm14_set_pps_out_mode(0);
-
-
 
     int offset;
 
@@ -3031,6 +3050,7 @@ void ertm14_sync_pulse_cal(void)
 
         fine_pulse_gen_trigger( &board.dds_sync_dev, channel_mask, 0 );
 
+// measure phase below( aux0 is connected to CLK_EXT in the FPGA and configuret to monitor mode, see spll_set_aux_mode)
 #if 0
         struct spll_aux_clock_status st = spll_get_aux_status( 0 );
 
@@ -3042,6 +3062,7 @@ void ertm14_sync_pulse_cal(void)
 #endif
         while ( !fine_pulse_gen_is_triggered (&board.dds_sync_dev, channel_mask ) );
 
+// fixme: make automagic
         int c = console_getc();
         switch(c)
         {
@@ -3051,8 +3072,6 @@ void ertm14_sync_pulse_cal(void)
             default: break;
         }
     } while(!quit);
-
-    gen_gpio_out( &pin_tm_clk_aux0_lock_en, 0 );
 
     for( i = ERTM14_CLKAB_OUT_MIN_ID; i <= ERTM14_CLKAB_OUT_MAX_ID; i++ )
     {
