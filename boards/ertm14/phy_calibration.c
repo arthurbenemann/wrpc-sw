@@ -217,6 +217,8 @@ static int tx_fsm_update(struct wrc_lpdc_state *lpdc)
         {
             phy_dbg("[lpdc] can't lock the SoftPLL. This is necessary for PHY calibration to continue. Retrying...\n");
             tmo_restart( &fsm->spll_lock_timeout );
+            fsm->state = TX_SETUP_STATE_START;
+            break;
         }
 
         if( spll_check_lock( 0 ) )
