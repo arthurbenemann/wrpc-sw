@@ -39,6 +39,7 @@
 #include <hw/lpdc_mdio_regs.h>
 
 #include "dev/clock_monitor.h"
+#include "sfp.h"
 
 /* middle of clock cycle seems the safest, we observed glitches around 15000->1000 ps */
 #define LPDC_COARSE_PHASE_MIN_PS 8500    /* ps */
@@ -109,6 +110,7 @@ struct wrc_port_tx_setup_state
     timeout_t phy_lock_timeout;
     timeout_t spll_lock_timeout;
     timeout_t dmtd_timeout;
+    int tx_delta_correction;
 };
 
 struct wrc_port_rx_setup_state
@@ -237,7 +239,6 @@ static int tx_fsm_update(struct wrc_lpdc_state *lpdc)
     case TX_SETUP_STATE_RESET_PCS:
     {
         timeout_t qpll_tmo;
-        uint32_t lpc_ctrl =  LPDC_MDIO_CTRL_TX_SW_RESET | LPDC_MDIO_CTRL_RX_SW_RESET | LPDC_MDIO_CTRL_DMTD_SOURCE_TXOUTCLK | LPDC_MDIO_CTRL_QPLL_SW_RESET | LPDC_MDIO_CTRL_TXUSRPLL_RESET;
         phy_dbg("[lpdc] TX reset PCS\n");
 
         spll_enable_ptracker(0, 0);
@@ -264,7 +265,6 @@ static int tx_fsm_update(struct wrc_lpdc_state *lpdc)
         }
 
         // QPLL ok: un-reset TX path
-        lpc_ctrl &= ~LPDC_MDIO_CTRL_TX_SW_RESET;
         mdio_lpdc_clear_bits( lpdc, LPDC_MDIO_CTRL, LPDC_MDIO_CTRL_TX_SW_RESET );
         usleep(100);
         // TX path ready, enable TXUSRPLL
@@ -297,7 +297,7 @@ static int tx_fsm_update(struct wrc_lpdc_state *lpdc)
         if( !tmo_expired( &fsm->phy_lock_timeout ) )
             return 0;
 
-        spll_set_ptracker_average_samples( 0, 10 );
+        spll_set_ptracker_average_samples( 0, 10 ); // default for SPLL
         spll_enable_ptracker(0, 1);
         tmo_init( &fsm->dmtd_timeout, FSM_DMTD_TIMEOUT_MS );
         fsm->state = TX_SETUP_STATE_MEASURE_PHASE;
@@ -358,7 +358,9 @@ static int tx_fsm_update(struct wrc_lpdc_state *lpdc)
         if (within_range(phase, phase_min, phase_max, 16000))
         {
             fsm->measured_phase = phase;
-            phy_dbg("[lpdc] Fix phase = %d ps\n", fsm->measured_phase );
+            fsm->tx_delta_correction = phase - fsm->cal_saved_phase;
+            phy_dbg("[lpdc] Fix phase = %d ps, deltaTX correction = %d ps\n", fsm->measured_phase, fsm->tx_delta_correction );
+
             fsm->state = TX_SETUP_VALIDATE;
         }
         else
@@ -764,6 +766,9 @@ s                timer_delay_ms(2000);
             ctrl |= LPDC_MDIO_CTRL_TX_ENABLE;
 
             mdio_lpdc_write( lpdc, LPDC_MDIO_CTRL, ctrl );
+
+            sfp_info.sfp_params.dRx = 1000 + 0;
+            sfp_info.sfp_params.dTx = 1000 + fsm_tx->tx_delta_correction;
 
 	        ep_pcs_write(lpdc->endpoint,  EP_MDIO_MCR, EP_MDIO_MCR_SPEED1000 | EP_MDIO_MCR_FULLDPLX | EP_MDIO_MCR_ANENABLE | EP_MDIO_MCR_ANRESTART  );
             fsm->state = RX_SETUP_DONE;
