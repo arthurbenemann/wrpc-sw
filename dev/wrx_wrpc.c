@@ -5,6 +5,7 @@
 #include "sfp.h"
 #include <string.h>
 #include <ppsi/ppsi.h>
+#include "shell.h"
 #include <pps_gen.h>
 #include "wrx_wrpc.h"
 
@@ -26,8 +27,8 @@ static volatile Wrx * _wrx = (volatile Wrx *)(WRX_BASE + WRX_OFFSET);
 // call at initiaization time.
 void wrxInit(uint8_t mac_addr[])
 {
-	  _wrx->magic = WRX_MAGIC;
-	  _wrx->ver = WRX_VERSION;
+	_wrx->magic = WRX_MAGIC;
+	_wrx->ver = WRX_VERSION;
     _wrx->info.status = 0;
 
     // 
@@ -43,6 +44,20 @@ void wrxInit(uint8_t mac_addr[])
         _wrx->info.sState = WRX_WR_Uninitialized;
 
     }
+
+#ifdef BROADCAST
+#ifdef      BROADCAST_NODE
+    _wrx->info.macType = WR_MAC_BC_NODE;
+#else
+#ifdef      BROADCASE_BASE
+    _wrx->info.macType = WR_MAC_BC_BASE;
+#else
+    _wrx->info.macType = WR_MAC_BC_NODE;
+#endif
+#endif
+#else
+    _wrx->info.macType = WR_MAC_STANDARD;
+#endif    
 }
 
 
@@ -194,6 +209,10 @@ int wrxExecute(void) {
         //printf("Request to set threhsold index %d to %d\n",
             //cmd->params.threshold.index, cmd->params.threshold.value);
         sfp_a2_write_u16(cmd->params.threshold.index, cmd->params.threshold.value);
+        break;
+    case WRX_COMMAND_EXEC_CMD:
+        // simply pass it on
+        shell_exec(cmd->params.cmd);
         break;
     }
     // reset command
