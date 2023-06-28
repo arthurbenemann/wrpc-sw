@@ -12,4 +12,8 @@ int uart_write_string(const char *s);
 int puts(const char *s);
 int uart_read_byte(void);
 
+// redirection required for executin shell commands.
+typedef void (*uart_out)(const char *);
+int uart_redirect_stout(uart_out redirect);
+
 #endif

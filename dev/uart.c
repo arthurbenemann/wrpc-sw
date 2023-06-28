@@ -19,6 +19,8 @@
 
 volatile struct UART_WB *uart;
 
+static uart_out _redirect;
+
 void uart_init_hw()
 {
 	uart = (volatile struct UART_WB *)BASE_UART;
@@ -27,6 +29,11 @@ void uart_init_hw()
 
 void uart_write_byte(int b)
 {
+	if (_redirect) {
+		_redirect(b);
+		return;
+	}
+	
 	if (b == '\n')
 		uart_write_byte('\r');
 	while (uart->SR & UART_SR_TX_BUSY)
@@ -53,6 +60,11 @@ int uart_read_byte(void)
 		return -1;
 
 	return uart->RDR & 0xff;
+}
+
+int uart_redirect_stout(uart_out redirect)
+{
+	_redirect = redirect;
 }
 
 int puts(const char *s)

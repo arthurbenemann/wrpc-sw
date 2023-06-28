@@ -5,6 +5,7 @@
 #include "sfp.h"
 #include <string.h>
 #include <ppsi/ppsi.h>
+#include "uart.h"
 #include "shell.h"
 #include <pps_gen.h>
 #include "wrx_wrpc.h"
@@ -21,6 +22,28 @@ extern struct pp_instance ppi_static;
 
 /* Map structure at memory location */
 static volatile Wrx * _wrx = (volatile Wrx *)(WRX_BASE + WRX_OFFSET);
+
+
+static int _outPos = 0;
+
+static void redirect_to_wrx(const char * c)
+{
+    if (_outPos >= WR_OUT_MAX_LEN - 1) return;
+    _wrx->info.cmdreply.cmdResponse.out[_outPos++] = c;
+    
+}
+
+static void start_wrx_redirect()
+{
+    uart_redirect_stout(redirect_to_wrx);
+}
+
+static void stop_wrx_redirect()
+{
+    uart_redirect_stout(NULL);
+    _wrx->info.cmdreply.cmdResponse.out[_outPos] = '\0';
+    _outPos = 0;
+}
 
 
 // Initialize WhiteRabbit Exchange 
@@ -212,7 +235,9 @@ int wrxExecute(void) {
         break;
     case WRX_COMMAND_EXEC_CMD:
         // simply pass it on
-        shell_exec(cmd->params.cmd);
+        start_wrx_redirect();
+        info->cmdreply.cmdResponse.rv = shell_exec(cmd->params.cmd);
+        stop_wrx_redirect();
         break;
     }
     // reset command
