@@ -236,12 +236,13 @@ int wrxExecute(void) {
         // simply pass it on
         start_wrx_redirect();
         info->cmdreply.cmdResponse.rv = shell_exec(cmd->params.cmd);
+        info->cmdcode = WRX_COMMAND_EXEC_CMD;
         stop_wrx_redirect();
         break;
     default:
 	    pp_printf("Received unknown WRX command %02x\n", cmd->code); 
         cmd->code = WRX_COMMAND_NONE;
-        return 0;;
+        return 0;
     }
     // reset command
     cmd->code = WRX_COMMAND_NONE;
