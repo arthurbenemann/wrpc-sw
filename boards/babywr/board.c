@@ -55,6 +55,9 @@ static spll_gain_schedule_t spll_main_ocxo_gain_sched;
 #define SIT5359_I2C_ADDR_A0_0 0x62
 #define SIT5359_I2C_ADDR_A0_1 0x6A
 
+#define DAC_HALF_SCALE (1<<(BOARD_SPLL_DAC_BITS - 1))
+#define DAC_FULL_SCALE (1<<(BOARD_SPLL_DAC_BITS))
+
 struct
 {
     struct gpio_device gpio_aux;
@@ -143,20 +146,69 @@ static void sit5359_i2c_write( struct wr_sit5359_interface_device *dev, uint8_t 
     bb_i2c_put_byte( &dev->master, addr );
 
     for(i = 0; i < count; i ++)
-    {
         bb_i2c_put_byte( &dev->master, data[i] );
-    }
 
     bb_i2c_stop( &dev->master );
 }
 
 static int sit5359_dev_init( struct wr_sit5359_interface_device *dev )
 {
-    // Enable SPLL and Osc Output Enable
+    // Enable SPLL and Osc Output Enable (PartNo option "I": hardware OE via pin 1)
     // I2C bus freqency = 1/(4*(30+1)*16ns) = 504 KHz
     writel( SIT5359_CR_SPLL_EN | SIT5359_CR_OSC_OE | SIT5359_CR_CLK_DIV_W(30) | SIT5359_CR_I2C_ADDR_W ( ( dev->i2c_addr << 1 ) ), dev->base_addr + SIT5359_REG_CR );
 
     return 0;
+}
+
+int conv_twos_compl (int val) {
+    if (val < DAC_HALF_SCALE)
+        return (DAC_FULL_SCALE - (~(val - DAC_HALF_SCALE) + 1));
+    else
+        return(val - DAC_HALF_SCALE);
+}
+
+int regs2dac (uint8_t *regs)
+{
+    int dac_twos = (((regs[2] & 0x03) << 14) | ((regs[3] & 0xFF) << 6) | ((regs[0] & 0xFC) >> 2));
+    return conv_twos_compl(dac_twos);
+}
+
+void dac2regs (uint32_t dac, uint8_t * regs)
+{
+    int dac_twos = conv_twos_compl(dac);
+    const char SITIME_OE = 0x04;            // bit 2 of register regs[2] = bit 10 of SiTime address 0x01
+
+    regs[0] = (dac_twos & 0x003f) << 2;     // SiT5339 Reg 0x00 15:8 => DFC-LSW[15:8]
+    regs[1] = 0x00;                         // SiT5339 Reg 0x00 7:0  => DFC-LSW[7:0]
+    regs[2] = ((dac_twos & 0xC000) >> 14) | // SiT5339 Reg 0x01 15:8 => DFC-MSW[9:8]
+              SITIME_OE;                    // (PartNo option "I": hardware OE via pin 1)
+    regs[3] = (dac_twos & 0x3fc0) >> 6;     // SiT5339 Reg 0x01 7:0  => DFC-MSW[7:0]
+    regs[4] = 0x00;                         // SiT5339 Reg 0x02 15:8 => not used
+    regs[5] = 0x03;                         // SiT5339 Reg 0x02 7:0  => Pull Range 25 ppm
+}
+
+void read_sitime (void)
+{
+    uint8_t regs[6];
+
+    // read back all SiT5359_refclk registers (6 bytes)
+    sit5359_read(&board.sit5359_refclk, 0x00, regs, 6 );
+    board_dbg("SiT5359 RefClk Regs: %02x:%02x:%02x:%02x:%02x:%02x DAC: %d\n",regs[0],regs[1],regs[2],regs[3],regs[4],regs[5],regs2dac(regs));
+    // read back all SiT5359_dmtd registers (6 bytes)
+    sit5359_read(&board.sit5359_dmtd, 0x00, regs, 6 );
+    board_dbg("SiT5359 DMTD Regs:   %02x:%02x:%02x:%02x:%02x:%02x DAC: %d\n",regs[0],regs[1],regs[2],regs[3],regs[4],regs[5],regs2dac(regs));
+}
+
+void write_sitime (int dev, int val)
+{
+    uint8_t regs[6];
+
+    dac2regs(val, regs);
+
+    if (dev == 0)
+        sit5359_i2c_write(&board.sit5359_refclk, 0x00, regs, 6 );
+    else
+        sit5359_i2c_write(&board.sit5359_dmtd, 0x00, regs, 6 );
 }
 
 static void babywr_spll_setup(void)
@@ -246,21 +298,13 @@ int wrc_board_init()
     sit5359_dev_init(&board.sit5359_refclk);
     sit5359_dev_init(&board.sit5359_dmtd);
 
-    regs[0] = 0x00; // SiT5339 Reg 0x00 15:8 => DFC-LSW[15:8]
-    regs[1] = 0x00; // SiT5339 Reg 0x00 7:0  => DFC-LSW[7:0]
-    regs[2] = 0x00; // SiT5339 Reg 0x01 15:8 => DFC-MSW[9:8] (PartNo option "I": hardware OE via pin 1)
-    regs[3] = 0x00; // SiT5339 Reg 0x01 7:0  => DFC-MSW[7:0]
-    regs[4] = 0x00; // SiT5339 Reg 0x02 15:8 => not used
-    regs[5] = 0x03; // SiT5339 Reg 0x02 7:0  => Pull Range 25 ppm
+    // initialize registers
+    dac2regs(DAC_HALF_SCALE, regs);
     sit5359_i2c_write(&board.sit5359_refclk, 0x00, regs, 6 );
     sit5359_i2c_write(&board.sit5359_dmtd, 0x00, regs, 6 );
 
-    // read back all SiT5359_refclk registers (6 bytes)
-    sit5359_read(&board.sit5359_refclk, 0x00, regs, 6 );
-    board_dbg("SiT5359 RefClk Regs: %x:%x:%x:%x:%x:%x\n",regs[0],regs[1],regs[2],regs[3],regs[4],regs[5]);
-    // read back all SiT5359_dmtd registers (6 bytes)
-    sit5359_read(&board.sit5359_dmtd, 0x00, regs, 6 );
-    board_dbg("SiT5359 DMTD Regs: %x:%x:%x:%x:%x:%x\n",regs[0],regs[1],regs[2],regs[3],regs[4],regs[5]);
+    // read back the SiT5359 oscillators
+    read_sitime();
 
     uint8_t mac_addr[6];
     /*
