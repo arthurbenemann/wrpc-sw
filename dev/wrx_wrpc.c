@@ -162,7 +162,6 @@ int wrxExecute(void) {
     switch (cmd->code)
     {
     case WRX_COMMAND_NONE:
-    default:
         return 0;
     case WRX_COMMAND_GET_SFP_VENDOR_SN:
         // get Serial number
@@ -239,6 +238,10 @@ int wrxExecute(void) {
         info->cmdreply.cmdResponse.rv = shell_exec(cmd->params.cmd);
         stop_wrx_redirect();
         break;
+    default:
+	    pp_printf("Received unknown WRX command %02x\n", cmd->code); 
+        cmd->code = WRX_COMMAND_NONE;
+        return 0;;
     }
     // reset command
     cmd->code = WRX_COMMAND_NONE;
