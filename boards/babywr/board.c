@@ -199,76 +199,6 @@ void write_sitime (int dev, int val)
         sit5359_i2c_write(&board.sit5359_dmtd, 0x00, regs, 6 );
 }
 
-// ======================================
-// GPIO Control functions
-// ======================================
-
-int gpio_control_poll()
-{
-    static int prev_servo_state = 0;
-    static int prev_link_state = 0;
-    int link_state = 0;
-
-    uint8_t io_stat;
-    uint64_t sec;
-    uint32_t nsec;
-
-    extern struct pp_instance ppi_static;
-    struct pp_instance *ppi = &ppi_static;
-//    struct wr_servo_state *s =
-//			&((struct wr_data *)ppi->ext_data)->servo_state;
-    int curr_servo_state = ppi->servo->state;
-
-    if (prev_servo_state != WRH_TRACK_PHASE && curr_servo_state == WRH_TRACK_PHASE) {
-        shw_pps_gen_get_time(&sec, &nsec);
-        board_dbg("TRACK_PHASE: '%s'\n",format_time(sec, TIME_FORMAT_LEGACY));
-        io_stat = pca9554_read_reg(&board.gpio_main_board, PCA9554_REG_IN);
-        pca9554_write_reg(&board.gpio_main_board, PCA9554_REG_OUT, io_stat | MAIN_BOARD_LED_0);
-    }
-    if (prev_servo_state == WRH_TRACK_PHASE && curr_servo_state != WRH_TRACK_PHASE) {
-        shw_pps_gen_get_time(&sec, &nsec);
-        board_dbg("LOST TRACK_PHASE: '%s'\n",format_time(sec, TIME_FORMAT_LEGACY));
-        io_stat = pca9554_read_reg(&board.gpio_main_board, PCA9554_REG_IN);
-        pca9554_write_reg(&board.gpio_main_board, PCA9554_REG_OUT, io_stat & ~MAIN_BOARD_LED_0);
-    }
-
-    link_state = ep_link_up( &wrc_endpoint_dev, NULL);
-    if (!prev_link_state && link_state) {
-        shw_pps_gen_get_time(&sec, &nsec);
-        board_dbg("Link up: '%s'\n",format_time(sec, TIME_FORMAT_LEGACY));
-        io_stat = pca9554_read_reg(&board.gpio_main_board, PCA9554_REG_IN);
-        pca9554_write_reg(&board.gpio_main_board, PCA9554_REG_OUT, io_stat | MAIN_BOARD_LED_1);
-	} else if (prev_link_state && !link_state) {
-        shw_pps_gen_get_time(&sec, &nsec);
-        board_dbg("Link down: '%s'\n",format_time(sec, TIME_FORMAT_LEGACY));
-        io_stat = pca9554_read_reg(&board.gpio_main_board, PCA9554_REG_IN);
-        pca9554_write_reg(&board.gpio_main_board, PCA9554_REG_OUT, io_stat & ~MAIN_BOARD_LED_1);
-	}
-
-    prev_servo_state = curr_servo_state;
-    prev_link_state = link_state;
-
-    return 0;
-}
-
-void gpio_control_init()
-{
-    int i;
-    uint8_t io_stat;
-    board_dbg("Initializing GPIO control...\n");
-    pca9554_write_reg(&board.gpio_main_board, PCA9554_REG_CONFIG, 0x00);  // Configure all IO as output
-    pca9554_write_reg(&board.gpio_main_board, PCA9554_REG_OUT, 0x00);     // LEDs, SEL_GROUP_0/1 and SEL_IRIG_B all '0'
-
-    for( i = 0 ; i < 5; i++ )
-        {
-        io_stat = pca9554_read_reg(&board.gpio_main_board, PCA9554_REG_OUT);
-        pca9554_write_reg(&board.gpio_main_board, PCA9554_REG_OUT, io_stat | MAIN_BOARD_LED_3);
-        timer_delay_ms(100);
-        pca9554_write_reg(&board.gpio_main_board, PCA9554_REG_OUT, io_stat & ~MAIN_BOARD_LED_3);
-        timer_delay_ms(100);
-    }
-}
-
 static void babywr_spll_setup(void)
 {
 
@@ -362,12 +292,8 @@ int wrc_board_init()
     sit5359_dev_init(&board.sit5359_refclk);
     sit5359_dev_init(&board.sit5359_dmtd);
 
-    regs[0] = 0x00; // SiT5339 Reg 0x00 15:8 => DFC-LSW[15:8]
-    regs[1] = 0x00; // SiT5339 Reg 0x00 7:0  => DFC-LSW[7:0]
-    regs[2] = 0x00; // SiT5339 Reg 0x01 15:8 => DFC-MSW[9:8] (PartNo option "I": hardware OE via pin 1)
-    regs[3] = 0x00; // SiT5339 Reg 0x01 7:0  => DFC-MSW[7:0]
-    regs[4] = 0x00; // SiT5339 Reg 0x02 15:8 => not used
-    regs[5] = 0x03; // SiT5339 Reg 0x02 7:0  => Pull Range 25 ppm
+    // initialize registers
+    dac2regs(DAC_HALF_SCALE, regs);
     sit5359_i2c_write(&board.sit5359_refclk, 0x00, regs, 6 );
     sit5359_i2c_write(&board.sit5359_dmtd, 0x00, regs, 6 );
 
