@@ -307,20 +307,14 @@ int mpll_update(struct spll_main_state *s, int tag, int source)
 
 #ifndef WITH_SEQUENCING
 
-		/* Hack: the PLL is locked, so the tags are close to
-		   each other. But when we start phase shifting, after
-		   reaching full clock period, one of the reference
-		   tags will flip before the other, causing a suddent
-		   2**HPLL_N jump in the error.  So, once the PLL is
-		   locked, we just mask out everything above
-		   2**HPLL_N.
-
-		   Proper solution: tag sequence numbers */
-		if (s->locked) {
-			err &= (1 << HPLL_N) - 1;
-			if (err & (1 << (HPLL_N - 1)))
-				err |= ~((1 << HPLL_N) - 1);
-		}
+		/* When phase shifting, after reaching
+		   full clock period, one of the reference tags
+		   will flip before the other, causing a suddent
+		   2**HPLL_N jump in the error.
+		   We just mask out everything above 2**HPLL_N. */
+		err &= (1 << HPLL_N) - 1;
+		if (err & (1 << (HPLL_N - 1)))
+			err |= ~((1 << HPLL_N) - 1);
 
 #endif
 
