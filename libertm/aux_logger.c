@@ -28,14 +28,82 @@ static int32_t signext32(uint32_t in, int bit)
 		return in;
 }
 
+
+
+static const char *dbg_source_to_string(int src)
+{
+	switch (src)
+	{
+	case SPLL_DBG_SRC_HELPER:
+		return "helper";
+	case SPLL_DBG_SRC_MAIN:
+		return "main";
+	case SPLL_DBG_SRC_AUX(0):
+		return "aux0";
+	case SPLL_DBG_SRC_AUX(1):
+		return "aux1";
+	case SPLL_DBG_SRC_AUX(2):
+		return "aux2";
+	case SPLL_DBG_SRC_AUX(3):
+		return "aux3";
+	case SPLL_DBG_SRC_EXT:
+		return "ext";
+	default:
+		return "<unknown?>";
+	}
+}
+
+static const char *dbg_signal_to_string(int src)
+{
+	switch (src)
+	{
+	case SPLL_DBG_SIGNAL_ERR:
+		return "err";
+	case SPLL_DBG_SIGNAL_Y:
+		return "y";
+	case SPLL_DBG_SIGNAL_PERIOD:
+		return "period";
+	case SPLL_DBG_SIGNAL_REF:
+		return "ref";
+	case SPLL_DBG_SIGNAL_TAG:
+		return "tag";
+	case SPLL_DBG_SIGNAL_SAMPLE_ID:
+		return "sample";
+	case SPLL_DBG_SIGNAL_TIME_MS:
+		return "time_ms";
+	case SPLL_DBG_SIGNAL_PHASE_CURRENT:
+		return "phase_current";
+	case SPLL_DBG_SIGNAL_PHASE_TARGET:
+		return "phase_target";
+	default:
+		return "<unknown?>";
+	}
+}
+
+static const char *dbg_event_to_string(int src)
+{
+	switch (src)
+	{
+	case SPLL_DBG_EVT_GAIN_SWITCH:
+		return "gain-switch";
+	case SPLL_DBG_EVT_LOCK_ACQUIRED:
+		return "lock-acquired";
+	case SPLL_DBG_EVT_LOCK_LOSS:
+		return "lock-lost";
+	case SPLL_DBG_EVT_START:
+		return "start";
+	default:
+		return "<unknown?>";
+	}
+}
+
+
 static int prev_src = -1;
 
 int n_samples = 3000;
 int total_samples = 0;
-FILE *f_out;
-static int h_y, h_err;
 
-int spll_dump_debug_data(const uint32_t *buf, size_t size)
+int spll_dump_debug_data(FILE *f_out, const uint32_t *buf, size_t size)
 {
 	while (size--)
 	{
@@ -57,45 +125,25 @@ int spll_dump_debug_data(const uint32_t *buf, size_t size)
 
 		if (prev_src != src)
 		{
-			//printf("%s ", dbg_source_to_string(src));
+			fprintf(f_out, "%s ", dbg_source_to_string(src));
 			prev_src = src;
 		}
 
 		if (sig == SPLL_DBG_SIGNAL_EVENT)
 		{
-			//printf(" event=%s", dbg_event_to_string(value));
+			fprintf(f_out, " event=%s", dbg_event_to_string(value));
 		}
 
-		if( sig == SPLL_DBG_SIGNAL_ERR && src == SPLL_DBG_SRC_HELPER )
-		{
-			h_err = value;
-			//printf("H %d s %d\n", h_err, size);
-		}
-		if( sig == SPLL_DBG_SIGNAL_Y && src == SPLL_DBG_SRC_HELPER )
-		{
-			h_y = value;
-		}
-			
-		
-		//printf("%s=%d ", dbg_signal_to_string(sig),
-		//	   value);
+		fprintf(f_out, "%s=%d ", dbg_signal_to_string(sig),
+			   value);
 
 		if (SPLL_DBG_IS_LAST_RECORD(x))
 		{
-			//printf("\n");
-			fprintf(f_out, "%d %d\n", h_err, h_y);
-			//printf( "%d %d\n", h_err, h_y );
+			fprintf(f_out, "\n");
+			prev_src = -1;
 			total_samples++;
-
-			if( total_samples % 200 == 0 )
-			{
-				fprintf(stdout,"%d/%d samples           \r", total_samples, n_samples);
-				fflush(stdout);
-			}
-
-			if(total_samples == n_samples)
+			if(total_samples > n_samples)
 				return -1;
-			//prev_src = -1;
 		}
 	}
 
@@ -103,7 +151,8 @@ int spll_dump_debug_data(const uint32_t *buf, size_t size)
 }
 
 
-void spll_readout_ertm14( struct ertm_status *handle, int undersample )
+
+void spll_readout_ertm14( struct ertm_status *handle, FILE* f_out, int undersample )
 {
 
 	int r = ertm_configure_spll_debug_dump(handle, 1, undersample);
@@ -118,7 +167,7 @@ void spll_readout_ertm14( struct ertm_status *handle, int undersample )
 		if (r >= 0)
 		{
 			//printf("read %llu\n", buf_size);
-			if( spll_dump_debug_data(buf, buf_size) < 0)
+			if( spll_dump_debug_data(f_out, buf, buf_size) < 0)
 				break;
 		}
 	}
@@ -143,79 +192,21 @@ void spll_readout_ertm14( struct ertm_status *handle, int undersample )
 	fprintf(stderr, "ertm14: stopping SPLL logging...\n");
 }
 
-#if 0
-void spll_readout_direct(struct board* board )
+void linspace( double start, double stop, int n, double *out )
 {
-
-	// purge the SPLL debug FIFO
-	int dummy;
-	for(;;)
-	{
-		uint32_t r = board->readl(board, OFFSET_SOFTPLL + offsetof( struct SPLL_WB, DFR_HOST_CSR ) );
-		if (r & SPLL_DFR_HOST_CSR_EMPTY)
-			break;
-
-		dummy = board->readl(board, OFFSET_SOFTPLL + offsetof( struct SPLL_WB, DFR_HOST_R0 ) );
-		(void) dummy;
-	}
-
-
-	for (;;)
-	{
-		uint32_t buf[16384];
-		size_t buf_size = 16384, cnt = 0;
-		const size_t max_record_size = 256;
-		int got_a_full_record = 1;
-
-		while( cnt < buf_size - max_record_size )
-		{
-			uint32_t fifo_sr = board->readl(board, OFFSET_SOFTPLL + offsetof( struct SPLL_WB, DFR_HOST_CSR ) );
-
-			if( got_a_full_record && ( fifo_sr & SPLL_DFR_HOST_CSR_EMPTY ) )
-				break;
-
-			uint32_t r = board->readl(board, OFFSET_SOFTPLL + offsetof( struct SPLL_WB, DFR_HOST_R0 ) );
-			buf[cnt++] = r;
-			got_a_full_record = SPLL_DBG_IS_LAST_RECORD(r) ? 1 : 0;
-		}
-
-		if( cnt > 0 )
-			spll_dump_debug_data(buf, cnt);
-	}
-}
-#endif
-
-
-
-int main(int argc, char *argv[])
-{
-	static char usb[] = "/dev/ttyUSB2";
-	struct ertm_status *handle = ertm_init(NULL);
-
-	int kp_gains[128];
-	int ki_gains[128];
-	int n_gains = 20;
+	double step = (stop - start) / (double)(n - 1);
 
 	int i;
-
-	for(i=0;i<n_gains;i++)
+	for(i=0;i<n;i++)
 	{
-		kp_gains[i] = -(100 + i*500);
-		ki_gains[i] = -2;
+		out[i] = start + (stop-start) * (double) i / (double) n;
+		printf("%d: %.0f\n",i,out[i]);
 	}
+}
 
-	if (handle == NULL) {
-		fprintf(stderr, "could not open %s\n", usb);
-		exit(1);
-	}
-
-	ertm_configure_spll_debug_dump(handle, 0, 0);
-
-	ertm_execute_shell_command( handle, "ptp stop");
-	usleep(100000);
-		
-
-	while(1)
+int wait_wdiag_bits( struct ertm_status *handle, uint32_t mask, int timeout_secs )
+{
+	for(;;)
 	{
 		if( ertm_wr_diags(handle, &handle->state->wr_status) < 0 )
 		{
@@ -224,40 +215,88 @@ int main(int argc, char *argv[])
 			continue;
 		}
 
-		int link_up = handle->state->wr_status.WDIAG_PSTAT & WRC_DIAGS_WDIAG_PSTAT_LINK;
+		uint32_t value = handle->state->wr_status.WDIAG_PSTAT & mask;
 
-		printf("link_up: %d\n", link_up);
+		printf("mask: %x masked %x\n", mask, value);
 
-		if(link_up)
+		if(value)
 			break;
 
 		sleep(1);
-	}
-
-	ertm_execute_shell_command( handle, "pll gain -1 0 -150 -2");
-	usleep(100000);
-
-for(i=0;i<n_gains;i++){
-		char cmd[64],fname[64];
-		printf("Try kp=%d,ki=%d\n", kp_gains[i], ki_gains[i] );
-		sprintf(cmd,"pll gain -1 0 %d %d\n", kp_gains[i], ki_gains[i]);
-		ertm_execute_shell_command( handle, cmd);
-		usleep(100000);
-		ertm_execute_shell_command( handle, "pll init 3 0 0");
-		sleep(10);
-		total_samples = 0;
-		sprintf(fname,"spll-helper-kp-%d.dat", kp_gains[i]);
-		f_out=fopen(fname,"wb");
-		spll_readout_ertm14( handle, 1 );
-		fclose(f_out);
-		fflush(stdout);
+		timeout_secs--;
+		if(!timeout_secs)
+			return -ETIMEDOUT;
 	}
 
 	return 0;
 }
 
-#if 0
+main()
+{
+	static char usb[] = "/dev/ttyUSB2";
+	struct ertm_status *handle = ertm_init(NULL);
 
+	const int n_ki_gains = 10;
+	const int n_kp_gains = 10;
+	double kp_gains[n_kp_gains];
+	double ki_gains[n_ki_gains];
+
+	linspace(2000, 4000 * 16, n_kp_gains, kp_gains );
+	linspace(10, 200, n_ki_gains, ki_gains );
+	
+	if (handle == NULL) {
+		fprintf(stderr, "could not open %s\n", usb);
+		exit(1);
+	}
+
+	ertm_configure_spll_debug_dump(handle, 0, 0);
+
+		
+	if( wait_wdiag_bits( handle, WRC_DIAGS_WDIAG_PSTAT_LINK, 100 ) < 0 )
+	{
+		printf("Link up timeout...\n");
+		return -1;
+	}
+
+	ertm_execute_shell_command( handle, "ptp stop");
+	usleep(100000);
+
+
+	int ii, pp;
+
+	for(ii=0;ii<n_ki_gains;ii++)
+	{
+	for(pp=0;pp<n_kp_gains;pp++)
+	{
+		char cmd[64],fname[64];
+		printf("Try kp=%d,ki=%d\n", -kp_gains[pp], -ki_gains[ii] );
+		sprintf(cmd,"pll gain 0 0 %d %d\n", -kp_gains[pp], -ki_gains[ii] );
+		ertm_execute_shell_command( handle, cmd);
+		usleep(100000);
+		ertm_execute_shell_command( handle, "pll init 3 0 0");
+		usleep(100000);
+
+		if( wait_wdiag_bits( handle, WRC_DIAGS_WDIAG_PSTAT_LINK, 20 ) < 0 )
+		{
+			printf("PLL lock timeout.\n");
+			continue;
+		}
+
+		total_samples = 0;
+		sprintf(fname,"spll-helper-kp-%d-ki-%d.dat", kp_gains[pp],ki_gains[ii]);
+		FILE *f_out=fopen(fname,"wb");
+		fprintf(f_out,"main kp=%d ki=%n\n", -kp_gains[pp],-ki_gains[ii]);
+		spll_readout_ertm14( handle, f_out, 3 );
+		fclose(f_out);
+		fflush(stdout);
+	}
+	}
+
+	return 0;
+}
+
+
+#if 0
 	int timeout = 120;
 	if( argc >= 2 )
 		timeout = atoi(argv[1]);

@@ -21,7 +21,7 @@ void ptracker_init(struct spll_ptracker_state *s, int id, int num_avgs)
 	s->acc = 0;
 	s->avg_count = 0;
 	s->enabled = 0;
-
+	s->dbg_channel = -1;
 }
 
 void ptracker_start(struct spll_ptracker_state *s)
@@ -65,6 +65,10 @@ void ptrackers_update(struct spll_ptracker_state *ptrackers, int tag,
 #endif
 	register int index = delta >> (HPLL_N - 2);
 
+	if( s->dbg_channel >= 0 )
+	{
+		spll_debug( SPLL_DBG_SRC_AUX(s->dbg_channel), SPLL_DBG_SIGNAL_ERR, tag_ref-tag, 1);
+	}
 
 	if (s->avg_count == 0) {
 		/* hack: two since PTRACK_WRAP_LO/HI are in 1/4 and 3/4 of the scale,

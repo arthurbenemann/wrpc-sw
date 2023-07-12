@@ -94,7 +94,10 @@ static inline void update_ptrackers(struct softpll_state *s, int tag_value, int 
 			continue;
 
 		if( tag_source == spll_n_chan_ref + i + 1)
+		{
+			aux->pll.tracker.dbg_channel = i;
 			ptrackers_update( &aux->pll.tracker, tag_value, 0 );
+		}
 	}
 }
 
@@ -330,9 +333,9 @@ void spll_init(int mode, int slave_ref_channel, int flags)
 	SPLL->ECCR = 0;
 	SPLL->OCCR = 0;
 #ifndef CONFIG_SPLL_DEGLITCH_THR
-#define CONFIG_SPLL_DEGLITCH_THR 300
+#define CONFIG_SPLL_DEGLITCH_THR 1000
 #endif
-	SPLL->DEGLITCH_THR = 300; //CONFIG_SPLL_DEGLITCH_THR;
+	SPLL->DEGLITCH_THR = CONFIG_SPLL_DEGLITCH_THR;
 
 	PPSG->CR |= PPSG_CR_CNT_EN;
 
