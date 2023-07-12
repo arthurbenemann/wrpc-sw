@@ -33,7 +33,7 @@
 #PLOT_SOURCES = { "helper", "main" }
 #PLOT_SIGNALS = { "y", "err", "phase_current", "phase_target", "dtag", "dref" }
 PLOT_SOURCES = { "main" }
-PLOT_SIGNALS = { "err", "y", "dtag" }
+PLOT_SIGNALS = { "err", "y" }
 PLOT_EVENTS = True
 
 import sys
@@ -43,16 +43,6 @@ import numpy as np
 import threading
 import logging
 import copy
-
-traces = {
-    "helper" : None,
-    "main" : None,
-    "ext" : None,
-    "aux0" : None,
-    "aux1" : None,
-    "aux2" : None,
-    "aux3" : None
-};
 
 class SPLLTrace:
     def __init__(self):
@@ -98,7 +88,37 @@ class SPLLTrace:
         self.data["dref"] = np.cumsum(dref)
         self.data["dtag"] = np.cumsum(dtag)
         print("calcdiff ", len(self.data["dref"]))
-        
+
+def load_trace_file(filename):
+    nsamples = 0
+    f=open(filename,"r")
+    traces = {
+    "helper" : None,
+    "main" : None,
+    "ext" : None,
+    "aux0" : None,
+    "aux1" : None,
+    "aux2" : None,
+    "aux3" : None
+    };
+
+    for l in f:
+        print(l)
+        l = l.rstrip('\n').rstrip('\r').lstrip(' ').lstrip('\t').rstrip(' ')
+        t = l.split(' ')
+        if(len(t) < 1):
+            continue
+        src_id = t[0]
+        if src_id in traces:
+            if traces[src_id] == None:
+                traces[src_id] = SPLLTrace()
+
+            traces[src_id].parse( t[1:] )
+        nsamples += 1
+
+    print("loaded %d samples" % nsamples)
+    return traces
+
 def acquisition_thread():
     logging.info("ACQ Thread: starting")
     nsamples = 0
@@ -144,14 +164,36 @@ def animated_refresh(args):
             plt.legend()
 
 
-acq_thread = threading.Thread( target=acquisition_thread )
-acq_thread.start()
+#acq_thread = threading.Thread( target=acquisition_thread )
+#acq_thread.start()
 
-fig, ax = plt.subplots( 1, 1 )
-anim = animation.FuncAnimation(fig, animated_refresh, interval=5000)
-plt.title("SoftPLL debug")
-plt.xlabel("Time [samples]")
-plt.ylabel("Trace value [arbitrary units]")
+#fig, ax = plt.subplots( 1, 1 )
+#anim = animation.FuncAnimation(fig, animated_refresh, interval=300000)
+#plt.title("SoftPLL debug")
+#plt.xlabel("Time [samples]")
+#plt.ylabel("Trace value [arbitrary units]")
+#plt.show()
+
+#acq_thread.join()
+
+#trc=load_trace_file("spll-data-helper-ref-local-kp-4000")
+#plt.plot(trc["helper"].data["err"],label="phase error [kp=4000, helper, ref=OCXO]", alpha=0.6);
+trc=load_trace_file("/mnt/ssh/repos/wrpc-sw/spll-log-main-lowgain2-jul11")
+plt.plot(trc["main"].data["err"],label="phase error [main]", alpha=0.6);
+plt.plot(trc["main"].data["y"],label="y [main]", alpha=0.6);
+#trc=load_trace_file("spll-data-helper-ref-local-kp-500")
+#plt.plot(trc["helper"].data["err"],label="phase error [kp=500, helper, ref=OCXO]", alpha=0.6);
+#trc=load_trace_file("spll-data-helper-ref-local-kp-150")
+#plt.plot(trc["helper"].data["err"],label="phase error [kp=150, helper, ref=OCXO]", alpha=0.6);
+#trc=load_trace_file("spll-data-helper-ref-local-kp-50")
+#plt.plot(trc["helper"].data["err"],label="phase error [kp=50, helper, ref=OCXO]");
+
+#plt.plot(trc["helper"].data["y"] - np.average(trc["helper"].data["y"]),label="dac [helper, ref=OCXO]");
+#trc2=load_trace_file("spll-data-helper-ref-slave-nojtag")
+#plt.plot(trc2["helper"].data["err"],label="phase error [helper, ref=slave]");
+#plt.plot(trc2["helper"].data["y"],label="dac [helper, ref=slave]");
+plt.legend()
+plt.xlabel("samples")
+plt.ylabel("ddmtd raw value")
+plt.grid()
 plt.show()
-
-acq_thread.join()

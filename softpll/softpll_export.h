@@ -61,6 +61,9 @@
 
 #define SPLL_STATS_VER 3
 
+#define SPLL_LOOP_HELPER -1
+#define SPLL_LOOP_MAIN 0
+
 /* info reported through .stat section */
 /* due to endiannes problem strings has to be 4 bytes alligned */
 struct spll_stats {

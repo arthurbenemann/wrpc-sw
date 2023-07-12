@@ -1360,6 +1360,20 @@ int ertm_configure_spll_debug_dump(struct ertm_status *handle, int enabled, int 
 	return 0;
 }
 
+int ertm_execute_shell_command(struct ertm_status *handle, char *cmd)
+{
+	struct ertm14_shell_command request;
+	
+	strncpy( request.cmd, cmd, 64 );
+
+	int res = ertm_proto_cycle(handle, ertm14_exec_shell_command, &request, NULL);
+	if (res < 0)
+		return res;
+
+	return 0;
+}
+
+
 int ertm_read_spll_debug_data( struct ertm_status *handle, uint32_t *buf, size_t *buf_size )
 {
 	int res = 0, i;

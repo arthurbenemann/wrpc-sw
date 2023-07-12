@@ -11,10 +11,9 @@
 
 #include "softpll_ng.h"
 
-void helper_init(struct spll_helper_state *s, int ref_channel)
+void helper_very_init( struct spll_helper_state *s )
 {
-
-	/* Phase branch PI controller */
+/* Phase branch PI controller */
 	s->pi.y_min = 5;
 	s->pi.y_max = (1 << DAC_BITS) - 5;
 #if defined(CONFIG_WR_NODE)
@@ -31,6 +30,10 @@ void helper_init(struct spll_helper_state *s, int ref_channel)
 	s->ld.threshold = 200;
 	s->ld.lock_samples = 10000;
 	s->ld.delock_samples = 100;
+}
+
+void helper_init(struct spll_helper_state *s, int ref_channel)
+{
 	s->ref_src = ref_channel;
 }
 

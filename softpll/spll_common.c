@@ -14,24 +14,21 @@
 #include <wrc.h>
 #include "softpll_ng.h"
 
-static int gen_dither( int pi_shift )
+static int gen_dither_lfsr( int pi_shift )
 {
-	static const uint32_t lcg_m = 1103515245;
-	static const uint32_t lcg_i = 12345;	
-  	static uint32_t seed = 0;
+    static uint16_t lfsr = 0xACE1u;
+    uint16_t bit;                    /* Must be 16-bit to allow bit<<15 later in the code */
 
-	seed *= lcg_m;
-	seed += lcg_i;
-	seed &= 0x7fffffffUL;
+    /* taps: 16 14 13 11; feedback polynomial: x^16 + x^14 + x^13 + x^11 + 1 */
+    bit = ((lfsr >> 0) ^ (lfsr >> 2) ^ (lfsr >> 3) ^ (lfsr >> 5)) & 1u;
+    lfsr = (lfsr >> 1) | (bit << 15);
 
-  	int d = seed & (( 1<<pi_shift) - 1);
-	if ( seed & (1<<pi_shift))
+  	int d = (uint32_t)lfsr & (( 1<<pi_shift) - 1);
+	if ( lfsr & (1<<pi_shift))
 		return -d;
 	else
 		return d;
-	
 }
-
 
 int pi_update(spll_pi_t *pi, int x)
 {
@@ -42,7 +39,7 @@ int pi_update(spll_pi_t *pi, int x)
 
 	int64_t y_preround = (i_new + (int64_t) x * pi->kp) + ( 1 << (pi->shift - 1) );
 
-	int dither = pi->dithered ? gen_dither( pi->shift ) : 0;
+	int dither = /*pi->dithered ?*/ gen_dither_lfsr( pi->shift - 1 ); // : 0;
 	y = ( (y_preround + dither) >> pi->shift) + pi->bias;
 
 	/* clamping (output has to be in <y_min, y_max>) and

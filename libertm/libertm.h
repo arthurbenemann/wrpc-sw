@@ -440,6 +440,7 @@ int ertm_get_streamers_latency_timeout(struct ertm_status *handle,
 
 int ertm_configure_spll_debug_dump(struct ertm_status *handle, int enabled, int undersample);
 int ertm_read_spll_debug_data( struct ertm_status *handle, uint32_t *buf, size_t *buf_size );
+int ertm_execute_shell_command(struct ertm_status *handle, char *cmd);
 
 #ifdef __cplusplus
 }

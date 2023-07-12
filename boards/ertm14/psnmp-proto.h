@@ -24,6 +24,7 @@
 #define	ertm14_force_measure_channels_power	0x25
 #define	ertm14_configure_spll_debug_dump	0x26
 #define	ertm14_spll_debug_data	                0x27
+#define	ertm14_exec_shell_command	            0x28
 
 static struct ertm14_protocol_op {
 	int8_t	opcode;
@@ -134,6 +135,13 @@ static struct ertm14_protocol_op {
 	.opcode = ertm14_configure_spll_debug_dump,
 	.offset1 = 4,
 	.length1 = sizeof(struct ertm14_spll_debug_dump_request),
+	.offset2 = 0,
+	.length2 = 0,
+    },
+	{
+	.opcode = ertm14_exec_shell_command,
+	.offset1 = 4,
+	.length1 = sizeof(struct ertm14_shell_command),
 	.offset2 = 0,
 	.length2 = 0,
     },

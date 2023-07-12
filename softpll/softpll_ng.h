@@ -63,6 +63,13 @@ struct spll_aux_clock_status
 	int phase;
 };
 
+struct spll_jitter_stats {
+	int hi_min, hi_max;
+	int lo_min, lo_max;
+	int peak_peak_min_ps;
+	int peak_peak_max_ps;
+};
+
 /* PUBLIC API */
 
 /* 
@@ -128,6 +135,8 @@ int spll_get_dac(int out_channel);
 
 void spll_set_gain_schedule( spll_gain_schedule_t* sch );
 
+void spll_set_pi_gain( int loop, int sched_stage, int kp, int ki );
+
 int spll_measure_frequency(int osc);
 void spll_set_ptracker_average_samples(int channel, int nsamples);
 
@@ -138,6 +147,8 @@ void spll_set_aux_mode( int channel, int mode );
 void spll_set_aux_frequency_ratio( int channel, int div_ref, int div_fb );
 
 int spll_is_ext_supported(void);
+
+int spll_measure_jitter(int channel, int n_samples, struct spll_jitter_stats *result);
 
 /*
  * Aux and main state:

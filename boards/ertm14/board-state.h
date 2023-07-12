@@ -206,6 +206,10 @@ struct ertm14_spll_debug_dump_request
 	int undersample;
 };
 
+struct ertm14_shell_command {
+	char cmd[64]; // zero-terminated cmd
+};
+
 // Must be in sync with common-uart-link.h. I don't want to include it here to prevent dependency hell, but I'm aware
 // I'm probably summoning other, hopefully less evil daemons by doing so.
 #define ERTM14_SPLL_DEBUG_DUMP_MAX_PAYLOAD 512

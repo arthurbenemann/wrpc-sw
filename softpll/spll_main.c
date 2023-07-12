@@ -69,6 +69,7 @@ void mpll_init(struct spll_main_state *s, int id_ref, int id_out)
 	}
 
 	pi_init((spll_pi_t *)&s->pi);
+	//s->pi.dithered = 1;
 	ld_init((spll_lock_det_t *)&s->ld);
 }
 
@@ -160,6 +161,7 @@ void mpll_start(struct spll_main_state *s)
 
 
 	pi_init((spll_pi_t *)&s->pi);
+	//s->pi.dithered = 1;
 	ld_init((spll_lock_det_t *)&s->ld);
 
 	spll_enable_tagger(s->id_ref, 1);

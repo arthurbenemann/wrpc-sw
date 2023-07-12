@@ -61,6 +61,7 @@
 #include "storage.h"
 #include "net.h"
 #include "wrpc.h"
+#include "shell.h"
 
 #include "hw/wr_streamers.h"
 #include "wrc-event.h"
@@ -582,7 +583,7 @@ static void ertm14_spll_setup(void)
 /* configure a suitable PI gain schedule for the SoftPLL: */
     spll_gain_schedule_t* gs=  &spll_main_ocxo_gain_sched;
 
-    gs->n_stages = 1;
+    gs->n_stages = 2;
 
 /* we start with ~100 Hz bandwidth to make it lock reasonably fast */
     gs->stages[0].kp = -4000 * 16;
@@ -591,7 +592,7 @@ static void ertm14_spll_setup(void)
     gs->stages[0].shift = 16;
 
 /* once it's locked, the loop bandwidth is switched to ~0.1 Hz to filter out WR link added phase noise */
-    gs->stages[1].kp = -3000;
+    gs->stages[1].kp = -10000;
     gs->stages[1].ki = -5;
     gs->stages[1].lock_samples = 10000;
     gs->stages[1].shift = 16;
@@ -1453,8 +1454,13 @@ static int ertm_process_psnmp(struct uart_packet *rx_pkt, struct uart_packet *tx
 		} else if (mode == WRC_MODE_UNKNOWN)
 			wrc_ptp_stop();
 		break;
-
-	case 0x5a:
+    case ertm14_exec_shell_command:
+    {
+        struct ertm14_shell_command *cmd = (struct ertm14_shell_command *)&rx_pkt->payload[op->offset1];
+        shell_exec(cmd->cmd);
+        break;
+    }
+    case 0x5a:
 		tx_pkt->length = rx_pkt->length;
 		tx_pkt->length = 1;	/* no time to reply */
 		memcpy(tx_pkt->payload, rx_pkt->payload, rx_pkt->length);

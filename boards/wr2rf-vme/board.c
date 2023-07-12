@@ -58,7 +58,7 @@ static void wr2rf_spll_setup(void)
 /* configure a suitable PI gain schedule for the SoftPLL: */
     spll_gain_schedule_t* gs=  &spll_main_ocxo_gain_sched;
 
-    gs->n_stages = 2;
+    gs->n_stages = 1;
 
 /* we start with ~100 Hz bandwidth to make it lock reasonably fast */
     gs->stages[0].kp = -4000 * 16;

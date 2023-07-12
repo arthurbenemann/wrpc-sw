@@ -31,6 +31,7 @@
 unsigned char spll_n_chan_ref, spll_n_chan_out;
 unsigned char spll_ljd_present = 0;
 
+
 static const char * const seq_states[] =
 {
 	[SEQ_START_EXT] = "start-ext",
@@ -288,6 +289,10 @@ void spll_very_init(void)
 		spll_n_chan_out = 3;
 
 	softpll.mpll.gain_sched = NULL;
+
+
+	helper_very_init((struct spll_helper_state *) &softpll.helper); // set up default PI gains/lock thresholds
+	
 }
 
 void spll_init(int mode, int slave_ref_channel, int flags)
@@ -325,9 +330,9 @@ void spll_init(int mode, int slave_ref_channel, int flags)
 	SPLL->ECCR = 0;
 	SPLL->OCCR = 0;
 #ifndef CONFIG_SPLL_DEGLITCH_THR
-#define CONFIG_SPLL_DEGLITCH_THR 1000
+#define CONFIG_SPLL_DEGLITCH_THR 300
 #endif
-	SPLL->DEGLITCH_THR = CONFIG_SPLL_DEGLITCH_THR;
+	SPLL->DEGLITCH_THR = 300; //CONFIG_SPLL_DEGLITCH_THR;
 
 	PPSG->CR |= PPSG_CR_CNT_EN;
 
@@ -538,6 +543,7 @@ void spll_show_stats(void)
 {
 	struct softpll_state *s = (struct softpll_state *)&softpll;
 	const char *statename;
+	struct spll_jitter_stats jstats;
 
 	if (s->seq_state >= SEQ_STATES_NR)
 		statename = "<Unknown>";
@@ -549,21 +555,28 @@ void spll_show_stats(void)
 	if (softpll.mode > 0)
 	{
 		    pp_printf("softpll: irqs:%d seq:%s mode:%d "
-		     "alignment_state:%d HL%d ML%d HY=%d MY=%d DelCnt=%d setpoint:%d refcnt:%d tagcnt:%d",
+		     "alignment_state:%d HL%d ML%d HY=%d MY=%d DelCnt=%d setpoint:%d refcnt:%d tagcnt:%d h_kp:%d h_ki:%d h_shift:%d m_kp:%d m_ki:%d m_shift:%d",
 		      s->irq_count, statename,
 			      s->mode, s->ext.align_state,
 			      s->helper.ld.locked, s->mpll.locked,
 			      s->helper.pi.y, s->mpll.pi.y,
 			      s->delock_count, s->mpll.phase_shift_current,
-				  s->ref_count, s->tag_count);
+				  s->ref_count, s->tag_count,
+				  s->helper.pi.kp,
+				  s->helper.pi.ki,
+				  s->helper.pi.shift,
+				  s->mpll.pi.kp,
+				  s->mpll.pi.ki,
+				  s->mpll.pi.shift
+				);
 
 		if( softpll.mpll.gain_sched )
 		{
 			pp_printf(" gain_sched:%d/%d", softpll.mpll.gain_sched->current_stage + 1, softpll.mpll.gain_sched->n_stages );
 		}
 
+		
 		pp_printf("\n");
-
 	}
 
 	int ch;
@@ -599,6 +612,20 @@ void spll_show_stats(void)
 				s->pll.dmtd.pi.y );
 #endif
 	}
+
+	for (ch = 0; ch < spll_n_chan_ref; ch++)
+		{
+			pp_printf( "softpll: ptracker%d: enabled %d n_avg %d value %d\n", ch,
+			softpll.ptrackers[ch].enabled ? 1 : 0,
+			softpll.ptrackers[ch].n_avg,
+			softpll.ptrackers[ch].phase_val );
+		}
+
+	
+	const int n_jitter_samples = 1000;
+	spll_measure_jitter(0, n_jitter_samples, &jstats);
+
+	pp_printf("jitter[ref]: min=%d ps max=%d ps\n", jstats.peak_peak_min_ps, jstats.peak_peak_max_ps );
 }
 
 int spll_shifter_busy(int channel)
@@ -819,26 +846,39 @@ void spll_set_dac(int index, int value)
 	}
 }
 
-int spll_measure_frequency(int osc)
+
+static int measure_jitter_int( int channel, int n_samples, int minmax, int *low, int *high )
 {
-	volatile uint32_t *reg;
+	uint32_t cr = SPLL_DMTD_STAT_CR_RST | ( minmax ? SPLL_DMTD_STAT_CR_MINMAX_SEL : 0 )
+	| SPLL_DMTD_STAT_CR_SAMPLES_W( n_samples );
+	
+	SPLL->DMTD_STAT_CR = cr;
+	cr &= ~SPLL_DMTD_STAT_CR_RST;
+	SPLL->DMTD_STAT_CR = cr;
 
-	switch(osc) {
-		case SPLL_OSC_REF:
-			reg = &SPLL->F_REF;
-			break;
-		case SPLL_OSC_DMTD:
-			reg = &SPLL->F_DMTD;
-			break;
-		case SPLL_OSC_EXT:
-			reg = &SPLL->F_EXT;
-			break;
-		default:
-			return 0;
-	}
 
-    timer_delay_ms(2000);
-    return (*reg ) & (0xfffffff);
+	while( ! ( SPLL->DMTD_STAT_CR & SPLL_DMTD_STAT_CR_VALID ) );
+
+	uint32_t valr = SPLL->DMTD_STAT_VAL;
+	*high = SPLL_DMTD_STAT_VAL_HIGH_R( valr );
+	*low = SPLL_DMTD_STAT_VAL_LOW_R( valr );
+	return 0;
+}
+
+int spll_measure_jitter(int channel, int n_samples, struct spll_jitter_stats *result)
+{
+	measure_jitter_int( channel, n_samples, 0, &result->lo_min, &result->hi_min);
+	measure_jitter_int( channel, n_samples, 1, &result->lo_max, &result->hi_max);
+
+	pp_printf("lo_min %d\n", result->lo_min);
+	pp_printf("lo_max %d\n", result->lo_max);
+	pp_printf("hi_min %d\n", result->hi_min);
+	pp_printf("hi_max %d\n", result->hi_max);
+
+	result->peak_peak_max_ps = ( (1<<HPLL_N) - result->lo_min - result->hi_max ) * REF_CLOCK_PERIOD_PS / (1<<HPLL_N);
+	result->peak_peak_min_ps = ( (1<<HPLL_N) - result->lo_max - result->hi_min ) * REF_CLOCK_PERIOD_PS / (1<<HPLL_N);
+	
+	return 0;
 }
 
 void spll_set_gain_schedule( spll_gain_schedule_t* sch )
@@ -847,6 +887,40 @@ void spll_set_gain_schedule( spll_gain_schedule_t* sch )
 	softpll.mpll.gain_sched = sch;
 	enable_irq();
 }
+
+void spll_set_pi_gain( int loop, int sched_stage, int kp, int ki )
+{
+	pp_printf("set_pi_gain loop=%d stage=%d kp=%d ki=%d\n", loop, sched_stage, kp, ki);
+	disable_irq();
+	switch(loop)
+	{
+		case SPLL_LOOP_HELPER:
+			softpll.helper.pi.kp = kp;
+			softpll.helper.pi.ki = ki;
+			break;
+		case SPLL_LOOP_MAIN:
+			if( softpll.mpll.gain_sched && sched_stage < softpll.mpll.gain_sched->n_stages )
+			{
+				softpll.mpll.gain_sched->stages[sched_stage].ki = ki;
+				softpll.mpll.gain_sched->stages[sched_stage].kp = kp;
+				if( softpll.mpll.gain_sched->current_stage == sched_stage )
+				{
+					softpll.mpll.pi.kp = kp;
+					softpll.mpll.pi.ki = ki;
+				}
+			}
+			else
+			{
+				softpll.mpll.pi.kp = kp;
+				softpll.mpll.pi.ki = ki;
+			}
+			break;
+		default:
+			break;
+	}
+	enable_irq();
+}
+
 
 
 static struct spll_debug_queue_state

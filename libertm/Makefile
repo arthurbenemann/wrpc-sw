@@ -9,7 +9,7 @@ ERTM_BOARD_LOCATION = ../boards/ertm14/
 WRC_INCLUDES = ../include
 
 CFLAGS += -I $(ERTM_UART_LOCATION) -I $(ERTM_BOARD_LOCATION)
-CFLAGS += -I $(WRC_INCLUDES)
+CFLAGS += -I $(WRC_INCLUDES) -I../softpll
 CFLAGS += -I../ppsi/arch-wrpc -I../ppsi/arch-wrpc/include -I../ppsi/include
 
 GIT_VER ?= $(shell git describe --always --dirty | sed  's;^wr-switch-sw-;;')

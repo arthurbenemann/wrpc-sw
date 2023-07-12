@@ -35,6 +35,7 @@ struct spll_helper_state {
 	spll_lock_det_t ld;
 };
 
+void helper_very_init( struct spll_helper_state *s );
 void helper_init(struct spll_helper_state *s, int ref_channel);
 void helper_update(struct spll_helper_state *s, int tag, int source);
 
