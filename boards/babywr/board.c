@@ -253,11 +253,20 @@ static struct gpio_pin pin_aux_scl           = { &board.gpio_aux, 2 };
 static struct gpio_pin pin_aux_sda           = { &board.gpio_aux, 3 };
 //static struct gpio_pin pin_spare0            = { &board.gpio_aux, 4 };
 //static struct gpio_pin pin_spare1            = { &board.gpio_aux, 5 };
+static struct gpio_pin pin_lock_sweep        = { &board.gpio_aux, 6 };
+//static struct gpio_pin pin_lock_sweep_phase0 = { &board.gpio_aux, 7 };
+//static struct gpio_pin pin_lock_sweep_phase1 = { &board.gpio_aux, 8 };
+//static struct gpio_pin pin_lock_sweep_phase2 = { &board.gpio_aux, 9 };
 
 struct i2c_bus            i2c_wrc_eeprom;
 struct i2c_bus            dev_i2c_aux;
 struct i2c_eeprom_device  wrc_eeprom_dev;
 struct i2c_eeprom_device  wrc_uid_dev;
+
+int lock_sweep()
+{
+  return gen_gpio_in( &pin_lock_sweep );
+}
 
 int wrc_board_early_init()
 {
