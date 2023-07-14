@@ -111,6 +111,7 @@ int  babywr_init(void);
 
 void read_sitime (void);
 void write_sitime (int dev, int val);
+int  lock_sweep(void);
 
 extern int phy_calibration_poll(void);
 extern void phy_calibration_init(void);
