@@ -14,8 +14,8 @@
 void helper_very_init( struct spll_helper_state *s )
 {
 /* Phase branch PI controller */
-	s->pi.y_min = 5;
-	s->pi.y_max = (1 << DAC_BITS) - 5;
+	s->pi.y_min = 5 + 256;
+	s->pi.y_max = (1 << (DAC_BITS+8)) - 5 - 256;
 #if defined(CONFIG_WR_NODE)
 	s->pi.kp = -150;//(int)(0.3 * 32.0 * 16.0);	// / 2;
 	s->pi.ki = -2;//(int)(0.03 * 32.0 * 3.0);	// / 2;
@@ -24,7 +24,7 @@ void helper_very_init( struct spll_helper_state *s )
 	s->pi.ki = 2;
 #endif
 	s->pi.anti_windup = 1;
-	s->pi.shift = PI_FRACBITS;
+	s->pi.shift = PI_FRACBITS - 8;
 
 	/* Phase branch lock detection */
 	s->ld.threshold = 200;

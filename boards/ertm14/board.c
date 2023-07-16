@@ -589,13 +589,13 @@ static void ertm14_spll_setup(void)
     gs->stages[0].kp = -4000 * 16;
     gs->stages[0].ki = -5 * 16;
     gs->stages[0].lock_samples = 30000;
-    gs->stages[0].shift = 16;
+    gs->stages[0].shift = 8;
 
 /* once it's locked, the loop bandwidth is switched to ~0.1 Hz to filter out WR link added phase noise */
     gs->stages[1].kp = -3000;
     gs->stages[1].ki = -5;
     gs->stages[1].lock_samples = 10000;
-    gs->stages[1].shift = 16;
+    gs->stages[1].shift = 8;
 
     // disable 2nd stage for DOT050 and Morion OCXO
     if ( board.mode & ERTM14_MODE_WITHOUT_ERTM15 )
@@ -615,6 +615,7 @@ static void ertm14_spll_setup(void)
 #endif
 
 	spll_set_gain_schedule( gs );
+    spll_set_pi_gain( SPLL_LOOP_HELPER, 0, -700, -2 );
 
     // Aux clock 0 is used for 'factory' calibration of CLKAB/LO/REF outputs.
     spll_set_aux_mode( 0, SPLL_AUX_MODE_PHASE_MONITOR );

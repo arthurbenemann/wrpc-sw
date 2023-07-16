@@ -845,24 +845,7 @@ void spll_set_dac(int index, int value)
 
 int spll_measure_frequency(int osc)
 {
-	volatile uint32_t *reg;
-
-	switch(osc) {
-		case SPLL_OSC_REF:
-			reg = &SPLL->F_REF;
-			break;
-		case SPLL_OSC_DMTD:
-			reg = &SPLL->F_DMTD;
-			break;
-		case SPLL_OSC_EXT:
-			reg = &SPLL->F_EXT;
-			break;
-		default:
-			return 0;
-	}
-
-    timer_delay_ms(2000);
-    return (*reg ) & (0xfffffff);
+	return 0;
 }
 
 void spll_set_gain_schedule( spll_gain_schedule_t* sch )

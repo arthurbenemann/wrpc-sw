@@ -14,6 +14,7 @@
 #include <wrc.h>
 #include "softpll_ng.h"
 
+#if 0
 static int gen_dither_lfsr( int pi_shift )
 {
     static uint16_t lfsr = 0xACE1u;
@@ -30,6 +31,8 @@ static int gen_dither_lfsr( int pi_shift )
 		return d;
 }
 
+#endif
+
 int pi_update(spll_pi_t *pi, int x)
 {
 	int64_t i_new;
@@ -39,7 +42,7 @@ int pi_update(spll_pi_t *pi, int x)
 
 	int64_t y_preround = (i_new + (int64_t) x * pi->kp) + ( 1 << (pi->shift - 1) );
 
-	int dither = pi->dithered ? gen_dither_lfsr( pi->shift - 1 ) : 0;
+	int dither = 0; //pi->dithered ? gen_dither_lfsr( pi->shift - 1 ) : 0;
 	y = ( (y_preround + dither) >> pi->shift) + pi->bias;
 
 	/* clamping (output has to be in <y_min, y_max>) and
