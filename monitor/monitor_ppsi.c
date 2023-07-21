@@ -28,6 +28,7 @@
 #include "revision.h"
 #include "wrc_global.h"
 #include "hw/wrc_diags_regs.h"
+#include "board.h"
 
 #ifndef CONFIG_PRINTF_FULL
 #error ("WRPC monitor requires full version of pp_printf implementation")
@@ -275,6 +276,8 @@ static void print_time_pll(void)
 
 	/* PLL locking state */
 	pprintf(3, 70, "Lock%s", spll_check_lock(0) ? "ed " : "ing");
+	pprintf(3, 78, "ls %d\n",lock_sweep());
+
 }
 
 static void print_port(unsigned i)
