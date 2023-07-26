@@ -54,7 +54,7 @@ static const unsigned char nargs[] =
 	[CMD_STOP] = 1,
 	[CMD_SDAC] = 2,
 	[CMD_GDAC] = 1,
-	[CMD_GAIN] = 4
+	[CMD_GAIN] = 5
 };
 
 static int cmd_pll(const char *args[])
@@ -109,7 +109,7 @@ static int cmd_pll(const char *args[])
 		return 0;
 	case CMD_GAIN:
 	{
-		spll_set_pi_gain( vals[1], vals[2], vals[3], vals[4] );
+		spll_set_pi_gain( vals[1], vals[2], vals[3], vals[4], vals[5] );
 		return 0;
 	}
 	default:

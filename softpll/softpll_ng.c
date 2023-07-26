@@ -843,11 +843,6 @@ void spll_set_dac(int index, int value)
 	}
 }
 
-int spll_measure_frequency(int osc)
-{
-	return 0;
-}
-
 void spll_set_gain_schedule( spll_gain_schedule_t* sch )
 {
 	disable_irq();
@@ -855,31 +850,35 @@ void spll_set_gain_schedule( spll_gain_schedule_t* sch )
 	enable_irq();
 }
 
-void spll_set_pi_gain( int loop, int sched_stage, int kp, int ki )
+void spll_set_pi_gain( int loop, int sched_stage, int kp, int ki, int shift )
 {
-	pll_verbose("set_pi_gain loop=%d stage=%d kp=%d ki=%d\n", loop, sched_stage, kp, ki);
+	pll_verbose("set_pi_gain loop=%d stage=%d kp=%d ki=%d, shift=%d\n", loop, sched_stage, kp, ki, shift);
 	disable_irq();
 	switch(loop)
 	{
 		case SPLL_LOOP_HELPER:
 			softpll.helper.pi.kp = kp;
 			softpll.helper.pi.ki = ki;
+			softpll.helper.pi.shift = shift;
 			break;
 		case SPLL_LOOP_MAIN:
 			if( softpll.mpll.gain_sched && sched_stage < softpll.mpll.gain_sched->n_stages )
 			{
 				softpll.mpll.gain_sched->stages[sched_stage].ki = ki;
 				softpll.mpll.gain_sched->stages[sched_stage].kp = kp;
+				softpll.mpll.gain_sched->stages[sched_stage].shift = shift;
 				if( softpll.mpll.gain_sched->current_stage == sched_stage )
 				{
 					softpll.mpll.pi.kp = kp;
 					softpll.mpll.pi.ki = ki;
+					softpll.mpll.pi.shift = shift;
 				}
 			}
 			else
 			{
 				softpll.mpll.pi.kp = kp;
 				softpll.mpll.pi.ki = ki;
+				softpll.mpll.pi.shift = shift;
 			}
 			break;
 		default:

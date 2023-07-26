@@ -44,12 +44,14 @@ WARNING: These parameters must be in sync with the generics of the HDL instantia
 /* Max. allowed number of phase trackers */
 #define MAX_PTRACKERS	BOARD_MAX_PTRACKERS /* Depends on wrc/wrs */
 
-/* Number of bits of the DAC(s) driving the oscillator(s). Must be the same for
-   all the outputs. */
-#define DAC_BITS 16
-
 /* Number of samples in a single ptracker averaging bin */
 #define PTRACKER_AVERAGE_SAMPLES 512
 
 /* Maximum MPLL loop gain scheduler levels */
 #define SPLL_GAIN_SCHED_MAX 2
+
+#if defined( BOARD_SPLL_DAC_BITS )
+   #define DAC_BITS BOARD_SPLL_DAC_BITS
+#else
+   #define DAC_BITS 16
+#endif

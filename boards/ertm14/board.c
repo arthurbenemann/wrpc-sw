@@ -615,7 +615,7 @@ static void ertm14_spll_setup(void)
 #endif
 
 	spll_set_gain_schedule( gs );
-    spll_set_pi_gain( SPLL_LOOP_HELPER, 0, -700, -2 );
+    spll_set_pi_gain( SPLL_LOOP_HELPER, 0, -700, -2, 8 );
 
     // Aux clock 0 is used for 'factory' calibration of CLKAB/LO/REF outputs.
     spll_set_aux_mode( 0, SPLL_AUX_MODE_PHASE_MONITOR );
