@@ -85,10 +85,18 @@ void shw_pps_gen_set_time(uint64_t seconds, uint32_t nanoseconds, int counter)
 static uint64_t pps_get_utc(void)
 {
 	uint64_t out;
-	uint32_t low, high;
+	uint32_t low, low2, high;
 
 	low = ppsg_read(CNTR_UTCLO);
 	high = ppsg_read(CNTR_UTCHI);
+
+	// check for wrap, if so, re-read registers
+	low2 = ppsg_read(CNTR_UTCLO);
+	if (low2 < low) 
+	{
+		high = ppsg_read(CNTR_UTCHI);
+		low = low2;
+	}
 
 	high &= 0xFF;		/* CNTR_UTCHI has only 8 bits defined -- rest are HDL don't care */
 
