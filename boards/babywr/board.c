@@ -258,6 +258,13 @@ int lock_sweep()
   return gen_gpio_in( &pin_lock_sweep );
 }
 
+void mpll_restart()
+{
+	struct softpll_state *s = (struct softpll_state *)&softpll;
+	mpll_stop(&s->mpll);
+	mpll_start(&s->mpll);
+}
+
 int wrc_board_early_init()
 {
     /* most of the I/Os of the slow peripherals (i2c, spi) are bitbanged. First, let's
