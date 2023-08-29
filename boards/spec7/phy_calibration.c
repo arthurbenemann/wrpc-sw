@@ -1,44 +1,71 @@
-#include "board.h"
+/*
+ * This work is part of the White Rabbit project
+ *
+ * Copyright (C) 2023 Nikhef (www.Nikhef.nl)
+ * Author: Peter Jansweijer <peterj@nikhef.nl> based on work
+ * from Tomasz Wlostowski <tomasz.wlostowski@cern.ch>
+ *
+ * This program is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+/*
+    LPDC PHY Calibration code.
+    Specific for Artix UltraScale+ devices using wr_gthe4_phy_family7_lp
+    (based on CPLL)
+*/
+
+#include <string.h>
+#include <board.h>
 #include "dev/syscon.h"
 #include "dev/endpoint.h"
 #include <softpll_ng.h>
 #include "storage.h"
 #include "util.h"
+#include "wrc-debug.h"
+#include "wrc-task.h"
 
-#include <wrc-task.h>
+#include <hw/ep_mdio_regs.h>
+#include <hw/lpdc_mdio_regs.h>
 
-#include <hw/endpoint_regs.h>
-#include <hw/endpoint_mdio.h>
+/* TX Target phase is measured at tx_out_clk of the PHY.
+   Clk_ref_62m5 and tx_out_clk are phase locked but have an offset.
+   Add a safe offset such that the TxData and TxK (clk_ref_62m5 domain)
+   are safely clocked into the PHY (tx_out_clk domain).
+   set tx_out_clk 4 ns before clk_ref_62m5 so there is 12 ns setup time.
+*/
+#define LPDC_COARSE_PHASE_MIN_PS 11750   /* ps */
+#define LPDC_COARSE_PHASE_MAX_PS 12250   /* ps */
+#define LPDC_FINE_PHASE_TOLLERANCE_PS 20 /* ps */
+#define LPDC_MAX_ATTEMPS_TX_SETUP_STATE_RESET_PCS 2000
 
-#define DEFAULT_COMMA_POS 0
+// number of raw DDMTD phase samples used to measure the RX/TX clock phases
+#define LPDC_NUM_PTRACKER_SAMPLES 10
 
-#define MDIO_REG_LPC_PHY_CTRL_RESET_TX (1 << 0)
-#define MDIO_REG_LPC_PHY_CTRL_TX_ENABLE (1 << 1)
-#define MDIO_REG_LPC_PHY_CTRL_RX_ENABLE (1 << 2)
-#define MDIO_REG_LPC_PHY_CTRL_RESET_RX (1 << 3)
-#define MDIO_REG_LPC_PHY_CTRL_GTX_CPLL_RESET (1 << 4)
-#define MDIO_REG_LPC_PHY_CTRL_COMMADET_RESET (1 << 5)
-#define MDIO_REG_LPC_PHY_CTRL_COMMA_TARGET_POS(x) ( ((x) & 0x1f) << 9)
+#define LPDC_TARGET_COMMA_POS 0
 
-#define MDIO_REG_LPC_PHY_CTRL_DMTD_SOURCE_TXOUTCLK (1 << 14)
-#define MDIO_REG_LPC_PHY_CTRL_DMTD_SOURCE_RXRECCLK (0 << 14)
-
-#define MDIO_REG_LPC_PHY_STAT_GTX_CPLL_LOCKED (1 << 0)
-#define MDIO_REG_LPC_PHY_STAT_LINK_UP (1 << 1)
-#define MDIO_REG_LPC_PHY_STAT_LINK_ALIGNED (1 << 2)
-#define MDIO_REG_LPC_PHY_STAT_RESET_TX_DONE (1 << 3)
-#define MDIO_REG_LPC_PHY_STAT_GTX_TXUSRPLL_LOCKED (1 << 4)
-#define MDIO_REG_LPC_PHY_STAT_RESET_RX_DONE (1 << 5)
-#define MDIO_REG_LPC_PHY_STAT_COMMA_CURRENT_POS(x) ( ((x) & 0x1f) << 9)
-#define MDIO_REG_LPC_PHY_STAT_COMMA_POS_VALID (1 << 14)
+#define LPDC_MDIO_CTRL_DMTD_SOURCE_TXOUTCLK (1 << LPDC_MDIO_CTRL_DMTD_CLK_SEL_SHIFT)
+#define LPDC_MDIO_CTRL_DMTD_SOURCE_RXRECCLK (0 << LPDC_MDIO_CTRL_DMTD_CLK_SEL_SHIFT)
 
 #define TX_SETUP_STATE_START 0
 #define TX_SETUP_STATE_RESET_PCS 1
-#define TX_SETUP_STATE_WAIT_LOCK 2
+#define TX_SETUP_STATE_WAIT_TX_PLL_LOCK 2
 #define TX_SETUP_STATE_MEASURE_PHASE 3
 #define TX_SETUP_DONE 4
 #define TX_SETUP_VALIDATE 5
 #define TX_SETUP_STATE_DISABLED 6
+#define TX_SETUP_STATE_WAIT_SPLL_LOCK 7
+#define TX_SETUP_STATE_WAIT_TX_CLK_STABILIZE 8
 
 #define RX_SETUP_STATE_INIT 0
 #define RX_SETUP_STATE_RESET_PCS 1
@@ -68,7 +95,6 @@ struct wrc_port_tx_setup_state
     int tollerance;
     int update_cnt;
     int expected_phase_valid;
-    timeout_t refresh_timeout;
     timeout_t phy_lock_timeout;
     timeout_t spll_lock_timeout;
     timeout_t dmtd_timeout;
@@ -84,8 +110,37 @@ struct wrc_port_rx_setup_state
     timeout_t stabilize_timeout;
 };
 
-static struct wrc_port_tx_setup_state tx_state;
-static struct wrc_port_rx_setup_state rx_state;
+struct wrc_lpdc_state
+{
+    struct wrc_port_tx_setup_state tx_state;
+    struct wrc_port_rx_setup_state rx_state;
+    struct wr_endpoint_device *endpoint;
+};
+
+static inline void mdio_lpdc_write(struct wrc_lpdc_state *lpdc, int location, uint16_t value)
+{
+    ep_pcs_write(lpdc->endpoint, location + EP_MDIO_PHY_SPECIFIC_REGS, value);
+}
+
+static inline uint16_t mdio_lpdc_read(struct wrc_lpdc_state *lpdc, int location)
+{
+    return ep_pcs_read(lpdc->endpoint, location + EP_MDIO_PHY_SPECIFIC_REGS);
+}
+
+static void mdio_lpdc_set_bits( struct wrc_lpdc_state *lpdc, uint16_t reg, uint16_t mask )
+{
+    uint16_t rdbk = mdio_lpdc_read( lpdc, reg );
+    rdbk |= mask;
+    mdio_lpdc_write( lpdc, reg, rdbk );
+}
+
+static void mdio_lpdc_clear_bits( struct wrc_lpdc_state *lpdc, uint16_t reg, uint16_t mask )
+{
+    uint16_t rdbk = mdio_lpdc_read( lpdc, reg );
+    rdbk &= ~mask;
+    mdio_lpdc_write( lpdc, reg, rdbk );
+}
+
 
 static void tx_fsm_init(struct wrc_port_tx_setup_state *fsm)
 {
@@ -100,224 +155,230 @@ static void tx_fsm_init(struct wrc_port_tx_setup_state *fsm)
     fsm->cal_file_updated = 0;
     fsm->cnt = 0;
 
-    if( !storage_get_calibration_parameter( CAL_PARAM_PHY_TARGET_TX_PHASE, &fsm->cal_saved_phase ) )
+    /* FIXME: is cal_saved_phase unsigned? uint32_t? declare it so
+     * at the wrc_port_tx_setup_state structure */
+    if( !storage_get_calibration_parameter( CAL_PARAM_PHY_TARGET_TX_PHASE, (uint32_t *)&fsm->cal_saved_phase )
+        && fsm->cal_saved_phase != -1)
     {
-        phy_dbg("read tx target phase :%d ps\n", fsm->cal_saved_phase);
+        phy_dbg("[lpdc] TX target phase from calibration data: %d ps\n", fsm->cal_saved_phase);
         fsm->cal_saved_phase_valid = 1;
     }
-
-    tmo_init(&fsm->spll_lock_timeout, FSM_SPLL_LOCK_TIMEOUT_MS);
 }
 
-static int tx_fsm_update()
+static int tx_fsm_update(struct wrc_lpdc_state *lpdc)
 {
-    struct wrc_port_tx_setup_state *fsm = &tx_state;
+    struct wrc_port_tx_setup_state *fsm = &lpdc->tx_state;
 
-
-    //pp_printf("Tics %d st %d\n", timer_get_tics(), fsm->state );
     switch (fsm->state)
     {
-    case TX_SETUP_STATE_START:
-    {
-
-        if( tmo_expired( &fsm->spll_lock_timeout ) )
+        case TX_SETUP_STATE_START:
         {
-            phy_dbg("Can't lock the SoftPLL. This is necessary for PHY calibratoin to continue. Retrying...\n");
-            tmo_restart( &fsm->spll_lock_timeout );
+            spll_init( SPLL_MODE_FREE_RUNNING_MASTER, 0, 0 );
+            spll_set_ptracker_average_samples( 0, LPDC_NUM_PTRACKER_SAMPLES );
+            tmo_init(&fsm->spll_lock_timeout, FSM_SPLL_LOCK_TIMEOUT_MS);
+            fsm->state = TX_SETUP_STATE_WAIT_SPLL_LOCK;
+            break;
         }
 
-        if( spll_check_lock( 0 ) )
+        case TX_SETUP_STATE_WAIT_SPLL_LOCK:
         {
+            if( tmo_expired( &fsm->spll_lock_timeout ) )
+            {
+                phy_dbg("[lpdc] can't lock the SoftPLL. This is necessary for PHY calibration to continue. Retrying...\n");
+                tmo_restart( &fsm->spll_lock_timeout );
+            }
+
+            if( spll_check_lock( 0 ) )
+            {
+                spll_enable_ptracker(0, 0);
+
+                mdio_lpdc_set_bits( lpdc, LPDC_MDIO_CTRL, LPDC_MDIO_CTRL_RX_SW_RESET | LPDC_MDIO_CTRL_DMTD_SOURCE_TXOUTCLK );
+                fsm->state = TX_SETUP_STATE_RESET_PCS;
+
+                phy_dbg("[lpdc] SPLL locked\n");
+            }
+
+            break;
+        }
+
+        case TX_SETUP_STATE_RESET_PCS:
+        {
+            //phy_dbg("[lpdc] TX reset PCS\n");
+
             spll_enable_ptracker(0, 0);
-            ep_pcs_write(&wrc_endpoint_dev, MDIO_REG_LPC_PHY_CTRL, MDIO_REG_LPC_PHY_CTRL_RESET_RX | MDIO_REG_LPC_PHY_CTRL_DMTD_SOURCE_TXOUTCLK);
-            fsm->state = TX_SETUP_STATE_RESET_PCS;
 
-            tmo_init( &fsm->refresh_timeout, FSM_DEBUG_REFRESH_PERIOD_MS );
+            // reset the CPLL, TX reset and gtx_comma_detect_lp reset (= AUX_RESET)
+            mdio_lpdc_set_bits( lpdc, LPDC_MDIO_CTRL, LPDC_MDIO_CTRL_TX_SW_RESET | LPDC_MDIO_CTRL_PLL_SW_RESET | LPDC_MDIO_CTRL_AUX_RESET);
+            usleep(2);
+            // Un-reset CPLL
+            mdio_lpdc_clear_bits( lpdc, LPDC_MDIO_CTRL, LPDC_MDIO_CTRL_PLL_SW_RESET );
+
+            //phy_dbg("CPLL: wait for lock\n");
+            while ( !(mdio_lpdc_read(lpdc, LPDC_MDIO_STAT) & LPDC_MDIO_STAT_PLL_LOCKED ))
+                usleep(1);
+
+            //phy_dbg("CPLL OK\n");
+
+            // CPLL ok: un-reset TX path
+            mdio_lpdc_clear_bits( lpdc, LPDC_MDIO_CTRL, LPDC_MDIO_CTRL_TX_SW_RESET );
+
+            // Before transitioning to TX_SETUP_STATE_WAIT_TX_PLL_LOCK
+            // GTXE2 tx_reset_done is already signalled (few us)
+            // before clocks are stable... Give it some time.
+            usleep(100);
+            fsm->state = TX_SETUP_STATE_WAIT_TX_PLL_LOCK;
+            tmo_init( &fsm->phy_lock_timeout, FSM_PHY_LOCK_TIMEOUT_MS );
+
+            break;
         }
-        break;
-    }
 
-    case TX_SETUP_STATE_RESET_PCS:
-    {
-        uint32_t dbg1 =  MDIO_REG_LPC_PHY_CTRL_RESET_TX | MDIO_REG_LPC_PHY_CTRL_RESET_RX | MDIO_REG_LPC_PHY_CTRL_DMTD_SOURCE_TXOUTCLK | MDIO_REG_LPC_PHY_CTRL_GTX_CPLL_RESET | MDIO_REG_LPC_PHY_CTRL_COMMADET_RESET;
-        
-        spll_enable_ptracker(0, 0);
-        
-        // reset the CPLL
-        ep_pcs_write(&wrc_endpoint_dev, MDIO_REG_LPC_PHY_CTRL, dbg1 );
-        dbg1 &= ~MDIO_REG_LPC_PHY_CTRL_GTX_CPLL_RESET;
-        ep_pcs_write(&wrc_endpoint_dev, MDIO_REG_LPC_PHY_CTRL, dbg1 );
-
-        //phy_dbg("CPLL: wait for lock\n");
-        while( !( ep_pcs_read(&wrc_endpoint_dev, MDIO_REG_LPC_PHY_STAT) & MDIO_REG_LPC_PHY_STAT_GTX_CPLL_LOCKED ) )
-            usleep(1);
-        
-        //phy_dbg("CPLL OK\n"); 
-
-        // CPLL ok: un-reset TX path (+ UsrClk PLL)
-        dbg1 &= ~MDIO_REG_LPC_PHY_CTRL_RESET_TX;
-        ep_pcs_write(&wrc_endpoint_dev, MDIO_REG_LPC_PHY_CTRL, dbg1 );
-
-        usleep(100);
-        dbg1 &= ~MDIO_REG_LPC_PHY_CTRL_COMMADET_RESET;
-        ep_pcs_write(&wrc_endpoint_dev, MDIO_REG_LPC_PHY_CTRL, dbg1 );
-
-        // Before transitioning to TX_SETUP_STATE_WAIT_LOCK
-        // GTXE2 tx_reset_done is already signalled (few us)
-        // before clocks are stable... Give it some time.
-        usleep(100);
-        fsm->state = TX_SETUP_STATE_WAIT_LOCK;
-        tmo_init( &fsm->phy_lock_timeout, FSM_PHY_LOCK_TIMEOUT_MS );
-
-        break;
-    }
-
-    case TX_SETUP_STATE_WAIT_LOCK:
-    {
-        uint32_t dbg0 = ep_pcs_read(&wrc_endpoint_dev, MDIO_REG_LPC_PHY_STAT);
-        if (dbg0 & MDIO_REG_LPC_PHY_STAT_RESET_TX_DONE)
+        case TX_SETUP_STATE_WAIT_TX_PLL_LOCK:
         {
-            fsm->attempts++;
-            fsm->state = TX_SETUP_STATE_MEASURE_PHASE;
-            usleep(10000);
-            spll_set_ptracker_average_samples( 0, 10 );
+            uint32_t stat = mdio_lpdc_read(lpdc, LPDC_MDIO_STAT);
+            if (stat & LPDC_MDIO_STAT_TX_RST_DONE)
+            {
+                fsm->attempts++;
+                fsm->state = TX_SETUP_STATE_WAIT_TX_CLK_STABILIZE;
+                tmo_init(&fsm->phy_lock_timeout, 10 );
+            }
+            else if( tmo_expired(&fsm->phy_lock_timeout) )
+            {
+                fsm->state = TX_SETUP_STATE_RESET_PCS;
+                phy_dbg("PHY PLL lock timeout, retrying...[LPDC_STAT=0x%04x]\n", stat );
+            }
+            break;
+        }
+
+        case TX_SETUP_STATE_WAIT_TX_CLK_STABILIZE:
+        {
+            if( !tmo_expired( &fsm->phy_lock_timeout ) )
+                return 0;
+
+            spll_set_ptracker_average_samples( 0, LPDC_NUM_PTRACKER_SAMPLES );
             spll_enable_ptracker(0, 1);
             tmo_init( &fsm->dmtd_timeout, FSM_DMTD_TIMEOUT_MS );
+            fsm->state = TX_SETUP_STATE_MEASURE_PHASE;
+            break;
         }
-        else if( tmo_expired(&fsm->phy_lock_timeout) )
+
+        case TX_SETUP_STATE_MEASURE_PHASE:
         {
-            fsm->state = TX_SETUP_STATE_RESET_PCS;
-            phy_dbg("PHY PLL lock timeout, retrying...[ dbg0 %04x]\n", dbg0 );
-        }
-        break;
-    }
-
-    case TX_SETUP_STATE_MEASURE_PHASE:
-    {
-        int phase, enabled; //, p2;
-        int rv = spll_read_ptracker(0, &phase, &enabled);
+            int32_t phase;
+            int enabled; //, p2;
+            int rv = spll_read_ptracker(0, &phase, &enabled);
 
 
-        if (!rv)
-        {
-            if( tmo_expired( &fsm->dmtd_timeout ) )
+            if (!rv)
             {
-                phy_dbg("Phase measurement timeout, retrying...\n");
-                //for(;;)
-                  //  spll_show_stats();
-                fsm->state = TX_SETUP_STATE_RESET_PCS;
+                if( tmo_expired( &fsm->dmtd_timeout ) )
+                {
+                    phy_dbg("[lpdc] TX Phase measurement timeout, retrying...\n");
+                    fsm->state = TX_SETUP_STATE_RESET_PCS;
+                }
+                return 0;
             }
-            return 0;
-        }
 
-//        p2 = fsm->measured_phase = phase;
-        phy_dbg("samples %d last-phase %d\n", fsm->attempts, phase );
-
-        if(tmo_expired(&fsm->refresh_timeout))
-        {
-//            pp_printf("[tx-cal] samples %d last-phase %d\n", fsm->attempts, fsm->measured_phase);
-            tmo_restart(&fsm->refresh_timeout);
-        }
-
-        
-        if (!fsm->expected_phase_valid)
-        {
-            if (fsm->cal_saved_phase_valid)
+            if (!fsm->expected_phase_valid)
             {
-                //pr_info("Using phase from file :%d\n",
-                //fsm->cal_saved_phase);
-                fsm->expected_phase = fsm->cal_saved_phase;
-                fsm->tollerance = 150; /*ps, bins are 200 ps wide*/
+                if ( fsm->cal_saved_phase_valid )
+                {
+                    if ( within_range( fsm->cal_saved_phase, LPDC_COARSE_PHASE_MIN_PS, LPDC_COARSE_PHASE_MAX_PS, 16000 ) )
+                    {
+                        fsm->expected_phase = fsm->cal_saved_phase;
+                        fsm->tollerance = LPDC_FINE_PHASE_TOLLERANCE_PS;
+                        phy_dbg("[lpdc] Using the previous phase setpoint = %d ps as the target with tollerance = %d ps\n",
+                                 fsm->cal_saved_phase,
+                                 fsm->tollerance);
+                    } else {
+                        fsm->expected_phase = (LPDC_COARSE_PHASE_MAX_PS + LPDC_COARSE_PHASE_MIN_PS) / 2;
+                        fsm->tollerance = (LPDC_COARSE_PHASE_MAX_PS - LPDC_COARSE_PHASE_MIN_PS) / 2;
+                        fsm->cal_saved_phase_valid = 0;
+                        phy_dbg("[lpdc] Previous phase setpoint (%d ps) out of range. Old calibration algorithm? Restarting from scratch.\n", fsm->cal_saved_phase);
+                    }
+                }
+                else // find a sane default
+                {
+                    fsm->expected_phase = (LPDC_COARSE_PHASE_MAX_PS + LPDC_COARSE_PHASE_MIN_PS) / 2;
+                    fsm->tollerance = (LPDC_COARSE_PHASE_MAX_PS - LPDC_COARSE_PHASE_MIN_PS) / 2;
+                    phy_dbg("[lpdc] No LPDC TX Calibration data found. Restarting from scratch.\n" );
+                }
+                 fsm->expected_phase_valid = 1;
+             }
+
+             int phase_min = fsm->expected_phase - fsm->tollerance;
+             int phase_max = fsm->expected_phase + fsm->tollerance;
+             phy_dbg("[lpdc] TX phase = %d ps\n", phase);
+
+             if (within_range(phase, phase_min, phase_max, 16000))
+             {
+                 fsm->measured_phase = phase;
+                 //phy_dbg("[lpdc] Fix phase = %d ps\n", fsm->measured_phase );
+                 fsm->state = TX_SETUP_VALIDATE;
+             }
+             else
+             {
+                 if (fsm->attempts >= LPDC_MAX_ATTEMPS_TX_SETUP_STATE_RESET_PCS)
+                 {
+                     phy_dbg("[lpdc] No proper TX phase found at %d ps after %d attempts. Clear stored PHY_TARGET_TX_PHASE.\n", fsm->cal_saved_phase, fsm->attempts);
+                     phy_dbg("[lpdc] Old calibration due to new gateware?\n");
+                     storage_remove_calibration_parameter(CAL_PARAM_PHY_TARGET_TX_PHASE);
+                     storage_save_calibration();
+                     fsm->attempts = 0;
+                     fsm->cal_saved_phase_valid = 0;
+                     fsm->expected_phase_valid = 0;
+                 }
+                 else
+                     fsm->state = TX_SETUP_STATE_RESET_PCS;
             }
-            else // find a sane default
+
+            break;
+        }
+
+        case TX_SETUP_VALIDATE:
+        {
+            phy_dbg("[lpdc] TX calibration complete (phase %d ps, after %d attempts)\n", fsm->measured_phase, fsm->attempts);
+            spll_enable_ptracker(0, 0);
+
+            // enable the PCS+SFP on the port
+            mdio_lpdc_write( lpdc, LPDC_MDIO_CTRL, LPDC_MDIO_CTRL_TX_ENABLE | LPDC_MDIO_CTRL_DMTD_SOURCE_RXRECCLK );
+            ep_sfp_enable( lpdc->endpoint, 1 );
+
+            if( !fsm->cal_saved_phase_valid )
             {
-                fsm->expected_phase = 10;
-                fsm->tollerance = 350; // fixme: this works for PHY oversampling at 5 Gbps (must be made generic at some time...)
+                phy_dbg("[lpdc] Saving established target phase as calibration parameter: %d ps\n", fsm->measured_phase);
+                storage_set_calibration_parameter_and_save( CAL_PARAM_PHY_TARGET_TX_PHASE, fsm->measured_phase);
             }
-            fsm->expected_phase_valid = 1;
+
+            fsm->state = TX_SETUP_DONE;
+            break;
         }
 
-        
-        int phase_min = fsm->expected_phase - fsm->tollerance;
-        int phase_max = fsm->expected_phase + fsm->tollerance;
-
-
-
-        if (within_range(phase, phase_min, phase_max, 16000))
+        case TX_SETUP_DONE:
         {
-            fsm->measured_phase = phase;
-            phy_dbg("FIX phase %d\n", fsm->measured_phase );
-
-            //spll_enable_ptracker(0, 0);
-            //spll_set_ptracker_average_samples( PTRACKER_AVERAGE_SAMPLES );
-            //spll_enable_ptracker(0, 1);
-
-            fsm->state = TX_SETUP_VALIDATE;
+            return 1;
+            break;
         }
-        else
-        {
-            fsm->state = TX_SETUP_STATE_RESET_PCS;
-        }
-
-        break;
-    }
-
-    case TX_SETUP_VALIDATE:
-    {
-        //int phase, enabled;
-        //int rv = spll_read_ptracker(0, &phase, &enabled);
-
-        //if (!rv)
-          //  return 0;
-
-        //fsm->measured_phase = phase;
-        phy_dbg("TX calibration complete (phase %d ps)\n", fsm->measured_phase);
-        spll_enable_ptracker(0, 0);
-
-        // enable the PCS on the port, switch sampled clock source
-        ep_pcs_write(&wrc_endpoint_dev, MDIO_REG_LPC_PHY_CTRL, MDIO_REG_LPC_PHY_CTRL_TX_ENABLE | MDIO_REG_LPC_PHY_CTRL_DMTD_SOURCE_RXRECCLK);
-
-        if( !fsm->cal_saved_phase_valid )
-        {
-            phy_dbg("saving new target phase: %d ps\n", fsm->measured_phase);
-            storage_set_calibration_parameter( CAL_PARAM_PHY_TARGET_TX_PHASE, fsm->measured_phase);
-            storage_save_calibration();
-        }
-
-        fsm->state = TX_SETUP_DONE;
-        break;
-    }
-
-    case TX_SETUP_DONE:
-    {
-        int early_link_up = ep_pcs_read(&wrc_endpoint_dev, MDIO_REG_LPC_PHY_STAT) & MDIO_REG_LPC_PHY_STAT_LINK_UP;
-
-        return 1;
-        break;
-    }
     }
 
     return 0;
 }
 
 
-static void rx_fsm_init(  )
+static void rx_fsm_init(struct wrc_port_rx_setup_state* fsm)
 {
-    struct wrc_port_rx_setup_state* fsm = &rx_state;
-
     fsm->attempts = 0;
     fsm->state = RX_SETUP_STATE_INIT;
     fsm->prev_link_up = 0;
     memset(fsm->cpos_stat, 0, sizeof(fsm->cpos_stat ));
 }
 
-static int rx_fsm_update(  )
+static int rx_fsm_update(struct wrc_lpdc_state *lpdc)
 {
-    struct wrc_port_rx_setup_state* fsm = &rx_state;
-    struct wrc_port_tx_setup_state* fsm_tx = &tx_state;
+    struct wrc_port_rx_setup_state* fsm = &lpdc->rx_state;
+    struct wrc_port_tx_setup_state* fsm_tx = &lpdc->tx_state;
 
-    int early_link_up = ep_pcs_read(&wrc_endpoint_dev, MDIO_REG_LPC_PHY_STAT) & MDIO_REG_LPC_PHY_STAT_LINK_UP;
-
+    uint16_t lpc_stat = mdio_lpdc_read(lpdc, LPDC_MDIO_STAT);
+    int early_link_up =  lpc_stat & LPDC_MDIO_STAT_LINK_UP;
 
     if( fsm_tx->state != TX_SETUP_DONE )
     {
@@ -325,15 +386,16 @@ static int rx_fsm_update(  )
         return 0;
     }
 
-        switch( fsm->state )
+    switch( fsm->state )
     {
         case RX_SETUP_STATE_INIT:
         {
+            mdio_lpdc_set_bits( lpdc, LPDC_MDIO_CTRL, LPDC_TARGET_COMMA_POS );
+
             if (early_link_up) {
-                ep_pcs_write(&wrc_endpoint_dev, MDIO_REG_LPC_PHY_CTRL, MDIO_REG_LPC_PHY_CTRL_TX_ENABLE | MDIO_REG_LPC_PHY_CTRL_DMTD_SOURCE_RXRECCLK | MDIO_REG_LPC_PHY_CTRL_COMMA_TARGET_POS(DEFAULT_COMMA_POS) );
                 if ( fsm_tx->state == TX_SETUP_DONE )
                 {
-                    phy_dbg("RX calibration started.\n");
+                    phy_dbg("[lpdc] RX calibration started.\n");
     
                     fsm->state = RX_SETUP_STATE_RESET_PCS;
                 }
@@ -348,11 +410,15 @@ static int rx_fsm_update(  )
         {
             if (early_link_up) 
             {
+
                 fsm->state = RX_SETUP_STATE_WAIT_LOCK;
 
-                ep_pcs_write(&wrc_endpoint_dev, MDIO_REG_LPC_PHY_CTRL, MDIO_REG_LPC_PHY_CTRL_RESET_RX | MDIO_REG_LPC_PHY_CTRL_COMMADET_RESET | MDIO_REG_LPC_PHY_CTRL_TX_ENABLE | MDIO_REG_LPC_PHY_CTRL_DMTD_SOURCE_RXRECCLK | MDIO_REG_LPC_PHY_CTRL_COMMA_TARGET_POS(DEFAULT_COMMA_POS)  );
+                // Reset RX path and gtx_comma_detect_lp reset (= AUX_RESET)
+                mdio_lpdc_set_bits( lpdc, LPDC_MDIO_CTRL, LPDC_MDIO_CTRL_RX_SW_RESET |  LPDC_MDIO_CTRL_AUX_RESET );
                 usleep(1);
-                ep_pcs_write(&wrc_endpoint_dev, MDIO_REG_LPC_PHY_CTRL, MDIO_REG_LPC_PHY_CTRL_TX_ENABLE | MDIO_REG_LPC_PHY_CTRL_DMTD_SOURCE_RXRECCLK | MDIO_REG_LPC_PHY_CTRL_COMMA_TARGET_POS(DEFAULT_COMMA_POS)  );
+                // Un-Reset RX path and gtx_comma_detect_lp reset (= AUX_RESET)
+                mdio_lpdc_clear_bits( lpdc, LPDC_MDIO_CTRL, LPDC_MDIO_CTRL_RX_SW_RESET |  LPDC_MDIO_CTRL_AUX_RESET );
+
                 usleep(10000);
                 fsm->attempts++;
 
@@ -364,26 +430,18 @@ static int rx_fsm_update(  )
 
         case RX_SETUP_STATE_WAIT_LOCK:
         {
-            uint16_t dbg0 = ep_pcs_read(&wrc_endpoint_dev, MDIO_REG_LPC_PHY_STAT);
+            int rx_aligned = lpc_stat & LPDC_MDIO_STAT_LINK_ALIGNED;
 
-            int rx_up = dbg0 & MDIO_REG_LPC_PHY_STAT_LINK_UP;
-            int rx_aligned = dbg0 & MDIO_REG_LPC_PHY_STAT_LINK_ALIGNED;
-            int rx_comma_pos = (dbg0 >> 9) & 0x1f;
-            int rx_comma_valid = dbg0 & MDIO_REG_LPC_PHY_STAT_COMMA_POS_VALID;
-
-            if ( tmo_expired(&fsm->link_timeout) && !rx_up) {
+            if ( tmo_expired(&fsm->link_timeout) && !early_link_up) {
                 fsm->state = RX_SETUP_STATE_INIT;
             }
             else 
             {
-                // wait for rx_reset_done
-                while( !( ep_pcs_read(&wrc_endpoint_dev, MDIO_REG_LPC_PHY_STAT) & MDIO_REG_LPC_PHY_STAT_RESET_RX_DONE ) )
-                usleep(1);
-                // wait for rx_up
-                while( !( ep_pcs_read(&wrc_endpoint_dev, MDIO_REG_LPC_PHY_STAT) & MDIO_REG_LPC_PHY_STAT_LINK_UP ) )
-                usleep(1);
+		if ( !early_link_up )
+		    return 0;
 
-                if( rx_aligned ) {
+                if( rx_aligned )
+                {
                     fsm->state = RX_SETUP_VALIDATE;
                     tmo_init( &fsm->stabilize_timeout, FSM_STABILIZE_TIMEOUT_MS );
                 } else {
@@ -395,47 +453,37 @@ static int rx_fsm_update(  )
 
         case RX_SETUP_VALIDATE:
         {
-            if( !tmo_expired( &fsm->stabilize_timeout )) {
-                //pp_printf("Now state RX_SETUP_VALIDATE => stabilize_timeout\n");
+            if( !tmo_expired( &fsm->stabilize_timeout ))
                 return 0;
-            }
-            uint16_t dbg0 = ep_pcs_read(&wrc_endpoint_dev, MDIO_REG_LPC_PHY_STAT);
 
+            int rx_aligned = lpc_stat & LPDC_MDIO_STAT_LINK_ALIGNED;
+            int rx_comma_pos = (lpc_stat & LPDC_MDIO_STAT_COMMA_CURRENT_POS_MASK) > LPDC_MDIO_STAT_COMMA_CURRENT_POS_SHIFT;
+            int rx_comma_valid = lpc_stat & LPDC_MDIO_STAT_COMMA_POS_VALID;
 
-            int rx_up = dbg0 & MDIO_REG_LPC_PHY_STAT_LINK_UP;
-            int rx_aligned = dbg0 & MDIO_REG_LPC_PHY_STAT_LINK_ALIGNED;
-            int rx_comma_pos = (dbg0 >> 9) & 0x1f;
-            int rx_comma_valid = dbg0 & MDIO_REG_LPC_PHY_STAT_COMMA_POS_VALID;
-
-            if ( rx_up && rx_aligned && rx_comma_valid && (rx_comma_pos == DEFAULT_COMMA_POS) )
+            if ( early_link_up && rx_aligned && rx_comma_valid && (rx_comma_pos == LPDC_TARGET_COMMA_POS) )
             {
-                uint16_t dbg0 = ep_pcs_read(&wrc_endpoint_dev, MDIO_REG_LPC_PHY_STAT);
-                int rx_comma_pos = (dbg0 >> 9) & 0x1f;
-                ep_pcs_write(&wrc_endpoint_dev, MDIO_REG_LPC_PHY_CTRL, MDIO_REG_LPC_PHY_CTRL_RX_ENABLE | MDIO_REG_LPC_PHY_CTRL_TX_ENABLE | MDIO_REG_LPC_PHY_CTRL_DMTD_SOURCE_RXRECCLK | MDIO_REG_LPC_PHY_CTRL_COMMA_TARGET_POS(DEFAULT_COMMA_POS) );
-                ep_pcs_write(&wrc_endpoint_dev, MDIO_REG_MCR, MDIO_MCR_SPEED1000_MASK | MDIO_MCR_FULLDPLX_MASK | MDIO_MCR_ANENABLE | MDIO_MCR_ANRESTART  );
-                phy_dbg("RX calibration complete (after %d attempts) comma @ %d taps.\n", fsm->attempts, rx_comma_pos );
+                mdio_lpdc_set_bits( lpdc, LPDC_MDIO_CTRL, LPDC_MDIO_CTRL_RX_ENABLE );
+                ep_pcs_write(lpdc->endpoint, EP_MDIO_MCR, EP_MDIO_MCR_SPEED1000 | EP_MDIO_MCR_FULLDPLX | EP_MDIO_MCR_ANENABLE | EP_MDIO_MCR_ANRESTART);
+                phy_dbg("[lpdc] RX calibration complete (after %d attempts) comma @ %d taps.\n", fsm->attempts, rx_comma_pos );
                 spll_enable_ptracker( 0, 0 );
                 spll_set_ptracker_average_samples( 0, PTRACKER_AVERAGE_SAMPLES );
 
                    fsm->state = RX_SETUP_DONE;
 
             } else {
-                phy_dbg("weird, can't stabilize link. Retrying [%d %d %d %d]\n", rx_up, rx_aligned, rx_comma_valid, rx_comma_pos );
+                phy_dbg("[lpdc] Stabilize link...\n");
                 fsm->state = RX_SETUP_STATE_RESET_PCS;
             }
 
             break;
         }
 
-
-
         case RX_SETUP_DONE:
         {
-            uint16_t dbg0 = ep_pcs_read(&wrc_endpoint_dev, MDIO_REG_LPC_PHY_STAT);
+
             int link_up = ep_link_up(&wrc_endpoint_dev, NULL);
 
-
-            if( ! (dbg0 & MDIO_REG_LPC_PHY_STAT_LINK_UP ) /*|| ( ( fsm->prev_link_up && !link_up ) )*/ )
+            if( !early_link_up /*|| ( ( fsm->prev_link_up && !link_up ) )*/ )
             {
                 phy_dbg("port went down, need RX recalibration.\n");
                 fsm->state = RX_SETUP_STATE_INIT;
@@ -447,42 +495,45 @@ static int rx_fsm_update(  )
             return 1;
             break;
         }
+
+        default:
+        break;
     }
 
-
     return 0;
 }
 
-int phy_calibration_poll()
+static struct wrc_lpdc_state lpdc;
+
+int phy_calibration_poll(void)
 {
-    tx_fsm_update();
-    rx_fsm_update();
-    return 0;
+    tx_fsm_update(&lpdc);
+    rx_fsm_update(&lpdc);
+    return 1;
 }
 
-int phy_calibration_done()
+int phy_calibration_done(void)
 {
-    struct wrc_port_rx_setup_state *fsm_rx = &rx_state;
-    return (fsm_rx->state == RX_SETUP_DONE);
+    return (lpdc.rx_state.state == RX_SETUP_DONE);
 }
 
-void phy_calibration_init()
+void phy_calibration_init(void)
 {
-    phy_dbg("Initializing PHY calibrator...\n");
-    ep_pcs_write(&wrc_endpoint_dev, MDIO_REG_MCR, MDIO_MCR_PDOWN); /* reset the PHY */
+    // fixme: do we want more than one in the WRC? maybe soon...
+    lpdc.endpoint = &wrc_endpoint_dev;
+
+    phy_dbg("[lpdc] Initializing PHY calibrator...\n");
+    ep_pcs_write(lpdc.endpoint, EP_MDIO_MCR, EP_MDIO_MCR_PDOWN); /* reset the PHY */
     timer_delay_ms(200);
-    ep_pcs_write(&wrc_endpoint_dev, MDIO_REG_MCR, MDIO_MCR_RESET); /* reset the PHY */
-    ep_pcs_write(&wrc_endpoint_dev, MDIO_REG_MCR, 0); /* reset the PHY */
+    ep_pcs_write(lpdc.endpoint, EP_MDIO_MCR, EP_MDIO_MCR_RESET); /* reset the PHY */
+    ep_pcs_write(lpdc.endpoint, EP_MDIO_MCR, 0); /* reset the PHY */
 
-    spll_init( SPLL_MODE_FREE_RUNNING_MASTER, 0, 0 );
-    spll_set_ptracker_average_samples( 0, 10 );
-
-    tx_fsm_init(&tx_state);
-    rx_fsm_init(&rx_state);
+    tx_fsm_init(&lpdc.tx_state);
+    rx_fsm_init(&lpdc.rx_state);
 }
 
-void phy_calibration_disable()
+void phy_calibration_disable(void)
 {
-    tx_state.state = TX_SETUP_STATE_DISABLED;
-    rx_state.state = RX_SETUP_STATE_DISABLED;
+    lpdc.tx_state.state = TX_SETUP_STATE_DISABLED;
+    lpdc.rx_state.state = RX_SETUP_STATE_DISABLED;
 }
