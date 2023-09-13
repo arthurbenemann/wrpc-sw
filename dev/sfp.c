@@ -318,6 +318,43 @@ end:
     return _tuning_procedure;
 }
 
+static void sfp_oe_write_word(uint8_t addr, uint8_t reg, uint16_t val)
+{
+    uint8_t tmp[2];
+    // printf("[Writing %02x.%02x<=%04x (%u)]", addr,reg,val, val);
+
+    tmp[0] = 0xFF &  (val >> 8);
+    tmp[1] = 0xFF &  (val);
+    sfp_i2c_mod_write(addr, reg, tmp, 2);
+}
+
+static uint16_t sfp_oe_read_word(uint8_t addr, uint8_t reg)
+{
+    uint8_t tmp[2];
+    uint16_t val;
+
+    sfp_i2c_mod_read(addr, reg, tmp, 2);
+    val = ( tmp[0] << 8 ) | tmp[1];
+
+    // printf("[Read %02x.%02x=>%04x (%u)]", addr,reg,val, val);
+
+    return val;
+}
+
+
+void sfp_oe_set_alarm_range(int32_t low, int32_t high)
+{
+    if (low < 0) low = 0;
+    if (high > 65535) high = 65536;
+
+
+    sfp_oe_write_word(0xa2, 0x28, high);
+    sfp_oe_write_word(0xa2, 0x2c, high);
+    sfp_oe_write_word(0xa2, 0x2a, low);
+    sfp_oe_write_word(0xa2, 0x2f, low);
+}
+
+
 static void sfp_do_tune_word(int32_t * tw, bool write)
 {
     uint8_t tmp[4];
