@@ -321,7 +321,7 @@ end:
 static void sfp_do_tune_word(int32_t * tw, bool write)
 {
     uint8_t tmp[4];
- 
+    uint16_t tmp2, tmp3, tmp4, tmpprev; 
     if (_tuning_procedure == -1) sfp_get_tuning_procedure();
 
 #ifdef SFP_TUNING_SIMULATE
@@ -335,24 +335,61 @@ static void sfp_do_tune_word(int32_t * tw, bool write)
     {
     case SFP_TUNING_PROC_OESOLUTIONS:
     
+
         tmp[0] = 0x4F; tmp[1] = 0x45; tmp[2] = 0x53; tmp[3] = 0x50;
-        // unlock?
+        // unlock
         sfp_i2c_mod_write(0xA2, 0x7B, tmp, 4);
+
+        // select page 4
         sfp_select_page(4);
-        
-        if (write) 
+        if (write && *tw != 0xffff) 
         {
-            tmp[0] = 0xFF &  (*tw >> 8);
-            tmp[1] = 0xFF &  (*tw);
-            sfp_i2c_mod_write(0xA2, 0x8B, tmp, 2);
+
+            // printf("Tuning");
+            // save previous value
+            tmpprev = sfp_oe_read_word(0xA2, 0x8B);
+ 
+            //sfp_oe_set_alarm_range(0, 65535);
+            // usleep(200000);
+            // set tuning value
+            sfp_oe_write_word(0xA2, 0x8B, *tw);
+            usleep(50000);
+
+            // ignore non-valid DAC temperatures... we'll wait for 3 DAC readouts before assuming stability
+            tmp2 = 0;
+            tmp3 = 0;
+            tmp4 = 0;
+            int timeout = 80;
+            while ((tmp2 == 0xffff || tmp2 == 0 || tmp3 != tmp2 || tmp4 != tmp3 ) && timeout > 0)
+            { 
+                // give it some time
+                usleep(50000);
+                // read DDM temperature
+                tmp4 = tmp3;
+                tmp3 = tmp2;
+                tmp2 = sfp_oe_read_word(0xA2, 0x6A);
+                // printf("[%d]", tmp2);
+                timeout--;
+            }
+            
+
+            if (timeout > 0)
+            {
+                // puts("\nTuning complete");
+                sfp_oe_set_alarm_range(tmp2 - 0x100, tmp2 + 0x100);
+            } else{
+                // puts("\nTimeout during tuning, recovered!");
+                // recover
+                if (tmpprev != 0xffff) sfp_oe_write_word(0xA2, 0x8B, tmpprev);
+            }
+
         } else {
-            sfp_i2c_mod_read(0xA2, 0x8B, tmp, 2);
-            *tw = 0;
-            *tw = (tmp[0] << 8) | tmp[1];
+            *tw = sfp_oe_read_word(0xA2, 0x8B);
         }
         // lock again
         tmp[0] = 0xFF; tmp[1] = 0xFF; tmp[2] = 0xFF; tmp[3] = 0xFF;
         sfp_i2c_mod_write(0xA2, 0x7B, tmp, 4);
+
         break;
     case SFP_TUNING_PROC_LUMENTUM:
         sfp_select_page(2);
