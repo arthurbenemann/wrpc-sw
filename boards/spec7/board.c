@@ -34,6 +34,8 @@
 #include "softpll_ng.h"
 #include <wrpc.h>
 
+static spll_gain_schedule_t spll_main_ocxo_gain_sched;
+
 struct
 {
     struct gpio_device gpio_aux;
@@ -77,6 +79,37 @@ timeout_t pll_sync_timeout;
 #undef CONFIG_HPSEC_GM
 
 //volatile struct softpll_state softpll;
+
+static void spec7_spll_setup(void)
+{
+
+int implement_two_stages = 0; // implement 2-stage ocxo lock later
+
+/* configure a suitable PI gain schedule for the SoftPLL: */
+    spll_gain_schedule_t* gs=  &spll_main_ocxo_gain_sched;
+
+/* we start with the default values (Bandwidth 100 Hz) */
+    gs->stages[0].kp = -4000;
+    gs->stages[0].ki = -8;
+    gs->stages[0].lock_samples = 10000;
+    gs->stages[0].shift = 12;
+
+/* once it's locked, the loop bandwidth is switched to 15 Hz to filter out WR link added phase noise */
+    gs->stages[1].kp = -600;
+    gs->stages[1].ki = -2;
+    gs->stages[1].lock_samples = 10000;
+    gs->stages[1].shift = 12;
+
+    if ( implement_two_stages ) {
+        gs->n_stages = 2;   // 2 stages: OCXO
+        board_dbg("Oscillator gain schedule: Two stage OCXO setup\n");
+        spll_set_gain_schedule( gs );
+    } else {
+        gs->n_stages = 1;   // 1 stage: Crystek
+        board_dbg("Oscillator gain schedule: 1st stage Crystek setup\n");
+        spll_set_gain_schedule( gs );
+    }
+}
 
 // ======================================
 // GPIO Control functions
@@ -275,6 +308,9 @@ int spec7_init()
         &pin_pll_miso_i,
         &pin_pll_sck_o,
         100 );
+
+    /* Setup the SoftPLL for the OCXO we have */
+    spec7_spll_setup();
 
     ltc695x_init(&board.ltc6950_pll, &board.spi_ltc6950);
 
