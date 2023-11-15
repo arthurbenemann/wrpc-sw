@@ -55,8 +55,8 @@ static spll_gain_schedule_t spll_main_ocxo_gain_sched;
 #define SIT5359_I2C_ADDR_A0_0 0x62
 #define SIT5359_I2C_ADDR_A0_1 0x6A
 
-#define DAC_HALF_SCALE (1<<(DAC_BITS - 1))
-#define DAC_FULL_SCALE (1<<(DAC_BITS))
+#define DAC_HALF_SCALE (1<<(BOARD_SPLL_DAC_BITS - 1))
+#define DAC_FULL_SCALE (1<<(BOARD_SPLL_DAC_BITS))
 
 struct
 {
