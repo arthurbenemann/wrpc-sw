@@ -176,6 +176,7 @@ static int tx_fsm_update(struct wrc_lpdc_state *lpdc)
             spll_init( SPLL_MODE_FREE_RUNNING_MASTER, 0, 0 );
             spll_set_ptracker_average_samples( 0, LPDC_NUM_PTRACKER_SAMPLES );
             tmo_init(&fsm->spll_lock_timeout, FSM_SPLL_LOCK_TIMEOUT_MS);
+            ep_sfp_enable( lpdc->endpoint, 0 );
             fsm->state = TX_SETUP_STATE_WAIT_SPLL_LOCK;
             break;
         }
@@ -186,6 +187,8 @@ static int tx_fsm_update(struct wrc_lpdc_state *lpdc)
             {
                 phy_dbg("[lpdc] can't lock the SoftPLL. This is necessary for PHY calibration to continue. Retrying...\n");
                 tmo_restart( &fsm->spll_lock_timeout );
+                fsm->state = TX_SETUP_STATE_START;
+                break;
             }
            
             if( spll_check_lock( 0 ) )
@@ -211,14 +214,15 @@ static int tx_fsm_update(struct wrc_lpdc_state *lpdc)
             // Reset TX path: tx_sw_reset => gtwiz_reset_all_in
             mdio_lpdc_set_bits( lpdc, LPDC_MDIO_CTRL, LPDC_MDIO_CTRL_TX_SW_RESET );
             usleep(2);
-      
+
             // Un-reset TX path
             mdio_lpdc_clear_bits( lpdc, LPDC_MDIO_CTRL, LPDC_MDIO_CTRL_TX_SW_RESET );
-      
+
             // GTHE4 tx_sw_reset to tx_rst_done ~ 2.5 ms
             //usleep(100);
-            fsm->state = TX_SETUP_STATE_WAIT_TX_PLL_LOCK;
+
             tmo_init( &fsm->phy_lock_timeout, FSM_PHY_LOCK_TIMEOUT_MS );
+            fsm->state = TX_SETUP_STATE_WAIT_TX_PLL_LOCK;
       
             break;
         }
@@ -513,6 +517,9 @@ void phy_calibration_init(void)
     timer_delay_ms(200);
     ep_pcs_write(lpdc.endpoint, EP_MDIO_MCR, EP_MDIO_MCR_RESET);	/* reset the PHY */
     ep_pcs_write(lpdc.endpoint, EP_MDIO_MCR, 0);	                /* reset the PHY */
+
+    mdio_lpdc_write( &lpdc, LPDC_MDIO_CTRL, 0 );
+    mdio_lpdc_write( &lpdc, LPDC_MDIO_CTRL2, 0 );
 
     tx_fsm_init(&lpdc.tx_state);
     rx_fsm_init(&lpdc.rx_state);
