@@ -246,6 +246,8 @@ static struct gpio_pin pin_eeprom_scl        = { &board.gpio_aux, 0 };
 static struct gpio_pin pin_eeprom_sda        = { &board.gpio_aux, 1 };
 static struct gpio_pin pin_aux_scl           = { &board.gpio_aux, 2 };
 static struct gpio_pin pin_aux_sda           = { &board.gpio_aux, 3 };
+static struct gpio_pin pin_spare0            = { &board.gpio_aux, 4 };
+static struct gpio_pin pin_spare1            = { &board.gpio_aux, 5 };
 
 struct i2c_bus            i2c_wrc_eeprom;
 struct i2c_bus            dev_i2c_aux;
@@ -293,6 +295,7 @@ int wrc_board_early_init()
 int wrc_board_init()
 {
     uint8_t regs[6];
+    int i;
 
     // set I2C bus speed and OSC Output enable
     sit5359_dev_init(&board.sit5359_refclk);
@@ -316,6 +319,16 @@ int wrc_board_init()
 
     ep_set_mac_addr(&wrc_endpoint_dev, mac_addr);
     ep_pfilter_init_default(&wrc_endpoint_dev);
+
+    for( i = 0 ; i < 5; i++ )
+        {
+        gen_gpio_out( &pin_spare0, 0 );
+        gen_gpio_out( &pin_spare1, 1 );
+        timer_delay_ms(100);
+        gen_gpio_out( &pin_spare0, 1 );
+        gen_gpio_out( &pin_spare1, 0 );
+        timer_delay_ms(100);
+    }
 
     return 0;
 }
