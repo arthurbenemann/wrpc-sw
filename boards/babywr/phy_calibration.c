@@ -48,6 +48,7 @@
 #define LPDC_COARSE_PHASE_MAX_PS 12250   /* ps */
 #define LPDC_FINE_PHASE_TOLLERANCE_PS 20 /* ps */
 #define LPDC_MAX_ATTEMPS_TX_SETUP_STATE_RESET_PCS 2000
+#define LPDC_MAX_ATTEMPS_RX_SETUP_STATE_RESET_PCS 100
 
 // number of raw DDMTD phase samples used to measure the RX/TX clock phases
 #define LPDC_NUM_PTRACKER_SAMPLES 10 
@@ -440,7 +441,14 @@ static int rx_fsm_update(struct wrc_lpdc_state *lpdc)
                     fsm->state = RX_SETUP_VALIDATE;
                     tmo_init( &fsm->stabilize_timeout, FSM_STABILIZE_TIMEOUT_MS );
                 } else {
-                    fsm->state = RX_SETUP_STATE_RESET_PCS;
+                    // In rare occasions the comma can't be found at the proper tap, even after
+                    // multiple PCS resets. In such a case a full GTHE4 reset is needed.
+                    if (fsm-> attempts % LPDC_MAX_ATTEMPS_RX_SETUP_STATE_RESET_PCS == 0) {
+                        phy_dbg("[lpdc] No RX calibration yet... Restarting TX calibration from scratch.\n");
+                        tx_fsm_init(&lpdc->tx_state);
+                    } else {
+                        fsm->state = RX_SETUP_STATE_RESET_PCS;
+                    }
                 }
             }
             break;
