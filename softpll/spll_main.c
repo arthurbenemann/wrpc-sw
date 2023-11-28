@@ -35,7 +35,7 @@ void mpll_init(struct spll_main_state *s, int id_ref, int id_out)
 	s->pi.anti_windup = 1;
 	s->pi.bias = (1 << (BOARD_SPLL_DAC_BITS - 1)); // midscale
 	s->pi.shift = PI_FRACBITS - BOARD_SPLL_DIV_BITS;
-#if defined(CONFIG_TARGET_WR_SWITCH)
+#if defined(CONFIG_TARGET_WR_SWITCH) || defined( CONFIG_TARGET_WR_SWITCH_V4 )
 	if (spll_ljd_present) {
 		s->pi.kp = 2000;
 		s->pi.ki = 15;
@@ -403,7 +403,7 @@ int mpll_update(struct spll_main_state *s, int tag, int source)
 		if (s->locked && !s->ps_freeze) {
 			if (s->phase_shift_current < s->phase_shift_target) {
 				s->phase_shift_current++;
-#if defined(CONFIG_TARGET_WR_SWITCH)
+#if defined(CONFIG_TARGET_WR_SWITCH) || defined( CONFIG_TARGET_WR_SWITCH_V4 )
 				s->adder_ref++;
 #else
 				s->adder_ref--;
@@ -411,7 +411,7 @@ int mpll_update(struct spll_main_state *s, int tag, int source)
 			} else if (s->phase_shift_current >
 				   s->phase_shift_target) {
 				s->phase_shift_current--;
-#if defined(CONFIG_TARGET_WR_SWITCH)
+#if defined(CONFIG_TARGET_WR_SWITCH) || defined( CONFIG_TARGET_WR_SWITCH_V4 )
 				s->adder_ref--;
 #else
 				s->adder_ref++;
