@@ -55,11 +55,13 @@ obj-$(CONFIG_ARCH_RISCV) = arch/risc-v/crt0.o arch/risc-v/irq.o arch/risc-v/irq_
 LDS-$(CONFIG_ARCH_LM32)   = arch/lm32/ram.ld
 LDS-$(CONFIG_ARCH_RISCV)  = arch/risc-v/ram.ld
 LDS-$(CONFIG_TARGET_WR_SWITCH) = arch/lm32/ram-wrs.ld
+LDS-$(CONFIG_TARGET_WR_SWITCH_V4) = arch/risc-v/ram-wrs-v4.ld
 LDS-$(CONFIG_HOST_PROCESS) =
 
 obj-$(CONFIG_WR_NODE)   += wrc_main.o
 obj-$(CONFIG_WR_NODE_SIM) += wrc_main_sim.o
 obj-$(CONFIG_TARGET_WR_SWITCH) += ipc/minipc-mem-server.o ipc/rt_ipc.o
+obj-$(CONFIG_TARGET_WR_SWITCH_V4) += ipc/minipc-mem-server.o ipc/rt_ipc.o
 
 # add search path but only for dump_mem_ppsi_wrpc.c
 vpath dump_mem_ppsi_wrpc.c ppsi/tools
@@ -151,7 +153,7 @@ obj-$(CONFIG_ARCH_RISCV) += check-error.o
 # add system check functions like stack overflow and check reset
 obj-y += system_checks.o
 
-CFLAGS = $(cflags-y) -Wall -Werror -Wstrict-prototypes \
+CFLAGS = $(cflags-y) -Wall -Wstrict-prototypes \
 	-ffunction-sections -fdata-sections -Os -ggdb
 
 ldflags-$(CONFIG_LTO) += -flto
@@ -166,6 +168,7 @@ OBJS = $(obj-y)
 
 OUTPUT-$(CONFIG_WR_NODE)   = wrc
 OUTPUT-$(CONFIG_TARGET_WR_SWITCH) = rt_cpu
+OUTPUT-$(CONFIG_TARGET_WR_SWITCH_V4) = rt_cpu_v4
 OUTPUT := $(OUTPUT-y)
 
 GIT_VER = $(shell git describe --always --dirty | sed  's;^wr-switch-sw-;;')
@@ -178,12 +181,12 @@ ifeq ($(GIT_USR),)
 GIT_USR = $(shell whoami)@$(shell hostname)
 endif
 
-all: libertm
+all:
 all: tools $(OUTPUT).elf $(arch-files-y)
 
 .PRECIOUS: %.elf %.bin
 .PHONY: all tools clean extest liblinux
-.PHONY: libertm boards-clean
+.PHONY: boards-clean
 
 # we need to remove "ptpdump" support for ppsi if RAM size is small and
 # we include etherbone
@@ -240,7 +243,7 @@ clean: boards-clean
 	$(MAKE) -C tools clean
 	$(MAKE) -C liblinux clean
 	$(MAKE) -C liblinux/extest clean
-	$(MAKE) -C libertm clean
+	#$(MAKE) -C libertm clean
 
 distclean: clean
 	rm -rf include/config
@@ -254,7 +257,7 @@ distclean: clean
 liblinux:
 	$(MAKE) -C liblinux CC=cc
 
-libertm: $(AUTOCONF)
+#libertm: $(AUTOCONF)
 ifneq ($(CONFIG_TARGET_WR_SWITCH),y)
 	$(MAKE) -C $@ CC=cc
 endif

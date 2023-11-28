@@ -48,6 +48,11 @@ config TARGET_WR_SWITCH
 	help
 	  Builds the rt_cpu.bin, for the WR Switch FPGA
 
+config TARGET_WR_SWITCH_V4
+	bool "White Rabbit Switch V4 prototype RT CPU"
+	help
+	  Builds the rt_cpu.bin, for the WR Switch V4 FPGA
+
 config TARGET_AFCZ_V1
 	bool "AFCZ FMC Carrier (V1)"
 	help
@@ -97,7 +102,7 @@ config WR_NODE_SIM
 
 config WR_NODE
 	bool
-	default !TARGET_WR_SWITCH
+	default !TARGET_WR_SWITCH && !TARGET_WR_SWITCH_V4
 
 # most options with no prompt here are prompted-for in the "advanced" section
 
@@ -703,7 +708,7 @@ config VERBOSE_DETAIL
 
 config LTO
 	bool
-	default y if ARCH_RISCV
+	default n if ARCH_RISCV
 	default n
 
 choice
