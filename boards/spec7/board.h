@@ -30,6 +30,10 @@
 #define REF_CLOCK_PERIOD_PS 16000
 #define REF_CLOCK_FREQ_HZ 62500000
 
+/* Accomodate 20 bit MAX5719A */
+#define BOARD_SPLL_DAC_BITS 20
+#define BOARD_SPLL_DIV_BITS 4
+
 /* Maximum number of simultaneously created sockets */
 #define NET_MAX_SOCKETS 12
 
