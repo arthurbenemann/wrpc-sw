@@ -27,10 +27,46 @@ void init_hw_after_reset(void)
 	uart_init_hw();
 }
 
+static int lj_periph_type_read(int ljd_present) {
+	int osc_freq  = 0;
+	int periph_id = 0;
+
+	if (ljd_present == 0) {
+		pp_printf("\n--- WRS without Low jitter peripherial detected.\n");
+		return PERIPH_WRS_STD_NO_LJ;
+    }
+
+	osc_freq   =  gpio_in(GPIO_LJD_OSC_FREQ_0);
+	osc_freq  += (gpio_in(GPIO_LJD_OSC_FREQ_1)<<1);
+	osc_freq  += (gpio_in(GPIO_LJD_OSC_FREQ_2)<<2);
+
+	periph_id  =  gpio_in(GPIO_LJD_PERIPH_ID_0);
+	periph_id += (gpio_in(GPIO_LJD_PERIPH_ID_1)<<1);
+	periph_id += (gpio_in(GPIO_LJD_PERIPH_ID_2)<<2);
+
+	pp_printf("\n--- WRS Low jitter peripherial detected. "
+		  "OSC FREQ is %d LJ_PERIPH_ID is %d ---\n",
+		  osc_freq, periph_id);
+	pp_printf("Allow 1 hour of warming up before starting measurements\n");
+	pp_printf("Derived LJ Peripherial type: ");
+	if (osc_freq == OSC_FREQ_WRS_LJ_INT && periph_id == PERIPH_ID_WRS_FL_SYNCTECH) {
+		pp_printf("WRS-FL from SyncTech\n");
+		return PERIPH_WRS_FL_SYNCTECH;
+	}
+
+	if (osc_freq == OSC_FREQ_WRS_LJ_INT && periph_id == PERIPH_ID_WRS_LJ_SAFRAN) {
+		pp_printf("WRS-LJ from Safran\n");
+		return PERIPH_WRS_LJ_SAFRAN;
+	}
+
+	pp_printf("WRS with plugged Low Jitter Daughterboard\n");
+	return PERIPH_WRS_STD_WITH_LJD;
+}
+
+
 int main(void)
 {
 	uint32_t start_tics = timer_get_tics();
-	int osc_freq=0;
 
 	check_reset();
 	stats.start_cnt++;
@@ -44,21 +80,15 @@ int main(void)
 	pp_printf("Start counter %d\n", stats.start_cnt);
 	/* Low-jitter Daughterboard detection */
 	ljd_present = gpio_in(GPIO_LJD_BOARD_DETECT);
-	osc_freq = gpio_in(GPIO_LJD_OSC_FREQ_0);
-	osc_freq += (gpio_in(GPIO_LJD_OSC_FREQ_1)<<1);
-	osc_freq += (gpio_in(GPIO_LJD_OSC_FREQ_2)<<2);
-	if (ljd_present) {
-		pp_printf("\n--- WRS Low jitter board detected. OSC FREQ is %d ---\n",osc_freq);
-		pp_printf("Allow 1 hour of warming up before starting measurements\n");
-	}
-	pp_printf("--\n");
+	lj_periph_type = lj_periph_type_read(ljd_present);
 
 	if (stats.start_cnt > 1) {
 		pp_printf("!!spll does not work after restart!!\n");
 		/* for sure problem is in calling second time ad9516_init,
 		 * but not only */
 	}
-	if((ljd_present==1) && (osc_freq!=7))
+
+	if ((ljd_present == 1) && (lj_periph_type != PERIPH_WRS_FL_SYNCTECH))
 		ad9516_init(scb_ver, 1);
 	else
 		ad9516_init(scb_ver, 0);

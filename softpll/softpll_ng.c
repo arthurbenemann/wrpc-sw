@@ -33,6 +33,7 @@ volatile struct PPSG_WB *PPSG;
 
 int spll_n_chan_ref, spll_n_chan_out;
 int ljd_present = 0;		/* Low-jitter Daughterboard presence indicator */
+int lj_periph_type = 0;
 
 
 #define MAIN_CHANNEL (spll_n_chan_ref)

@@ -17,6 +17,9 @@
 #define GPIO_LJD_OSC_FREQ_0	5
 #define GPIO_LJD_OSC_FREQ_1	6
 #define GPIO_LJD_OSC_FREQ_2	7
+#define GPIO_LJD_PERIPH_ID_0	8
+#define GPIO_LJD_PERIPH_ID_1	9
+#define GPIO_LJD_PERIPH_ID_2	10
 
 extern int ljd_present;
 
