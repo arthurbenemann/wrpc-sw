@@ -15,6 +15,9 @@ extern const struct gpio_pin gpio_pin_ljd_board_detect;
 extern const struct gpio_pin gpio_pin_ljd_osc_freq_0;
 extern const struct gpio_pin gpio_pin_ljd_osc_freq_1;
 extern const struct gpio_pin gpio_pin_ljd_osc_freq_2;
+extern const struct gpio_pin gpio_pin_ljd_periph_id_0;
+extern const struct gpio_pin gpio_pin_ljd_periph_id_1;
+extern const struct gpio_pin gpio_pin_ljd_periph_id_2;
 
 void wrs_gpio_init(void);
 

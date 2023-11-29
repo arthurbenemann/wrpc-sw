@@ -27,6 +27,9 @@
 #define GPIO_LJD_OSC_FREQ_0	5
 #define GPIO_LJD_OSC_FREQ_1	6
 #define GPIO_LJD_OSC_FREQ_2	7
+#define GPIO_LJD_PERIPH_ID_0	8
+#define GPIO_LJD_PERIPH_ID_1	9
+#define GPIO_LJD_PERIPH_ID_2	10
 
 static struct gpio_device wrs_gpio;
 
@@ -37,6 +40,9 @@ const struct gpio_pin gpio_pin_ljd_board_detect = { &wrs_gpio, GPIO_LJD_BOARD_DE
 const struct gpio_pin gpio_pin_ljd_osc_freq_0 = { &wrs_gpio, GPIO_LJD_OSC_FREQ_0 };
 const struct gpio_pin gpio_pin_ljd_osc_freq_1 = { &wrs_gpio, GPIO_LJD_OSC_FREQ_1 };
 const struct gpio_pin gpio_pin_ljd_osc_freq_2 = { &wrs_gpio, GPIO_LJD_OSC_FREQ_2 };
+const struct gpio_pin gpio_pin_ljd_periph_id_0 = { &wrs_gpio, GPIO_LJD_PERIPH_ID_0 };
+const struct gpio_pin gpio_pin_ljd_periph_id_1 = { &wrs_gpio, GPIO_LJD_PERIPH_ID_1 };
+const struct gpio_pin gpio_pin_ljd_periph_id_2 = { &wrs_gpio, GPIO_LJD_PERIPH_ID_2 };
 
 void wrs_gpio_init(void)
 {

@@ -19,10 +19,13 @@
 
 #define EXT_PERIOD_NS 100
 #define EXT_FREQ_HZ 10000000
-// fixme: make configurable
-#define EXT_PPS_LATENCY_PS 30000	// for regular ext channel
-#define EXT_PPS_LATENCY_LJD_PS 111395	// for low-jitter daughterboard
 
+int ext_pps_latency[] = {
+	30000, // PERIPH_WRS_STD_NO_LJ
+	63000, // PERIPH_WRS_STD_WITH_LJD
+	111395,// PERIPH_WRS_FL_SYNCTECH
+	16000  // PERIPH_WRS_LJ_SAFRAN
+};
 
 void external_init(volatile struct spll_external_state *s, int ext_ref,
 			  int realign_clocks)
@@ -89,10 +92,10 @@ static int align_sample(int channel, int *v)
 
 static inline int get_pps_latency(int sel)
 {
-	if (sel)
-		return EXT_PPS_LATENCY_LJD_PS;
+	if (sel >= PERIPH_END)
+		return ext_pps_latency[PERIPH_WRS_STD_NO_LJ];
 	else
-		return EXT_PPS_LATENCY_PS;
+		return ext_pps_latency[sel];
 }
 
 int external_align_fsm(volatile struct spll_external_state *s)
