@@ -180,9 +180,34 @@ struct softpll_state {
 	struct spll_ptracker_state ptrackers[MAX_PTRACKERS];
 };
 
-extern unsigned char spll_ljd_present;
+/*
+ * Low Jitter capabilities corner
+ */
 
+#define PERIPH_WRS_STD_NO_LJ    0
+#define PERIPH_WRS_STD_WITH_LJD 1
+#define PERIPH_WRS_FL_SYNCTECH  2
+#define PERIPH_WRS_LJ_SAFRAN    3
+#define PERIPH_END              4
+
+// OSC_FREQ allows to recognize frequency of oscillator on LJD and
+// also the fact that LJ functionality is intgrated
+#define OSC_FREQ_10M        0x0
+#define OSC_FREQ_20M        0x1
+#define OSC_FREQ_25M        0x2
+#define OSC_FREQ_50M        0x3
+#define OSC_FREQ_100M       0x4
+#define OSC_FREQ_WRS_LJ_INT 0x7
+
+// When Low Jitter functionlity integrated, periph_ID allows to detect
+// the switch type
+#define PERIPH_ID_WRS_FL_SYNCTECH 0x7
+#define PERIPH_ID_WRS_LJ_SAFRAN   0x6
+
+
+extern unsigned char spll_ljd_present;
 extern volatile struct softpll_state softpll;
+extern int lj_periph_type;
 
 #endif // __SOFTPLL_NG_H
 

@@ -22,6 +22,7 @@
 
 unsigned char spll_n_chan_ref, spll_n_chan_out;
 unsigned char spll_ljd_present = 0;
+int lj_periph_type = 0;
 
 static const char * const seq_states[] =
 {
