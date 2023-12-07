@@ -77,8 +77,8 @@ int main(void)
 	uart_init_hw();
 	pp_printf("\n");
 	pp_printf("WR Switch Real Time Subsystem (c) CERN 2011 - 2014\n");
-	pp_printf("Revision: %s, built: %s %s.\n",
-	      build_revision, build_date, build_time);
+	pp_printf("Revision: %s, built: %s %s by %s.\n",
+		  build_revision, build_date, build_time, build_by);
 	pp_printf("SCB version: %d. %s\n", scb_ver,(scb_ver>=34)?"10 MHz SMC Output.":"" );
 	pp_printf("Start counter %d\n", stats.start_cnt);
 	/* Low-jitter Daughterboard detection */
