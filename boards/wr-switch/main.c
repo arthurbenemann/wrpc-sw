@@ -85,8 +85,9 @@ int main(void)
 	pp_printf("\n");
 	pp_printf("WR Switch Real Time Subsystem (c) CERN 2011 - 2020\n");
 	memcpy(&stats->build_id, &build_id, sizeof (build_id));
-	pp_printf("Commit: %s, built: %s %s.\n",
-	      build_id.commit_id, build_id.build_date, build_id.build_time);
+	pp_printf("Commit: %s, built: %s %s by %s.\n",
+		  build_id.commit_id, build_id.build_date, build_id.build_time,
+		  build_id.build_by);
 	pp_printf("SCB version: %d. %s\n", scb_ver,(scb_ver>=34)?"10 MHz SMC Output.":"" );
 	pp_printf("Start counter %d\n", stats->start_cnt);
 	/* Low-jitter Daughterboard detection */
