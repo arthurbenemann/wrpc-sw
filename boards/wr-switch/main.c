@@ -1,7 +1,7 @@
 /*
  * This work is part of the White Rabbit project
  *
- * Copyright (C) 2012,2015 CERN (www.cern.ch)
+ * Copyright (C) 2012, 2015, 2024 CERN (www.cern.ch)
  * Author: Tomasz Wlostowski <tomasz.wlostowski@cern.ch>
  * Author: Adam Wujek <adam.wujek@cern.ch>
  *
@@ -83,7 +83,7 @@ int main(void)
 	wrs_gpio_init();
 	console_init();
 	pp_printf("\n");
-	pp_printf("WR Switch Real Time Subsystem (c) CERN 2011 - 2020\n");
+	pp_printf("WR Switch Real Time Subsystem (c) CERN 2011 - 2024\n");
 	memcpy(&stats->build_id, &build_id, sizeof (build_id));
 	pp_printf("Commit: %s, built: %s %s by %s.\n",
 		  build_id.commit_id, build_id.build_date, build_id.build_time,
