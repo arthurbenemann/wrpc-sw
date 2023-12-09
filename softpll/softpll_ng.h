@@ -172,8 +172,9 @@ extern int ljd_present;
 
 // When Low Jitter functionlity integrated, periph_ID allows to detect
 // the switch type
-#define PERIPH_ID_WRS_FL_SYNCTECH 0x7
-#define PERIPH_ID_WRS_LJ_SAFRAN   0x6
+#define PERIPH_ID_WRS_FL_SYNCTECHv1_0 0x7
+#define PERIPH_ID_WRS_FL_SYNCTECHv1_5 0x6
+#define PERIPH_ID_WRS_LJ_SAFRAN       0x5
 
 
 extern int lj_periph_type;
