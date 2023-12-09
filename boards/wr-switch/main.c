@@ -53,11 +53,14 @@ static int lj_periph_type_read(int ljd_present) {
 		  osc_freq, periph_id);
 	pp_printf("Allow 1 hour of warming up before starting measurements\n");
 	pp_printf("Derived LJ Peripherial type: ");
-	if (osc_freq == OSC_FREQ_WRS_LJ_INT && periph_id == PERIPH_ID_WRS_FL_SYNCTECH) {
-		pp_printf("WRS-FL from SyncTech\n");
+	if (osc_freq == OSC_FREQ_WRS_LJ_INT && periph_id == PERIPH_ID_WRS_FL_SYNCTECHv1_0) {
+		pp_printf("WRS-FL from SyncTech 1.0\n");
 		return PERIPH_WRS_FL_SYNCTECH;
 	}
-
+        if (osc_freq == OSC_FREQ_WRS_LJ_INT && periph_id == PERIPH_ID_WRS_FL_SYNCTECHv1_5) {
+                pp_printf("WRS-FL from SyncTech 1.5\n");
+                return PERIPH_WRS_FL_SYNCTECH;
+        }
 	if (osc_freq == OSC_FREQ_WRS_LJ_INT && periph_id == PERIPH_ID_WRS_LJ_SAFRAN) {
 		pp_printf("WRS-LJ from Safran\n");
 		return PERIPH_WRS_LJ_SAFRAN;
