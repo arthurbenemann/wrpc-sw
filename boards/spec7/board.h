@@ -34,6 +34,10 @@
 #define BOARD_SPLL_DAC_BITS 20
 #define BOARD_SPLL_DIV_BITS 4
 
+/* When using an external oscillator,
+   it can take more than 15sec to sync PLL */
+#define BOARD_WR_S_LOCK_TIMEOUT_MS 30000
+
 /* Maximum number of simultaneously created sockets */
 #define NET_MAX_SOCKETS 12
 
