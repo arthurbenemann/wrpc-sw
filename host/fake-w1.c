@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <w1.h>
 
-struct w1_bus wrpc_w1_bus;
+extern struct w1_bus wrpc_w1_bus;
 
 void wrpc_w1_init(void)
 { printf("%s\n", __func__); }
