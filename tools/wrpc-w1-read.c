@@ -48,7 +48,7 @@ int verbose;
 
 /* sames name as in ./dev because we reuse lm32 code */
 void *BASE_ONEWIRE;
-struct w1_bus wrpc_w1_bus;
+extern struct w1_bus wrpc_w1_bus;
 
 
 static int spec_read_w1(struct spec_device *spec, int w1base, int w1len)
