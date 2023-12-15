@@ -184,7 +184,7 @@ void dac2regs (uint32_t dac, uint8_t * regs)
               SITIME_OE;                    // (PartNo option "I": hardware OE via pin 1)
     regs[3] = (dac_twos & 0x3fc0) >> 6;     // SiT5339 Reg 0x01 7:0  => DFC-MSW[7:0]
     regs[4] = 0x00;                         // SiT5339 Reg 0x02 15:8 => not used
-    regs[5] = 0x03;                         // SiT5339 Reg 0x02 7:0  => Pull Range 25 ppm
+    regs[5] = 0x00;                         // SiT5339 Reg 0x02 7:0  => Pull Range 6.25 ppm
 }
 
 void read_sitime (void)
@@ -219,9 +219,9 @@ int implement_two_stages = 0; // implement 2-stage ocxo lock later
 /* configure a suitable PI gain schedule for the SoftPLL: */
     spll_gain_schedule_t* gs=  &spll_main_ocxo_gain_sched;
 
-/* we start with the default SiT5359 values (Bandwidth 27 Hz, < 0.6 dB peaking) */
-    gs->stages[0].kp = -450;
-    gs->stages[0].ki = -2;
+/* we start with the default SiT5359 values (Bandwidth ~100 Hz) */
+    gs->stages[0].kp = -4000;
+    gs->stages[0].ki = -100;
     gs->stages[0].lock_samples = 10000;
     gs->stages[0].shift = 12;
 
