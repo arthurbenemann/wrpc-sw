@@ -169,7 +169,11 @@ int conv_twos_compl (int val) {
 
 int regs2dac (uint8_t *regs)
 {
-    int dac_twos = (((regs[2] & 0x03) << 14) | ((regs[3] & 0xFF) << 6) | ((regs[0] & 0xFC) >> 2));
+    int dac_twos = (((regs[1] & 0xff) << (SIT5359_DFC_BITS-26)) | // SiT5359 Reg 0x00 7:0  => DFC-LSW[7:0]
+                    ((regs[0] & 0xff) << (SIT5359_DFC_BITS-18)) | // SiT5359 Reg 0x00 15:8 => DFC-LSW[15:8]
+                    ((regs[3] & 0xff) << (SIT5359_DFC_BITS-10)) | // SiT5359 Reg 0x01 7:0  => DFC-MSW[7:0]
+                    ((regs[2] & 0x03) << (SIT5359_DFC_BITS-2 ))); // SiT5359 Reg 0x01 15:8 => DFC-MSW[9:8]
+    dac_twos = dac_twos >> (SIT5359_DFC_BITS - BOARD_SPLL_DAC_BITS);
     return conv_twos_compl(dac_twos);
 }
 
@@ -178,13 +182,14 @@ void dac2regs (uint32_t dac, uint8_t * regs)
     int dac_twos = conv_twos_compl(dac);
     const char SITIME_OE = 0x04;            // bit 2 of register regs[2] = bit 10 of SiTime address 0x01
 
-    regs[0] = (dac_twos & 0x003f) << 2;     // SiT5339 Reg 0x00 15:8 => DFC-LSW[15:8]
-    regs[1] = 0x00;                         // SiT5339 Reg 0x00 7:0  => DFC-LSW[7:0]
-    regs[2] = ((dac_twos & 0xC000) >> 14) | // SiT5339 Reg 0x01 15:8 => DFC-MSW[9:8]
-              SITIME_OE;                    // (PartNo option "I": hardware OE via pin 1)
-    regs[3] = (dac_twos & 0x3fc0) >> 6;     // SiT5339 Reg 0x01 7:0  => DFC-MSW[7:0]
-    regs[4] = 0x00;                         // SiT5339 Reg 0x02 15:8 => not used
-    regs[5] = 0x00;                         // SiT5339 Reg 0x02 7:0  => Pull Range 6.25 ppm
+    dac_twos = dac_twos << (SIT5359_DFC_BITS - BOARD_SPLL_DAC_BITS);
+    regs[1] =  (dac_twos >> (SIT5359_DFC_BITS-26)) & 0xff; // SiT5359 Reg 0x00 7:0  => DFC-LSW[7:0]
+    regs[0] =  (dac_twos >> (SIT5359_DFC_BITS-18)) & 0xff; // SiT5359 Reg 0x00 15:8 => DFC-LSW[15:8]
+    regs[3] =  (dac_twos >> (SIT5359_DFC_BITS-10)) & 0xff; // SiT5359 Reg 0x01 7:0  => DFC-MSW[7:0]
+    regs[2] = ((dac_twos >> (SIT5359_DFC_BITS-2 )) & 0x3)  // SiT5359 Reg 0x01 15:8 => DFC-MSW[9:8]
+              | SITIME_OE;                                 // (PartNo option "I": hardware OE via pin 1)
+    regs[5] = 0x00;                                        // SiT5359 Reg 0x02 7:0  => Pull Range 6.25 ppm
+    regs[4] = 0x00;                                        // SiT5359 Reg 0x02 15:8 => not used
 }
 
 void read_sitime (void)

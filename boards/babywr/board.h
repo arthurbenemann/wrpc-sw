@@ -34,6 +34,9 @@
 #define BOARD_SPLL_DAC_BITS 20
 #define BOARD_SPLL_DIV_BITS 4
 
+/* Number of Digital Frequency Control bits */
+#define SIT5359_DFC_BITS 26
+
 /* Maximum number of simultaneously created sockets */
 #define NET_MAX_SOCKETS 12
 
