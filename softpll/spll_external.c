@@ -102,6 +102,7 @@ int external_align_fsm(volatile struct spll_external_state *s)
 {
 	int v, done_sth = 0;
 	static int timeout;
+	static int old_ext_pps_latency_ps;
 
 	switch(s->align_state) {
 		case ALIGN_STATE_EXT_OFF:
@@ -219,6 +220,7 @@ int external_align_fsm(volatile struct spll_external_state *s)
 					s->align_shift += get_pps_latency(spll_ljd_present);
 					/* Latency tuned by WRS ARM software */
 					s->align_shift += s->pps_latency_ps;
+					old_ext_pps_latency_ps = s->pps_latency_ps;
 					mpll_set_phase_shift(s->main, s->align_shift);
 					s->align_state = ALIGN_STATE_COMPENSATE_DELAY;
 				}
@@ -239,6 +241,22 @@ int external_align_fsm(volatile struct spll_external_state *s)
 				s->align_state = ALIGN_STATE_WAIT_CLKIN;
 				done_sth++;
 			}
+
+			if (old_ext_pps_latency_ps != s->pps_latency_ps) {
+				pp_printf("EXT: Align changed old %d new %d\n",
+					  old_ext_pps_latency_ps,
+					  s->pps_latency_ps);
+				s->align_shift -= old_ext_pps_latency_ps;
+				s->align_shift += s->pps_latency_ps;
+				old_ext_pps_latency_ps = s->pps_latency_ps;
+				mpll_set_phase_shift(s->main, s->align_shift);
+
+				/* Go back to ALIGN_STATE_COMPENSATE_DELAY
+				 * to make sure that shifting is finished */
+				s->align_state = ALIGN_STATE_COMPENSATE_DELAY;
+				done_sth++;
+			}
+
 			break;
 
 		default:
