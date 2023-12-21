@@ -660,6 +660,7 @@ int spll_update()
 	stats.H_y = softpll.helper.pi.y;
 	stats.M_y = softpll.mpll.pi.y;
 	stats.del_cnt = softpll.delock_count;
+	stats.ext_pps_latency_ps = softpll.ext.pps_latency_ps;
 	stats.sequence++;
 
 	return ret != 0;
@@ -734,4 +735,10 @@ void check_vco_frequencies()
 
 	f_min = spll_measure_frequency(SPLL_OSC_EXT);
 	pll_verbose("EXT clock: Freq=%d Hz\n", f_min);
+}
+
+void spll_update_ext_pps_latency_ps(int offset_ps)
+{
+	struct softpll_state *s = (struct softpll_state *)&softpll;
+	s->ext.pps_latency_ps = offset_ps;
 }

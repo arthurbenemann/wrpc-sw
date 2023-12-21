@@ -110,6 +110,8 @@ void check_vco_frequencies(void);
 int spll_measure_frequency(int osc);
 void spll_set_ptracker_average_samples(int channel, int nsamples);
 
+void spll_update_ext_pps_latency_ps(int offset_ps);
+
 /*
  * Aux and main state:
  * used to be in .c file, but we need it here for memory dumping
