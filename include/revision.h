@@ -14,6 +14,6 @@
 
 /* Please increment WRPC_SHMEM_VERSION if you change any exported data
  * structure */
-#define WRPC_SHMEM_VERSION 3 /* add wrc_global in the place where spll was */
+#define WRPC_SHMEM_VERSION 4 /* add spll_external_state */
 
 #endif /* __REVISION_H__ */

@@ -775,6 +775,7 @@ int spll_update(void)
 	stats->H_y = softpll.helper.pi.y;
 	stats->M_y = softpll.mpll.pi.y;
 	stats->del_cnt = softpll.delock_count;
+	stats->ext_pps_latency_ps = softpll.ext.pps_latency_ps;
 	stats->sequence++;
 #endif
 
@@ -1022,4 +1023,10 @@ int spll_vco_freeze(int freeze)
 int spll_is_ext_supported(void)
 {
 	return (SPLL->ECCR & SPLL_ECCR_EXT_SUPPORTED) ? 1 : 0;
+}
+
+void spll_update_ext_pps_latency_ps(int offset_ps)
+{
+	struct softpll_state *s = (struct softpll_state *)&softpll;
+	s->ext.pps_latency_ps = offset_ps;
 }

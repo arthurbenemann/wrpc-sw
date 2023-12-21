@@ -231,6 +231,17 @@ static int rts_set_pi_gain_func(const struct minipc_pd *pd, uint32_t *args, void
     return 0;
 }
 
+static int rts_set_pps_in_out_offset_func(const struct minipc_pd *pd,
+					  uint32_t *args, void *ret)
+{
+	pstate.ipc_count++;
+	spll_update_ext_pps_latency_ps ((int)args[0]);
+	pp_printf("%s: setting offset to %d\n", __func__, (int)args[0]);
+
+	*(int *) ret = 0;
+	return 0;
+}
+
 static struct minipc_ch *server;
 
 int rtipc_init(void)
@@ -247,6 +258,8 @@ int rtipc_init(void)
 	rtipc_rts_enable_ptracker_struct.f = rts_enable_ptracker_func;
 	rtipc_rts_debug_command_struct.f = rts_debug_command_func;
 	rtipc_rts_set_average_samples_struct.f = rts_set_average_samples_func;
+	rtipc_rts_set_pps_in_out_offset_struct.f =
+						rts_set_pps_in_out_offset_func;
 	rtipc_rts_set_pi_gain_struct.f = rts_set_pi_gain_func;
 
 	minipc_export(server, &rtipc_rts_set_mode_struct);
@@ -256,6 +269,7 @@ int rtipc_init(void)
   minipc_export(server, &rtipc_rts_enable_ptracker_struct);
   minipc_export(server, &rtipc_rts_debug_command_struct);
   minipc_export(server, &rtipc_rts_set_average_samples_struct);
+	minipc_export(server, &rtipc_rts_set_pps_in_out_offset_struct);
 	minipc_export(server, &rtipc_rts_set_pi_gain_struct);
 	return 0;
 }
