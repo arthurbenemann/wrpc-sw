@@ -18,7 +18,7 @@ config PPSI_FORCE_CONFIG
 
 config PRINT_BUFSIZE
 	int
-	default 128
+	default 256
 
 config RAMSIZE
 	int
