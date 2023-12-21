@@ -27,6 +27,7 @@ struct spll_external_state {
   int align_target;
   int align_step;
   int align_shift;
+	int pps_latency_ps;
 };
 
 void external_init(volatile struct spll_external_state *s, int ext_ref,
