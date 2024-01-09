@@ -83,14 +83,14 @@ timeout_t pll_sync_timeout;
 static void spec7_spll_setup(void)
 {
 
-int implement_two_stages = 0; // implement 2-stage ocxo lock later
+int implement_two_stages = 1; // implement 2-stage ocxo lock later
 
 /* configure a suitable PI gain schedule for the SoftPLL: */
     spll_gain_schedule_t* gs=  &spll_main_ocxo_gain_sched;
 
 /* we start with the default values (Bandwidth 100 Hz) */
     gs->stages[0].kp = -4000;
-    gs->stages[0].ki = -8;
+    gs->stages[0].ki = -100;
     gs->stages[0].lock_samples = 10000;
     gs->stages[0].shift = 12;
 
