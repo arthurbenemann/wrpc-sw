@@ -353,6 +353,7 @@ static const struct snmp_oid oid_array_wrpcShellCmdGroup[] = {
 	{ 0, }
 };
 
+
 static const struct snmp_oid oid_array_wrpcAuxRoTable[] = {
 	OID_FIELD_VAR(NULL, get_aux_diag, NO_SET, ASN_UNSIGNED, AUX_DIAG_RO),
 	{ 0, }
@@ -782,6 +783,8 @@ static int func_aux_diag(uint8_t *buf, uint8_t in_oid_limb_matched_len,
 
 	return return_len;
 }
+
+
 
 static int get_servo(uint8_t *buf, struct snmp_oid *obj)
 {
