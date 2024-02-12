@@ -88,17 +88,17 @@ int implement_two_stages = 1; // implement 2-stage ocxo lock later
 /* configure a suitable PI gain schedule for the SoftPLL: */
     spll_gain_schedule_t* gs=  &spll_main_ocxo_gain_sched;
 
-/* we start with the default values (Bandwidth 100 Hz) */
-    gs->stages[0].kp = -4000;
-    gs->stages[0].ki = -100;
-    gs->stages[0].lock_samples = 10000;
+/* we start with the default values (bandwisth ~100 Hz, Lock reasonably fast) */
+    gs->stages[0].kp = -5500;
+    gs->stages[0].ki = -30;
+    gs->stages[0].lock_samples = 30000;
     gs->stages[0].shift = 12;
 
-/* once it's locked, the loop bandwidth is switched to 15 Hz to filter out WR link added phase noise */
-    gs->stages[1].kp = -600;
-    gs->stages[1].ki = -2;
+/* once it's locked, the loop bandwidth is switched to 2.5 Hz to filter out WR link added phase noise */
+    gs->stages[1].kp = -3000;
+    gs->stages[1].ki = -5;
     gs->stages[1].lock_samples = 10000;
-    gs->stages[1].shift = 12;
+    gs->stages[1].shift = 16;
 
     if ( implement_two_stages ) {
         gs->n_stages = 2;   // 2 stages: OCXO

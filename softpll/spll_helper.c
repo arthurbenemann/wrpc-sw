@@ -16,8 +16,11 @@ void helper_very_init( struct spll_helper_state *s )
 /* Phase branch PI controller */
 	s->pi.y_min = (5 << BOARD_SPLL_DIV_BITS);
 	s->pi.y_max = (1 << BOARD_SPLL_DAC_BITS) - (5 << BOARD_SPLL_DIV_BITS);
-#if defined(CONFIG_WR_NODE)
+#if defined(CONFIG_WR_NODE) && !defined(CONFIG_TARGET_SPEC7)
 	s->pi.kp = -150;
+	s->pi.ki = -2;
+#elif defined(CONFIG_WR_NODE) && defined(CONFIG_TARGET_SPEC7)
+	s->pi.kp = -750;
 	s->pi.ki = -2;
 #else
 	s->pi.kp = 150;
