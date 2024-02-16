@@ -22,8 +22,8 @@ void helper_very_init( struct spll_helper_state *s )
 	s->pi.y_min = (5 << BOARD_SPLL_DIV_BITS);
 	s->pi.y_max = (1 << BOARD_SPLL_DAC_BITS) - (5 << BOARD_SPLL_DIV_BITS);
 #if defined(CONFIG_WR_NODE)
-	s->pi.kp = -150;
-	s->pi.ki = -2;
+	s->pi.kp = -1000; //-150
+	s->pi.ki = -25;   //-2
 #elif defined(CONFIG_TARGET_WR_SWITCH)
 	s->pi.kp = helper_pll_kp;
 	s->pi.ki = helper_pll_ki;
