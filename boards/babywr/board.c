@@ -188,7 +188,7 @@ void dac2regs (uint32_t dac, uint8_t * regs)
     regs[3] =  (dac_twos >> (SIT5359_DFC_BITS-10)) & 0xff; // SiT5359 Reg 0x01 7:0  => DFC-MSW[7:0]
     regs[2] = ((dac_twos >> (SIT5359_DFC_BITS-2 )) & 0x3)  // SiT5359 Reg 0x01 15:8 => DFC-MSW[9:8]
               | SITIME_OE;                                 // (PartNo option "I": hardware OE via pin 1)
-    regs[5] = 0x00;                                        // SiT5359 Reg 0x02 7:0  => Pull Range 6.25 ppm
+    regs[5] = 0x01;                                        // SiT5359 Reg 0x02 7:0  => Pull Range 10 ppm
     regs[4] = 0x00;                                        // SiT5359 Reg 0x02 15:8 => not used
 }
 
@@ -224,13 +224,13 @@ int implement_two_stages = 0; // implement 2-stage ocxo lock later
 /* configure a suitable PI gain schedule for the SoftPLL: */
     spll_gain_schedule_t* gs=  &spll_main_ocxo_gain_sched;
 
-/* we start with the default SiT5359 values (Bandwidth ~100 Hz) */
-    gs->stages[0].kp = -4000;
-    gs->stages[0].ki = -100;
+/* we start with the default SiT5359 values (Bandwidth ~20 Hz) */
+    gs->stages[0].kp = -1800;  // use 1400 when X1 = 125 MHz
+    gs->stages[0].ki = -25;
     gs->stages[0].lock_samples = 10000;
     gs->stages[0].shift = 12;
 
-/* once it's locked, the loop bandwidth is switched to ~0.1 Hz to filter out WR link added phase noise */
+/* once it's locked, the loop bandwidth is switched to low bandwidth  to filter out WR link added phase noise */
     gs->stages[1].kp = -3000;
     gs->stages[1].ki = -5;
     gs->stages[1].lock_samples = 10000;
