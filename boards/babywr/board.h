@@ -7,6 +7,7 @@
 #define __BOARD_BABYWR_H
 
 #include "dev/gpio.h"
+#include "dev/pca9554.h"
 
 /*
  * This is meant to be automatically included by the Makefile,
@@ -65,6 +66,15 @@
 #define BOARD_CONSOLE_DEVICES 1
 #define CONSOLE_UART_BAUDRATE 115200
 
+// Main board LEDs and other IO on I2C GPIO
+#define MAIN_BOARD_LED_0         WBGEN2_GEN_MASK(0, 1)
+#define MAIN_BOARD_LED_1         WBGEN2_GEN_MASK(1, 1)
+#define MAIN_BOARD_LED_2         WBGEN2_GEN_MASK(2, 1)
+#define MAIN_BOARD_LED_3         WBGEN2_GEN_MASK(3, 1)
+#define MAIN_BOARD_SEL_GROUP_0   WBGEN2_GEN_MASK(4, 1)
+#define MAIN_BOARD_SEL_GROUP_1   WBGEN2_GEN_MASK(5, 1)
+#define MAIN_BOARD_SEL_IRIG_B    WBGEN2_GEN_MASK(6, 1)
+
 /* Maximum number of files in the sdb filesystem.
    Need at least 4: ., sfp database, init script and calibration
    MAC address could also be written on sdbfs. */
@@ -76,6 +86,31 @@
 #define UID_EEPROM_ADR 0x51
 #define UID_OFFSET 0xfa
 
+/* I2C address of the I2C multiplexer */
+#define PCA9554_ADR 0x23
+
+struct wr_sit5359_interface_device
+{
+    void *base_addr;
+    uint8_t i2c_addr;
+    struct gpio_pin pin_scl;
+    struct gpio_pin pin_sda;
+    struct gpio_device gpio_i2c;
+    struct i2c_bus master;
+    int pull_range, hsdiv;
+    uint64_t rfreq;
+};
+
+struct babywr_board
+{
+    struct gpio_device gpio_aux;
+    struct wr_sit5359_interface_device sit5359_refclk;
+    struct wr_sit5359_interface_device sit5359_dmtd;
+    struct pca9554_gpio_device gpio_main_board;
+} typedef babywr_board;
+
+void gpio_control_init(void);
+int gpio_control_poll(void);
 int  babywr_init(void);
 
 void read_sitime (void);
