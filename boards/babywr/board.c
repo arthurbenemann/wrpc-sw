@@ -432,9 +432,9 @@ int implement_two_stages = 0; // implement 2-stage ocxo lock later
 /* configure a suitable PI gain schedule for the SoftPLL: */
     spll_gain_schedule_t* gs=  &spll_main_ocxo_gain_sched;
 
-/* we start with the default SiT5359 values (Bandwidth ~20 Hz) */
-    gs->stages[0].kp = -1800;  // use 1400 when X1 = 125 MHz
-    gs->stages[0].ki = -25;
+/* we start with the default KVG OCXO values (Bandwidth < 10 Hz) */
+    gs->stages[0].kp = -5000;
+    gs->stages[0].ki = -30;
     gs->stages[0].lock_samples = 10000;
     gs->stages[0].shift = 12;
 
