@@ -46,6 +46,13 @@ int led_create(struct led_device *led, struct gpio_pin *pin1, struct gpio_pin *p
             led->type = type;
             led->state[0] = default_state;
             led->state[1] = default_state;
+            for (int ii = 0; ii < LED_STATUS_MAX; ii++)
+            {
+                led->status[0].blink_counters[ii] = 0;
+                led->status[0].nb_blinks[ii] = 0;
+                led->status[1].blink_counters[ii] = 0;
+                led->status[1].nb_blinks[ii] = 0;
+            }
             return 0;
         }
 
@@ -77,6 +84,51 @@ void leds_init()
     int i;
     for (i = 0; i < BOARD_MAX_LEDS; i++)
         leds[i] = NULL;
+}
+
+static void led_status_update(struct led_device *led, int led_idx, int32_t t)
+{
+    static int blink_index = 0;
+    static int v_prev = 0;
+    static int v_toggled = 0;
+    static int led_on = 0;
+
+    if( led->blink_period == 0 )
+        return;
+
+    if (0 == led->status[led_idx].nb_blinks[blink_index])
+    {
+        if (++blink_index == LED_STATUS_MAX)
+            blink_index = 0;
+        return;
+    }
+
+    t %= led->blink_period;
+    int v = t < led->blink_period_on ? 1 : 0;
+    if (v_prev != v){
+        v_toggled = 1;
+    }
+    v_prev = v;    
+
+    if (v_toggled)
+    {
+        led_on = v;
+        v_toggled = 0;
+        if (led_on) led->status[led_idx].blink_counters[blink_index]++;
+        if (led->status[led_idx].blink_counters[blink_index] > led->status[led_idx].nb_blinks[blink_index])
+        {
+            led_on = 0;
+        }
+        // wait before going to the next status code
+        if (led->status[led_idx].blink_counters[blink_index] > led->status[led_idx].nb_blinks[blink_index] + 1)
+        {
+            led->status[led_idx].blink_counters[blink_index] = 0;
+            if (++blink_index == LED_STATUS_MAX)
+                blink_index = 0;
+        }
+    }
+
+    gen_gpio_out(led->pins[led_idx], led_on);
 }
 
 static void led_update_single(struct led_device *led)
@@ -118,13 +170,18 @@ static void led_update_single(struct led_device *led)
             if( led->blink_period == 0 )
                 break;
 
-	    t %= led->blink_period;
-	    v = t < led->blink_period_on ? 1 : 0;
-	    if (led->type & LED_TYPE_INVERT)
-                    v = 1 - v;
+            t %= led->blink_period;
+            v = t < led->blink_period_on ? 1 : 0;
+            if (led->type & LED_TYPE_INVERT)
+                        v = 1 - v;
 
-	    gen_gpio_out(led->pins[i], v);
+            gen_gpio_out(led->pins[i], v);
 
+            break;
+        }
+        case LED_STATUS:
+        {
+            led_status_update(led, i, t);
             break;
         }
 
@@ -141,4 +198,17 @@ void leds_update()
         if (leds[i])
             led_update_single(leds[i]);
 }
+
+void led_status_set(struct led_device *led, uint8_t colors, uint8_t blink_index, uint8_t nb_blinks)
+{
+    if (colors & LED_COLOR_1)
+    {
+        led->status[0].nb_blinks[blink_index] = nb_blinks;
+    }
+    if (colors & LED_COLOR_2)
+    {
+        led->status[1].nb_blinks[blink_index] = nb_blinks;
+    }
+}
+
 #endif /* BOARD_MAX_LEDS */

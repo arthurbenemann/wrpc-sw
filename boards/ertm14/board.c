@@ -433,6 +433,7 @@ int bist_summary( struct bist_stage *bist )
             else if (stat & BIST_STATUS_ERROR)
             {
                 pp_printf("ERROR");
+                led_status_set(&board.leds.sync, LED_COLOR_2, i, i);
                 n_errors++;
             }
             else
@@ -448,7 +449,11 @@ int bist_summary( struct bist_stage *bist )
     if( n_errors )
         pp_printf("--------------------------------\nBIST FAILED with %d ERRORS!\n\n\n", n_errors );
     else
+    {
+        led_status_set(&board.leds.sync, LED_COLOR_2, 0, 4);
+        led_status_set(&board.leds.sync, LED_COLOR_2, 1, 6);
         pp_printf("BIST PASSED.\n");
+    }
 
     return n_errors > 0 ? -1 : 0;
 }
@@ -2531,6 +2536,8 @@ int wrc_board_early_init()
 	timer_delay_ms(200);
 	ep_enable( &wrc_endpoint_dev, 1, 1);
 	timer_delay_ms(200);
+    
+    led_action( &board.leds.sync, LED_COLOR_2, LED_STATUS );
     bist_summary( ertm_bist );
 
     return ll;
@@ -2847,17 +2854,17 @@ int ertm14_update_leds( void )
         if( ptp_servo_state == WR_TRACK_PHASE && ptp_state == PPS_SLAVE )
         {
             led_action( &board.leds.sync, LED_COLOR_1, LED_ON );
-            led_action( &board.leds.sync, LED_COLOR_2, LED_OFF );
+            //led_action( &board.leds.sync, LED_COLOR_2, LED_OFF );
         }
         else if ( ptp_state == PPS_LISTENING || ptp_state == PPS_INITIALIZING )
         {
             led_action( &board.leds.sync, LED_COLOR_1, LED_OFF );
-            led_action( &board.leds.sync, LED_COLOR_2, LED_OFF );
+            //led_action( &board.leds.sync, LED_COLOR_2, LED_OFF );
         }
         else if ( ptp_state == PPS_SLAVE )
         {
             led_action( &board.leds.sync, LED_COLOR_1, LED_BLINK );
-            led_action( &board.leds.sync, LED_COLOR_2, LED_OFF );
+            //led_action( &board.leds.sync, LED_COLOR_2, LED_OFF );
         }
 
         prev_ptp_servo_state = ptp_servo_state;

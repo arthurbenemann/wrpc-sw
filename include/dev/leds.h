@@ -35,15 +35,25 @@ struct gpio_pin;
 #define LED_BLINK 2
 #define LED_BLINK_SINGLE (1<<4)
 #define LED_BLINK_SINGLE_NEGATIVE (1<<5)
+#define LED_STATUS  (1<<6)
 
 #define LED_COLOR_1 (1<<0)
 #define LED_COLOR_2 (1<<1)
 #define LED_COLOR_BOTH ( (1<<0)|(1<<1) )
 
+#define LED_STATUS_MAX  32
+
+struct led_status
+{
+  uint8_t blink_counters[LED_STATUS_MAX];
+  uint8_t nb_blinks[LED_STATUS_MAX];
+};
+
 struct led_device
 {
     uint8_t type;
     uint8_t state[2];
+    struct led_status status[2];
     uint8_t color;
     uint16_t blink_period_on;
     uint16_t blink_period;
@@ -51,12 +61,13 @@ struct led_device
     struct gpio_pin* pins[2];
 };
 
-
 int led_create( struct led_device* led, struct gpio_pin* pin1, struct gpio_pin* pin2, int type, int default_state );
 void led_action( struct led_device *led, int colors, int action );
 void led_set_blink_timing( struct led_device *led, int period, int period_on );
 
 void leds_init(void);
 void leds_update(void);
+
+void led_status_set(struct led_device *led, uint8_t led_color, uint8_t blink_index, uint8_t nb_blinks);
 
 #endif
