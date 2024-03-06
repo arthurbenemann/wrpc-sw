@@ -173,7 +173,7 @@ OUTPUT-$(CONFIG_WR_NODE)   = wrc
 OUTPUT-$(CONFIG_TARGET_WR_SWITCH) = rt_cpu
 OUTPUT := $(OUTPUT-y)
 
-GIT_VER = $(shell git describe --always --dirty | sed  's;^wr-switch-sw-;;')
+GIT_VER = $(shell git describe --always --dirty --long | sed  's;^wr-switch-sw-;;')
 GIT_USR = $(shell git config --get-all user.name)
 export GIT_VER
 export GIT_USR
