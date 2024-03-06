@@ -76,7 +76,7 @@ int main(void)
 	_endram = ENDRAM_MAGIC;
 	uart_init_hw();
 	pp_printf("\n");
-	pp_printf("WR Switch Real Time Subsystem (c) CERN 2011 - 2023\n");
+	pp_printf("WR Switch Real Time Subsystem (c) CERN 2011 - 2024\n");
 	pp_printf("Revision: %s, built: %s %s by %s.\n",
 		  build_revision, build_date, build_time, build_by);
 	pp_printf("SCB version: %d. %s\n", scb_ver,(scb_ver>=34)?"10 MHz SMC Output.":"" );
