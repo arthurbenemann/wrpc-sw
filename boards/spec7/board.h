@@ -116,15 +116,12 @@ void sdb_find_devices(void);
 void sdb_print_devices(void);
 
 #if defined(CONFIG_SNMP) && defined(SNMP_SET)
+// size of oid_wrpcBoardSpecificGroup
+#define BOARD_OID_LENGTH 9
 int set_select_group(uint8_t *buf, struct snmp_oid *obj);
 int get_select_group(uint8_t *buf, struct snmp_oid *obj);
-/* wrpcSelGroup entries */
-static const uint8_t oid_wrpcSelGroup0[] =           {1,0};
-static const uint8_t oid_wrpcSelGroup1[] =           {2,0};
-/* oid_wprcBoardSpecific*/
-static const uint8_t oid_wrpcBoardSpecificGroup[] =    {0x2B,6,1,4,1,96,101,1,13};
-/* wrpcBoardSpecificGroup array */
 extern const struct snmp_oid oid_array_wrpcBoardSpecificGroup[];
+extern const uint8_t oid_wrpcBoardSpecificGroup[BOARD_OID_LENGTH];
 #endif
 
 #endif /* __BOARD_SPEC7_H */
