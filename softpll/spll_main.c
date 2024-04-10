@@ -32,11 +32,11 @@ void mpll_init(struct spll_main_state *s, int id_ref,
 	s->pi.bias = 30000;
 #if defined(CONFIG_WR_SWITCH)
 	if (ljd_present) {
-		s->pi.kp = -2000;
-		s->pi.ki = -15;
+		s->pi.kp = 2000;
+		s->pi.ki = 15;
 	} else {
-		s->pi.kp = -1100;		// / 2;
-		s->pi.ki = -30;			// / 2;
+		s->pi.kp = 1100;		// / 2;
+		s->pi.ki = 30;			// / 2;
 	}
 #elif defined(CONFIG_WR_NODE)
 	s->pi.kp = -1100;		// / 2;
@@ -163,7 +163,7 @@ int mpll_update(struct spll_main_state *s, int tag, int source)
 			if (s->phase_shift_current < s->phase_shift_target) {
 				s->phase_shift_current++;
 #if defined(CONFIG_WR_SWITCH)
-				s->adder_ref--;
+				s->adder_ref++;
 #else
 				s->adder_ref--;
 #endif
@@ -171,7 +171,7 @@ int mpll_update(struct spll_main_state *s, int tag, int source)
 				   s->phase_shift_target) {
 				s->phase_shift_current--;
 #if defined(CONFIG_WR_SWITCH)
-				s->adder_ref++;
+				s->adder_ref--;
 #else
 				s->adder_ref++;
 #endif

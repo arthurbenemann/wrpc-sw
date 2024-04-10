@@ -21,8 +21,8 @@ void helper_init(struct spll_helper_state *s, int ref_channel)
 	s->pi.kp = -150;//(int)(0.3 * 32.0 * 16.0);	// / 2;
 	s->pi.ki = -2;//(int)(0.03 * 32.0 * 3.0);	// / 2;
 #else
-	s->pi.kp = -150;
-	s->pi.ki = -2;
+	s->pi.kp = 150;
+	s->pi.ki = 2;
 #endif
 	s->pi.anti_windup = 1;
 
@@ -89,7 +89,7 @@ void helper_start(struct spll_helper_state *s)
 	/* Set the bias to the upper end of tuning range. This is to ensure that
 	   the HPLL will always lock on positive frequency offset. */
 #if defined(CONFIG_WR_SWITCH)
-	s->pi.bias = s->pi.y_min;
+	s->pi.bias = s->pi.y_max;
 #else
 	s->pi.bias = s->pi.y_min;
 #endif
