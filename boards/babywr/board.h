@@ -74,6 +74,7 @@
 #define MAIN_BOARD_SEL_GROUP_0   WBGEN2_GEN_MASK(4, 1)
 #define MAIN_BOARD_SEL_GROUP_1   WBGEN2_GEN_MASK(5, 1)
 #define MAIN_BOARD_SEL_IRIG_B    WBGEN2_GEN_MASK(6, 1)
+#define MAIN_BOARD_FAN_ENABLE    WBGEN2_GEN_MASK(7, 1)
 
 /* Maximum number of files in the sdb filesystem.
    Need at least 4: ., sfp database, init script and calibration
