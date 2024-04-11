@@ -257,7 +257,7 @@ void gpio_control_init()
     uint8_t io_stat;
     board_dbg("Initializing GPIO control...\n");
     pca9554_write_reg(&board.gpio_main_board, PCA9554_REG_CONFIG, 0x00);  // Configure all IO as output
-    pca9554_write_reg(&board.gpio_main_board, PCA9554_REG_OUT, 0x00);     // LEDs, SEL_GROUP_0/1 and SEL_IRIG_B all '0'
+    pca9554_write_reg(&board.gpio_main_board, PCA9554_REG_OUT, MAIN_BOARD_FAN_ENABLE);     // LEDs, SEL_GROUP_0/1 and SEL_IRIG_B all '0', FAN_ENABLE = '1'
 
     for( i = 0 ; i < 5; i++ )
         {
