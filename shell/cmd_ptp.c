@@ -26,7 +26,7 @@ struct subcmd {
 	{"gm", wrc_ptp_set_mode, WRC_MODE_GM},
 	{"master", wrc_ptp_set_mode, WRC_MODE_MASTER},
 	{"slave", wrc_ptp_set_mode, WRC_MODE_SLAVE},
-	{"cascaded", wrc_ptp_set_mode, WRC_MODE_CASCADED},
+	{"cascaded", wrc_ptp_set_mode, WRC_MODE_CASCADED_MASTER_ONLY},
 #ifdef CONFIG_ABSCAL
 	{"abscal", wrc_ptp_set_mode, WRC_MODE_ABSCAL},
 #endif

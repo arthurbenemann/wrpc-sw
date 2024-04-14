@@ -17,6 +17,7 @@
 #include <dev/w1.h>
 #include <dev/syscon.h>
 #include <uart.h>
+#include <usr_uart.h>
 #include <dev/endpoint.h>
 #include <dev/minic.h>
 #include <dev/pps_gen.h>
@@ -30,9 +31,12 @@
 #include <lib/ipv4.h>
 #include <dev/rxts_calibrator.h>
 #include <dev/flash.h>
+#include <dev/sma_config.h>
 
 #include <wrc_ptp.h>
 #include <system_checks.h>
+#include "wrpc.h"
+#include <ppsi/ppsi.h>
 
 #ifndef CONFIG_DEFAULT_PRINT_TASK_TIME_THRESHOLD
 #define CONFIG_DEFAULT_PRINT_TASK_TIME_THRESHOLD 0
@@ -51,6 +55,7 @@ static uint32_t prev_nanos_for_profile;
 static uint32_t prev_ticks_for_profile;
 uint32_t print_task_time_threshold = CONFIG_DEFAULT_PRINT_TASK_TIME_THRESHOLD;
 uint8_t mac_addr[wr_num_ports][6];
+extern struct pp_instance ppi_static[wr_num_ports];
 
 static void wrc_initialize(void)
 {
@@ -58,6 +63,7 @@ static void wrc_initialize(void)
 	uint32_t trans[wr_num_ports];
 	sdb_find_devices();
 	uart_init_hw();
+	usr_uart_init_hw();
 
 	pp_printf("WR Core: starting up...\n");
 
@@ -124,15 +130,15 @@ static void wrc_initialize(void)
 	spll_very_init();
 	usleep_init();
 	shell_init();
-	gen10mhz_init();
+	sma_init();
 
 	wrc_ui_mode = UI_SHELL_MODE;
 	// wrc_ui_mode = UI_GUI_MODE;
 	_endram = ENDRAM_MAGIC;
 
-	wrc_ptp_set_mode(WRC_MODE_SLAVE, 0);
+	// wrc_ptp_set_mode(WRC_MODE_SLAVE, 0);
 	// wrc_ptp_set_mode(WRC_MODE_CASCADED, 0);
-	//wrc_ptp_set_mode(WRC_MODE_MASTER, 0);
+	wrc_ptp_set_mode(WRC_MODE_MASTER, 0);
 
 	shw_pps_gen_get_time(NULL, &prev_nanos_for_profile);
 	/* get tics */
@@ -153,7 +159,8 @@ static int wrc_check_link(void)
 	int state[wr_num_ports];
 	int rv = 0;
 	int port;
-
+	struct pp_instance *ppi[wr_num_ports];
+	int32_t raw_tx_phase = 0;
 	if (first_run==0)
 	{
 		for(port=0; port<wr_num_ports; port++) {
@@ -164,6 +171,9 @@ static int wrc_check_link(void)
 			if (state[port])
 			{
 				wrc_ptp_start(port);
+				ppi[port] = &(ppi_static[port]);
+				wrpc_spll_enable_ptracker(ppi[port]);
+				timer_delay_ms(200);
 				link_status[port] = LINK_UP;
 				if (port==0) gpio_out(GPIO_LED_LINK, 1);
 			} else {
@@ -177,12 +187,16 @@ static int wrc_check_link(void)
 			state[port] = ep_link_up(NULL, port);
 
 			if (!prev_state[port] && state[port]) {
-				wrc_verbose("Port 0 Link up.\n");
+				wrc_verbose("Port %d Link up.\n",port);
 				if (port==0) gpio_out(GPIO_LED_LINK, 1);
 				sfp_match(port);
 				calib_t24p(WRC_MODE_MASTER, &cal_phase_transition[port],port);
 				wrc_ptp_start(port);
+				ppi[port] = &(ppi_static[port]);
+				wrpc_spll_enable_ptracker(ppi[port]);
+				timer_delay_ms(200);
 				link_status[port] = LINK_WENT_UP;
+				if (port==0) gpio_out(GPIO_LED_LINK, 1);
 				rv = 1;
 			} else if (prev_state[port] && !state[port]) {
 				wrc_verbose("Port %d Link down.\n",port);
@@ -227,6 +241,7 @@ void init_hw_after_reset(void)
 	/* Ok, now init the devices so we can printf and delay */
 	sdb_find_devices();
 	uart_init_hw();
+	usr_uart_init_hw();
 	timer_init(1);
 }
 

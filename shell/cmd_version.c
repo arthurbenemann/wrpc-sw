@@ -27,7 +27,10 @@
 static int cmd_ver(const char *args[])
 {
 	int hwram = sysc_get_memsize();
+	char wrc_hw_name[HW_NAME_LENGTH];
 
+	get_hw_name(wrc_hw_name);
+	pp_printf("WR Firmware: %s\n",wrc_hw_name);
 	pp_printf("WR Core build: %s%s\n", build_revision, SUPPORT);
 	 /* may be empty if build with CONFIG_DETERMINISTIC_BINARY */
 	if (DETERMINISTIC_BINARY)

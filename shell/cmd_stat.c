@@ -13,7 +13,7 @@
 #include <errno.h>
 
 int wrc_stat_running;
-extern uint32_t wrc_stats_last;
+// extern uint32_t wrc_stats_last[2];
 
 static int cmd_stat(const char *args[])
 {
@@ -21,7 +21,8 @@ static int cmd_stat(const char *args[])
 	/* no arguments: invert */
 	if (!args[0]) {
 		wrc_stat_running = !wrc_stat_running;
-		wrc_stats_last--; /* force a line to be printed */
+		// wrc_stats_last[0] = wrc_stats_last[0] - 1; /* force a line to be printed */
+		// wrc_stats_last[1] = wrc_stats_last[1] - 1; /* force a line to be printed */
 		if (!wrc_stat_running)
 			pp_printf("statistics now off\n");
 		return 0;
@@ -34,7 +35,8 @@ static int cmd_stat(const char *args[])
 		}
 	} else if (!strcasecmp(args[0], "on")) {
 		wrc_stat_running = 1;
-		wrc_stats_last--; /* force a line to be printed */
+		// wrc_stats_last[0] = wrc_stats_last[0] - 1; /* force a line to be printed */
+		// wrc_stats_last[1] = wrc_stats_last[1] - 1; /* force a line to be printed */
 	} else if (!strcasecmp(args[0], "off")) {
 		wrc_stat_running = 0;
 		pp_printf("statistics now off\n");

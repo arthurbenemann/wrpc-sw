@@ -165,7 +165,7 @@ static int ad9516_set_output_divider(void *spi_base, int output, int ratio, int 
 			
 		uint16_t base = ((output - 6) / 2) * 0x5 + 0x199;
 
-		pp_printf("Output [divider %d]: %d ratio: %d base %x lc %d hc %d\n", secondary, output, ratio, base, lcycles ,hcycles);
+		// pp_printf("Output [divider %d]: %d ratio: %d base %x lc %d hc %d\n", secondary, output, ratio, base, lcycles ,hcycles);
 
 		if(!secondary)
 		{
@@ -294,6 +294,7 @@ int ad9516_init(int scb_version, int ljd_present)
 	return 0;
 }
 
+
 int ljd_ad9516_init (void) {
  	pp_printf("Initializing Low-Jitter Daughterboard AD9516 PLL...\n");
 	oc_spi_init((void *)BASE_SPI_LJD_BOARD);
@@ -307,16 +308,20 @@ int ljd_ad9516_init (void) {
 		pp_printf("Error: Low-Jitter Daughterboard AD9516 PLL not responding.\n");
 		return -1;
 	}
-	ad9516_write_reg(spi_base, 0x018, 0x0); // reset VCO calibration
-	ad9516_write_reg(spi_base, 0x232, 0x0);
-	ad9516_write_reg(spi_base, 0x232, 0x1);
-	ad9516_write_reg(spi_base, 0x232, 0x0);
+	// ad9516_write_reg(spi_base, 0x018, 0x0); // reset VCO calibration
+	// ad9516_write_reg(spi_base, 0x232, 0x0);
+	// ad9516_write_reg(spi_base, 0x232, 0x1);
+	// ad9516_write_reg(spi_base, 0x232, 0x0);
 	
-  	ad9516_set_vco_divider(spi_base, 3);
 	ad9516_load_regset(spi_base, ad9516_ljd_base_config, ARRAY_SIZE(ad9516_ljd_base_config), 1);
-	 
+	ad9516_wait_lock(spi_base);
+	ad9516_sync_outputs(spi_base);
+
 	ad9516_set_output_divider(spi_base, 6, 8, 0);  	// OUT6. 62.5MHz
 	ad9516_set_output_divider(spi_base, 8, 20, 0);  // OUT6. 62.5MHz
+
+	ad9516_sync_outputs(spi_base);
+	ad9516_set_vco_divider(spi_base, 3);
 
 	return 0;
 }

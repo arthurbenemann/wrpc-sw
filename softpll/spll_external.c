@@ -30,8 +30,8 @@ void external_init(volatile struct spll_external_state *s, int ext_ref,
 {
     int idx = spll_n_chan_ref + spll_n_chan_out;
 
-    if (ljd_present)
-		ljd_ad9516_init();
+  //   if (ljd_present)
+		// ljd_ad9516_init();
 
     helper_init(s->helper, idx);
     mpll_init(s->main, idx, spll_n_chan_ref);
@@ -106,7 +106,7 @@ int external_align_fsm(volatile struct spll_external_state *s)
 
 		case ALIGN_STATE_WAIT_CLKIN:
 			if(!ljd_present && !(SPLL->ECCR & SPLL_ECCR_EXT_REF_STOPPED) ) {
-				SPLL->ECCR |= SPLL_ECCR_EXT_REF_PLLRST;
+				SPLL->ECCR &= (~SPLL_ECCR_EXT_REF_PLLRST);
 				s->align_state = ALIGN_STATE_WAIT_PLOCK;
 				done_sth++;
 			}
@@ -114,26 +114,29 @@ int external_align_fsm(volatile struct spll_external_state *s)
 				uint32_t f_ext;
 				int ljd_ad9516_stat=0;
 				/* reset ljd ad9516 */
-				SPLL->ECCR |= SPLL_ECCR_EXT_REF_PLLRST;
-				timer_delay(10);
 				SPLL->ECCR &= (~SPLL_ECCR_EXT_REF_PLLRST);
 				timer_delay(10);
-				// ljd_ad9516_stat = ljd_ad9516_init();
-				// f_ext = spll_measure_frequency(SPLL_OSC_EXT);
-				// if (!ljd_ad9516_stat && (f_ext > 9999000) && (f_ext < 10001000)) {
-				if (!ljd_ad9516_stat) {
+				SPLL->ECCR |= SPLL_ECCR_EXT_REF_PLLRST;
+				timer_delay(10);
+				ljd_ad9516_stat = ljd_ad9516_init();
+				timer_delay(10);
+				f_ext = spll_measure_frequency(SPLL_OSC_EXT);
+				if (!ljd_ad9516_stat && (f_ext > 9999000) && (f_ext < 10001000)) {
 					s->align_state = ALIGN_STATE_WAIT_PLOCK;
+					shw_pps_gen_unmask_output(0);
 					pp_printf("External AD9516 is locking\n");
 				}
 			}
 			break;
 
 		case ALIGN_STATE_WAIT_PLOCK:
-			SPLL->ECCR &= (~SPLL_ECCR_EXT_REF_PLLRST);
+			SPLL->ECCR |= SPLL_ECCR_EXT_REF_PLLRST;
 			if(SPLL->ECCR & SPLL_ECCR_EXT_REF_STOPPED )
 				s->align_state = ALIGN_STATE_WAIT_CLKIN;
-			else if(SPLL->ECCR & SPLL_ECCR_EXT_REF_LOCKED)
+			else if(SPLL->ECCR & SPLL_ECCR_EXT_REF_LOCKED){
+				helper_init(s->helper, spll_n_chan_ref + spll_n_chan_out);
 				s->align_state = ALIGN_STATE_START;
+			}
 			done_sth++;
 			break;
 
@@ -145,7 +148,7 @@ int external_align_fsm(volatile struct spll_external_state *s)
 				s->align_state = ALIGN_STATE_START_MAIN;
 				done_sth++;
 			} else if (time_after(timer_get_tics(), timeout + 5*TICS_PER_SECOND)) {
-				pll_verbose("EXT: timeout, restarting\n");
+				pp_printf("EXT: timeout, restarting\n");
 				s->align_state = ALIGN_STATE_WAIT_CLKIN;
 			}
 			break;
@@ -155,19 +158,19 @@ int external_align_fsm(volatile struct spll_external_state *s)
 			if(s->helper->ld.locked && s->main->ld.locked) {
 				PPSG->CR = PPSG_CR_CNT_EN | PPSG_CR_PWIDTH_W(PPS_WIDTH);
 				PPSG->ADJ_NSEC = 5;
-				PPSG->ESCR = PPSG_ESCR_SYNC;
+				PPSG->ESCR |= PPSG_ESCR_SYNC;
 				s->align_state = ALIGN_STATE_INIT_CSYNC;
-				pll_verbose("EXT: DMTD locked.\n");
+				pp_printf("EXT: DMTD locked.\n");
 				done_sth++;
 			} else if (time_after(timer_get_tics(), timeout + 5*TICS_PER_SECOND)) {
-				pll_verbose("EXT: timeout, restarting\n");
+				pp_printf("EXT: timeout, restarting\n");
 				s->align_state = ALIGN_STATE_WAIT_CLKIN;
 			}
 			break;
 
 		case ALIGN_STATE_INIT_CSYNC:
 			if (PPSG->ESCR & PPSG_ESCR_SYNC) {
-				shw_pps_gen_enable_output(1); // enable PPS output (even though it's not aligned yet)
+				// shw_pps_gen_enable_output(1); // enable PPS output (even though it's not aligned yet)
 				s->align_timer = timer_get_tics() + 2 * TICS_PER_SECOND;
 				s->align_state = ALIGN_STATE_WAIT_CSYNC;
 				done_sth++;
@@ -178,7 +181,7 @@ int external_align_fsm(volatile struct spll_external_state *s)
 			if(time_after_eq(timer_get_tics(), s->align_timer)) {
 				s->align_state = ALIGN_STATE_START_ALIGNMENT;
 				s->align_shift = 0;
-				pll_verbose("EXT: CSync complete.\n");
+				pp_printf("EXT: CSync complete.\n");
 				done_sth++;
 			}
 			break;
@@ -218,8 +221,28 @@ int external_align_fsm(volatile struct spll_external_state *s)
 		case ALIGN_STATE_COMPENSATE_DELAY:
 			if(!mpll_shifter_busy(s->main)) {
 				pp_printf("EXT: Align done.\n");
+				// shw_pps_gen_time_valid(1);
+				shw_pps_gen_unmask_output(1);
+				PPSG->ESCR |= PPSG_ESCR_EXT_TAI_SYNC;
+				s->align_timer = timer_get_tics() + 2 * TICS_PER_SECOND;
+				s->align_state = ALIGN_STATE_SYNC_EXT_TAI;
+				done_sth++;
+			}
+			break;
+		
+		case ALIGN_STATE_SYNC_EXT_TAI:
+			if(time_after_eq(timer_get_tics(), s->align_timer)) {
+				if (PPSG->ESCR & PPSG_ESCR_EXT_TAI_READY) {
+					pp_printf("UTC: Sync Done.\n");
+					shw_pps_gen_time_valid(1);
+				}
+				else {
+					pp_printf("UTC Sync Failed\n");
+					shw_pps_gen_time_valid(0);
+				}
+
+				PPSG->ESCR &= (~PPSG_ESCR_EXT_TAI_SYNC);
 				s->align_state = ALIGN_STATE_LOCKED;
-				shw_pps_gen_time_valid(1);
 				done_sth++;
 			}
 			break;

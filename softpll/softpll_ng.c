@@ -318,7 +318,7 @@ void spll_init(int mode, int slave_ref_channel, int align_pps)
 	SPLL->OCCR = 0;
 	SPLL->DEGLITCH_THR = 1000;
 
-	PPSG->ESCR = 0;
+	// PPSG->ESCR = 0;
 	PPSG->CR = PPSG_CR_CNT_EN | PPSG_CR_PWIDTH_W(PPS_WIDTH);
 
 	if(mode == SPLL_MODE_DISABLED)
@@ -341,8 +341,8 @@ void spll_init(int mode, int slave_ref_channel, int align_pps)
 		s->aux[i].seq_state = AUX_DISABLED;
 	}
 
-	if(mode == SPLL_MODE_FREE_RUNNING_MASTER)
-		PPSG->ESCR = PPSG_ESCR_PPS_VALID | PPSG_ESCR_TM_VALID;
+	// if(mode == SPLL_MODE_FREE_RUNNING_MASTER)
+	// 	PPSG->ESCR = PPSG_ESCR_PPS_VALID | PPSG_ESCR_TM_VALID;
 
 	for (i = 0; i < spll_n_chan_ref; i++)
 		ptracker_init(&s->ptrackers[i], i, PTRACKER_AVERAGE_SAMPLES);

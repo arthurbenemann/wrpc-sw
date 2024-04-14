@@ -17,11 +17,12 @@ unsigned char *BASE_SOFTPLL;
 unsigned char *BASE_PPS_GEN;
 unsigned char *BASE_SYSCON;
 unsigned char *BASE_UART;
+unsigned char *BASE_USR_UART;
 unsigned char *BASE_ONEWIRE;
-unsigned char *BASE_GEN10MHZ_CFG;
 unsigned char *BASE_SPI;
 unsigned char *BASE_SPI_LJD_BOARD;
 unsigned char *BASE_ETHERBONE_CFG;
+unsigned char *BASE_SMA_CFG;
 
 /* The sdb filesystem itself */
 static struct sdbfs wrc_fpga_sdb = {
@@ -78,9 +79,10 @@ struct wrc_device devs[] = {
 	{&BASE_PPS_GEN,       VID_CERN,	0xde0d8ced, 0},
 	{&BASE_SYSCON,        VID_CERN,	0xff07fc47, 0},
 	{&BASE_UART,          VID_CERN,	0xe2d13d04, 0},
+	{&BASE_USR_UART,      VID_CERN,	0xe2d13d04, 1},
 	{&BASE_ONEWIRE,       VID_CERN,	0x779c5443, 0},
-	{&BASE_GEN10MHZ_CFG,  VID_CERN, 0x4765feb0, 0},
 	{&BASE_SPI_LJD_BOARD, VID_CERN, 0xe503947e, 0},
+	{&BASE_SMA_CFG,       VID_THU,	0x736d6101, 0},
 	{&BASE_ETHERBONE_CFG, VID_GSI,	0x68202b22, 0},
 };
 

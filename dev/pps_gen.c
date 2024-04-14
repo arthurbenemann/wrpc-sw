@@ -160,3 +160,17 @@ int shw_pps_gen_unmask_output(int unmask)
 
 	return 0;
 }
+
+/* Enable or disable ext_tai_sync*/
+int shw_pps_ext_tai_sync(int enable)
+{
+	uint32_t escr = ppsg_read(ESCR);
+	if (enable)
+		ppsg_write(ESCR,
+			   escr | PPSG_ESCR_EXT_TAI_SYNC);
+	else
+		ppsg_write(ESCR,
+			   escr & ~(PPSG_ESCR_EXT_TAI_SYNC));
+
+	return 0;
+}

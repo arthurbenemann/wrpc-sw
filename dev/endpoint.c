@@ -210,3 +210,14 @@ int ep_sfp_enable(int ena, int port)
 
 	return 0;
 }
+
+int ep_reset_txpath(int port)
+{
+	int done = 0;
+	pcs_write(MDIO_REG_LPC_PHY_CTRL,1, port);
+	pcs_write(MDIO_REG_LPC_PHY_CTRL,0, port);
+	while(done==0){
+		timer_delay_ms(10);
+		done = pcs_read(MDIO_REG_LPC_PHY_STAT,port);
+	};
+}

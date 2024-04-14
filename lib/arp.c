@@ -54,7 +54,7 @@ static int process_arp(uint8_t * buf, int len, int port)
 {
 	uint8_t hisMAC[6];
 	uint8_t hisIP[4];
-	uint8_t myIP[2][4];
+	uint8_t myIP[wr_num_ports][4];
 
 	if (len < ARP_END)
 		return 0;
@@ -81,19 +81,15 @@ static int process_arp(uint8_t * buf, int len, int port)
 		buf[ARP_OPER + 1] = 2;
 		// my MAC
 		get_mac_addr(buf + ARP_SHA, port);
-
-		for (port = 0; port < wr_num_ports; ++port)
+		/* Is it ARP request targetting our IP? */
+		getIP(myIP[port], port);
+		if (memcmp(buf + ARP_TPA, myIP[port], 4) == 0)
 		{
-			/* Is it ARP request targetting our IP? */
-			getIP(myIP[port], port);
-			if (memcmp(buf + ARP_TPA, myIP[port], 4) == 0)
-			{
-				memcpy(buf + ARP_SPA, myIP[port], 4);
-				// his MAC+IP
-				memcpy(buf + ARP_THA, hisMAC, 6);
-				memcpy(buf + ARP_TPA, hisIP, 4);
-				return ARP_END;
-			}
+			memcpy(buf + ARP_SPA, myIP[port], 4);
+			// his MAC+IP
+			memcpy(buf + ARP_THA, hisMAC, 6);
+			memcpy(buf + ARP_TPA, hisIP, 4);
+			return ARP_END;
 		}
 	}
 	return 0;

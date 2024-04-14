@@ -31,8 +31,7 @@ int ep_cal_pattern_enable(int port);
 int ep_cal_pattern_disable(int port);
 int ep_timestamper_cal_pulse(int port);
 int ep_sfp_enable(int ena,int port);
-int ep_reset(int port);
-
+int ep_reset_txpath(int port);
 void pfilter_init_default(int port);
 
 #endif

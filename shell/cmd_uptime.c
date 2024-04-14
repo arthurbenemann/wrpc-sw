@@ -1,6 +1,6 @@
 #include <wrc.h>
 #include "shell.h"
-
+#include "dev/endpoint.h"
 static int cmd_uptime(const char *args[])
 {
 	extern uint32_t uptime_sec;
@@ -12,4 +12,14 @@ static int cmd_uptime(const char *args[])
 DEFINE_WRC_COMMAND(uptime) = {
 	.name = "uptime",
 	.exec = cmd_uptime,
+};
+
+static int cmd_restart(const char *args[])
+{
+	ep_reset_txpath(0);
+	ep_reset_txpath(1);
+}
+DEFINE_WRC_COMMAND(restart) = {
+	.name = "restart",
+	.exec = cmd_restart,
 };

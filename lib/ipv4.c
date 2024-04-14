@@ -296,18 +296,6 @@ static int ipv4_poll(void)
 	return ret != 0;
 }
 
-static int dp_ipv4_poll(void)
-{
-	int ret = 0;
-
-	if (link_status[1]!=LINK_UP)
-		return 0;
-
-	ret = dp_icmp_poll();
-
-	return ret != 0;
-}
-
 void getIP(unsigned char *IP, int port)
 {
 	memcpy(IP, myIP[port], 4);
