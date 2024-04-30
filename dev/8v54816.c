@@ -150,6 +150,8 @@ int crosspoint_8v54816_configure(struct wr_8v54816_interface_device *dev){
       return -1;
     }
   }
+  
+  return 0;
 }
 
 
