@@ -42,7 +42,16 @@ obj-$(CONFIG_WR_NODE) += \
 	dev/pps_gen.o
 
 obj-$(CONFIG_TARGET_WR_SWITCH) += dev/timer-wrs.o dev/gpio.o
-obj-$(CONFIG_TARGET_WR_SWITCH_V4) += dev/timer-wrs.o dev/gpio.o dev/si57x.o dev/bb_i2c.o
+obj-$(CONFIG_TARGET_WR_SWITCH_V4) += \
+	dev/timer-wrs.o \
+	dev/gpio.o \
+	dev/si57x.o \
+	dev/bb_i2c.o \
+	dev/si549.o \
+	dev/hmc7044.o \
+	dev/simple_spi.o \
+	dev/8v54816.o 
+
 obj-$(CONFIG_PUTS_SYSLOG) += dev/puts-syslog.o
 
 obj-$(CONFIG_DAC_LOG) += dev/dac_log.o

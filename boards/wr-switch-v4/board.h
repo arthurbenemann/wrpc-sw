@@ -15,6 +15,10 @@
 
 #define SI57X_I2C_ADDR 0x55
 
+#define CP_8V5816_I2C_ADDR      0x58
+#define I2C_MUX_ADDR            0x70    
+#define CP_8V5816_MUX_CH        2
+
 #define TICS_PER_SECOND 100000
 
 #define CPU_CLOCK             62500000
@@ -38,6 +42,8 @@
 #define BASE_PPS_GEN (DEV_BASE + 0x10500)
 #define BASE_SPI_LJD_BOARD (DEV_BASE + 0x10700)
 #define BASE_SI57X_INTERFACE (DEV_BASE + 0x10800)
+#define BASE_CP_8V5816 (DEV_BASE + 0x10300)      
+
 
 /* spll parameter that are board-specific */
 #define BOARD_DIVIDE_DMTD_CLOCKS	0

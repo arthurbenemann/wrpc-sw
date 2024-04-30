@@ -50,7 +50,7 @@ MAKEALL_COPY_LIST=.bin .elf
 
 # we miss CONFIG_ARCH_LM32 as we have no other archs by now
 obj-$(CONFIG_ARCH_LM32) = arch/lm32/crt0.o arch/lm32/irq.o
-obj-$(CONFIG_ARCH_RISCV) = arch/risc-v/crt0.o arch/risc-v/irq.o arch/risc-v/irq_helper.o
+obj-$(CONFIG_ARCH_RISCV) = arch/risc-v/crt0.o arch/risc-v/irq.o arch/risc-v/irq_helper.o arch/risc-v/emulate.o
 # silently assume WR_NODE for the next two
 LDS-$(CONFIG_ARCH_LM32)   = arch/lm32/ram.ld
 LDS-$(CONFIG_ARCH_RISCV)  = arch/risc-v/ram.ld
@@ -109,11 +109,12 @@ obj-$(CONFIG_EMBEDDED_NODE) += \
 	monitor/monitor_ppsi.o
 
 cflags-$(CONFIG_ARCH_LM32) += -mmultiply-enabled -mbarrel-shift-enabled
-cflags-$(CONFIG_ARCH_RISCV) += -march=rv32im$(USE-COMP-INSTR-y) -mabi=ilp32
+cflags-$(CONFIG_ARCH_RISCV) += -march=rv32im$(USE-COMP-INSTR-y)_zicsr -mabi=ilp32
 ldflags-$(CONFIG_ARCH_LM32) = -mmultiply-enabled -mbarrel-shift-enabled \
 	-nostdlib -T $(LDS-y)
-ldflags-$(CONFIG_ARCH_RISCV) = -march=rv32im$(USE-COMP-INSTR-y) -mabi=ilp32 \
+ldflags-$(CONFIG_ARCH_RISCV) = -march=rv32im$(USE-COMP-INSTR-y)_zicsr -mabi=ilp32 \
 	-nostdlib -T $(LDS-y)
+
 asflags-$(CONFIG_ARCH_RISCV) += -march=rv32im$(USE-COMP-INSTR-y)_zicsr -mabi=ilp32
 arch-files-$(CONFIG_ARCH_LM32) = $(OUTPUT).bram $(OUTPUT).vhd $(OUTPUT).mif
 arch-files-$(CONFIG_ARCH_RISCV) = $(OUTPUT).bram $(OUTPUT).vhd $(OUTPUT).mif
@@ -162,7 +163,7 @@ ldflags-$(CONFIG_LTO) += -flto
 ASFLAGS = -MD -I. $(asflags-y)
 
 LDFLAGS = $(ldflags-y) \
-	-Wl,--gc-sections -Os -lgcc -lc
+	-Wl,--gc-sections -lgcc -Os -lc
 
 OBJS = $(obj-y)
 
@@ -182,10 +183,10 @@ GIT_USR = $(shell whoami)@$(shell hostname)
 endif
 
 all:
-all: tools $(OUTPUT).elf $(arch-files-y)
+all: $(OUTPUT).elf $(arch-files-y)
 
 .PRECIOUS: %.elf %.bin
-.PHONY: all tools clean extest liblinux
+.PHONY: all  clean extest liblinux
 .PHONY: boards-clean
 
 # we need to remove "ptpdump" support for ppsi if RAM size is small and
@@ -257,19 +258,19 @@ distclean: clean
 liblinux:
 	$(MAKE) -C liblinux CC=cc
 
-#libertm: $(AUTOCONF)
-ifneq ($(CONFIG_TARGET_WR_SWITCH),y)
+libertm: $(AUTOCONF)
+ifneq ($(CONFIG_TARGET_WR_SWITCH_V4),y)
 	$(MAKE) -C $@ CC=cc
 endif
 
-extest:
-	$(MAKE) -C liblinux/extest CC=cc
+#extest:
+#	$(MAKE) -C liblinux/extest CC=cc
 
-tools/gensdbfs tools/pfilter-builder tools/genraminit tools/genramvhd tools/genrammif tools: .config $(AUTOCONF) gitmodules liblinux extest libertm
-	$(MAKE) -C tools
+#tools/gensdbfs tools/pfilter-builder tools/genraminit tools/genramvhd tools/genrammif tools: .config $(AUTOCONF) gitmodules liblinux extest libertm
+# 	$(MAKE) -C tools
 
-tools-diag: liblinux extest
-	$(MAKE) -C tools wrpc-diags wrpc-vuart wr-streamers
+#tools-diag: liblinux extest
+#	$(MAKE) -C tools wrpc-diags wrpc-vuart wr-streamers
 
 # if needed, check out the submodules (first time only), so users
 # who didn't read carefully the manual won't get confused
@@ -296,12 +297,12 @@ scripts_basic config:
 	@echo "Use configs/$@ as defconfig"
 	@cp configs/$@ configs/tmp_defconfig
 # concatenate ppsi's config if present
-	@if [ -f ppsi/configs/$@ ]; then \
-		echo "Use ppsi/configs/$@ as defconfig for PPSI"; \
-		cat ppsi/configs/$@ >> configs/tmp_defconfig; \
-	else \
-		echo "ppsi/configs/$@ not found. Use default values for PPSI"; \
-	fi
+#	@if [ -f ppsi/configs/$@ ]; then \
+#		echo "Use ppsi/configs/$@ as defconfig for PPSI"; \
+#		cat ppsi/configs/$@ >> configs/tmp_defconfig; \
+#	else \
+#		echo "ppsi/configs/$@ not found. Use default values for PPSI"; \
+#	fi
 	$(MAKE) quiet=quiet_ -f Makefile.kconfig tmp_defconfig
 	rm configs/tmp_defconfig
 
