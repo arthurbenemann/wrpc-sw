@@ -120,7 +120,7 @@ config RAMSIZE
 	default CUSTOM_RAMSIZE if DEVELOPER
 	default 65536 if TARGET_WR_SWITCH
 	default 196608 if TARGET_ERTM14
-	default 131072 if ARCH_RISCV
+	default 65536 if ARCH_RISCV
 	default 147456
 
 config TEMP_POLL_INTERVAL

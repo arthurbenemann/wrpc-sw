@@ -16,11 +16,17 @@
 #include "gpio-wrs.h"
 
 #include "dev/si57x.h"
+#include "dev/si549.h"
+#include "dev/hmc7044.h"
+#include "dev/simple_spi.h"
+#include "dev/8v54816.h"
 
 #define HW_NAME_LENGTH 5
 
+
 #include <wrc_global.h>
 
+#define SI549
 
 struct wrc_global_link wrc_global_link = {
 	.version = WRC_G_LINK_VERSION,
@@ -47,7 +53,14 @@ const struct wrc_global wrc_global = {
 int scb_ljd_present = 0;
 
 struct rts_10g_board {
+#ifndef SI549
 	struct wr_si57x_interface_device si57x;
+#else
+	struct wr_si549_interface_device si549;
+#endif
+	struct hmc7044_device hmc7044;
+	struct simple_spi_device hmc7044_spi;
+	struct wr_8v54816_interface_device cp_8v5816;
 } board;
 
 #define RTS_MBOX_SIZE 0x1000
@@ -70,10 +83,15 @@ void init_hw_after_reset(void)
 int board_init()
 {
 	uint32_t f_xtal;
+	uint8_t data;
+	uint16_t reg = 0x0017;
+	struct hmc7044_config cfg;
+	int ret;
+	//board_dbg("board_init()\n");
 
-	board_dbg("board_init()\n");
+#ifndef SI549
 	wr_si57x_interface_init( &board.si57x, BASE_SI57X_INTERFACE, SI57X_I2C_ADDR );
-	
+
 	#if 0
 	if( !wr_si57x_probe_chip( &board.si57x ) )
 	{
@@ -84,9 +102,66 @@ int board_init()
 
 	si57x_reset( &board.si57x );
 	si57x_get_xtal_frequency( &board.si57x, &f_xtal );
-
 	board_dbg("Si57x xtal freq: %d Hz\n", f_xtal );
 	si57x_set_frequency( &board.si57x, f_xtal, 125000000, 10 );
+#else
+	wr_si549_interface_init(&board.si549, BASE_SI57X_INTERFACE, 0x67);
+	si549_reset(&board.si549);
+
+	uint8_t id = si549_get_id(&board.si549);
+	board_dbg("Si549: chip ID = %u\n", id);
+
+	si549_get_frequency(&board.si549, &f_xtal);
+	board_dbg("Si549: current freq = %u Hz\n", f_xtal);
+
+	si549_set_frequency(&board.si549, 125000000, 10);
+	board_dbg("Si549: frequency set\n");
+
+	si549_get_frequency(&board.si549, &f_xtal);
+	board_dbg("Si549: current freq = %u Hz\n", f_xtal);
+
+#endif
+
+	board_dbg("Init HMC7044 SPI\n");
+	hmc7044_init(&board.hmc7044, &board.hmc7044_spi, &gpio_pin_pll_reset_n, &gpio_pin_pll_clk_sel,
+		&gpio_pin_pll_sync, &gpio_pin_pll_gpio1, &gpio_pin_pll_gpio2);
+	
+	reg = 0x0078;
+	data = hmc7044_read(&board.hmc7044, reg);
+	board_dbg("ID[0] = 0x%X\n", data);
+	
+	reg = 0x0079;
+	data = hmc7044_read(&board.hmc7044, reg);
+	board_dbg("ID[1] = 0x%X\n", data);
+
+	reg = 0x007A;
+	data = hmc7044_read(&board.hmc7044, reg);
+	board_dbg("ID[2] = 0x%X\n", data);
+
+	ret = hmc7044_configure(&board.hmc7044, &cfg);
+	if(ret < 0){
+		board_dbg("Failed to configure/lock HMC7044: %d\n", ret);
+		return ret;
+	}else{
+		board_dbg("HMC7044 successfuly configured !!\n");
+	}
+
+
+	wr_crosspoint_8v54816_init(&board.cp_8v5816, BASE_CP_8V5816, CP_8V5816_I2C_ADDR, I2C_MUX_ADDR, CP_8V5816_MUX_CH);
+	if(crosspoint_8v54816_configure(&board.cp_8v5816) < 0){
+		  board_dbg("8v54816 config error\n");
+		  return -1;
+	}else{
+			board_dbg("8v54816 configured\n");
+	}
+
+	// board_dbg("switch sys clk\n");
+	// gen_gpio_out(&gpio_pin_sys_clk_sel, 1);
+
+	board_dbg("enable endpoints\n");
+	gen_gpio_out(&gpio_pin_ep_reset_n, 1);	
+
+	return 0;
 }
 
 int main(void)
@@ -103,18 +178,31 @@ int main(void)
 	//stats.start_cnt++;
 
 	_endram = ENDRAM_MAGIC;
-	wrs_gpio_init();
 	console_init();
+	wrs_gpio_init();
+
 	pp_printf("\n");
 	pp_printf("WR Switch 10G Proto Real Time Subsystem (c) CERN 2011 - 2020\n");
-	//pp_printf("Revision: %s, built: %s %s.\n",
-	  //    build_revision, build_date, build_time);
+	/*pp_printf("Revision: %s, built: %s %s.\n",
+	      build_revision, build_date, build_time);*/
 
-	board_init();
+	pp_printf("_endram @ 0x%X (= 0x%X)\n", &_endram, _endram);
+	pp_printf("_fstack @ 0x%X (= 0x%X)\n", &_fstack, _fstack);
+	pp_printf("mbox_mem @ 0x%X ([0..3]= 0x%X)\n", mbox_mem, *((uint32_t*)mbox_mem));
+	
+	pp_printf("un-reset the peripherals...\n");
+	gen_gpio_out(&gpio_pin_periph_reset_n, 1);
+	gen_gpio_out(&gpio_pin_pll_reset_n, 1);
+
+	if(board_init() < 0){
+		board_dbg("board_init error, abort\n");
+		while(1);
+	}
+	
 	rts_init();
 	rtipc_init();
 	spll_very_init();
-
+	
 	for(;;)
 	{
 		uint32_t tics = timer_get_tics();

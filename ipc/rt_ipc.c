@@ -79,7 +79,7 @@ int rts_set_mode(int mode)
 
 				if( scb_ljd_present )
 					flags |= SPLL_FLAG_USE_LJD;
-
+				pp_printf("spll_init %i, 0, %i.\n", options[i].mode_spll, flags);
 				spll_init(options[i].mode_spll, 0, flags);
 			}
 			else
@@ -120,6 +120,7 @@ void rts_update(void)
     spll_get_num_channels(&n_ref, NULL);
 
     pstate.flags = (spll_check_lock(0) ? RTS_DMTD_LOCKED | RTS_REF_LOCKED : 0);
+    
     for(i=0;i<RTS_PLL_CHANNELS;i++)
     {
 #define CH pstate.channels[i]
@@ -142,7 +143,7 @@ void rts_update(void)
 	            CH.flags |= CHAN_PMEAS_READY;
 	          
 	          CH.flags |= (enabled ? CHAN_PTRACKER_ENABLED : 0);
-
+	       	   
         }
 
 #undef CH
@@ -230,7 +231,8 @@ static struct minipc_ch *server;
 int rtipc_init(void)
 {
 	/* The mailbox is mapped at 0xf000 in the linker script */
-	server = minipc_server_create("mem:f000", 0);
+	//server = minipc_server_create("mem:f000", 0);
+	server = minipc_server_create("mem:100000", 0);
 	if (!server)
 		return 1;
 
@@ -245,11 +247,10 @@ int rtipc_init(void)
 	minipc_export(server, &rtipc_rts_set_mode_struct);
 	minipc_export(server, &rtipc_rts_get_state_struct);
 	minipc_export(server, &rtipc_rts_lock_channel_struct);
-  minipc_export(server, &rtipc_rts_adjust_phase_struct);
-  minipc_export(server, &rtipc_rts_enable_ptracker_struct);
-  minipc_export(server, &rtipc_rts_debug_command_struct);
-  minipc_export(server, &rtipc_rts_set_average_samples_struct);
-
+	minipc_export(server, &rtipc_rts_adjust_phase_struct);
+	minipc_export(server, &rtipc_rts_enable_ptracker_struct);
+	minipc_export(server, &rtipc_rts_debug_command_struct);
+	minipc_export(server, &rtipc_rts_set_average_samples_struct);
 
 	return 0;
 }

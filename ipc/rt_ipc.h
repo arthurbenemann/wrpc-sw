@@ -11,7 +11,7 @@
 
 #include <stdint.h>
 
-#define RTS_PLL_CHANNELS 18
+#define RTS_PLL_CHANNELS 4
 
 /* Individual channel flags */
 /* Reference input frequency valid */

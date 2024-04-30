@@ -25,12 +25,26 @@
 #define GPIO_PERIPH_RESET_N	3
 #define GPIO_LJD_BOARD_DETECT	4
 
+#define GPIO_PLL_SYNC    5
+#define GPIO_PLL_CLK_SEL 6
+#define GPIO_PLL_GPIO1   7
+#define GPIO_PLL_GPIO2   8
+
+#define GPIO_EP_RESET_N  10
+
 static struct gpio_device wrs_gpio;
 
 const struct gpio_pin gpio_pin_sys_clk_sel = { &wrs_gpio, GPIO_SYS_CLK_SEL };
 const struct gpio_pin gpio_pin_pll_reset_n = { &wrs_gpio, GPIO_PLL_RESET_N };
 const struct gpio_pin gpio_pin_periph_reset_n = { &wrs_gpio, GPIO_PERIPH_RESET_N };
 const struct gpio_pin gpio_pin_ljd_board_detect = { &wrs_gpio, GPIO_LJD_BOARD_DETECT };
+
+const struct gpio_pin gpio_pin_pll_sync = { &wrs_gpio, GPIO_PLL_SYNC };
+const struct gpio_pin gpio_pin_pll_clk_sel = { &wrs_gpio, GPIO_PLL_CLK_SEL };
+const struct gpio_pin gpio_pin_pll_gpio1 = { &wrs_gpio, GPIO_PLL_GPIO1 };
+const struct gpio_pin gpio_pin_pll_gpio2 = { &wrs_gpio, GPIO_PLL_GPIO2 };
+
+const struct gpio_pin gpio_pin_ep_reset_n = { &wrs_gpio, GPIO_EP_RESET_N };
 
 void wrs_gpio_init(void)
 {

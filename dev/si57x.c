@@ -243,4 +243,5 @@ void wr_si57x_interface_init( struct wr_si57x_interface_device *dev, uint32_t ba
 	dev->pin_sda.device = &dev->gpio_i2c;
 	dev->pin_sda.pin = SI57X_PIN_SDA;
 	bb_i2c_create( &dev->master, &dev->pin_scl, &dev->pin_sda );
+	bb_i2c_scan( &dev->master );
 }
