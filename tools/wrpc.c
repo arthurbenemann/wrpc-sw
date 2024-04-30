@@ -33,7 +33,8 @@
 #include <libvmebus.h>
 #endif
 
-#define SUPPORT_ERTM
+//#define SUPPORT_ERTM
+#define SUPPORT_WRSV4
 
 #ifdef SUPPORT_ERTM
 #include "libertm.h"
@@ -117,6 +118,11 @@ struct pci_slot {
 	unsigned func;
 
 	unsigned bar;
+};
+
+struct board_wrsv4{
+	struct board_mem parent;
+	const char *resource_file;
 };
 
 static int parse_pci_slot(struct pci_slot *res, const char *s)
@@ -347,6 +353,118 @@ static void mem_writel(struct board *base_board, unsigned reg, uint32_t value)
 
 	*(volatile uint32_t *)(board->base + reg ) = value;
 }
+
+#ifdef SUPPORT_WRSV4
+
+#define BASE_FPGA 			0x0400000000
+#define SIZE_FPGA 			0x20000
+#define CPU_OFFSET   			0x00010900
+
+static void board_wrsv4_help(void)
+{
+
+	printf("wrsv4/afcz board\n");
+	printf(" -f resource-file\n");
+}
+
+static int board_wrsv4_fini(struct board *base_board)
+{
+	struct board_wrsv4 *board = (struct board_wrsv4 *)base_board;
+	munmap(board->parent.map_addr, board->parent.map_length);
+	return 0;
+}
+
+static int board_wrsv4_init(struct board *board_base,
+			  int *argc, char *argv[])
+{
+
+	struct board_wrsv4 *board = (struct board_wrsv4 *)board_base;
+	printf("init wrsv4\n");
+
+	if (*argc > 1 && !strcmp (argv[1], "-f")) {
+		remove_arg1(argc, argv);
+		board->resource_file = argv[1];
+		remove_arg1(argc, argv);
+	}
+
+
+	int fd;
+	unsigned pg = getpagesize();
+
+	fd = open(board->resource_file, O_RDWR | O_SYNC);
+	if (fd < 0) {
+		fprintf(stderr, "cannot open resource file '%s': %s\n",
+			board->resource_file, strerror(errno));
+		return -1;
+	}
+
+	board->parent.map_addr = mmap(NULL, SIZE_FPGA, PROT_READ | PROT_WRITE,
+		       MAP_SHARED, fd,
+		       BASE_FPGA);
+
+
+	if (board->parent.map_addr == MAP_FAILED) {
+		fprintf(stderr, "cannot map resource file '%s': %s\n",
+			board->resource_file, strerror(errno));
+		close(fd);
+		return -1;
+	}
+	close(fd);
+
+	board->parent.map_length = pg;
+	board->parent.base =
+		board->parent.map_addr + CPU_OFFSET - OFFSET_CPU_CSR; //OFFSET_CPU_CSR added in wrc_read/write functions, subtract here
+
+	board->parent.is_be = 1;
+
+	return 0;
+
+}
+
+//hack to swap endianness for data only, not addresses
+static uint32_t mem_wrsv4_readl(struct board *base_board, unsigned reg)
+{
+	struct board_mem *board = (struct board_mem *)base_board;
+
+	uint32_t r = *(volatile uint32_t *)(board->base + reg);
+
+	if (board->is_be && (reg == OFFSET_CPU_CSR + WRC_CPU_CSR_REG_UDATA))
+		return ntohl(r);
+	else
+		return r;
+} 
+
+static void mem_wrsv4_writel(struct board *base_board, unsigned reg, uint32_t value)
+{
+	struct board_mem *board = (struct board_mem *)base_board;
+
+	if (board->is_be && (reg == OFFSET_CPU_CSR + WRC_CPU_CSR_REG_UDATA))
+		value = htonl(value);
+
+	*(volatile uint32_t *)(board->base + reg ) = value;
+}
+
+static struct board_wrsv4 board_wrsv4 = 
+{
+	{
+		{
+			"wrsv4",
+			board_wrsv4_init,
+			board_wrsv4_fini,
+			board_wrsv4_help,
+			mem_wrsv4_readl,
+			mem_wrsv4_writel
+		},
+		NULL,
+		0,
+		NULL,
+		0
+	},
+	NULL		
+};
+
+#endif /* SUPPORT_WRSV4 */
+
 
 static struct board_pci board_pci =
 {
@@ -664,6 +782,9 @@ static struct board *boards[] = {
         &board_cernvme.parent.parent,
         &board_wr2rf.parent.parent,
 #endif
+#ifdef SUPPORT_WRSV4
+        &board_wrsv4.parent.parent,
+#endif
         NULL
 };
 
@@ -698,6 +819,8 @@ static int board_open(int *argc, char *argv[])
 	return board->init(board, argc, argv);
 }
 
+
+/* URV PART */
 static void wrc_cpu_reset(struct board *board, unsigned int rst)
 {
 	board->writel (board, OFFSET_CPU_CSR + WRC_CPU_CSR_REG_RESET, rst);
