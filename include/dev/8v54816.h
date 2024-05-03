@@ -58,18 +58,17 @@ enum CP_CLK_SRC{
 
 struct wr_8v54816_interface_device
 {
-  void *base_addr;
-  uint8_t i2c_addr;
+  struct i2c_bus master;  
   struct gpio_pin pin_scl;
   struct gpio_pin pin_sda;
   struct gpio_device gpio_i2c;
-  struct i2c_bus master;
-  uint8_t mux_addr;
-  uint8_t mux_ch;
-  uint8_t config[CP_NUM_CH-1];
+  void *base_addr;
+  uint8_t i2c_addr;
+  uint8_t config[CP_NUM_CH];
 };
 
 int crosspoint_8v54816_configure(struct wr_8v54816_interface_device *dev);
-void wr_crosspoint_8v54816_init(struct wr_8v54816_interface_device *dev, uint32_t base_addr, uint8_t i2c_addr, uint8_t mux_addr, uint8_t mux_ch);
+void wr_crosspoint_8v54816_init(struct wr_8v54816_interface_device *dev, uint32_t base_addr, uint8_t i2c_addr, int scl, int sda);
+int crosspoint_8v54816_configure_gen(void *dev);
 
 #endif
