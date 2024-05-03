@@ -17,7 +17,23 @@
 
 #define CP_8V5816_I2C_ADDR      0x58
 #define I2C_MUX_ADDR            0x70    
+#define GPIO_EXP_I2C_ADDR       0x74
 #define CP_8V5816_MUX_CH        2
+#define GPIO_EXP_MUX_CH         2
+
+#define GPIO_EXP_NUM_GPI        1
+#define GPIO_EXP_NUM_GPO        6
+
+#define GPIO_EXP_CLK_SW_RST_n   1<<7
+#define GPIO_EXP_SI57X_OE1      1<<6
+#define GPIO_EXP_SI53XX_RST     1<<5
+#define GPIO_EXP_IN_SEL1        1<<4
+#define GPIO_EXP_IN_SEL0        1<<3
+#define GPIO_EXP_SI5341_INTR_n  1<<1
+#define GPIO_EXP_SI5341_SYNC    1
+
+#define AUX_I2C_PIN_SCL 1<<8
+#define AUX_I2C_PIN_SDA 1<<9
 
 #define TICS_PER_SECOND 100000
 

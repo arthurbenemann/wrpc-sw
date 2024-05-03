@@ -20,6 +20,8 @@
 #include "dev/hmc7044.h"
 #include "dev/simple_spi.h"
 #include "dev/8v54816.h"
+#include "dev/tca9548.h"
+#include "dev/tca9539.h"
 
 #define HW_NAME_LENGTH 5
 
@@ -61,7 +63,17 @@ struct rts_10g_board {
 	struct hmc7044_device hmc7044;
 	struct simple_spi_device hmc7044_spi;
 	struct wr_8v54816_interface_device cp_8v5816;
+	struct wr_tca9548_interface_device mux_tca9548;
+	struct wr_tca9539_interface_device gpio_exp;
 } board;
+
+static uint16_t gpio_exp_gpi_pins[GPIO_EXP_NUM_GPI] = {GPIO_EXP_SI5341_INTR_n};
+static uint16_t gpio_exp_gpo_pins[GPIO_EXP_NUM_GPO] = {GPIO_EXP_SI5341_SYNC, \
+																												GPIO_EXP_IN_SEL0, \
+																												GPIO_EXP_IN_SEL1, \
+																												GPIO_EXP_SI53XX_RST, \
+																												GPIO_EXP_SI57X_OE1, \
+																												GPIO_EXP_CLK_SW_RST_n};
 
 #define RTS_MBOX_SIZE 0x1000
 #define RTS_MBOX_ADDR (DEV_BASE + 0)
@@ -80,7 +92,7 @@ void init_hw_after_reset(void)
 	console_init();
 }
 
-int board_init()
+int board_init(void)
 {
 	uint32_t f_xtal;
 	uint8_t data;
@@ -146,9 +158,23 @@ int board_init()
 		board_dbg("HMC7044 successfuly configured !!\n");
 	}
 
+	//init i2c devices
+	wr_crosspoint_8v54816_init(&board.cp_8v5816, BASE_CP_8V5816, CP_8V5816_I2C_ADDR, AUX_I2C_PIN_SCL, AUX_I2C_PIN_SDA);
+	wr_gpioexp_tca9539_init(&board.gpio_exp, BASE_CP_8V5816, GPIO_EXP_I2C_ADDR, AUX_I2C_PIN_SCL, AUX_I2C_PIN_SDA, gpio_exp_gpi_pins, GPIO_EXP_NUM_GPI, gpio_exp_gpo_pins, GPIO_EXP_NUM_GPO);
+	
+	//configure i2c mux, manually add devices we're using
+	wr_mux_tca9548_init(&board.mux_tca9548, BASE_CP_8V5816, I2C_MUX_ADDR, AUX_I2C_PIN_SCL, AUX_I2C_PIN_SDA);
+	wr_mux_tca9548_add_device(&board.mux_tca9548, CP_8V5816_I2C_ADDR, CP_8V5816_MUX_CH);
+	wr_mux_tca9548_add_device(&board.mux_tca9548, GPIO_EXP_I2C_ADDR, GPIO_EXP_MUX_CH);
 
-	wr_crosspoint_8v54816_init(&board.cp_8v5816, BASE_CP_8V5816, CP_8V5816_I2C_ADDR, I2C_MUX_ADDR, CP_8V5816_MUX_CH);
-	if(crosspoint_8v54816_configure(&board.cp_8v5816) < 0){
+	//configure gpio expander
+	ret = wr_mux_tca9548_access(&board.mux_tca9548, (void *)&board.gpio_exp, GPIO_EXP_I2C_ADDR, gpioexp_tca9539_configure_gen);
+	//bring clock switch out of reset
+	ret = wr_mux_tca9548_access_wr(&board.mux_tca9548, (void *)&board.gpio_exp, GPIO_EXP_I2C_ADDR, (uint8_t *)&gpio_exp_gpo_pins[5], 1, wr_gpioexp_tca9539_set_gpo_gen);
+	//configure clock switch
+	ret = wr_mux_tca9548_access(&board.mux_tca9548, (void *)&board.cp_8v5816, CP_8V5816_I2C_ADDR, crosspoint_8v54816_configure_gen);
+
+	if(ret < 0){
 		  board_dbg("8v54816 config error\n");
 		  return -1;
 	}else{

@@ -27,11 +27,8 @@
 
 #include <wrc-debug.h>
 #include <hw/rawmem.h>
-#include "dev/syscon.h"
 
-#define AUX_I2C_PIN_SCL 1<<8
-#define AUX_I2C_PIN_SDA 1<<9
-
+//ToDo: put these somewhere else
 #define GPIO_REG_CODR 0x00000000
 #define GPIO_REG_SODR 0x00000004
 #define GPIO_REG_DDR  0x00000008
@@ -42,7 +39,7 @@ static void crosspoint_8v54816_gpio_out(const struct gpio_pin *pin, int value)
   struct wr_8v54816_interface_device* dev = ( struct wr_8v54816_interface_device* ) pin->device->priv;
   uint32_t reg = GPIO_REG_DDR;
 
-  uint32_t bit = (pin->pin == AUX_I2C_PIN_SCL ? AUX_I2C_PIN_SCL : AUX_I2C_PIN_SDA);
+  uint32_t bit = (pin->pin);
   uint32_t status = readl(dev->base_addr + reg);
   status = value ? (status | bit) : (status & ~bit);
 
@@ -61,14 +58,10 @@ static int crosspoint_8v54816_gpio_in(const struct gpio_pin *pin)
   struct wr_8v54816_interface_device* dev = (struct wr_8v54816_interface_device* ) pin->device->priv;
 
   uint32_t gpi = readl(dev->base_addr + GPIO_REG_PSR);
-
-  if ( pin->pin == AUX_I2C_PIN_SCL )
-    return (gpi & AUX_I2C_PIN_SCL ? 1 : 0);
-  else
-    return (gpi & AUX_I2C_PIN_SDA ? 1 : 0);
+  return (gpi & (pin->pin) ? 1 : 0);
 }
 
-static uint8_t crosspoint_8v54816_read(struct wr_8v54816_interface_device *dev, uint8_t *dst)
+static void crosspoint_8v54816_read(struct wr_8v54816_interface_device *dev, uint8_t *dst)
 {
 
   bb_i2c_start(&dev->master);
@@ -112,6 +105,11 @@ static uint8_t crosspoint_8v54816_readchannel(struct wr_8v54816_interface_device
   return data[channel];
 }
 
+int crosspoint_8v54816_configure_gen(void *dev){
+
+  struct wr_8v54816_interface_device *Dev = (struct wr_8v54816_interface_device*)dev;
+  return crosspoint_8v54816_configure(Dev);
+}
 
 int crosspoint_8v54816_configure(struct wr_8v54816_interface_device *dev){
 
@@ -131,13 +129,6 @@ int crosspoint_8v54816_configure(struct wr_8v54816_interface_device *dev){
   crosspoint_8v54816_configchannel(dev, CH13, CP_PORT_IN | CP_TERM_ON | CP_POLARITY_P);
   crosspoint_8v54816_configchannel(dev, CH14, CP_PORT_OUT | CP_TERM_ON | CP_POLARITY_P | (CP_SRC_MASK & CH15)); //to FPGA
   crosspoint_8v54816_configchannel(dev, CH15, CP_PORT_IN | CP_TERM_ON | CP_POLARITY_P); //ref clk from HMC7044, FMC1
-
-  //select i2c mux channel
-  //TODO make seperate TCA9548A struct  
-  bb_i2c_start(&dev->master);
-  bb_i2c_put_byte(&dev->master, dev->mux_addr << 1);
-  bb_i2c_put_byte(&dev->master, 0xFF & (1 << (dev->mux_ch)));
-  bb_i2c_stop(&dev->master);
   
   crosspoint_8v54816_write(dev);
 
@@ -150,12 +141,12 @@ int crosspoint_8v54816_configure(struct wr_8v54816_interface_device *dev){
       return -1;
     }
   }
-  
+
   return 0;
 }
 
 
-void wr_crosspoint_8v54816_init(struct wr_8v54816_interface_device *dev, uint32_t base_addr, uint8_t i2c_addr, uint8_t mux_addr, uint8_t mux_ch)
+void wr_crosspoint_8v54816_init(struct wr_8v54816_interface_device *dev, uint32_t base_addr, uint8_t i2c_addr, int scl, int sda)
 {
 
   dev->base_addr = (void *) base_addr;
@@ -164,15 +155,13 @@ void wr_crosspoint_8v54816_init(struct wr_8v54816_interface_device *dev, uint32_
   dev->gpio_i2c.set_dir = crosspoint_8v54816_gpio_set_dir;
   dev->gpio_i2c.set_out = crosspoint_8v54816_gpio_out;
   dev->i2c_addr = i2c_addr;
-  dev->mux_addr = mux_addr;
-  dev->mux_ch = mux_ch;
   dev->pin_scl.device = &dev->gpio_i2c;
-  dev->pin_scl.pin = AUX_I2C_PIN_SCL;
+  dev->pin_scl.pin = scl;
   dev->pin_sda.device = &dev->gpio_i2c;
-  dev->pin_sda.pin = AUX_I2C_PIN_SDA;
+  dev->pin_sda.pin = sda;
+  crosspoint_8v54816_gpio_out(&(dev->pin_scl), 1);
+  crosspoint_8v54816_gpio_out(&(dev->pin_sda), 1);
   bb_i2c_create(&dev->master, &dev->pin_scl, &dev->pin_sda);
-  //bb_i2c_scan(&dev->master);
-
   for(uint8_t i=0; i<CP_NUM_CH; i++){
     dev->config[i] = 0;
   }
