@@ -22,6 +22,7 @@
 #include "dev/8v54816.h"
 #include "dev/tca9548.h"
 #include "dev/tca9539.h"
+#include "dev/lmx2594.h"
 
 #define HW_NAME_LENGTH 5
 
@@ -50,6 +51,12 @@ const struct wrc_global wrc_global = {
 	.sfp_info = NULL
 };
 
+struct lmx2594_config pll_ext_10mhz_cfg =
+#include "configs/wrsv4_pll_ext_10mhz.h"
+
+struct hmc7044_config hmc7044_cfg = 
+#include "configs/wrsv4_afcz_hmc7044_config.h"
+
 //extern struct spll_stats stats;
 
 int scb_ljd_present = 0;
@@ -65,6 +72,8 @@ struct rts_10g_board {
 	struct wr_8v54816_interface_device cp_8v5816;
 	struct wr_tca9548_interface_device mux_tca9548;
 	struct wr_tca9539_interface_device gpio_exp;
+	struct lmx2594_device lmx2594;
+	struct simple_spi_device lmx2594_spi;	
 } board;
 
 static uint16_t gpio_exp_gpi_pins[GPIO_EXP_NUM_GPI] = {GPIO_EXP_SI5341_INTR_n};
@@ -94,10 +103,10 @@ void init_hw_after_reset(void)
 
 int board_init(void)
 {
+	wrs_gpio_init();
 	uint32_t f_xtal;
 	uint8_t data;
 	uint16_t reg = 0x0017;
-	struct hmc7044_config cfg;
 	int ret;
 	//board_dbg("board_init()\n");
 
@@ -135,7 +144,7 @@ int board_init(void)
 #endif
 
 	board_dbg("Init HMC7044 SPI\n");
-	hmc7044_init(&board.hmc7044, &board.hmc7044_spi, &gpio_pin_pll_reset_n, &gpio_pin_pll_clk_sel,
+	hmc7044_init(&board.hmc7044, &board.hmc7044_spi, BASE_SPI, &gpio_pin_pll_reset_n, &gpio_pin_pll_clk_sel,
 		&gpio_pin_pll_sync, &gpio_pin_pll_gpio1, &gpio_pin_pll_gpio2);
 	
 	reg = 0x0078;
@@ -150,7 +159,7 @@ int board_init(void)
 	data = hmc7044_read(&board.hmc7044, reg);
 	board_dbg("ID[2] = 0x%X\n", data);
 
-	ret = hmc7044_configure(&board.hmc7044, &cfg);
+	ret = hmc7044_configure(&board.hmc7044, &hmc7044_cfg);
 	if(ret < 0){
 		board_dbg("Failed to configure/lock HMC7044: %d\n", ret);
 		return ret;
@@ -179,6 +188,14 @@ int board_init(void)
 		  return -1;
 	}else{
 			board_dbg("8v54816 configured\n");
+	}
+
+	//init lmx2594 gm pll
+	ret = lmx2594_init(&board.lmx2594, &board.lmx2594_spi, BASE_SPI_LJD_BOARD, &gpio_pin_gm_pll_sync, &gpio_pin_gm_pll_muxout_ld);
+	if(lmx2594_configure(&board.lmx2594, &pll_ext_10mhz_cfg) < 0){
+		board_dbg("lmx2594_config error\n");
+	}else{
+		board_dbg("lmx2594 configured\n");
 	}
 
 	// board_dbg("switch sys clk\n");

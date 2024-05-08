@@ -32,6 +32,9 @@
 
 #define GPIO_EP_RESET_N  10
 
+#define GPIO_GM_PLL_MUXOUT_LD 25 
+#define GPIO_GM_PLL_SYNC   26
+
 static struct gpio_device wrs_gpio;
 
 const struct gpio_pin gpio_pin_sys_clk_sel = { &wrs_gpio, GPIO_SYS_CLK_SEL };
@@ -45,6 +48,9 @@ const struct gpio_pin gpio_pin_pll_gpio1 = { &wrs_gpio, GPIO_PLL_GPIO1 };
 const struct gpio_pin gpio_pin_pll_gpio2 = { &wrs_gpio, GPIO_PLL_GPIO2 };
 
 const struct gpio_pin gpio_pin_ep_reset_n = { &wrs_gpio, GPIO_EP_RESET_N };
+
+const struct gpio_pin gpio_pin_gm_pll_muxout_ld = { &wrs_gpio, GPIO_GM_PLL_MUXOUT_LD };
+const struct gpio_pin gpio_pin_gm_pll_sync = { &wrs_gpio, GPIO_GM_PLL_SYNC };
 
 void wrs_gpio_init(void)
 {

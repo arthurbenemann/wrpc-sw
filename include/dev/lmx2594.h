@@ -2,7 +2,7 @@
  * This work is part of the White Rabbit project
  *
  * Copyright (C) 2024 CERN (www.cern.ch)
- * Author: Quentin Genoud Duvillaret <quentin.genoud@cern.ch>
+ * Author: Harvey Leicester <harvey.leicester@cern.ch>
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -18,38 +18,39 @@
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __HMC7044_H
-#define __HMC7044_H
+#ifndef __LMX2594_H
+#define __LMX2594_H
 
 #include <stdint.h>
 
 #include "dev/gpio.h"
 #include "dev/simple_spi.h"
 
-struct hmc7044_config_reg {
+#define MUXOUT_LD_SEL   (1<<2)
+#define MUXOUT_MODE_RB  (uint8_t)0 //readback
+#define MUXOUT_MODE_LD  (uint8_t)1 //lock detect
+#define MUXOUT_MODE_NULL (uint8_t)2 
+
+struct lmx2594_config_reg {
     uint16_t addr;
-    uint8_t value;
+    uint16_t value;
 };
 
-struct hmc7044_config {
+struct lmx2594_config {
     int n_regs;
-    struct hmc7044_config_reg regs[];
+    struct lmx2594_config_reg regs[];
 };
 
-struct hmc7044_device {
+struct lmx2594_device {
     struct simple_spi_device *bus;
-    struct gpio_pin *pin_clk_sel;
-    struct gpio_pin *pin_reset;
     struct gpio_pin *pin_sync;
-    struct gpio_pin *pin_gpio1;
-    struct gpio_pin *pin_gpio2;
+    struct gpio_pin *pin_muxout_ld;
+    uint8_t muxout_mode;
+    uint16_t r0;
 };
 
-
-void hmc7044_write(struct hmc7044_device *dev, uint16_t reg, uint8_t value);
-uint16_t hmc7044_read(struct hmc7044_device *dev, uint16_t reg);
-int hmc7044_configure(struct hmc7044_device *dev, struct hmc7044_config *cfg);
-int hmc7044_init(struct hmc7044_device *dev, struct simple_spi_device *spi, uint32_t spi_base, struct gpio_pin *pin_reset, struct gpio_pin *pin_clk_sel,
-    struct gpio_pin *pin_sync, struct gpio_pin *pin_gpio1, struct gpio_pin *pin_gpio2);
+int lmx2594_configure(struct lmx2594_device *dev, struct lmx2594_config *cfg);
+int lmx2594_init(struct lmx2594_device *dev, struct simple_spi_device *spi, uint32_t spi_base, struct gpio_pin *pin_sync, struct gpio_pin *pin_muxout_ld);
+void lmx2594_setmuxout(struct lmx2594_device *dev, uint8_t muxout_mode);
 
 #endif
