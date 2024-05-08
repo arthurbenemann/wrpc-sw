@@ -47,7 +47,7 @@ void wr_mux_tca9548_init(struct wr_tca9548_interface_device *dev, uint32_t base_
 void wr_mux_tca9548_discover(struct wr_tca9548_interface_device *dev);
 void wr_mux_tca9548_set_channel(struct wr_tca9548_interface_device *dev, uint8_t channel);
 int wr_mux_tca9548_add_device(struct wr_tca9548_interface_device *dev, uint8_t device_addr, uint8_t device_channel);
-int wr_mux_tca9548_accesswr_mux_tca9548_access(struct wr_tca9548_interface_device *dev, void *access_dev, uint8_t slave_addr, int (*accessor)(void *dev));
+int wr_mux_tca9548_access(struct wr_tca9548_interface_device *dev, void *access_dev, uint8_t slave_addr, int (*accessor)(void *dev));
 int wr_mux_tca9548_access_wr(struct wr_tca9548_interface_device *dev, void *access_dev, uint8_t slave_addr, uint8_t *data, uint8_t no_bytes, int (*accessor)(void *dev, uint8_t *data, uint8_t no_bytes));
 
 #endif
