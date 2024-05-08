@@ -18,6 +18,8 @@ extern const struct gpio_pin gpio_pin_pll_clk_sel;
 extern const struct gpio_pin gpio_pin_pll_sync;
 extern const struct gpio_pin gpio_pin_pll_gpio1;
 extern const struct gpio_pin gpio_pin_pll_gpio2;
+extern const struct gpio_pin gpio_pin_gm_pll_muxout_ld;
+extern const struct gpio_pin gpio_pin_gm_pll_sync;
 
 void wrs_gpio_init(void);
 

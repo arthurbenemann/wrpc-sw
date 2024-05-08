@@ -52,7 +52,8 @@ obj-$(CONFIG_TARGET_WR_SWITCH_V4) += \
 	dev/simple_spi.o \
 	dev/8v54816.o \
 	dev/tca9548.o \
-	dev/tca9539.o 
+	dev/tca9539.o \
+	dev/lmx2594.o
 
 obj-$(CONFIG_PUTS_SYSLOG) += dev/puts-syslog.o
 
