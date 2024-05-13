@@ -31,6 +31,8 @@
 #define MUXOUT_MODE_LD  (uint8_t)1 //lock detect
 #define MUXOUT_MODE_NULL (uint8_t)2 
 
+#define FCAL_EN         (1<<3)
+
 struct lmx2594_config_reg {
     uint16_t addr;
     uint16_t value;

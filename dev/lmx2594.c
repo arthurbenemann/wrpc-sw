@@ -40,6 +40,11 @@ static uint16_t lmx2594_read(struct lmx2594_device *dev, uint8_t reg)
   return 0;
 }
 
+static void lmx2594_setr0(struct lmx2594_device *dev, uint16_t value){
+  dev->r0 = value;
+  lmx2594_write(dev, 0x00, dev->r0);
+}
+
 void lmx2594_setmuxout(struct lmx2594_device *dev, uint8_t muxout_mode){
 
   if(dev->muxout_mode != muxout_mode){
@@ -58,14 +63,14 @@ int lmx2594_configure(struct lmx2594_device *dev, struct lmx2594_config *cfg)
     timer_delay_ms(1);
     lmx2594_write(dev, 0x00, 0x2410);
 
-    //write configuration
+    //write configuration, registers should be programmed from highest to lowest
     int i = 0;
     for(i=0; i<cfg->n_regs; i++) {
         lmx2594_write(dev, cfg->regs[i].addr, cfg->regs[i].value);
         if(cfg->regs[i].addr == 0){
           dev->r0 = cfg->regs[i].value;   //store r0 settings for later
         }
-    }
+    }    
 
     //check configuration
     lmx2594_setmuxout(dev, MUXOUT_MODE_RB);
@@ -74,7 +79,11 @@ int lmx2594_configure(struct lmx2594_device *dev, struct lmx2594_config *cfg)
         return -1;
       }
     }
-    
+
+    //wait 10ms 
+    timer_delay_ms(10);
+    //set FCAL_EN=1 to ensure VCO calibration runs from a stable state
+    lmx2594_setr0(dev, dev->r0 | FCAL_EN);        
     //set mux out pin to indicate lock
     lmx2594_setmuxout(dev, MUXOUT_MODE_LD);    
 
