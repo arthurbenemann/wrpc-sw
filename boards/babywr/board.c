@@ -285,9 +285,6 @@ int wrc_board_early_init()
     wr_sit5359_interface_init( &board.sit5359_refclk, BASE_SIT5359_REFCLK, SIT5359_I2C_ADDR_A0_1 );
     wr_sit5359_interface_init( &board.sit5359_dmtd, BASE_SIT5359_DMTD, SIT5359_I2C_ADDR_A0_0 );
 
-    /* Initialize I2C bus multiplexer */
-    pca9554_gpio_init( &board.gpio_main_board, &dev_i2c_aux, PCA9554_ADR );
-
     /* Setup the SoftPLL for the OCXO we have */
     babywr_spll_setup();
 
@@ -297,7 +294,6 @@ int wrc_board_early_init()
 int wrc_board_init()
 {
     uint8_t regs[6];
-    int i;
 
     // set I2C bus speed and OSC Output enable
     sit5359_dev_init(&board.sit5359_refclk);
@@ -321,19 +317,6 @@ int wrc_board_init()
 
     ep_set_mac_addr(&wrc_endpoint_dev, mac_addr);
     ep_pfilter_init_default(&wrc_endpoint_dev);
-
-    pca9554_write_reg(&board.gpio_main_board, PCA9554_REG_CONFIG, 0x00);  // Configure all IO as output
-    pca9554_write_reg(&board.gpio_main_board, PCA9554_REG_OUT, 0x00);     // LEDs, SEL_GROUP_0/1 and SEL_IRIG_B all '0'
-
-    for( i = 0 ; i < 5; i++ )
-        {
-        gen_gpio_out( &pin_spare0, 0 );
-        gen_gpio_out( &pin_spare1, 1 );
-        timer_delay_ms(100);
-        gen_gpio_out( &pin_spare0, 1 );
-        gen_gpio_out( &pin_spare1, 0 );
-        timer_delay_ms(100);
-    }
 
     return 0;
 }

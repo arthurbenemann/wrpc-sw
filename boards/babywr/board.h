@@ -95,6 +95,7 @@ struct wr_sit5359_interface_device
     uint8_t i2c_addr;
     struct gpio_pin pin_scl;
     struct gpio_pin pin_sda;
+    struct gpio_device gpio_i2c;
     struct i2c_bus master;
     int pull_range, hsdiv;
     uint64_t rfreq;
