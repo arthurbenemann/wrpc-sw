@@ -8,7 +8,7 @@
 
 #include "dev/gpio.h"
 #include "dev/pca9554.h"
-
+#include "lib/snmp.h"
 /*
  * This is meant to be automatically included by the Makefile,
  * when wrpc-sw is build for wrc (node) -- as opposed to wrs (switch)
@@ -122,5 +122,20 @@ uint16_t temp_poll(void);
 extern int phy_calibration_poll(void);
 extern void phy_calibration_init(void);
 extern void phy_calibration_disable(void);
+
+/* macro for extended SNMP support on the SPEC7 board */
+#define CONFIG_SNMP_BOARD_SPECIFIC
+
+#if defined(CONFIG_SNMP) && defined(SNMP_SET)
+// size of oid_wrpcBoardSpecificGroup
+#define BOARD_OID_LENGTH 9
+int set_select_group(uint8_t *buf, struct snmp_oid *obj);
+int get_select_group(uint8_t *buf, struct snmp_oid *obj);
+int set_irigb(uint8_t *buf, struct snmp_oid *obj);
+int get_irigb(uint8_t *buf, struct snmp_oid *obj);
+extern const struct snmp_oid oid_array_wrpcBoardSpecificGroup[];
+extern const uint8_t oid_wrpcBoardSpecificGroup[BOARD_OID_LENGTH];
+#endif
+
 
 #endif /* __BOARD_BABYWR_H */

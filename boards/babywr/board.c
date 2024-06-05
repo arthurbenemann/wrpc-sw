@@ -21,6 +21,7 @@
 
 #include "board.h"
 #include "wrc.h"
+#include "lib/snmp.h"
 #include "dev/bb_spi.h"
 #include "dev/spi_flash.h"
 #include "dev/bb_i2c.h"
@@ -47,6 +48,141 @@ static spll_gain_schedule_t spll_main_ocxo_gain_sched;
 
 #define DAC_HALF_SCALE (1<<(BOARD_SPLL_DAC_BITS - 1))
 #define DAC_FULL_SCALE (1<<(BOARD_SPLL_DAC_BITS))
+
+#if defined(CONFIG_SNMP) && defined(SNMP_SET)
+/* Functions and variables used by the SNMP protocol to control the timing output */
+static const uint8_t oid_wrpcSelGroup0[] =           {1,0};
+static const uint8_t oid_wrpcSelGroup1[] =           {2,0};
+static const uint8_t oid_wrpcIrigB[]     =           {3,0};
+
+/* oid_wprcBoardSpecific*/
+const uint8_t oid_wrpcBoardSpecificGroup[] =    {0x2B,6,1,4,1,96,101,1,13};
+
+/* wrpcBoardSpecificGroup array */
+const struct snmp_oid oid_array_wrpcBoardSpecificGroup[] = {
+    OID_FIELD_VAR(   oid_wrpcSelGroup0,  get_select_group, set_select_group, ASN_INTEGER,   &(board.gpio_main_board)),
+    OID_FIELD_VAR(   oid_wrpcSelGroup1,  get_select_group, set_select_group, ASN_INTEGER,   &(board.gpio_main_board)),
+    OID_FIELD_VAR(   oid_wrpcIrigB,      get_irigb,        set_irigb,        ASN_OCTET_STR, &(board.gpio_main_board)),
+    { 0, }
+};
+
+static const int babywr_io_offset = 3;
+
+int set_select_group(uint8_t *buf, struct snmp_oid *obj){
+    uint8_t io_stat;
+    uint8_t len = buf[1];
+    uint8_t *oid_data = buf + 2;
+    uint8_t sel_group = *(buf - 2) + babywr_io_offset;  // add offset to get the appropriate value from board.h
+    uint8_t sel_group_reg = WBGEN2_GEN_MASK(sel_group, 1);
+    uint8_t asn_incoming = buf[0];
+    uint32_t hunderd = 100;
+    uint32_t ten = 10;
+    uint8_t asn_expected = obj->asn;
+    uint32_t data;
+
+    if (asn_incoming != asn_expected) { /* wrong data type */
+        snmp_verbose("%s: wrong asn 0x%02x, expected 0x%02x\n",
+                 __func__, asn_incoming, asn_expected);
+        return -SNMP_ERR_BADVALUE;
+    }
+
+    io_stat = pca9554_read_reg(obj->p, PCA9554_REG_OUT);
+
+    memcpy(&data, oid_data, len);
+    data = ntohl(data);
+    /* move data when shorter than 4 bytes */
+    data = data >> ((4 - len) * 8);
+
+    if(data == ten){
+        pca9554_write_reg(obj->p, PCA9554_REG_OUT, io_stat | sel_group_reg);
+    }
+    else if(data == hunderd){
+        pca9554_write_reg(obj->p, PCA9554_REG_OUT, io_stat & ~sel_group_reg);
+    }
+
+    return len + 2;
+}
+
+int set_irigb(uint8_t *buf, struct snmp_oid *obj){
+    uint8_t io_stat;
+    uint8_t len = buf[1];
+    uint8_t *oid_data = buf + 2;
+    uint8_t sel_group = *(buf - 2) + babywr_io_offset;  // add offset to get the appropriate value from board.h
+    uint8_t sel_group_reg = WBGEN2_GEN_MASK(sel_group, 1);
+    uint8_t asn_incoming = buf[0];
+    uint8_t asn_expected = obj->asn;
+    char enable[] = "enable";
+    char disable[] = "disable";
+    uint8_t max_command_size = strlen(disable) + 1;
+    char data[max_command_size];
+
+    if (asn_incoming != asn_expected) { /* wrong data type */
+        snmp_verbose("%s: wrong asn 0x%02x, expected 0x%02x\n",
+                 __func__, asn_incoming, asn_expected);
+        return -SNMP_ERR_BADVALUE;
+    }
+
+    io_stat = pca9554_read_reg(obj->p, PCA9554_REG_OUT);
+
+    memcpy(&data, oid_data, len);
+    data[len] = '\0';
+
+    if(strcmp(data, disable) == 0){
+        pca9554_write_reg(obj->p, PCA9554_REG_OUT, io_stat | sel_group_reg);
+    }
+    else if(strcmp(data, enable) == 0){
+        pca9554_write_reg(obj->p, PCA9554_REG_OUT, io_stat & ~sel_group_reg);
+    }
+
+    return len + 2;
+}
+
+int get_select_group(uint8_t *buf, struct snmp_oid *obj){
+    uint8_t *oid_data = buf + 2;
+    uint8_t *len = &buf[1];
+    uint32_t ten = htonl(10);
+    uint32_t hunderd = htonl(100);
+    uint8_t sel_group = *(buf - 2) + babywr_io_offset; // add offset to get the appropriate value from board.h
+    uint8_t reg_stat = pca9554_read_reg(obj->p, PCA9554_REG_OUT);
+    uint8_t sel_group_reg = WBGEN2_GEN_MASK(sel_group, 1);
+    uint8_t sel_group_status = reg_stat & sel_group_reg;
+
+    *len = sizeof(uint32_t);
+    buf[0] = obj->asn;
+    if(sel_group_status){
+        memcpy((char*)oid_data, &ten, *len);
+    }
+    else{
+        memcpy((char*)oid_data, &hunderd, *len);
+    }
+
+    return *len + 2;
+}
+
+int get_irigb(uint8_t *buf, struct snmp_oid *obj){
+    uint8_t *oid_data = buf + 2;
+    uint8_t *len = &buf[1];
+    uint8_t sel_group = *(buf - 2) + babywr_io_offset; // add offset to get the appropriate value from board.h
+    uint8_t reg_stat = pca9554_read_reg(obj->p, PCA9554_REG_OUT);
+    uint8_t sel_group_reg = WBGEN2_GEN_MASK(sel_group, 1);
+    uint8_t sel_group_status = reg_stat & sel_group_reg;
+    char enabled[] = "enabled";
+    char disabled[] = "disabled";
+
+    buf[0] = obj->asn;
+    if(sel_group_status){
+        *len = strlen(disabled);
+        memcpy((char*)oid_data, &disabled, *len);
+    }
+    else{
+        *len = strlen(enabled);
+        memcpy((char*)oid_data, &enabled, *len);
+    }
+
+    return *len + 2;
+}
+
+#endif
 
 static void sit5359_gpio_out(const struct gpio_pin *pin, int value)
 {
