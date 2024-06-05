@@ -21,6 +21,7 @@
 
 #include "board.h"
 #include "wrc.h"
+#include "lib/snmp.h"
 #include "dev/bb_spi.h"
 #include "dev/spi_flash.h"
 #include "dev/bb_i2c.h"
@@ -47,6 +48,81 @@ static spll_gain_schedule_t spll_main_ocxo_gain_sched;
 
 #define DAC_HALF_SCALE (1<<(BOARD_SPLL_DAC_BITS - 1))
 #define DAC_FULL_SCALE (1<<(BOARD_SPLL_DAC_BITS))
+
+#if defined(CONFIG_SNMP) && defined(SNMP_SET)
+/* Functions and variables used by the SNMP protocol to control the timing output */
+static const uint8_t oid_wrpcSelGroup0[] =           {1,0};
+static const uint8_t oid_wrpcSelGroup1[] =           {2,0};
+
+/* oid_wprcBoardSpecific*/
+const uint8_t oid_wrpcBoardSpecificGroup[] =    {0x2B,6,1,4,1,96,101,1,13};
+
+/* wrpcBoardSpecificGroup array */
+const struct snmp_oid oid_array_wrpcBoardSpecificGroup[] = {
+	OID_FIELD_VAR(   oid_wrpcSelGroup0,  get_select_group, set_select_group, ASN_INTEGER,   &(board.gpio_main_board)),
+	OID_FIELD_VAR(   oid_wrpcSelGroup1,  get_select_group, set_select_group, ASN_INTEGER,   &(board.gpio_main_board)),
+	{ 0, }
+};
+static const int sel_group_offset = 3;
+
+int set_select_group(uint8_t *buf, struct snmp_oid *obj){
+
+	uint8_t io_stat;
+	uint8_t len = buf[1];
+	uint8_t *oid_data = buf + 2;
+	uint8_t sel_group = *(buf - 2) + sel_group_offset;  // add offset to get the appropriate value from board.h
+	uint8_t sel_group_reg = WBGEN2_GEN_MASK(sel_group, 1);
+	uint8_t asn_incoming = buf[0];
+	uint8_t asn_expected = obj->asn;
+	uint32_t tmp_u32;
+
+	if (asn_incoming != asn_expected) { /* wrong data type */
+		snmp_verbose("%s: wrong asn 0x%02x, expected 0x%02x\n",
+			     __func__, asn_incoming, asn_expected);
+		return -SNMP_ERR_BADVALUE;
+	}
+	
+	io_stat = pca9554_read_reg(obj->p, PCA9554_REG_OUT);
+
+	memcpy(&tmp_u32, oid_data, len);
+	tmp_u32 = ntohl(tmp_u32);
+	/* move data when shorter than 4 bytes */
+	tmp_u32 = tmp_u32 >> ((4 - len) * 8);
+
+	if(tmp_u32){		
+		pca9554_write_reg(obj->p, PCA9554_REG_OUT, io_stat | sel_group_reg);
+	}
+	else{
+		pca9554_write_reg(obj->p, PCA9554_REG_OUT, io_stat & ~sel_group_reg);
+	}
+
+	return len + 2;
+}
+
+int get_select_group(uint8_t *buf, struct snmp_oid *obj){
+	uint8_t *oid_data = buf + 2;
+	uint8_t *len = &buf[1];
+	uint32_t on = htonl(1);
+	uint32_t off = htonl(0);
+	uint8_t sel_group = *(buf - 2) + sel_group_offset; // add offset to get the appropriate value from board.h
+	uint8_t reg_stat = pca9554_read_reg(obj->p, PCA9554_REG_OUT);
+	uint8_t sel_group_reg = WBGEN2_GEN_MASK(sel_group, 1);
+	uint8_t sel_group_status = reg_stat & sel_group_reg;
+
+	*len = sizeof(uint32_t);
+	buf[0] = obj->asn;
+	if(sel_group_status){
+		memcpy((char*)oid_data, &on, *len);
+	}
+	else{
+		memcpy((char*)oid_data, &off, *len);
+	}
+
+	return *len + 2;
+}
+
+#endif
+
 
 static void sit5359_gpio_out(const struct gpio_pin *pin, int value)
 {
@@ -259,13 +335,13 @@ void gpio_control_init()
     pca9554_write_reg(&board.gpio_main_board, PCA9554_REG_CONFIG, 0x00);  // Configure all IO as output
     pca9554_write_reg(&board.gpio_main_board, PCA9554_REG_OUT, MAIN_BOARD_FAN_ENABLE);     // LEDs, SEL_GROUP_0/1 and SEL_IRIG_B all '0', FAN_ENABLE = '1'
 
-    for( i = 0 ; i < 5; i++ )
+    for( i = 0 ; i < 10; i++ )
         {
         io_stat = pca9554_read_reg(&board.gpio_main_board, PCA9554_REG_OUT);
         pca9554_write_reg(&board.gpio_main_board, PCA9554_REG_OUT, io_stat | MAIN_BOARD_LED_3);
-        timer_delay_ms(100);
+        timer_delay_ms(300);
         pca9554_write_reg(&board.gpio_main_board, PCA9554_REG_OUT, io_stat & ~MAIN_BOARD_LED_3);
-        timer_delay_ms(100);
+        timer_delay_ms(300);
     }
 }
 
@@ -306,6 +382,7 @@ static struct gpio_pin pin_aux_scl           = { &board.gpio_aux, 2 };
 static struct gpio_pin pin_aux_sda           = { &board.gpio_aux, 3 };
 static struct gpio_pin pin_spare0            = { &board.gpio_aux, 4 };
 static struct gpio_pin pin_spare1            = { &board.gpio_aux, 5 };
+
 
 struct i2c_bus            i2c_wrc_eeprom;
 struct i2c_bus            dev_i2c_aux;
@@ -384,14 +461,14 @@ int wrc_board_init()
     pca9554_write_reg(&board.gpio_main_board, PCA9554_REG_CONFIG, 0x00);  // Configure all IO as output
     pca9554_write_reg(&board.gpio_main_board, PCA9554_REG_OUT, 0x00);     // LEDs, SEL_GROUP_0/1 and SEL_IRIG_B all '0'
 
-    for( i = 0 ; i < 5; i++ )
+    for( i = 0 ; i < 50; i++ )
         {
         gen_gpio_out( &pin_spare0, 0 );
         gen_gpio_out( &pin_spare1, 1 );
-        timer_delay_ms(100);
+        timer_delay_ms(300);
         gen_gpio_out( &pin_spare0, 1 );
         gen_gpio_out( &pin_spare1, 0 );
-        timer_delay_ms(100);
+        timer_delay_ms(300);
     }
 
     return 0;
