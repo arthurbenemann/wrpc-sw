@@ -271,12 +271,24 @@ int ad9516_init(int scb_version, int ljd_present)
 		 * Output 9	=> 10 MHz
 		 */
 
-	} else {	//Old one
+	}// } else {	//Old one
 
-		ad9516_set_output_divider(spi_base, 9, 4, 0);  /* AUX/SWCore = 187.5 MHz */ //not needed anymore
-		ad9516_set_output_divider(spi_base, 7, 8, 0); /* REF = 62.5 MHz */
-		ad9516_set_output_divider(spi_base, 4, 8, 0);  /* GTX = 62.5 MHz */
-	}
+	// 	ad9516_set_output_divider(spi_base, 9, 8, 0);  /* AUX/SWCore = 187.5 MHz */ //not needed anymore
+	// 	ad9516_set_output_divider(spi_base, 7, 8, 0); /* REF = 62.5 MHz */
+	// 	ad9516_set_output_divider(spi_base, 4, 8, 0);  /* GTX = 62.5 MHz */
+
+	// 	ad9516_set_output_divider(spi_base, 0, 8, 0);
+	// 	ad9516_set_output_divider(spi_base, 1, 8, 0);
+
+	// 	ad9516_set_output_divider(spi_base, 2, 8, 0);
+	// 	ad9516_set_output_divider(spi_base, 3, 8, 0);
+
+	// 	ad9516_set_output_divider(spi_base, 5, 8, 0);
+
+	// 	ad9516_set_output_divider(spi_base, 6, 2, 0);
+
+	// 	ad9516_set_output_divider(spi_base, 8, 20, 0);
+	// }
 
 	ad9516_sync_outputs(spi_base);
 	ad9516_set_vco_divider(spi_base, 3);
@@ -308,11 +320,15 @@ int ljd_ad9516_init (void) {
 	ad9516_write_reg(spi_base, 0x232, 0x1);
 	ad9516_write_reg(spi_base, 0x232, 0x0);
 	
-  	ad9516_set_vco_divider(spi_base, 3);
+  	//ad9516_set_vco_divider(spi_base, 3);
 	ad9516_load_regset(spi_base, ad9516_ljd_base_config, ARRAY_SIZE(ad9516_ljd_base_config), 1);
 	 
-	ad9516_set_output_divider(spi_base, 6, 8, 0);  	// OUT6. 62.5MHz
-	ad9516_set_output_divider(spi_base, 8, 20, 0);  // OUT6. 62.5MHz
+	//ad9516_set_output_divider(spi_base, 6, 8, 0);  	// OUT6. 62.5MHz
+	//ad9516_set_output_divider(spi_base, 8, 20, 0);  // OUT6. 62.5MHz
+	// ad9516_write_reg(spi_base, 0x018, 0x0); // reset VCO calibration
+	// ad9516_write_reg(spi_base, 0x232, 0x0);
+	// ad9516_write_reg(spi_base, 0x232, 0x1);
+	// ad9516_write_reg(spi_base, 0x232, 0x0);
 
 	return 0;
 }
