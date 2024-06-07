@@ -408,7 +408,7 @@ int si549_set_frequency(struct wr_si549_interface_device *dev, uint32_t freq_hz,
 
 	/* HSDIV: reg[24](2 downto 0) & reg[23](7 downto 0) */
 	regs[0] = hsdiv & 0xFF;
-	regs[1] |= (hsdiv >> 7) & 0x07;
+	regs[1] |= (hsdiv >> 8) & 0x07;
 
 	/* FBDIV = reg[31](2 downto 0) & reg[30] & reg[29] & reg[28] & reg[27] & reg[26]
 	 * FBDIV_INT (11bit integer value): FBDIV[42:32] = reg[31](2 downto 0) & reg[30] 
