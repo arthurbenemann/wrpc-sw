@@ -52,17 +52,14 @@
 #define SI549_PIN_SCL 0
 #define SI549_PIN_SDA 1
 
-#define GAIN_FIXP3_13	0x53E5
+#define GAIN_FIXP8_8	0x0D1C		//13.7539 8n8, gives +/-100ppm swing for 16bit "dac"
 
 void si549_gpio_out(const struct gpio_pin *pin, int value)
 {
 	struct wr_si549_interface_device* dev = ( struct wr_si549_interface_device* ) pin->device->priv;
 
-
-
 	uint32_t mask = (pin->pin == SI549_PIN_SCL ? SI549_IF_WB_GPCR_SCL : SI549_IF_WB_GPCR_SDA);
 	uint32_t reg = (value ? SI549_IF_WB_GPSR : SI549_IF_WB_GPCR );
-
 
 	writel( mask, dev->base_addr + reg );
 }
@@ -438,7 +435,7 @@ int si549_set_frequency(struct wr_si549_interface_device *dev, uint32_t freq_hz,
 	board_dbg("Si549: VCO Gain = %d\n", vco_gain);
 
 	/* Set the gain to adapt command from WRSv3 to the new VCXO of WRSv4 */
-	writel((GAIN_FIXP3_13 << SI549_IF_WB_GAIN_GAIN_VALUE_SHIFT) & SI549_IF_WB_GAIN_GAIN_VALUE_MASK,
+	writel((GAIN_FIXP8_8 << SI549_IF_WB_GAIN_GAIN_VALUE_SHIFT) & SI549_IF_WB_GAIN_GAIN_VALUE_MASK,
 		dev->base_addr + SI549_IF_WB_GAIN);
 
 	/* Set I2C address, enable SPLL FSM, set gain and set I2C freq prescaler in CR */
