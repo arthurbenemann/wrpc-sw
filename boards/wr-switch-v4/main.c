@@ -124,7 +124,7 @@ int board_init(void)
 	si57x_reset( &board.si57x );
 	si57x_get_xtal_frequency( &board.si57x, &f_xtal );
 	board_dbg("Si57x xtal freq: %d Hz\n", f_xtal );
-	si57x_set_frequency( &board.si57x, f_xtal, 125000000, 10 );
+	si57x_set_frequency( &board.si57x, f_xtal, 62500000+3814, 2 );
 #else
 	wr_si549_interface_init(&board.si549, BASE_SI57X_INTERFACE, 0x67);
 	si549_reset(&board.si549);
@@ -135,7 +135,8 @@ int board_init(void)
 	si549_get_frequency(&board.si549, &f_xtal);
 	board_dbg("Si549: current freq = %u Hz\n", f_xtal);
 
-	si549_set_frequency(&board.si549, 125000000, 10);
+	si549_set_frequency(&board.si549, 62500000+3814, 10);		//fref+fref*(2^14/(1+2^14))
+
 	board_dbg("Si549: frequency set\n");
 
 	si549_get_frequency(&board.si549, &f_xtal);
@@ -159,51 +160,63 @@ int board_init(void)
 	data = hmc7044_read(&board.hmc7044, reg);
 	board_dbg("ID[2] = 0x%X\n", data);
 
-	ret = hmc7044_configure(&board.hmc7044, &hmc7044_cfg);
-	if(ret < 0){
-		board_dbg("Failed to configure/lock HMC7044: %d\n", ret);
-		return ret;
+	if(hmc7044_checkstatus(&board.hmc7044) == 0){
+		board_dbg("HMC7044 already configured...\n");
+		//init lmx2594 gm pll
+		ret = lmx2594_init(&board.lmx2594, &board.lmx2594_spi, BASE_SPI_LJD_BOARD, &gpio_pin_gm_pll_sync, &gpio_pin_gm_pll_muxout_ld);
+		if(lmx2594_configure(&board.lmx2594, &pll_ext_10mhz_cfg) < 0){
+			board_dbg("lmx2594_config error\n");
+		}else{
+			board_dbg("lmx2594 configured\n");
+		}
 	}else{
-		board_dbg("HMC7044 successfuly configured !!\n");
+		ret = hmc7044_configure(&board.hmc7044, &hmc7044_cfg);
+		if(ret < 0){
+			board_dbg("Failed to configure/lock HMC7044: %d\n", ret);
+			return ret;
+		}else{
+			board_dbg("HMC7044 successfuly configured !!\n");
+			//init i2c devices
+			wr_crosspoint_8v54816_init(&board.cp_8v5816, BASE_CP_8V5816, CP_8V5816_I2C_ADDR, AUX_I2C_PIN_SCL, AUX_I2C_PIN_SDA);
+			wr_gpioexp_tca9539_init(&board.gpio_exp, BASE_CP_8V5816, GPIO_EXP_I2C_ADDR, AUX_I2C_PIN_SCL, AUX_I2C_PIN_SDA, gpio_exp_gpi_pins, GPIO_EXP_NUM_GPI, gpio_exp_gpo_pins, GPIO_EXP_NUM_GPO);
+
+			//configure i2c mux, manually add devices we're using
+			wr_mux_tca9548_init(&board.mux_tca9548, BASE_CP_8V5816, I2C_MUX_ADDR, AUX_I2C_PIN_SCL, AUX_I2C_PIN_SDA);
+			wr_mux_tca9548_add_device(&board.mux_tca9548, CP_8V5816_I2C_ADDR, CP_8V5816_MUX_CH);
+			wr_mux_tca9548_add_device(&board.mux_tca9548, GPIO_EXP_I2C_ADDR, GPIO_EXP_MUX_CH);
+
+			//configure gpio expander
+			ret = wr_mux_tca9548_access(&board.mux_tca9548, (void *)&board.gpio_exp, GPIO_EXP_I2C_ADDR, gpioexp_tca9539_configure_gen);
+			//bring clock switch out of reset
+			ret = wr_mux_tca9548_access_wr(&board.mux_tca9548, (void *)&board.gpio_exp, GPIO_EXP_I2C_ADDR, (uint8_t *)&gpio_exp_gpo_pins[5], 1, wr_gpioexp_tca9539_set_gpo_gen);
+			//configure clock switch
+			ret = wr_mux_tca9548_access(&board.mux_tca9548, (void *)&board.cp_8v5816, CP_8V5816_I2C_ADDR, crosspoint_8v54816_configure_gen);
+
+			//si570 OEN
+			// ret = wr_mux_tca9548_access_wr(&board.mux_tca9548, (void *)&board.gpio_exp, GPIO_EXP_I2C_ADDR, (uint8_t *)&gpio_exp_gpo_pins[4], 1, wr_gpioexp_tca9539_set_gpo_gen);
+
+			if(ret < 0){
+				  board_dbg("8v54816 config error\n");
+				  return -1;
+			}else{
+					board_dbg("8v54816 configured\n");
+			}
+
+			//init lmx2594 gm pll
+			ret = lmx2594_init(&board.lmx2594, &board.lmx2594_spi, BASE_SPI_LJD_BOARD, &gpio_pin_gm_pll_sync, &gpio_pin_gm_pll_muxout_ld);
+			if(lmx2594_configure(&board.lmx2594, &pll_ext_10mhz_cfg) < 0){
+				board_dbg("lmx2594_config error\n");
+			}else{
+				board_dbg("lmx2594 configured\n");
+			}
+
+			board_dbg("switch sys clk\n");
+			gen_gpio_out(&gpio_pin_sys_clk_sel, 1);
+		}
 	}
-
-	//init i2c devices
-	wr_crosspoint_8v54816_init(&board.cp_8v5816, BASE_CP_8V5816, CP_8V5816_I2C_ADDR, AUX_I2C_PIN_SCL, AUX_I2C_PIN_SDA);
-	wr_gpioexp_tca9539_init(&board.gpio_exp, BASE_CP_8V5816, GPIO_EXP_I2C_ADDR, AUX_I2C_PIN_SCL, AUX_I2C_PIN_SDA, gpio_exp_gpi_pins, GPIO_EXP_NUM_GPI, gpio_exp_gpo_pins, GPIO_EXP_NUM_GPO);
-	
-	//configure i2c mux, manually add devices we're using
-	wr_mux_tca9548_init(&board.mux_tca9548, BASE_CP_8V5816, I2C_MUX_ADDR, AUX_I2C_PIN_SCL, AUX_I2C_PIN_SDA);
-	wr_mux_tca9548_add_device(&board.mux_tca9548, CP_8V5816_I2C_ADDR, CP_8V5816_MUX_CH);
-	wr_mux_tca9548_add_device(&board.mux_tca9548, GPIO_EXP_I2C_ADDR, GPIO_EXP_MUX_CH);
-
-	//configure gpio expander
-	ret = wr_mux_tca9548_access(&board.mux_tca9548, (void *)&board.gpio_exp, GPIO_EXP_I2C_ADDR, gpioexp_tca9539_configure_gen);
-	//bring clock switch out of reset
-	ret = wr_mux_tca9548_access_wr(&board.mux_tca9548, (void *)&board.gpio_exp, GPIO_EXP_I2C_ADDR, (uint8_t *)&gpio_exp_gpo_pins[5], 1, wr_gpioexp_tca9539_set_gpo_gen);
-	//configure clock switch
-	ret = wr_mux_tca9548_access(&board.mux_tca9548, (void *)&board.cp_8v5816, CP_8V5816_I2C_ADDR, crosspoint_8v54816_configure_gen);
-
-	if(ret < 0){
-		  board_dbg("8v54816 config error\n");
-		  return -1;
-	}else{
-			board_dbg("8v54816 configured\n");
-	}
-
-	//init lmx2594 gm pll
-	ret = lmx2594_init(&board.lmx2594, &board.lmx2594_spi, BASE_SPI_LJD_BOARD, &gpio_pin_gm_pll_sync, &gpio_pin_gm_pll_muxout_ld);
-	if(lmx2594_configure(&board.lmx2594, &pll_ext_10mhz_cfg) < 0){
-		board_dbg("lmx2594_config error\n");
-	}else{
-		board_dbg("lmx2594 configured\n");
-	}
-
-	// board_dbg("switch sys clk\n");
-	// gen_gpio_out(&gpio_pin_sys_clk_sel, 1);
 
 	board_dbg("enable endpoints\n");
 	gen_gpio_out(&gpio_pin_ep_reset_n, 1);	
-
 	return 0;
 }
 
@@ -245,7 +258,7 @@ int main(void)
 	rts_init();
 	rtipc_init();
 	spll_very_init();
-	
+
 	for(;;)
 	{
 		uint32_t tics = timer_get_tics();
