@@ -25,7 +25,7 @@
 #include "dev/simple_spi.h"
 #include <hw/rawmem.h>
 #include "../boards/wr-switch-v4/board.h"
-#include <wrc.h>
+#include <wrc.h>\
 #include "hw/wb_spi.h"
 
 #define HMC70144_FRAME_LEN  24
@@ -71,16 +71,18 @@ int hmc7044_init(struct hmc7044_device *dev, struct simple_spi_device *spi, uint
     /* Initialize HW SPI */
     sspi_init(dev->bus, spi_base, 625000, SSPI_POS_EDGE, SSPI_AUTO_SS);
 
-    /* 2. Release HW reset */
-    if(dev->pin_reset)
-    {
-        /* Set n_reset pin as output and toggle it */
-        gen_gpio_set_dir(dev->pin_reset, 1);
-        gen_gpio_out(dev->pin_reset, 0);
-        timer_delay_ms(10); // Needed ?
-        gen_gpio_out(dev->pin_reset, 1);
-        timer_delay_ms(10); // Needed ?
-    }
+    //Don't toggle reset on init, as if already configured clocks will disappear
+    //Reset only toggled in hmc7044_configure()
+    // /* 2. Release HW reset */
+    // if(dev->pin_reset)
+    // {
+    //     /* Set n_reset pin as output and toggle it */
+    //     gen_gpio_set_dir(dev->pin_reset, 1);
+    //     gen_gpio_out(dev->pin_reset, 0);
+    //     timer_delay_ms(10); // Needed ?
+    //     gen_gpio_out(dev->pin_reset, 1);
+    //     timer_delay_ms(10); // Needed ?
+    // }
     
     // if(dev->pin_sync)
     // {
@@ -98,6 +100,17 @@ int hmc7044_init(struct hmc7044_device *dev, struct simple_spi_device *spi, uint
 }
 
 int hmc7044_configure(struct hmc7044_device *dev, struct hmc7044_config *cfg) {
+
+    /* 2. Release HW reset */
+    if(dev->pin_reset)
+    {
+        /* Set n_reset pin as output and toggle it */
+        gen_gpio_set_dir(dev->pin_reset, 1);
+        gen_gpio_out(dev->pin_reset, 0);
+        timer_delay_ms(10); // Needed ?
+        gen_gpio_out(dev->pin_reset, 1);
+        timer_delay_ms(10); // Needed ?
+    }
 
 
     uint8_t value;
@@ -190,6 +203,15 @@ int hmc7044_configure(struct hmc7044_device *dev, struct hmc7044_config *cfg) {
     value = hmc7044_read(dev, 0x007D);  // Read alarm readback
     board_dbg("alarm = 0x%x\n", value);    
     if(!(value & 0x04))                 // If clock outputs phase status is not set, there is a problem
+        return -2;
+
+    return 0;
+}
+
+int hmc7044_checkstatus(struct hmc7044_device *dev){
+    uint8_t value = hmc7044_read(dev, 0x007D);  // Read alarm readback
+    board_dbg("alarm = 0x%x\n", value);    
+    if(!(value & 0x04))                 // phase status
         return -2;
 
     return 0;

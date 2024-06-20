@@ -51,5 +51,6 @@ uint16_t hmc7044_read(struct hmc7044_device *dev, uint16_t reg);
 int hmc7044_configure(struct hmc7044_device *dev, struct hmc7044_config *cfg);
 int hmc7044_init(struct hmc7044_device *dev, struct simple_spi_device *spi, uint32_t spi_base, struct gpio_pin *pin_reset, struct gpio_pin *pin_clk_sel,
     struct gpio_pin *pin_sync, struct gpio_pin *pin_gpio1, struct gpio_pin *pin_gpio2);
+int hmc7044_checkstatus(struct hmc7044_device *dev);
 
 #endif
