@@ -122,7 +122,7 @@ int crosspoint_8v54816_configure(struct wr_8v54816_interface_device *dev){
   crosspoint_8v54816_configchannel(dev, CH6, CP_PORT_IN | CP_TERM_ON | CP_POLARITY_P);
   crosspoint_8v54816_configchannel(dev, CH7, CP_PORT_OUT | CP_TERM_ON | CP_POLARITY_P | (CP_SRC_MASK & CH6)); //mgt227_0
   crosspoint_8v54816_configchannel(dev, CH8, CP_PORT_IN | CP_TERM_ON | CP_POLARITY_P);
-  crosspoint_8v54816_configchannel(dev, CH9, CP_PORT_IN | CP_TERM_ON | CP_POLARITY_P);
+  crosspoint_8v54816_configchannel(dev, CH9, CP_PORT_OUT | CP_TERM_ON | CP_POLARITY_P | (CP_SRC_MASK & CH13));
   crosspoint_8v54816_configchannel(dev, CH10, CP_PORT_IN | CP_TERM_ON | CP_POLARITY_P);
   crosspoint_8v54816_configchannel(dev, CH11, CP_PORT_IN | CP_TERM_ON | CP_POLARITY_P);
   crosspoint_8v54816_configchannel(dev, CH12, CP_PORT_IN | CP_TERM_ON | CP_POLARITY_P);
