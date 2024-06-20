@@ -575,24 +575,11 @@ void spll_show_stats(void)
 
 	if (softpll.mode > 0)
 	{
-		    pp_printf("softpll: irqs:%d seq:%s mode:%d "
-		     "alignment_state:%d HL%d ML%d HY=%d MY=%d DelCnt=%d setpoint:%d refcnt:%d tagcnt:%d h_kp:%d h_ki:%d h_shift:%d m_kp:%d m_ki:%d m_shift:%d h_lock_duration:%d m_freq_lock_duration:%d m_phase_lock_duration:%d",
-		      s->irq_count, statename,
-			      s->mode, s->ext.align_state,
-			      s->helper.ld.locked, s->mpll.locked,
-			      s->helper.pi.y, s->mpll.pi.y,
-			      s->delock_count, s->mpll.phase_shift_current,
-				  s->ref_count, s->tag_count,
-				  s->helper.pi.kp,
-				  s->helper.pi.ki,
-				  s->helper.pi.shift,
-				  s->mpll.pi.kp,
-				  s->mpll.pi.ki,
-				  s->mpll.pi.shift,
-				  s->helper.last_lock_duration_ms,
-				  s->mpll.last_freq_lock_duration_ms,
-				  s->mpll.last_phase_lock_duration_ms
-				);
+
+    pp_printf("softpll: irqs:%d seq:%s mode:%d alignment_state:%d HL%d ML%d HY=%d MY=%d DelCnt=%d setpoint:%d refcnt:%d tagcnt:%d h_kp:%d ", s->irq_count, statename,
+	      s->mode, s->ext.align_state, s->helper.ld.locked, s->mpll.locked, s->helper.pi.y, s->mpll.pi.y, s->delock_count, s->mpll.phase_shift_current, s->ref_count, s->tag_count, s->helper.pi.kp);
+	  pp_printf("h_ki:%d h_shift:%d m_kp:%d m_ki:%d m_shift:%d h_lock_duration:%d m_freq_lock_duration:%d m_phase_lock_duration:%d", s->helper.pi.ki, s->helper.pi.shift, s->mpll.pi.kp, s->mpll.pi.ki, 
+	  		s->mpll.pi.shift, s->helper.last_lock_duration_ms, s->mpll.last_freq_lock_duration_ms, s->mpll.last_phase_lock_duration_ms);
 
 		if( softpll.mpll.gain_sched )
 		{
