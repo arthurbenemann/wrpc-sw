@@ -47,13 +47,22 @@
 #include "hw/softpll_regs.h"
 #include "hw/wrc_diags_regs.h"
 
-/* From include/boards.h */
-#define OFFSET_SOFTPLL		0x200
-#define OFFSET_SYSCON		0x400
-#define OFFSET_UART		0x500
-#define OFFSET_WDIAGS		0x900
-#define OFFSET_CPU_CSR		0xb00
+#ifndef SUPPORT_WRSV4
+	/* From include/boards.h */
+	#define OFFSET_SYSCON          0x400
+	#define OFFSET_UART            0x500
+	#define OFFSET_WDIAGS          0x900
+	#define OFFSET_CPU_CSR         0xb00
+#else
+	#define BASE_FPGA 		0x0400000000
+	#define SIZE_FPGA 		0x20000
+	#define OFFSET_CPU_CSR  	0x00010900
+	#define OFFSET_UART 		0x00010000
+	#define OFFSET_SOFTPLL  	0x00010100
+#endif
 
+#define OFFSET_SYSCON		0x400
+#define OFFSET_WDIAGS		0x900
 #define VUART_EOL 13
 #define VUART_CMD_USLEEP 1000000
 #define VUART_CMD_PROMPT "wrc#"
@@ -122,7 +131,6 @@ struct pci_slot {
 
 struct board_wrsv4{
 	struct board_mem parent;
-	const char *resource_file;
 };
 
 static int parse_pci_slot(struct pci_slot *res, const char *s)
@@ -356,15 +364,10 @@ static void mem_writel(struct board *base_board, unsigned reg, uint32_t value)
 
 #ifdef SUPPORT_WRSV4
 
-#define BASE_FPGA 			0x0400000000
-#define SIZE_FPGA 			0x20000
-#define CPU_OFFSET   			0x00010900
-
 static void board_wrsv4_help(void)
 {
 
 	printf("wrsv4/afcz board\n");
-	printf(" -f resource-file\n");
 }
 
 static int board_wrsv4_fini(struct board *base_board)
@@ -381,20 +384,13 @@ static int board_wrsv4_init(struct board *board_base,
 	struct board_wrsv4 *board = (struct board_wrsv4 *)board_base;
 	printf("init wrsv4\n");
 
-	if (*argc > 1 && !strcmp (argv[1], "-f")) {
-		remove_arg1(argc, argv);
-		board->resource_file = argv[1];
-		remove_arg1(argc, argv);
-	}
-
-
 	int fd;
 	unsigned pg = getpagesize();
 
-	fd = open(board->resource_file, O_RDWR | O_SYNC);
+	fd = open("/dev/mem", O_RDWR | O_SYNC);
 	if (fd < 0) {
 		fprintf(stderr, "cannot open resource file '%s': %s\n",
-			board->resource_file, strerror(errno));
+			"/dev/mem", strerror(errno));
 		return -1;
 	}
 
@@ -405,16 +401,14 @@ static int board_wrsv4_init(struct board *board_base,
 
 	if (board->parent.map_addr == MAP_FAILED) {
 		fprintf(stderr, "cannot map resource file '%s': %s\n",
-			board->resource_file, strerror(errno));
+			"/dev/mem", strerror(errno));
 		close(fd);
 		return -1;
 	}
 	close(fd);
 
 	board->parent.map_length = pg;
-	board->parent.base =
-		board->parent.map_addr + CPU_OFFSET - OFFSET_CPU_CSR; //OFFSET_CPU_CSR added in wrc_read/write functions, subtract here
-
+	board->parent.base = board->parent.map_addr;
 	board->parent.is_be = 1;
 
 	return 0;
@@ -440,7 +434,6 @@ static void mem_wrsv4_writel(struct board *base_board, unsigned reg, uint32_t va
 
 	if (board->is_be && (reg == OFFSET_CPU_CSR + WRC_CPU_CSR_REG_UDATA))
 		value = htonl(value);
-
 	*(volatile uint32_t *)(board->base + reg ) = value;
 }
 
@@ -460,7 +453,6 @@ static struct board_wrsv4 board_wrsv4 =
 		NULL,
 		0
 	},
-	NULL		
 };
 
 #endif /* SUPPORT_WRSV4 */
