@@ -154,23 +154,23 @@ static int rts_get_state_func(const struct minipc_pd *pd, uint32_t *args, void *
     struct rts_pll_state *tmp = (struct rts_pll_state *)ret;
     int i;
 
-		pstate.ipc_count++;
+	pstate.ipc_count++;
 
     /* gaaaah, somebody should write a SWIG plugin for generating this stuff. */
-    tmp->current_ref = htonl(pstate.current_ref);
-    tmp->flags = htonl(pstate.flags);
-    tmp->holdover_duration = htonl(pstate.holdover_duration);
-    tmp->mode = htonl(pstate.mode);
-		tmp->delock_count = spll_get_delock_count();
-		tmp->ipc_count = pstate.ipc_count;
-		
+    tmp->current_ref = pstate.current_ref;
+    tmp->flags = pstate.flags;
+    tmp->holdover_duration = pstate.holdover_duration;
+    tmp->mode = pstate.mode;
+    tmp->delock_count = spll_get_delock_count();
+    tmp->ipc_count = pstate.ipc_count;
+
     for(i=0; i<RTS_PLL_CHANNELS;i++)
     {
-        tmp->channels[i].priority = htonl(pstate.channels[i].priority);
-        tmp->channels[i].phase_setpoint = htonl(pstate.channels[i].phase_setpoint);
-        tmp->channels[i].phase_current = htonl(pstate.channels[i].phase_current);
-        tmp->channels[i].phase_loopback = htonl(pstate.channels[i].phase_loopback);
-        tmp->channels[i].flags = htonl(pstate.channels[i].flags);
+	tmp->channels[i].priority = pstate.channels[i].priority;
+	tmp->channels[i].phase_setpoint = pstate.channels[i].phase_setpoint;
+	tmp->channels[i].phase_current = pstate.channels[i].phase_current;
+	tmp->channels[i].phase_loopback = pstate.channels[i].phase_loopback;
+	tmp->channels[i].flags = pstate.channels[i].flags;
     }
 
     return 0;
@@ -230,7 +230,7 @@ static struct minipc_ch *server;
 int rtipc_init(void)
 {
 	/* The mailbox is mapped at 0xf000 in the linker script */
-	server = minipc_server_create("mem:f000", 0);
+	server = minipc_server_create("mem:100000", 0);
 	if (!server)
 		return 1;
 
