@@ -259,6 +259,9 @@ PACKED struct SYSC_WB {
   uint32_t DIAG_DAT;
   /* [0x30]: REG HW Build */
   uint32_t HWBLD;
+  uint32_t SPLL_KI;
+  uint32_t SPLL_KP;
+  uint32_t PTP_RATE;
 };
 
 #endif

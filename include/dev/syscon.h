@@ -83,5 +83,9 @@ int diag_write_word(uint32_t adr, uint32_t val);
 
 void net_rst(void);
 
+int get_spll_ki(void);
+int get_spll_kp(void);
+int get_ptp_rate(void);
+
 #endif /* CONFIG_WR_NODE */
 #endif
