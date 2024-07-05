@@ -465,5 +465,6 @@ void wr_si549_interface_init(struct wr_si549_interface_device *dev, uint32_t bas
 	dev->pin_sda.device = &dev->gpio_i2c;
 	dev->pin_sda.pin = SI549_PIN_SDA;
 	bb_i2c_create( &dev->master, &dev->pin_scl, &dev->pin_sda );
+	bb_i2c_init( &dev->master );
 	bb_i2c_scan( &dev->master );
 }
