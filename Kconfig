@@ -88,6 +88,22 @@ config TARGET_SPEC_SILABS
 
 endchoice
 
+choice
+	prompt "Target Board"
+	depends on TARGET_WR_SWITCH_V4
+
+config  BOARD_WRSV4_ON_WRSV4
+	bool "White Rabbit Switch V4 on WRSv4 board"
+	help
+	  Builds the WRSv4 rt_cpu.bin, for the WRSv4 board
+
+config  BOARD_WRSV4_ON_AFCZ
+	bool "White Rabbit Switch V4 on AFCZ board"
+	help
+	  Builds the WRSv4 rt_cpu.bin, for the AFCZ board
+endchoice
+
+
 config WR_NODE_SIM
 	depends on WR_NODE && !HOST_PROCESS
 	boolean "Build simple software for test of WR PTP Core in simulation"
