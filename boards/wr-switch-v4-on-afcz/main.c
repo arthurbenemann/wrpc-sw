@@ -259,8 +259,6 @@ int main(void)
   rtipc_init();
   spll_very_init();
 
-  spll_init(2,0,1);
-
   for(;;)
   {
     uint32_t tics = timer_get_tics();

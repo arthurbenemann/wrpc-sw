@@ -95,7 +95,7 @@
   {0x0113, 0x00},   // 12bit multislip digital delay (LSB)
   {0x0114, 0x00},   // 12bit multislip digital delay (MSB)
   {0x0115, 0x00},   // Output mux: channel divider
-  {0x0116, 0x10},   // LVDS
+  {0x0116, 0x08},   // LVPECL
   // channel 11: MGTREFCLK2, 125 MHz
   {0x0136, 0xC1},   // High perf, SYNC, normal startup, Ch enable
   {0x0137, 0x14},   // Divider(/40) LSB 
