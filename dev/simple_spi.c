@@ -16,7 +16,7 @@ int sspi_init(struct simple_spi_device *dev, uint32_t base_addr, uint32_t freq, 
     if(!dev)
         return -1;
 
-    dev->base = base_addr;
+    dev->base = (void *) base_addr;
 
     /* If edge = 0: positive edge sampling */
     if(!edge)
@@ -35,6 +35,8 @@ int sspi_init(struct simple_spi_device *dev, uint32_t base_addr, uint32_t freq, 
     
     /* Set slave number once here (only one slave) */
     writel(SPI_SS_VALUE, dev->base + SPI_SS);
+
+    return 0;
 }
 
 /*

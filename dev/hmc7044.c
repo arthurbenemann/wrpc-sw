@@ -24,12 +24,10 @@
 #include "dev/hmc7044.h"
 #include "dev/simple_spi.h"
 #include <hw/rawmem.h>
-#include "../boards/wr-switch-v4/board.h"
-#include <wrc.h>\
+#include <wrc.h>
 #include "hw/wb_spi.h"
 
 #define HMC70144_FRAME_LEN  24
-#define AFCZ
 
 /*
  * Write to HMC7044 via SPI
