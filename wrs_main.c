@@ -82,7 +82,7 @@ int main(void)
 	pp_printf("SCB version: %d. %s\n", scb_ver,(scb_ver>=34)?"10 MHz SMC Output.":"" );
 	pp_printf("Start counter %d\n", stats.start_cnt);
 	/* Low-jitter Daughterboard detection */
-	ljd_present = gpio_in(GPIO_LJD_BOARD_DETECT);
+	ljd_present = 1;
 	lj_periph_type = lj_periph_type_read(ljd_present);
 
 	if (stats.start_cnt > 1) {
