@@ -81,12 +81,12 @@ int hmc7044_init(struct hmc7044_device *dev, struct simple_spi_device *spi, uint
     //     gen_gpio_out(dev->pin_reset, 1);
     //     timer_delay_ms(10); // Needed ?
     // }
-    
-    // if(dev->pin_sync)
-    // {
-    //     gen_gpio_set_dir(dev->pin_sync, 1);
-    //     gen_gpio_out(dev->pin_sync, 0);
-    // }
+
+    if (dev->pin_sync)
+    {
+        gen_gpio_set_dir(dev->pin_sync, 1);
+        gen_gpio_out(dev->pin_sync, 0);
+    }
 
     // if(dev->pin_gpio1)
     //     gen_gpio_set_dir(dev->pin_gpio1, 0);
