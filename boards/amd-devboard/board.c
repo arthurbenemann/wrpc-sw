@@ -63,7 +63,7 @@ static const i2c_mux_cfg_t zcu102_i2c_mux_cfg[] = {
 	             | ZCU102_I2C_MUX0_CH_BIT_SI570},
 	/* Mux 1 */
 	{.addr = ZCU102_I2C_MUX1_ADR,
-	 .ch_bitmask = ZCU102_I2C_MUX1_CH_BIT_SFP0}
+	 .ch_bitmask = ZCU102_I2C_MUX1_CH_BIT_SFP2}
 };
 
 /*

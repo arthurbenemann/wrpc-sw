@@ -62,6 +62,9 @@
 
 #define ZCU102_I2C_MUX1_ADR 0x75
 #define ZCU102_I2C_MUX1_CH_BIT_SFP0 (1 << 7)
+#define ZCU102_I2C_MUX1_CH_BIT_SFP1 (1 << 6)
+#define ZCU102_I2C_MUX1_CH_BIT_SFP2 (1 << 5)
+#define ZCU102_I2C_MUX1_CH_BIT_SFP3 (1 << 4)
 
 /* i2c eeprom properties */
 #define EEPROM_M24C08_ADR 0x54
