@@ -1,0 +1,13 @@
+---
+# SPDX-FileCopyrightText: 2024 CERN (home.cern)
+#
+# SPDX-License-Identifier: BSD-3-Clause
+
+version: '1.0.0'
+name: 'Software for White Rabbit PTP Core'
+description: 'https://ohwr.org/project/wrpc-sw/wikis/home'
+website: 'https://ohwr.org/project/wrpc-sw'
+images:
+  - 'https://ohwr.org/project/wrpc-sw/uploads/1c8f0ed88c1ede121e207ee519c029e8/wrpc-sw.png'
+documentation: 'https://ohwr.org/project/wrpc-sw/wikis'
+issues: 'https://ohwr.org/project/wrpc-sw/issues'
