@@ -514,6 +514,7 @@ void shell_register_commands(void)
 	REGISTER_WRC_COMMAND(uptime);
 	REGISTER_WRC_COMMAND(ver);
 	REGISTER_WRC_COMMAND(verbose);
+	REGISTER_WRC_COMMAND(temp);
 	if (HAS_VLANS)
 		REGISTER_WRC_COMMAND(vlan);
 	if (HAS_W1_TEMP)
