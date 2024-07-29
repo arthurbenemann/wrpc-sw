@@ -18,6 +18,7 @@
 #define BASE_GPIO            (BASE_AUXWB + 0x000)
 #define BASE_SIT5359_REFCLK  (BASE_AUXWB + 0x080)
 #define BASE_SIT5359_DMTD    (BASE_AUXWB + 0x100)
+#define BASE_SYSMON          (BASE_AUXWB + 0x400)
 
 /* Board-specific parameters */
 #define TICS_PER_SECOND 1000
@@ -46,11 +47,18 @@
 
 /* spll parameter that are board-specific */
 // BABYWR has GENERIC_PHY_16BIT
-#  define BOARD_DIVIDE_DMTD_CLOCKS    0
+#define BOARD_DIVIDE_DMTD_CLOCKS      0
 
-/* BABYWR uses CRYSTEC_CVPD992 for Helper and Main VCXO */
-#define MAIN_CRYSTEK_CVPD922   1
-#define HELPER_CRYSTEK_CVPD922 1
+/* BabyWR uses reference oscilator gain schedule */
+#define BOARD_HAS_SPLL_GAIN_SCHEDULE
+/* BabyWR Kp, Ki parameters for Helper */
+#define BOARD_HAS_SPLL_HELPER_PARAMETERS
+#define BOARD_SPLL_HELPER_Y_MIN          5
+#define BOARD_SPLL_HELPER_Y_MAX          (1 << DAC_BITS) - 5
+#define BOARD_SPLL_HELPER_KP             -450
+#define BOARD_SPLL_HELPER_KI             -2
+#define BOARD_SPLL_HELPER_LOCK_SAMPLES   10000
+#define BOARD_SPLL_HELPER_PI_FRACBITS    PI_FRACBITS
 
 /* Number of reference channels (RX clocks) */
 #define BOARD_MAX_CHAN_REF            1
@@ -66,14 +74,10 @@
 #define BOARD_CONSOLE_DEVICES 1
 #define CONSOLE_UART_BAUDRATE 115200
 
-// Main board LEDs and other IO on I2C GPIO
-#define MAIN_BOARD_LED_0         WBGEN2_GEN_MASK(0, 1)
-#define MAIN_BOARD_LED_1         WBGEN2_GEN_MASK(1, 1)
-#define MAIN_BOARD_LED_2         WBGEN2_GEN_MASK(2, 1)
-#define MAIN_BOARD_LED_3         WBGEN2_GEN_MASK(3, 1)
-#define MAIN_BOARD_SEL_GROUP_0   WBGEN2_GEN_MASK(4, 1)
-#define MAIN_BOARD_SEL_GROUP_1   WBGEN2_GEN_MASK(5, 1)
-#define MAIN_BOARD_SEL_IRIG_B    WBGEN2_GEN_MASK(6, 1)
+/* Maximum number of files in the sdb filesystem.
+   Need at least 4: ., sfp database, init script and calibration
+   MAC address could also be written on sdbfs. */
+#define SDBFS_REC 5
 
 /* Maximum number of files in the sdb filesystem.
    Need at least 4: ., sfp database, init script and calibration
@@ -85,9 +89,6 @@
 #define FMC_EEPROM_ADR 0x50
 #define UID_EEPROM_ADR 0x51
 #define UID_OFFSET 0xfa
-
-/* I2C address of the I2C multiplexer */
-#define PCA9554_ADR 0x23
 
 struct wr_sit5359_interface_device
 {
@@ -106,19 +107,17 @@ struct babywr_board
     struct gpio_device gpio_aux;
     struct wr_sit5359_interface_device sit5359_refclk;
     struct wr_sit5359_interface_device sit5359_dmtd;
-    struct pca9554_gpio_device gpio_main_board;
 } typedef babywr_board;
 
-void gpio_control_init(void);
-int gpio_control_poll(void);
 int  babywr_init(void);
 
 void read_sitime (void);
 void write_sitime (int dev, int val);
-
+int  lock_sweep(void);
+void mpll_restart(void);
+uint16_t temp_poll(void);
 extern int phy_calibration_poll(void);
 extern void phy_calibration_init(void);
-extern int phy_calibration_done(void);
 extern void phy_calibration_disable(void);
 
 #endif /* __BOARD_BABYWR_H */

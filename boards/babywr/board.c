@@ -104,6 +104,25 @@ static void wr_sit5359_interface_init( struct wr_sit5359_interface_device *dev, 
     }
 }
 
+uint16_t temp_poll(void)
+{    
+    uint32_t* sysmon_ptr = (uint32_t*)BASE_SYSMON;
+    uint32_t temp_32 = *sysmon_ptr;
+    static const uint16_t multiply = 509;
+    static const uint16_t subtract = 280;
+    static const uint16_t shift = 10;
+    static const uint32_t mask = 0x0000FFC0;
+
+    uint32_t temp_16 = temp_32 & mask; // Keep the low order byte
+    uint32_t adc_code = temp_16 >> 6;  // Keep the 10 MSB of that byte
+    uint32_t intermediate_0 = adc_code * multiply;
+    intermediate_0 += 1 << (shift - 1);
+    uint16_t intermediate_1 = (uint16_t)(intermediate_0 >> shift);
+    uint16_t temp = intermediate_1 - subtract;
+    
+    return temp;
+}
+
 static void sit5359_read( struct wr_sit5359_interface_device *dev, uint8_t addr, uint8_t *data, int count )
 {
     int i;
@@ -199,76 +218,6 @@ void write_sitime (int dev, int val)
         sit5359_i2c_write(&board.sit5359_dmtd, 0x00, regs, 6 );
 }
 
-// ======================================
-// GPIO Control functions
-// ======================================
-
-int gpio_control_poll()
-{
-    static int prev_servo_state = 0;
-    static int prev_link_state = 0;
-    int link_state = 0;
-
-    uint8_t io_stat;
-    uint64_t sec;
-    uint32_t nsec;
-
-    extern struct pp_instance ppi_static;
-    struct pp_instance *ppi = &ppi_static;
-//    struct wr_servo_state *s =
-//			&((struct wr_data *)ppi->ext_data)->servo_state;
-    int curr_servo_state = ppi->servo->state;
-
-    if (prev_servo_state != WRH_TRACK_PHASE && curr_servo_state == WRH_TRACK_PHASE) {
-        shw_pps_gen_get_time(&sec, &nsec);
-        board_dbg("TRACK_PHASE: '%s'\n",format_time(sec, TIME_FORMAT_LEGACY));
-        io_stat = pca9554_read_reg(&board.gpio_main_board, PCA9554_REG_IN);
-        pca9554_write_reg(&board.gpio_main_board, PCA9554_REG_OUT, io_stat | MAIN_BOARD_LED_0);
-    }
-    if (prev_servo_state == WRH_TRACK_PHASE && curr_servo_state != WRH_TRACK_PHASE) {
-        shw_pps_gen_get_time(&sec, &nsec);
-        board_dbg("LOST TRACK_PHASE: '%s'\n",format_time(sec, TIME_FORMAT_LEGACY));
-        io_stat = pca9554_read_reg(&board.gpio_main_board, PCA9554_REG_IN);
-        pca9554_write_reg(&board.gpio_main_board, PCA9554_REG_OUT, io_stat & ~MAIN_BOARD_LED_0);
-    }
-
-    link_state = ep_link_up( &wrc_endpoint_dev, NULL);
-    if (!prev_link_state && link_state) {
-        shw_pps_gen_get_time(&sec, &nsec);
-        board_dbg("Link up: '%s'\n",format_time(sec, TIME_FORMAT_LEGACY));
-        io_stat = pca9554_read_reg(&board.gpio_main_board, PCA9554_REG_IN);
-        pca9554_write_reg(&board.gpio_main_board, PCA9554_REG_OUT, io_stat | MAIN_BOARD_LED_1);
-	} else if (prev_link_state && !link_state) {
-        shw_pps_gen_get_time(&sec, &nsec);
-        board_dbg("Link down: '%s'\n",format_time(sec, TIME_FORMAT_LEGACY));
-        io_stat = pca9554_read_reg(&board.gpio_main_board, PCA9554_REG_IN);
-        pca9554_write_reg(&board.gpio_main_board, PCA9554_REG_OUT, io_stat & ~MAIN_BOARD_LED_1);
-	}
-
-    prev_servo_state = curr_servo_state;
-    prev_link_state = link_state;
-
-    return 0;
-}
-
-void gpio_control_init()
-{
-    int i;
-    uint8_t io_stat;
-    board_dbg("Initializing GPIO control...\n");
-    pca9554_write_reg(&board.gpio_main_board, PCA9554_REG_CONFIG, 0x00);  // Configure all IO as output
-    pca9554_write_reg(&board.gpio_main_board, PCA9554_REG_OUT, 0x00);     // LEDs, SEL_GROUP_0/1 and SEL_IRIG_B all '0'
-
-    for( i = 0 ; i < 5; i++ )
-        {
-        io_stat = pca9554_read_reg(&board.gpio_main_board, PCA9554_REG_OUT);
-        pca9554_write_reg(&board.gpio_main_board, PCA9554_REG_OUT, io_stat | MAIN_BOARD_LED_3);
-        timer_delay_ms(100);
-        pca9554_write_reg(&board.gpio_main_board, PCA9554_REG_OUT, io_stat & ~MAIN_BOARD_LED_3);
-        timer_delay_ms(100);
-    }
-}
-
 static void babywr_spll_setup(void)
 {
 
@@ -304,13 +253,24 @@ static struct gpio_pin pin_eeprom_scl        = { &board.gpio_aux, 0 };
 static struct gpio_pin pin_eeprom_sda        = { &board.gpio_aux, 1 };
 static struct gpio_pin pin_aux_scl           = { &board.gpio_aux, 2 };
 static struct gpio_pin pin_aux_sda           = { &board.gpio_aux, 3 };
-static struct gpio_pin pin_spare0            = { &board.gpio_aux, 4 };
-static struct gpio_pin pin_spare1            = { &board.gpio_aux, 5 };
+static struct gpio_pin pin_lock_sweep        = { &board.gpio_aux, 4 };
 
 struct i2c_bus            i2c_wrc_eeprom;
 struct i2c_bus            dev_i2c_aux;
 struct i2c_eeprom_device  wrc_eeprom_dev;
 struct i2c_eeprom_device  wrc_uid_dev;
+
+int lock_sweep()
+{
+  return gen_gpio_in( &pin_lock_sweep );
+}
+
+void mpll_restart()
+{
+	struct softpll_state *s = (struct softpll_state *)&softpll;
+	mpll_stop(&s->mpll);
+	mpll_start(&s->mpll);
+}
 
 int wrc_board_early_init()
 {
@@ -344,9 +304,6 @@ int wrc_board_early_init()
     wr_sit5359_interface_init( &board.sit5359_refclk, BASE_SIT5359_REFCLK, SIT5359_I2C_ADDR_A0_1 );
     wr_sit5359_interface_init( &board.sit5359_dmtd, BASE_SIT5359_DMTD, SIT5359_I2C_ADDR_A0_0 );
 
-    /* Initialize I2C bus multiplexer */
-    pca9554_gpio_init( &board.gpio_main_board, &dev_i2c_aux, PCA9554_ADR );
-
     /* Setup the SoftPLL for the OCXO we have */
     babywr_spll_setup();
 
@@ -356,7 +313,6 @@ int wrc_board_early_init()
 int wrc_board_init()
 {
     uint8_t regs[6];
-    int i;
 
     // set I2C bus speed and OSC Output enable
     sit5359_dev_init(&board.sit5359_refclk);
@@ -381,25 +337,11 @@ int wrc_board_init()
     ep_set_mac_addr(&wrc_endpoint_dev, mac_addr);
     ep_pfilter_init_default(&wrc_endpoint_dev);
 
-    pca9554_write_reg(&board.gpio_main_board, PCA9554_REG_CONFIG, 0x00);  // Configure all IO as output
-    pca9554_write_reg(&board.gpio_main_board, PCA9554_REG_OUT, 0x00);     // LEDs, SEL_GROUP_0/1 and SEL_IRIG_B all '0'
-
-    for( i = 0 ; i < 5; i++ )
-        {
-        gen_gpio_out( &pin_spare0, 0 );
-        gen_gpio_out( &pin_spare1, 1 );
-        timer_delay_ms(100);
-        gen_gpio_out( &pin_spare0, 1 );
-        gen_gpio_out( &pin_spare1, 0 );
-        timer_delay_ms(100);
-    }
-
     return 0;
 }
 
 int wrc_board_create_tasks()
 {
    wrc_task_create( "phy-cal", phy_calibration_init, phy_calibration_poll );
-   wrc_task_create( "pgpio_control", gpio_control_init, gpio_control_poll );
    return 0;
 }
