@@ -7,6 +7,7 @@
 #define __BOARD_BABYWR_H
 
 #include "dev/gpio.h"
+#include "dev/pca9554.h"
 
 /*
  * This is meant to be automatically included by the Makefile,
@@ -17,6 +18,7 @@
 #define BASE_GPIO            (BASE_AUXWB + 0x000)
 #define BASE_SIT5359_REFCLK  (BASE_AUXWB + 0x080)
 #define BASE_SIT5359_DMTD    (BASE_AUXWB + 0x100)
+#define BASE_SYSMON          (BASE_AUXWB + 0x400)
 
 /* Board-specific parameters */
 #define TICS_PER_SECOND 1000
@@ -45,11 +47,7 @@
 
 /* spll parameter that are board-specific */
 // BABYWR has GENERIC_PHY_16BIT
-#  define BOARD_DIVIDE_DMTD_CLOCKS    0
-
-/* BABYWR uses CRYSTEC_CVPD992 for Helper and Main VCXO */
-#define MAIN_CRYSTEK_CVPD922   1
-#define HELPER_CRYSTEK_CVPD922 1
+#define BOARD_DIVIDE_DMTD_CLOCKS      0
 
 /* Number of reference channels (RX clocks) */
 #define BOARD_MAX_CHAN_REF            1
@@ -70,20 +68,43 @@
    MAC address could also be written on sdbfs. */
 #define SDBFS_REC 5
 
+/* Maximum number of files in the sdb filesystem.
+   Need at least 4: ., sfp database, init script and calibration
+   MAC address could also be written on sdbfs. */
+#define SDBFS_REC 5
+
 /* Specific to this board (see board.c) */
 /* I2C address of the storage eeprom */
 #define FMC_EEPROM_ADR 0x50
 #define UID_EEPROM_ADR 0x51
 #define UID_OFFSET 0xfa
 
+struct wr_sit5359_interface_device
+{
+    void *base_addr;
+    uint8_t i2c_addr;
+    struct gpio_pin pin_scl;
+    struct gpio_pin pin_sda;
+    struct gpio_device gpio_i2c;
+    struct i2c_bus master;
+    int pull_range, hsdiv;
+    uint64_t rfreq;
+};
+
+struct babywr_board
+{
+    struct gpio_device gpio_aux;
+    struct wr_sit5359_interface_device sit5359_refclk;
+    struct wr_sit5359_interface_device sit5359_dmtd;
+} typedef babywr_board;
+
 int  babywr_init(void);
 
 void read_sitime (void);
 void write_sitime (int dev, int val);
-
+uint16_t temp_poll(void);
 extern int phy_calibration_poll(void);
 extern void phy_calibration_init(void);
-extern int phy_calibration_done(void);
 extern void phy_calibration_disable(void);
 
 #endif /* __BOARD_BABYWR_H */

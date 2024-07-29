@@ -31,19 +31,7 @@
 #include "softpll_ng.h"
 #include "hw/sit5359_regs.h"
 
-//struct babywr_board board;
-
-struct wr_sit5359_interface_device
-{
-    void *base_addr;
-    uint8_t i2c_addr;
-    struct gpio_pin pin_scl;
-    struct gpio_pin pin_sda;
-    struct gpio_device gpio_i2c;
-    struct i2c_bus master;
-    int pull_range, hsdiv;
-    uint64_t rfreq;
-};
+struct babywr_board board;
 
 static spll_gain_schedule_t spll_main_ocxo_gain_sched;
 
@@ -57,13 +45,6 @@ static spll_gain_schedule_t spll_main_ocxo_gain_sched;
 
 #define DAC_HALF_SCALE (1<<(BOARD_SPLL_DAC_BITS - 1))
 #define DAC_FULL_SCALE (1<<(BOARD_SPLL_DAC_BITS))
-
-struct
-{
-    struct gpio_device gpio_aux;
-    struct wr_sit5359_interface_device sit5359_refclk;
-    struct wr_sit5359_interface_device sit5359_dmtd;
-} board;
 
 static void sit5359_gpio_out(const struct gpio_pin *pin, int value)
 {
@@ -119,6 +100,25 @@ static void wr_sit5359_interface_init( struct wr_sit5359_interface_device *dev, 
             break;
         }
     }
+}
+
+uint16_t temp_poll(void)
+{    
+    uint32_t* sysmon_ptr = (uint32_t*)BASE_SYSMON;
+    uint32_t temp_32 = *sysmon_ptr;
+    static const uint16_t multiply = 509;
+    static const uint16_t subtract = 280;
+    static const uint16_t shift = 10;
+    static const uint32_t mask = 0x0000FFC0;
+
+    uint32_t temp_16 = temp_32 & mask; // Keep the low order byte
+    uint32_t adc_code = temp_16 >> 6;  // Keep the 10 MSB of that byte
+    uint32_t intermediate_0 = adc_code * multiply;
+    intermediate_0 += 1 << (shift - 1);
+    uint16_t intermediate_1 = (uint16_t)(intermediate_0 >> shift);
+    uint16_t temp = intermediate_1 - subtract;
+    
+    return temp;
 }
 
 static void sit5359_read( struct wr_sit5359_interface_device *dev, uint8_t addr, uint8_t *data, int count )
@@ -251,8 +251,8 @@ static struct gpio_pin pin_eeprom_scl        = { &board.gpio_aux, 0 };
 static struct gpio_pin pin_eeprom_sda        = { &board.gpio_aux, 1 };
 static struct gpio_pin pin_aux_scl           = { &board.gpio_aux, 2 };
 static struct gpio_pin pin_aux_sda           = { &board.gpio_aux, 3 };
-static struct gpio_pin pin_spare0            = { &board.gpio_aux, 4 };
-static struct gpio_pin pin_spare1            = { &board.gpio_aux, 5 };
+//static struct gpio_pin pin_spare0            = { &board.gpio_aux, 4 };
+//static struct gpio_pin pin_spare1            = { &board.gpio_aux, 5 };
 
 struct i2c_bus            i2c_wrc_eeprom;
 struct i2c_bus            dev_i2c_aux;
@@ -300,7 +300,6 @@ int wrc_board_early_init()
 int wrc_board_init()
 {
     uint8_t regs[6];
-    int i;
 
     // set I2C bus speed and OSC Output enable
     sit5359_dev_init(&board.sit5359_refclk);
@@ -324,16 +323,6 @@ int wrc_board_init()
 
     ep_set_mac_addr(&wrc_endpoint_dev, mac_addr);
     ep_pfilter_init_default(&wrc_endpoint_dev);
-
-    for( i = 0 ; i < 5; i++ )
-        {
-        gen_gpio_out( &pin_spare0, 0 );
-        gen_gpio_out( &pin_spare1, 1 );
-        timer_delay_ms(100);
-        gen_gpio_out( &pin_spare0, 1 );
-        gen_gpio_out( &pin_spare1, 0 );
-        timer_delay_ms(100);
-    }
 
     return 0;
 }
