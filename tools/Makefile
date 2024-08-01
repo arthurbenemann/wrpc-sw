@@ -49,6 +49,9 @@ STRIP		= strip
 OBJCOPY		= objcopy
 OBJDUMP		= objdump
 
+# some tools may be compiled to run on a target machine
+CC_TARGET_HOST = $(CROSS_COMPILE_TARGET_HOST)gcc
+
 
 
 ifeq ($(CONFIG_TARGET_ERTM14), y)
@@ -113,7 +116,7 @@ wrpc: wrpc.o
 	$(CC) $(CFLAGS) $(WRPC_ERTM_FLAGS) $^ $(TOOL_LDFLAGS) $(LIBVME_LDFLAGS) -o $@ $(WRPC_ERTM_LIBS) -lm
 
 wrpc.o: wrpc.c
-	$(CC) -c $(CFLAGS) $< $(LIBVME_CFLAGS) -o $@
+	$(CC_TARGET_HOST) -c $(CFLAGS) $< $(LIBVME_CFLAGS) -o $@
 
 pfilter-builder: pfilter-builder.c
 	$(CC) $(CFLAGS)  -include ../include/generated/autoconf.h \

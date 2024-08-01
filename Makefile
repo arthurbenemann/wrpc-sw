@@ -10,12 +10,15 @@ CROSS_COMPILE_RISCV ?= riscv32-elf-
 
 CROSS_COMPILE-$(CONFIG_ARCH_LM32) ?= $(CROSS_COMPILE_LM32)
 CROSS_COMPILE-$(CONFIG_ARCH_RISCV) ?= $(CROSS_COMPILE_RISCV)
+# cross compiler to produce programs to be run on ARM cpu on WRSv3
+CROSS_COMPILE_TARGET_HOST-$(CONFIG_TARGET_WR_SWITCH) ?= $(CROSS_COMPILE_ARM)
 
 # use compressed instructions for RISCV
 USE-COMP-INSTR-$(CONFIG_RISCV_COMP_INSTR) = c
 
 # use a cross compiler for all architectures
 CROSS_COMPILE ?= $(CROSS_COMPILE-y)
+CROSS_COMPILE_TARGET_HOST ?= $(CROSS_COMPILE_TARGET_HOST-y)
 
 ifeq ($(CONFIG_ARCH_LM32),y)
 CPU_ARCH = LM32
@@ -30,6 +33,7 @@ ifdef CONFIG_HOST_PROCESS
 endif
 
 export CROSS_COMPILE
+export CROSS_COMPILE_TARGET_HOST
 export CONFIG_ABSCAL
 
 CC =		$(CROSS_COMPILE)gcc
@@ -112,6 +116,7 @@ ldflags-$(CONFIG_ARCH_LM32) = -mmultiply-enabled -mbarrel-shift-enabled \
 	-nostdlib -T $(LDS-y)
 ldflags-$(CONFIG_ARCH_RISCV) = -march=rv32im$(USE-COMP-INSTR-y) -mabi=ilp32 \
 	-nostdlib -T $(LDS-y)
+
 asflags-$(CONFIG_ARCH_RISCV) += -march=rv32im$(USE-COMP-INSTR-y)_zicsr -mabi=ilp32
 arch-files-$(CONFIG_ARCH_LM32) = $(OUTPUT).bram $(OUTPUT).vhd $(OUTPUT).mif $(OUTPUT).mem
 arch-files-$(CONFIG_ARCH_RISCV) = $(OUTPUT).bram $(OUTPUT).vhd $(OUTPUT).mif $(OUTPUT).mem
