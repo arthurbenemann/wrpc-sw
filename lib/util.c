@@ -304,7 +304,7 @@ long long __divdi3 (long long A, long long B)
 		res = -res;
 	return res;
 }
-#if 1
+
 /* To save code, at the 64bit modulo use division and multiplication instead of
  * modulo function from the standard library */
 unsigned long long __umoddi3 (unsigned long long A, unsigned long long B)
@@ -312,12 +312,11 @@ unsigned long long __umoddi3 (unsigned long long A, unsigned long long B)
 	/* BUG: If we do A/B directly, when optimization are enable, the compiler
 	   detects that we are trying to perform a modulo operation and optimizes it
 	   by calling this function, which results in an infinite recursion.
-	   To avoid that, we need to call the 64bit divide function from libgcc */
-	//uint64_t x = A/B;
-	uint64_t x = __udivdi3(A, B);
+	   To avoid that, we need volatile */
+	volatile uint64_t x = A/B;
 	return A - (x)*B;
 }
-#endif
+
 static char tolower(char c)
 {
 	if (c >= 'A' && c <= 'Z')
