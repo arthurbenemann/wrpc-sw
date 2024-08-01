@@ -41,15 +41,15 @@ LIBVME_CFLAGS += -I$(LIBVME_INC) -I$(LIBVME_LIB) -DSUPPORT_CERN_VMEBRIDGE
 LIBVME_LDFLAGS += -L$(LIBVME_LIB) -lvmebus
 endif
 
-AS		= $(CROSS_COMPILE)as
-LD		= $(CROSS_COMPILE)ld
-CC		= $(CROSS_COMPILE)gcc
-CPP		= $(CROSS_COMPILE)$(CC) -E
-AR		= $(CROSS_COMPILE)ar
-NM		= $(CROSS_COMPILE)nm
-STRIP		= $(CROSS_COMPILE)strip
-OBJCOPY		= $(CROSS_COMPILE)objcopy
-OBJDUMP		= $(CROSS_COMPILE)objdump
+AS		= as
+LD		= ld
+CC		= gcc
+CPP		= $(CC) -E
+AR		= ar
+NM		= nm
+STRIP		= strip
+OBJCOPY		= objcopy
+OBJDUMP		= objdump
 
 all:	$(ALL)
 
@@ -100,7 +100,7 @@ wrpc-load: wrpc-load.o
 	$(CC) $(CFLAGS) $^ $(LDFLAGS) -o $@
 
 wrpc: wrpc.o
-	$(CC) $(CFLAGS) $^ $(TOOL_LDFLAGS) $(LIBVME_LDFLAGS) -o $@ -lm
+	$(CC) $(CFLAGS) $^ $(TOOL_LDFLAGS) $(LIBVME_LDFLAGS) -o $@  ../libertm/libertm.a -ludev -lm
 
 wrpc.o: wrpc.c
 	$(CC) -c $(CFLAGS) $< $(LIBVME_CFLAGS) -o $@
