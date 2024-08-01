@@ -51,6 +51,9 @@ STRIP		= strip
 OBJCOPY		= objcopy
 OBJDUMP		= objdump
 
+# some tools may be compiled to run on a target machine
+CC_TARGET_HOST = $(CROSS_COMPILE_TARGET_HOST)gcc
+
 all:	$(ALL)
 
 %:	%.c
@@ -99,11 +102,12 @@ wrpc-vuart: wrpc-vuart.o vuart_lib.o
 wrpc-load: wrpc-load.o
 	$(CC) $(CFLAGS) $^ $(LDFLAGS) -o $@
 
+LIBERTM-$(CONFIG_TARGET_ERTM14) += ../libertm/libertm.a -ludev
 wrpc: wrpc.o
-	$(CC) $(CFLAGS) $^ $(TOOL_LDFLAGS) $(LIBVME_LDFLAGS) -o $@  ../libertm/libertm.a -ludev -lm
+	$(CC_TARGET_HOST) $(CFLAGS) $^ $(TOOL_LDFLAGS) $(LIBVME_LDFLAGS) -o $@ $(LIBERTM-y) -lm
 
 wrpc.o: wrpc.c
-	$(CC) -c $(CFLAGS) $< $(LIBVME_CFLAGS) -o $@
+	$(CC_TARGET_HOST) -c $(CFLAGS) $< $(LIBVME_CFLAGS) -o $@
 
 pfilter-builder: pfilter-builder.c
 	$(CC) $(CFLAGS)  -include ../include/generated/autoconf.h \
