@@ -15,7 +15,7 @@
 #include "system_checks.h"
 #include "gpio-wrs.h"
 
-int scb_ver = 33;		/* SCB version */
+int scb_ver = 34;		/* SCB version */
 int scb_ljd_present = 0; /* LJD presence */
 
 extern struct spll_stats stats;

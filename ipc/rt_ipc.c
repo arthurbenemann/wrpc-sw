@@ -158,7 +158,7 @@ static int rts_get_state_func(const struct minipc_pd *pd, uint32_t *args, void *
 	pstate.ipc_count++;
 
     /* gaaaah, somebody should write a SWIG plugin for generating this stuff. */
-	#ifdef CONFIG_TARGET_WR_SWITCH_V4
+	#ifdef CONFIG_ARCH_RISCV
 	    tmp->current_ref = (pstate.current_ref);
 	    tmp->flags = (pstate.flags);
 	    tmp->holdover_duration = (pstate.holdover_duration);

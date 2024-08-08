@@ -58,7 +58,7 @@ obj-$(CONFIG_ARCH_RISCV) = arch/risc-v/crt0.o arch/risc-v/irq.o arch/risc-v/irq_
 # silently assume WR_NODE for the next two
 LDS-$(CONFIG_ARCH_LM32)   = arch/lm32/ram.ld
 LDS-$(CONFIG_ARCH_RISCV)  = arch/risc-v/ram.ld
-LDS-$(CONFIG_TARGET_WR_SWITCH) = arch/lm32/ram-wrs.ld
+LDS-$(CONFIG_TARGET_WR_SWITCH) = arch/risc-v/ram-wrs-v4.ld
 LDS-$(CONFIG_TARGET_WR_SWITCH_V4) = arch/risc-v/ram-wrs-v4.ld
 LDS-$(CONFIG_HOST_PROCESS) =
 
