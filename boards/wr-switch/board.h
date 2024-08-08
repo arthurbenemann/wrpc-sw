@@ -19,14 +19,15 @@
 #undef BASE_PPS_GEN
 #undef BASE_UART
 
+#define DEV_BASE 0x100000
 /* RT CPU Memory layout */
-#define BASE_UART 0x10000
-#define BASE_SOFTPLL 0x10100
-#define BASE_SPI 0x10200
-#define BASE_GPIO 0x10300
-#define BASE_TIMER 0x10400
-#define BASE_PPS_GEN 0x10500
-#define BASE_SPI_LJD_BOARD 0x10700
+#define BASE_UART (DEV_BASE + 0x10000)
+#define BASE_SOFTPLL (DEV_BASE + 0x10100)
+#define BASE_SPI (DEV_BASE + 0x10200)
+#define BASE_GPIO (DEV_BASE + 0x10300)
+#define BASE_TIMER (DEV_BASE + 0x10400)
+#define BASE_PPS_GEN (DEV_BASE + 0x10500)
+#define BASE_SPI_LJD_BOARD (DEV_BASE + 0x10700)
 
 /* spll parameter that are board-specific */
 #define BOARD_DIVIDE_DMTD_CLOCKS	0

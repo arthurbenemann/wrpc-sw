@@ -2,8 +2,10 @@
 # Automatically generated file; DO NOT EDIT.
 # WR PTP Core software configuration
 #
-CONFIG_ARCH_LM32=y
-# CONFIG_ARCH_RISCV is not set
+# CONFIG_ARCH_LM32 is not set
+CONFIG_ARCH_RISCV=y
+# CONFIG_RISCV_COMP_INSTR is not set
+CONFIG_DATASIZE=0
 # CONFIG_TARGET_GENERIC_PHY_8BIT is not set
 # CONFIG_TARGET_GENERIC_PHY_16BIT is not set
 CONFIG_TARGET_WR_SWITCH=y
