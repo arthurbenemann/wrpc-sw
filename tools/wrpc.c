@@ -34,7 +34,8 @@
 #endif
 
 //#define SUPPORT_ERTM
-#define SUPPORT_WRSV4
+#define SUPPORT_WRSV3
+//#define SUPPORT_WRSV4
 
 #ifdef SUPPORT_ERTM
 #include "libertm.h"
@@ -47,18 +48,24 @@
 #include "hw/softpll_regs.h"
 #include "hw/wrc_diags_regs.h"
 
-#ifndef SUPPORT_WRSV4
+#define SUPPORT_WRS 	defined(SUPPORT_WRSV3) || defined(SUPPORT_WRSV4)
+
+#if SUPPORT_WRS
+	#ifdef SUPPORT_WRSV4
+		#define BASE_FPGA 		0x0400000000
+	#else
+		#define BASE_FPGA		0x10000000
+	#endif
+	#define SIZE_FPGA 		0x20000
+	#define OFFSET_CPU_CSR  	0x00010900
+	#define OFFSET_UART 		0x00010000
+	#define OFFSET_SOFTPLL  	0x00010100
+#else
 	/* From include/boards.h */
 	#define OFFSET_SYSCON          0x400
 	#define OFFSET_UART            0x500
 	#define OFFSET_WDIAGS          0x900
 	#define OFFSET_CPU_CSR         0xb00
-#else
-	#define BASE_FPGA 		0x0400000000
-	#define SIZE_FPGA 		0x20000
-	#define OFFSET_CPU_CSR  	0x00010900
-	#define OFFSET_UART 		0x00010000
-	#define OFFSET_SOFTPLL  	0x00010100
 #endif
 
 #define OFFSET_SYSCON		0x400
@@ -362,7 +369,7 @@ static void mem_writel(struct board *base_board, unsigned reg, uint32_t value)
 	*(volatile uint32_t *)(board->base + reg ) = value;
 }
 
-#ifdef SUPPORT_WRSV4
+#if SUPPORT_WRS
 
 static void board_wrsv4_help(void)
 {
@@ -382,8 +389,11 @@ static int board_wrsv4_init(struct board *board_base,
 {
 
 	struct board_wrsv4 *board = (struct board_wrsv4 *)board_base;
-	printf("init wrsv4\n");
-
+	#ifdef SUPPORT_WRSV4
+		printf("init wrsv4\n");
+	#else
+		printf("init wrsv3\n");
+	#endif
 	int fd;
 	unsigned pg = getpagesize();
 
@@ -415,6 +425,8 @@ static int board_wrsv4_init(struct board *board_base,
 
 }
 
+#ifdef SUPPORT_WRSV4
+
 //hack to swap endianness for data only, not addresses
 static uint32_t mem_wrsv4_readl(struct board *base_board, unsigned reg)
 {
@@ -437,6 +449,25 @@ static void mem_wrsv4_writel(struct board *base_board, unsigned reg, uint32_t va
 	*(volatile uint32_t *)(board->base + reg ) = value;
 }
 
+#else
+
+//FIXME: update gateware so can use same readl/writel for wrsv3 and wrsv4
+static uint32_t mem_wrsv3_readl(struct board *base_board, unsigned reg)
+{
+	struct board_mem *board = (struct board_mem *)base_board;
+
+	uint32_t r = *(volatile uint32_t *)(board->base + reg);
+	return r;
+} 
+
+static void mem_wrsv3_writel(struct board *base_board, unsigned reg, uint32_t value)
+{
+	struct board_mem *board = (struct board_mem *)base_board;
+	*(volatile uint32_t *)(board->base + reg ) = value;
+}
+
+#endif
+
 static struct board_wrsv4 board_wrsv4 = 
 {
 	{
@@ -445,8 +476,13 @@ static struct board_wrsv4 board_wrsv4 =
 			board_wrsv4_init,
 			board_wrsv4_fini,
 			board_wrsv4_help,
-			mem_wrsv4_readl,
-			mem_wrsv4_writel
+			#ifdef SUPPORT_WRSV4
+				mem_wrsv4_readl,
+				mem_wrsv4_writel
+			#else
+				mem_wrsv3_readl,
+				mem_wrsv3_writel
+			#endif
 		},
 		NULL,
 		0,
@@ -774,7 +810,7 @@ static struct board *boards[] = {
         &board_cernvme.parent.parent,
         &board_wr2rf.parent.parent,
 #endif
-#ifdef SUPPORT_WRSV4
+#if SUPPORT_WRS
         &board_wrsv4.parent.parent,
 #endif
         NULL
