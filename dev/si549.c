@@ -152,6 +152,7 @@ void si549_get_frequency(struct wr_si549_interface_device *dev, uint32_t* freq_h
 	uint16_t hsdiv;
 	uint16_t fbdiv_int;
 	uint32_t fbdiv_frac;
+	uint64_t fbdiv;
 	uint8_t regs[10];
 	
 	/* Read registers 23 to 31 */
@@ -174,6 +175,8 @@ void si549_get_frequency(struct wr_si549_interface_device *dev, uint32_t* freq_h
 				 ( regs[5] << 16 ) |
 				 ( regs[4] << 8 )  |
 				 ( regs[3] << 0 );
+	fbdiv = fbdiv_int;
+	fbdiv = (fbdiv << 32) | fbdiv_frac;
 
 	/* Fout = (Fosc * FBDIV) / (HSDIV * LSDIV)
 	 * Integer part */
@@ -188,8 +191,8 @@ void si549_get_frequency(struct wr_si549_interface_device *dev, uint32_t* freq_h
 	/* Add rounded fractionnal part */
 	f_out += (f_osc * fbdiv_frac + (frac_div >> 1)) / (hsdiv * lsdiv_val * frac_div);
 
-	board_dbg("Si549: get freq.\n - LSDIV = %u (/%u)\n - HSDIV = %u\n - FBDIV = %u.%u\n - Calc. Freq. = %u Hz\n",
-		lsdiv_reg, lsdiv_val, hsdiv, fbdiv_int, (uint32_t)FIXP_FRAC2INT(fbdiv_frac), (uint32_t)f_out);
+	board_dbg("Si549: get freq.\n - LSDIV = %u (/%u)\n - HSDIV = %u\n - FBDIV = 0x%X%X (=%u.%u)\n - Calc. Freq. = %u Hz\n",
+		lsdiv_reg, lsdiv_val, hsdiv, (uint32_t)(fbdiv >> 32), (uint32_t)fbdiv, fbdiv_int, (uint32_t)FIXP_FRAC2INT(fbdiv_frac), (uint32_t)f_out);
 
 	if( freq_hz )
 		*freq_hz = (uint32_t)f_out;
