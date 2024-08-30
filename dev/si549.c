@@ -40,7 +40,7 @@
 #else
 /* Macros to divide integers to 43bit fixed point (11.32) for Si549 FBDIV */
 #define FIXP_DIV_INT(val, div)		((val / div) & 0x7FFUL)
-#define FIXP_DIV_FRAC(val, div)		((((val % div) * 0x100000000UL) / div) & 0xFFFFFFFFUL)
+#define FIXP_DIV_FRAC(val, div)		((uint32_t) (((((double)val) / div) - FIXP_DIV_INT(val, div)) * (1ULL << 32)))
 #define FIXP_DIV(val, div)			((FIXP_DIV_INT(val, div) << 32UL) | FIXP_DIV_FRAC(val, div))
 #endif
 
