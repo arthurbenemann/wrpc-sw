@@ -46,7 +46,7 @@
 */
 #define LPDC_COARSE_PHASE_MIN_PS 11750   /* ps */
 #define LPDC_COARSE_PHASE_MAX_PS 12250   /* ps */
-#define LPDC_FINE_PHASE_TOLLERANCE_PS 20 /* ps */
+#define LPDC_FINE_PHASE_TOLLERANCE_PS 50 /* ps */
 #define LPDC_MAX_ATTEMPS_TX_SETUP_STATE_RESET_PCS 2000
 #define LPDC_MAX_ATTEMPS_RX_SETUP_STATE_RESET_PCS 100
 
@@ -317,8 +317,8 @@ static int tx_fsm_update(struct wrc_lpdc_state *lpdc)
             {
                 phy_dbg("[lpdc] No proper TX phase found at %d ps after %d attempts. Clear stored PHY_TARGET_TX_PHASE.\n", fsm->cal_saved_phase, fsm->attempts);
                 phy_dbg("[lpdc] Old calibration due to new gateware?\n");
-                storage_remove_calibration_parameter(CAL_PARAM_PHY_TARGET_TX_PHASE);
-                storage_save_calibration();
+                //storage_remove_calibration_parameter(CAL_PARAM_PHY_TARGET_TX_PHASE);
+                //storage_save_calibration();
                 fsm->attempts = 0;
                 fsm->cal_saved_phase_valid = 0;
                 fsm->expected_phase_valid = 0;
@@ -445,6 +445,7 @@ static int rx_fsm_update(struct wrc_lpdc_state *lpdc)
                     // multiple PCS resets. In such a case a full GTHE4 reset is needed.
                     if (fsm-> attempts % LPDC_MAX_ATTEMPS_RX_SETUP_STATE_RESET_PCS == 0) {
                         phy_dbg("[lpdc] No RX calibration yet... Restarting TX calibration from scratch.\n");
+                        fsm->state = RX_SETUP_STATE_RESET_PCS;
                         tx_fsm_init(&lpdc->tx_state);
                     } else {
                         fsm->state = RX_SETUP_STATE_RESET_PCS;
@@ -474,8 +475,8 @@ static int rx_fsm_update(struct wrc_lpdc_state *lpdc)
                    fsm->state = RX_SETUP_DONE;
 
             } else {
-                phy_dbg("[lpdc] Stabilize link...\n");
-                fsm->state = RX_SETUP_STATE_RESET_PCS;
+                //phy_dbg("[lpdc] Stabilize link... Do nothing but wait\n");
+                //fsm->state = RX_SETUP_STATE_RESET_PCS;
             }
 
             break;
