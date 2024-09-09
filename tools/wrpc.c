@@ -53,11 +53,12 @@
 #if SUPPORT_WRS
 	#ifdef SUPPORT_WRSV4
 		#define BASE_FPGA 		0x0400000000
+                #define OFFSET_CPU_CSR  	0x00010900
 	#else
 		#define BASE_FPGA		0x10000000
+                #define OFFSET_CPU_CSR  	0x00010800
 	#endif
 	#define SIZE_FPGA 		0x20000
-	#define OFFSET_CPU_CSR  	0x00010900
 	#define OFFSET_UART 		0x00010000
 	#define OFFSET_SOFTPLL  	0x00010100
 #else
@@ -136,7 +137,7 @@ struct pci_slot {
 	unsigned bar;
 };
 
-struct board_wrsv4{
+struct board_wrs{
 	struct board_mem parent;
 };
 
@@ -371,24 +372,24 @@ static void mem_writel(struct board *base_board, unsigned reg, uint32_t value)
 
 #if SUPPORT_WRS
 
-static void board_wrsv4_help(void)
+static void board_wrs_help(void)
 {
 
-	printf("wrsv4/afcz board\n");
+	printf("wrsv3/v4 board\n");
 }
 
-static int board_wrsv4_fini(struct board *base_board)
+static int board_wrs_fini(struct board *base_board)
 {
-	struct board_wrsv4 *board = (struct board_wrsv4 *)base_board;
+	struct board_wrs *board = (struct board_wrs *)base_board;
 	munmap(board->parent.map_addr, board->parent.map_length);
 	return 0;
 }
 
-static int board_wrsv4_init(struct board *board_base,
+static int board_wrs_init(struct board *board_base,
 			  int *argc, char *argv[])
 {
 
-	struct board_wrsv4 *board = (struct board_wrsv4 *)board_base;
+	struct board_wrs *board = (struct board_wrs *)board_base;
 	#ifdef SUPPORT_WRSV4
 		printf("init wrsv4\n");
 	#else
@@ -468,14 +469,14 @@ static void mem_wrsv3_writel(struct board *base_board, unsigned reg, uint32_t va
 
 #endif
 
-static struct board_wrsv4 board_wrsv4 = 
+static struct board_wrs board_wrs = 
 {
 	{
 		{
-			"wrsv4",
-			board_wrsv4_init,
-			board_wrsv4_fini,
-			board_wrsv4_help,
+			"wrs",
+			board_wrs_init,
+			board_wrs_fini,
+			board_wrs_help,
 			#ifdef SUPPORT_WRSV4
 				mem_wrsv4_readl,
 				mem_wrsv4_writel
@@ -811,7 +812,7 @@ static struct board *boards[] = {
         &board_wr2rf.parent.parent,
 #endif
 #if SUPPORT_WRS
-        &board_wrsv4.parent.parent,
+        &board_wrs.parent.parent,
 #endif
         NULL
 };
