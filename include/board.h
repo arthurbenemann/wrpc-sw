@@ -46,11 +46,11 @@
     #define BASE_MINIC              (DEV_BASE + 0x000)
 #endif
 
-#ifndef BASE_MINIC
+#ifndef BASE_EP
     #define BASE_EP                 (DEV_BASE + 0x100)
 #endif
 
-#ifndef BASE_MINIC
+#ifndef BASE_SOFTPLL
     #define BASE_SOFTPLL            (DEV_BASE + 0x200)
 #endif
 
