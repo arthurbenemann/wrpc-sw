@@ -61,7 +61,7 @@
 #define ALIGN_STATE_WAIT_PLOCK 10
 
 #define SPLL_STATS_VER 3
-
+#define SPLL_STATS_MAGIC 0x5b1157a7
 #define SPLL_LOOP_HELPER -1
 #define SPLL_LOOP_MAIN 0
 
@@ -89,7 +89,7 @@ struct spll_build_id {
 	char build_by[32];
 };
 
-extern struct spll_stats stats;
+extern struct spll_stats *stats;
 extern const struct spll_build_id build_id;
 
 #endif /* __SOFTPLL_EXPORT_H */

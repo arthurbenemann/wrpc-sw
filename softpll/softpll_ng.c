@@ -764,17 +764,17 @@ int spll_update(void)
 
 #ifdef CONFIG_TARGET_WR_SWITCH
 	/* store statistics */
-	stats.sequence++;
-	stats.mode  = softpll.mode;
-	stats.irq_cnt = softpll.irq_count;
-	stats.seq_state = softpll.seq_state;
-	stats.align_state = softpll.ext.align_state;
-	stats.H_lock = softpll.helper.ld.locked;
-	stats.M_lock = softpll.mpll.locked;
-	stats.H_y = softpll.helper.pi.y;
-	stats.M_y = softpll.mpll.pi.y;
-	stats.del_cnt = softpll.delock_count;
-	stats.sequence++;
+	stats->sequence++;
+	stats->mode  = softpll.mode;
+	stats->irq_cnt = softpll.irq_count;
+	stats->seq_state = softpll.seq_state;
+	stats->align_state = softpll.ext.align_state;
+	stats->H_lock = softpll.helper.ld.locked;
+	stats->M_lock = softpll.mpll.locked;
+	stats->H_y = softpll.helper.pi.y;
+	stats->M_y = softpll.mpll.pi.y;
+	stats->del_cnt = softpll.delock_count;
+	stats->sequence++;
 #endif
 
 	return ret != 0;
