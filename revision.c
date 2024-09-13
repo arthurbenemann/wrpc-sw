@@ -21,10 +21,10 @@
 #endif
 
 #ifdef CONFIG_TARGET_WR_SWITCH
-struct spll_stats stats STATS_SECTION(".stats") = {
-	.magic = 0x5b1157a7,
-	.ver = SPLL_STATS_VER
-};
+
+#define SPLL_STATS_BASE 0x00101000		//set in linker
+struct spll_stats *stats = (struct spll_stats *)SPLL_STATS_BASE;
+
 #endif
 
 const struct spll_build_id build_id STATS_SECTION(".build_id") = {

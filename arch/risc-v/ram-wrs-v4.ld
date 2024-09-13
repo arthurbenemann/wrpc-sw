@@ -13,6 +13,7 @@ MEMORY
  LENGTH = 2048
 
     mbox  : ORIGIN = 0x100000, LENGTH = 0x1000
+    stats : ORIGIN = 0x101000, LENGTH = 0x800
 
 }
 SECTIONS
@@ -71,5 +72,9 @@ SECTIONS
    .mbox : {
       *(.mbox)
    } > mbox
-
+   
+   .stats : {
+      *(.stats)
+   } > stats
+   
 }
