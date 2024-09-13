@@ -18,7 +18,7 @@
 int scb_ver = 33;		/* SCB version */
 int scb_ljd_present = 0; /* LJD presence */
 
-extern struct spll_stats stats;
+extern struct spll_stats *stats;
 
 /* dump of structures is not supported for switch */
 int wrc_global = 0xDEADADA5;
@@ -35,7 +35,9 @@ int main(void)
 	uint32_t start_tics = timer_get_tics();
 
 	check_reset();
-	stats.start_cnt++;
+	stats->magic=SPLL_STATS_MAGIC;
+	stats->ver=SPLL_STATS_VER;
+	stats->start_cnt++;
 	_endram = ENDRAM_MAGIC;
 	wrs_gpio_init();
 	console_init();
@@ -44,7 +46,7 @@ int main(void)
 	pp_printf("Commit: %s, built: %s %s.\n",
 	      build_id.commit_id, build_id.build_date, build_id.build_time);
 	pp_printf("SCB version: %d. %s\n", scb_ver,(scb_ver>=34)?"10 MHz SMC Output.":"" );
-	pp_printf("Start counter %d\n", stats.start_cnt);
+	pp_printf("Start counter %d\n", stats->start_cnt);
 	/* Low-jitter Daughterboard detection */
 	scb_ljd_present = gen_gpio_in(&gpio_pin_ljd_board_detect);
 	if (scb_ljd_present) {
@@ -53,7 +55,7 @@ int main(void)
 	}
 	pp_printf("--\n");
 
-	if (stats.start_cnt > 1) {
+	if (stats->start_cnt > 1) {
 		pp_printf("!!spll does not work after restart!!\n");
 		/* for sure problem is in calling second time ad9516_init,
 		 * but not only */
