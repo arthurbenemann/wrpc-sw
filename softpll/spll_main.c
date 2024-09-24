@@ -26,10 +26,15 @@ static inline void spll_log_dac(int y) {}
 #endif
 
 #if defined(CONFIG_TARGET_WR_SWITCH)
+#define MPLL_LJD_KP_DEFAULT	2000
+#define MPLL_LJD_KI_DEFAULT	15
+#define MPLL_LJD_KP_SAFRANE	1100
+#define MPLL_LJD_KI_SAFRANE	30
+
 static volatile int mpll_kp = 1100;
 static volatile int mpll_ki = 30;
-static volatile int mpll_ljd_kp = 2000;
-static volatile int mpll_ljd_ki = 15;
+static volatile int mpll_ljd_kp = 0;
+static volatile int mpll_ljd_ki = 0;
 #endif
 
 void mpll_init(struct spll_main_state *s, int id_ref, int id_out)
@@ -46,9 +51,16 @@ void mpll_init(struct spll_main_state *s, int id_ref, int id_out)
 #if defined(CONFIG_TARGET_WR_SWITCH)
 	static int init = 1;
 	if (init) { /* Avoid overwriting pi values when e.g change timing mode */
-		if (spll_ljd_present) {
-			s->pi.kp = mpll_ljd_kp;
-			s->pi.ki = mpll_ljd_ki;
+		if (periph_id == PERIPH_ID_WRS_LJ_SAFRAN && spll_ljd_present){
+			if (s->pi.kp == 0) /* 0 means not changed at load */
+				s->pi.kp = MPLL_LJD_KP_SAFRANE;
+			if (s->pi.ki == 0) /* 0 means not changed at load */
+				s->pi.ki = MPLL_LJD_KI_SAFRANE;
+		} else if (spll_ljd_present) {
+			if (s->pi.kp == 0) /* 0 means not changed at load */
+				s->pi.kp = MPLL_LJD_KP_DEFAULT;
+			if (s->pi.ki == 0) /* 0 means not changed at load */
+				s->pi.ki = MPLL_LJD_KI_DEFAULT;
 		} else {
 			s->pi.kp = mpll_kp;
 			s->pi.ki = mpll_ki;

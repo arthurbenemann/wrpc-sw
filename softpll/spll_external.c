@@ -123,7 +123,7 @@ int external_align_fsm(volatile struct spll_external_state *s)
 				timer_delay(10);
 				SPLL->ECCR &= (~SPLL_ECCR_EXT_REF_PLLRST);
 				timer_delay(10);
-				ljd_ad9516_stat = ljd_ad9516_init();
+				ljd_ad9516_stat = ljd_ad9516_init(periph_id);
 #if 0
 				f_ext = spll_measure_frequency(SPLL_OSC_EXT);
 #else
