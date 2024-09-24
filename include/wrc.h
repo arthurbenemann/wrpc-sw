@@ -64,7 +64,7 @@ extern int wrc_ui_refperiod;
 
 /* Init functions and defaults for the wrs build */
 int ad9516_init(int scb_ver, int ljd_present);
-int ljd_ad9516_init(void);
+int ljd_ad9516_init(int periph_id);
 void rts_init(void);
 int rtipc_init(void);
 void rts_update(void);

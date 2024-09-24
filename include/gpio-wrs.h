@@ -22,6 +22,7 @@
 #define GPIO_LJD_PERIPH_ID_2	10
 
 extern int ljd_present;
+extern int periph_id;
 
 struct GPIO_WB
 {

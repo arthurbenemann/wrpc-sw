@@ -27,9 +27,18 @@ void init_hw_after_reset(void)
 	uart_init_hw();
 }
 
-static int lj_periph_type_read(int ljd_present) {
+int lj_periph_id_read(void){
+	int periph_id=0;
+
+	periph_id  =  gpio_in(GPIO_LJD_PERIPH_ID_0);
+	periph_id += (gpio_in(GPIO_LJD_PERIPH_ID_1)<<1);
+	periph_id += (gpio_in(GPIO_LJD_PERIPH_ID_2)<<2);
+
+	return periph_id;
+}
+
+static int lj_periph_type_read(int ljd_present,int periph_id) {
 	int osc_freq  = 0;
-	int periph_id = 0;
 
 	if (ljd_present == 0) {
 		pp_printf("\n--- WRS without Low jitter peripherial detected.\n");
@@ -39,10 +48,6 @@ static int lj_periph_type_read(int ljd_present) {
 	osc_freq   =  gpio_in(GPIO_LJD_OSC_FREQ_0);
 	osc_freq  += (gpio_in(GPIO_LJD_OSC_FREQ_1)<<1);
 	osc_freq  += (gpio_in(GPIO_LJD_OSC_FREQ_2)<<2);
-
-	periph_id  =  gpio_in(GPIO_LJD_PERIPH_ID_0);
-	periph_id += (gpio_in(GPIO_LJD_PERIPH_ID_1)<<1);
-	periph_id += (gpio_in(GPIO_LJD_PERIPH_ID_2)<<2);
 
 	pp_printf("\n--- WRS Low jitter peripherial detected. "
 		  "OSC FREQ is %d LJ_PERIPH_ID is %d ---\n",
@@ -83,8 +88,9 @@ int main(void)
 	pp_printf("Start counter %d\n", stats.start_cnt);
 	/* Low-jitter Daughterboard detection */
 	ljd_present = gpio_in(GPIO_LJD_BOARD_DETECT);
-	lj_periph_type = lj_periph_type_read(ljd_present);
-
+	periph_id  =  lj_periph_id_read();
+	lj_periph_type = lj_periph_type_read(ljd_present,periph_id);
+	
 	if (stats.start_cnt > 1) {
 		pp_printf("!!spll does not work after restart!!\n");
 		/* for sure problem is in calling second time ad9516_init,
@@ -92,9 +98,9 @@ int main(void)
 	}
 
 	if ((ljd_present == 1) && (lj_periph_type != PERIPH_WRS_FL_SYNCTECH))
-		ad9516_init(scb_ver, 1);
+		ad9516_init(lj_periph_type, 1);
 	else
-		ad9516_init(scb_ver, 0);
+		ad9516_init(lj_periph_type, 0);
 	rts_init();
 	rtipc_init();
 	spll_very_init();
