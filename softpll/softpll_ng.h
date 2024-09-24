@@ -194,6 +194,7 @@ struct spll_fifo_log {
 /*
  * Low Jitter capabilities corner
  */
+extern int periph_id;
 
 #define PERIPH_WRS_STD_NO_LJ    0
 #define PERIPH_WRS_STD_WITH_LJD 1
