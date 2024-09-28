@@ -78,8 +78,8 @@ void shell_init(void);
 #define PPS_WIDTH (10 * 1000 * 1000 / NS_PER_CLOCK) /* 10ms */
 
 /* Init functions and defaults for the wrs build */
-int ad9516_init(int scb_ver, int ljd_present);
-int ljd_ad9516_init(int periph_id);
+int ad9516_init(int scb_ver, int lj_periph_type, int ljd_present);
+int ljd_ad9516_init(void);
 void rts_init(void);
 int rtipc_init(void);
 void rts_update(void);
