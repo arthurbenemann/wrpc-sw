@@ -51,12 +51,15 @@ void mpll_init(struct spll_main_state *s, int id_ref, int id_out)
 #if defined(CONFIG_TARGET_WR_SWITCH)
 	static int init = 1;
 	if (init) { /* Avoid overwriting pi values when e.g change timing mode */
-		if (periph_id == PERIPH_ID_WRS_LJ_SAFRAN && spll_ljd_present){
+		if (scb_ljd_present_global
+		    && periph_id_global == PERIPH_ID_WRS_LJ_SAFRAN) {
+			/* LJD version from Safrane */
 			if (s->pi.kp == 0) /* 0 means not changed at load */
 				s->pi.kp = MPLL_LJD_KP_SAFRANE;
 			if (s->pi.ki == 0) /* 0 means not changed at load */
 				s->pi.ki = MPLL_LJD_KI_SAFRANE;
-		} else if (spll_ljd_present) {
+		} else if (scb_ljd_present_global) {
+			/* LJD version */
 			if (s->pi.kp == 0) /* 0 means not changed at load */
 				s->pi.kp = MPLL_LJD_KP_DEFAULT;
 			if (s->pi.ki == 0) /* 0 means not changed at load */

@@ -43,7 +43,6 @@
 
 /* flags passed to spll_init() */
 #define SPLL_FLAG_ALIGN_PPS (1<<0) /* enables rephasing of the local oscillator to the external PPS signal */
-#define SPLL_FLAG_USE_LJD (1<<1)   /* enables the Low Jitter Daughterboard mezzanine (WRS V3 - specific) */
 
 
 /* Note on channel naming:
@@ -185,7 +184,6 @@ struct softpll_state {
 /*
  * Low Jitter capabilities corner
  */
-extern int periph_id;
 
 #define PERIPH_WRS_STD_NO_LJ    0
 #define PERIPH_WRS_STD_WITH_LJD 1
@@ -209,9 +207,10 @@ extern int periph_id;
 #define PERIPH_ID_WRS_LJ_SAFRAN       0x5
 
 
-extern unsigned char spll_ljd_present;
 extern volatile struct softpll_state softpll;
 extern int lj_periph_type;
+extern int scb_ljd_present_global;
+extern int periph_id_global;
 
 #endif // __SOFTPLL_NG_H
 

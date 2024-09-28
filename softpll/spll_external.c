@@ -32,8 +32,8 @@ void external_init(volatile struct spll_external_state *s, int ext_ref,
 {
 	int idx = spll_n_chan_ref + spll_n_chan_out;
 
-    if (spll_ljd_present)
-      idx++;
+	if (scb_ljd_present_global)
+		idx++;
 
 	helper_init(s->helper, idx);
 	mpll_init(s->main, idx, spll_n_chan_ref);
@@ -109,13 +109,13 @@ int external_align_fsm(volatile struct spll_external_state *s)
 			break;
 
 		case ALIGN_STATE_WAIT_CLKIN:
-			if(!spll_ljd_present && !(SPLL->ECCR & SPLL_ECCR_EXT_REF_STOPPED) ) {
+			if(!scb_ljd_present_global && !(SPLL->ECCR & SPLL_ECCR_EXT_REF_STOPPED) ) {
 				SPLL->ECCR |= SPLL_ECCR_EXT_REF_PLLRST;
 				s->align_state = ALIGN_STATE_WAIT_PLOCK;
 				done_sth++;
 			}
 #if defined(CONFIG_TARGET_WR_SWITCH)
-			else if (spll_ljd_present) {
+			else if (scb_ljd_present_global) {
 				uint32_t f_ext;
 				int ljd_ad9516_stat;
 				/* reset ljd ad9516 */
@@ -123,7 +123,7 @@ int external_align_fsm(volatile struct spll_external_state *s)
 				timer_delay(10);
 				SPLL->ECCR &= (~SPLL_ECCR_EXT_REF_PLLRST);
 				timer_delay(10);
-				ljd_ad9516_stat = ljd_ad9516_init(periph_id);
+				ljd_ad9516_stat = ljd_ad9516_init();
 #if 0
 				f_ext = spll_measure_frequency(SPLL_OSC_EXT);
 #else
@@ -217,7 +217,7 @@ int external_align_fsm(volatile struct spll_external_state *s)
 					mpll_set_phase_shift(s->main, s->align_shift);
 				} else if (v == s->align_target) {
 					/* Constant latency depending on a WRS type */
-					s->align_shift += get_pps_latency(spll_ljd_present);
+					s->align_shift += get_pps_latency(scb_ljd_present_global);
 					/* Latency tuned by WRS ARM software */
 					s->align_shift += s->pps_latency_ps;
 					old_ext_pps_latency_ps = s->pps_latency_ps;

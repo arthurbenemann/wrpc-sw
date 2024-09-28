@@ -207,7 +207,7 @@ static void ad9516_sync_outputs(void *spi_base)
 
 }
 
-int ad9516_init(int lj_periph_type, int ljd_present)
+int ad9516_init(int scb_version, int lj_periph_type, int ljd_present)
 {
 	pp_printf("Initializing AD9516 PLL...\n");
 
@@ -232,9 +232,9 @@ int ad9516_init(int lj_periph_type, int ljd_present)
 		return -1;
 	}
 
-	if( lj_periph_type == PERIPH_WRS_LJ_SAFRAN)
+	if (lj_periph_type == PERIPH_WRS_LJ_SAFRAN)
 		ad9516_load_regset(spi_base, ad9516_base_config_safran, ARRAY_SIZE(ad9516_base_config_safran), 0);
-	else if (lj_periph_type == PERIPH_WRS_STD_WITH_LJD || lj_periph_type == PERIPH_WRS_STD_NO_LJ)
+	else if (scb_version >= 34)
 		ad9516_load_regset(spi_base, ad9516_base_config_34, ARRAY_SIZE(ad9516_base_config_34), 0);
 	else 				//Old one
 		ad9516_load_regset(spi_base, ad9516_base_config_33, ARRAY_SIZE(ad9516_base_config_33), 0);
@@ -242,7 +242,7 @@ int ad9516_init(int lj_periph_type, int ljd_present)
 	/* Set R divider value depending on Low-Jitter Daughterboard presence */
 	if (ljd_present && lj_periph_type == PERIPH_WRS_LJ_SAFRAN)
 		ad9516_load_regset(spi_base, ad9516_ref_ljd_safran, ARRAY_SIZE(ad9516_ref_ljd_safran), 1);
-	else if (ljd_present)
+	else if (ljd_present && lj_periph_type != PERIPH_WRS_FL_SYNCTECH)
 		ad9516_load_regset(spi_base, ad9516_ref_ljd, ARRAY_SIZE(ad9516_ref_ljd), 1);
 	else
 		ad9516_load_regset(spi_base, ad9516_ref_tcxo, ARRAY_SIZE(ad9516_ref_tcxo), 1);
@@ -250,7 +250,9 @@ int ad9516_init(int lj_periph_type, int ljd_present)
 
 	ad9516_sync_outputs(spi_base);
 
-	if( ljd_ad9516_init == PERIPH_WRS_STD_WITH_LJD || lj_periph_type == PERIPH_WRS_STD_NO_LJ) {	//New SCB v3.4. 10MHz Output.
+	if (lj_periph_type == PERIPH_WRS_LJ_SAFRAN) {
+		/* Do nothing */
+	} else if (scb_version >= 34) {	//New SCB v3.4. 10MHz Output.
 
 		ad9516_set_output_divider(spi_base, 2, 4, 0);  	// OUT2. 187.5 MHz. - not anymore
 		ad9516_set_output_divider(spi_base, 3, 4, 0);  	// OUT3. 187.5 MHz. - not anymore
@@ -266,7 +268,7 @@ int ad9516_init(int lj_periph_type, int ljd_present)
 		 * Output 9	=> 10 MHz
 		 */
 
-	} else if (lj_periph_type == PERIPH_WRS_FL_SYNCTECH){	//Old one
+	} else {	//Old one
 		ad9516_set_output_divider(spi_base, 9, 4, 0);  /* AUX/SWCore = 187.5 MHz */ //not needed anymore
 		ad9516_set_output_divider(spi_base, 7, 8, 0); /* REF = 62.5 MHz */
 		ad9516_set_output_divider(spi_base, 4, 8, 0);  /* GTX = 62.5 MHz */
@@ -284,7 +286,7 @@ int ad9516_init(int lj_periph_type, int ljd_present)
 	return 0;
 }
 
-int ljd_ad9516_init (int periph_id) {
+int ljd_ad9516_init (void) {
  	pp_printf("Initializing Low-Jitter Daughterboard AD9516 PLL...\n");
 	oc_spi_init((void *)BASE_SPI_LJD_BOARD);
 	void *spi_base = (void *)BASE_SPI_LJD_BOARD;
@@ -302,12 +304,12 @@ int ljd_ad9516_init (int periph_id) {
 	ad9516_write_reg(spi_base, 0x232, 0x1);
 	ad9516_write_reg(spi_base, 0x232, 0x0);
 
-	if (periph_id == PERIPH_ID_WRS_LJ_SAFRAN)
+	if (periph_id_global == PERIPH_ID_WRS_LJ_SAFRAN)
 		ad9516_load_regset(spi_base, ad9516_ljd_base_config_safran, ARRAY_SIZE(ad9516_ljd_base_config_safran), 1);
 	else{
 		ad9516_set_vco_divider(spi_base, 3);
 		ad9516_load_regset(spi_base, ad9516_ljd_base_config, ARRAY_SIZE(ad9516_ljd_base_config), 1);
-	 
+
 		ad9516_set_output_divider(spi_base, 6, 8, 0);  	// OUT6. 62.5MHz
 		ad9516_set_output_divider(spi_base, 8, 20, 0);  // OUT6. 62.5MHz
 	}

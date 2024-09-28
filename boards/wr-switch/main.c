@@ -17,7 +17,6 @@
 #include "gpio-wrs.h"
 
 int scb_ver = 33;		/* SCB version */
-int scb_ljd_present = 0; /* LJD presence */
 
 extern struct spll_stats *stats;
 
@@ -31,8 +30,9 @@ void init_hw_after_reset(void)
 	console_init();
 }
 
-int lj_periph_id_read(void){
-	int periph_id=0;
+static int lj_periph_id_read(void)
+{
+	int periph_id;
 
 	periph_id  =  gen_gpio_in(&gpio_pin_ljd_periph_id_0);
 	periph_id += (gen_gpio_in(&gpio_pin_ljd_periph_id_1) << 1);
@@ -41,7 +41,8 @@ int lj_periph_id_read(void){
 	return periph_id;
 }
 
-static int lj_periph_type_read(int ljd_present,int periph_id) {
+static int lj_periph_type_read(int ljd_present, int periph_id)
+{
 	int osc_freq  = 0;
 
 	if (ljd_present == 0) {
@@ -52,10 +53,6 @@ static int lj_periph_type_read(int ljd_present,int periph_id) {
 	osc_freq   =  gen_gpio_in(&gpio_pin_ljd_osc_freq_0);
 	osc_freq  += (gen_gpio_in(&gpio_pin_ljd_osc_freq_1) << 1);
 	osc_freq  += (gen_gpio_in(&gpio_pin_ljd_osc_freq_2) << 2);
-
-	periph_id  =  gen_gpio_in(&gpio_pin_ljd_periph_id_0);
-	periph_id += (gen_gpio_in(&gpio_pin_ljd_periph_id_1) << 1);
-	periph_id += (gen_gpio_in(&gpio_pin_ljd_periph_id_2) << 2);
 
 	pp_printf("\n--- WRS Low jitter peripherial detected. "
 		  "OSC FREQ is %d LJ_PERIPH_ID is %d ---\n",
@@ -83,6 +80,7 @@ static int lj_periph_type_read(int ljd_present,int periph_id) {
 int main(void)
 {
 	uint32_t start_tics = timer_get_tics();
+	int lj_periph_type;
 
 	check_reset();
 	stats->magic=SPLL_STATS_MAGIC;
@@ -100,9 +98,9 @@ int main(void)
 	pp_printf("SCB version: %d. %s\n", scb_ver,(scb_ver>=34)?"10 MHz SMC Output.":"" );
 	pp_printf("Start counter %d\n", stats->start_cnt);
 	/* Low-jitter Daughterboard detection */
-	scb_ljd_present = gen_gpio_in(&gpio_pin_ljd_board_detect);
-	periph_id  =  lj_periph_id_read();
-	lj_periph_type = lj_periph_type_read(scb_ljd_present,periph_id);
+	scb_ljd_present_global = gen_gpio_in(&gpio_pin_ljd_board_detect);
+	periph_id_global = lj_periph_id_read();
+	lj_periph_type = lj_periph_type_read(scb_ljd_present_global, periph_id_global);
 	
 	if (stats->start_cnt > 1) {
 		pp_printf("!!spll does not work after restart!!\n");
@@ -110,10 +108,8 @@ int main(void)
 		 * but not only */
 	}
 
-	if ((scb_ljd_present == 1) && (lj_periph_type != PERIPH_WRS_FL_SYNCTECH))
-		ad9516_init(lj_periph_type, 1);
-	else
-		ad9516_init(lj_periph_type, 0);
+	ad9516_init(scb_ver, lj_periph_type, scb_ljd_present_global);
+
 	rts_init();
 	rtipc_init();
 	spll_very_init();

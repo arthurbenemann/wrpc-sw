@@ -21,9 +21,9 @@
 #include "irq.h"
 
 unsigned char spll_n_chan_ref, spll_n_chan_out;
-unsigned char spll_ljd_present = 0;
 int lj_periph_type = 0;
-int periph_id = 0;
+int scb_ljd_present_global = 0;	/* Low-jitter Daughterboard presence indicator */
+int periph_id_global = 0;
 
 static const char * const seq_states[] =
 {
@@ -306,7 +306,6 @@ void spll_init(int mode, int slave_ref_channel, int flags)
 	spll_n_chan_out = SPLL_CSR_N_OUT_R(csr);
 	if( spll_n_chan_out > 3 ) // fixme: bug in HDL?
 		spll_n_chan_out = 3;
-	spll_ljd_present = (flags & SPLL_FLAG_USE_LJD ? 1 : 0);
 
 	s->mode = mode;
 	s->delock_count = 0;
