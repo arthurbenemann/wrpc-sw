@@ -27,17 +27,19 @@ void init_hw_after_reset(void)
 	uart_init_hw();
 }
 
-int lj_periph_id_read(void){
-	int periph_id=0;
+static int lj_periph_id_read(void)
+{
+	int periph_id;
 
 	periph_id  =  gpio_in(GPIO_LJD_PERIPH_ID_0);
-	periph_id += (gpio_in(GPIO_LJD_PERIPH_ID_1)<<1);
-	periph_id += (gpio_in(GPIO_LJD_PERIPH_ID_2)<<2);
+	periph_id += (gpio_in(GPIO_LJD_PERIPH_ID_1) << 1);
+	periph_id += (gpio_in(GPIO_LJD_PERIPH_ID_2) << 2);
 
 	return periph_id;
 }
 
-static int lj_periph_type_read(int ljd_present,int periph_id) {
+static int lj_periph_type_read(int ljd_present, int periph_id)
+{
 	int osc_freq  = 0;
 
 	if (ljd_present == 0) {
@@ -75,6 +77,7 @@ static int lj_periph_type_read(int ljd_present,int periph_id) {
 int main(void)
 {
 	uint32_t start_tics = timer_get_tics();
+	int lj_periph_type;
 
 	check_reset();
 	stats.start_cnt++;
@@ -87,9 +90,9 @@ int main(void)
 	pp_printf("SCB version: %d. %s\n", scb_ver,(scb_ver>=34)?"10 MHz SMC Output.":"" );
 	pp_printf("Start counter %d\n", stats.start_cnt);
 	/* Low-jitter Daughterboard detection */
-	ljd_present = gpio_in(GPIO_LJD_BOARD_DETECT);
-	periph_id  =  lj_periph_id_read();
-	lj_periph_type = lj_periph_type_read(ljd_present,periph_id);
+	ljd_present_global = gpio_in(GPIO_LJD_BOARD_DETECT);
+	periph_id_global = lj_periph_id_read();
+	lj_periph_type = lj_periph_type_read(ljd_present_global, periph_id_global);
 	
 	if (stats.start_cnt > 1) {
 		pp_printf("!!spll does not work after restart!!\n");
@@ -97,10 +100,8 @@ int main(void)
 		 * but not only */
 	}
 
-	if ((ljd_present == 1) && (lj_periph_type != PERIPH_WRS_FL_SYNCTECH))
-		ad9516_init(lj_periph_type, 1);
-	else
-		ad9516_init(lj_periph_type, 0);
+	ad9516_init(scb_ver, lj_periph_type, ljd_present_global);
+
 	rts_init();
 	rtipc_init();
 	spll_very_init();

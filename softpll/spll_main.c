@@ -31,10 +31,10 @@ void mpll_init(struct spll_main_state *s, int id_ref,
 	s->pi.anti_windup = 1;
 	s->pi.bias = 30000;
 #if defined(CONFIG_WR_SWITCH)
-	if (periph_id == PERIPH_ID_WRS_LJ_SAFRAN && ljd_present){
+	if (ljd_present_global && periph_id_global == PERIPH_ID_WRS_LJ_SAFRAN){
 		s->pi.kp = 1100;
 		s->pi.ki = 30;
-	} else if (ljd_present) {
+	} else if (ljd_present_global) {
 		s->pi.kp = 2000;
 		s->pi.ki = 15;
 	} else {
