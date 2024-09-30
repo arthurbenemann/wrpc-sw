@@ -197,6 +197,58 @@ static int wrc_mon_status(void)
         cprintf(C_GREY, "%d", WR_DSPOR(ppi)->ctr_not_busy);
 #endif // BROADCAST_BASE && BC_EXTRA_MON
 */	
+
+#ifdef defined(BROADCAST_NODE)  // FOR KM3NET BROADCAST TESTS 
+	/* If compiled with broadcast this information is meaninless, so don't show */
+	cprintf(C_BLUE, "\nTiming parameters:\n");
+
+	cprintf(C_GREY, "Round-trip time (mu): ");
+	cprintf(C_WHITE, "%s ps\n", print64(s->picos_mu, 1));
+	cprintf(C_GREY, "Master-slave delay:   ");
+	cprintf(C_WHITE, "%s ps\n", print64(s->delta_ms, 1));
+
+	cprintf(C_GREY, "Master PHY delays:           ");
+	cprintf(C_WHITE, "TX: %9d ps, RX: %9d ps\n",
+		(int32_t) s->delta_tx_m,
+		(int32_t) s->delta_rx_m);
+
+	cprintf(C_GREY, "Slave PHY delays:            ");
+	cprintf(C_WHITE, "TX: %9d ps, RX: %9d ps\n",
+		(int32_t) s->delta_tx_s,
+		(int32_t) s->delta_rx_s);
+	total_asymmetry = s->picos_mu - 2LL * s->delta_ms;
+	cprintf(C_GREY, "Total link asymmetry:");
+	cprintf(C_WHITE, "%21d ps\n", (int32_t) (total_asymmetry));
+
+	crtt = s->picos_mu - s->delta_tx_m - s->delta_rx_m
+		- s->delta_tx_s - s->delta_rx_s;
+	cprintf(C_GREY, "Cable rtt delay:      ");
+	cprintf(C_WHITE, "%s ps\n", print64(crtt, 1));
+
+	cprintf(C_GREY, "Clock offset:");
+	cprintf(C_WHITE, "%29d ps\n", (int32_t) (s->offset));
+
+	cprintf(C_GREY, "Phase setpoint:");
+	cprintf(C_WHITE, "%27d ps\n", (s->cur_setpoint));
+
+	cprintf(C_GREY, "Skew:     ");
+	/* precision is limited to 32 */
+	cprintf(C_WHITE, "%32d ps\n", (int32_t) (s->skew));
+
+	cprintf(C_GREY, "Update counter:");
+	cprintf(C_WHITE, "%27d\n", (int32_t) (s->update_count));
+
+	cprintf(C_BLUE, "\nt1: ");
+	cprintf(C_GREY, "%d s", s->t1.secs);
+	cprintf(C_GREY, ": %d ns", s->t1.scaled_nsecs);
+	cprintf(C_BLUE, "\nt2: ");
+	cprintf(C_GREY, "%d s", s->t2.secs);
+	cprintf(C_GREY, ": %d ns", s->t2.scaled_nsecs);
+	cprintf(C_BLUE, "\nBitSlide: ");
+	cprintf(C_GREY, "%29d ps", s->bitslide);
+#endif  // FOR KM3NET BROADCAST TESTS 
+
+
 	cprintf(C_BLUE, "\n\nPTP status: ");
 	cprintf(C_WHITE, "%s", wrc_ptp_state());
 
