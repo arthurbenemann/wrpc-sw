@@ -43,9 +43,13 @@ CONFIG_ABSCAL=y
 # wrpc-sw is tainted if you change the following options
 #
 # CONFIG_DEVELOPER is not set
+# CONFIG_PRINTF_IS_XINT is not set
+# CONFIG_PRINTF_IS_FULL is not set
+# CONFIG_PRINTF_IS_MINI is not set
+# CONFIG_PRINTF_IS_NONE is not set
 CONFIG_VLAN_ARRAY_SIZE=1
 CONFIG_PRINTF_XINT=y
 # CONFIG_PRINTF_FULL is not set
 # CONFIG_PRINTF_MINI is not set
 # CONFIG_PRINTF_NONE is not set
-# CONFIG_BROADCAST is not set
+CONFIG_BROADCAST=y
