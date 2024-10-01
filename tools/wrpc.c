@@ -374,25 +374,19 @@ static int board_host_init(struct board *board_base,
 	int fd;
 	unsigned pg = getpagesize();
 
-	while (*argc != 1) {
-		if (*argc > 2 && !strcmp (argv[1], "-b")) {
-			char *e;
-			remove_arg1(argc, argv);
-			base = strtoul(argv[1], &e, 0);
-			if (*e != 0) {
-				fprintf (stderr, "bad base '%s'\n", argv[1]);
-				return -1;
-			}
-			remove_arg1(argc, argv);
+	if (*argc > 2 && !strcmp (argv[1], "-b")) {
+		char *e;
+		remove_arg1(argc, argv);
+		base = strtoul(argv[1], &e, 0);
+		if (*e != 0) {
+			fprintf (stderr, "bad base '%s'\n", argv[1]);
+			return -1;
 		}
-		else if (*argc > 2 && !strcmp (argv[1], "-f")) {
+		remove_arg1(argc, argv);
+		if (*argc > 2 && !strcmp (argv[1], "-f")) {
 			remove_arg1(argc, argv);
 			mem_file = argv[1];
 			remove_arg1(argc, argv);
-		}
-		else {
-			fprintf(stderr, "unhandled option '%s'\n", argv[1]);
-			return -1;
 		}
 	}
 
