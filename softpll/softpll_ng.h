@@ -129,6 +129,7 @@ int spll_get_dac(int out_channel);
 
 void spll_set_gain_schedule( spll_gain_schedule_t* sch );
 void spll_set_pi_gain( int loop, int sched_stage, int kp, int ki, int shift );
+void spll_set_pi_gain_kp_ki(int loop, int kp, int ki);
 
 void spll_set_ptracker_average_samples(int channel, int nsamples);
 

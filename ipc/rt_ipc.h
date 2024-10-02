@@ -197,6 +197,17 @@ static struct minipc_pd rtipc_rts_set_average_samples_struct = {
 	},
 };
 
+static struct minipc_pd rtipc_rts_set_pi_gain_struct = {
+	.name = "iiii",
+	.retval = MINIPC_ARG_ENCODE(MINIPC_ATYPE_INT, int),
+	.args = {
+	    MINIPC_ARG_ENCODE(MINIPC_ATYPE_INT, int),
+	    MINIPC_ARG_ENCODE(MINIPC_ATYPE_INT, int),
+	    MINIPC_ARG_ENCODE(MINIPC_ATYPE_INT, int),
+	    MINIPC_ARG_END
+	},
+};
+
 #endif
 
 #endif

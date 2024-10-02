@@ -890,7 +890,26 @@ void spll_set_pi_gain( int loop, int sched_stage, int kp, int ki, int shift )
 	enable_irq();
 }
 
-
+/* Simpler version of spll_set_pi_gain */
+void spll_set_pi_gain_kp_ki(int loop, int kp, int ki)
+{
+	pll_verbose("set_pi_gain loop=%d kp=%d ki=%d\n", loop, kp, ki);
+	disable_irq();
+	switch(loop)
+	{
+		case SPLL_LOOP_HELPER:
+			softpll.helper.pi.kp = kp;
+			softpll.helper.pi.ki = ki;
+			break;
+		case SPLL_LOOP_MAIN:
+			softpll.mpll.pi.kp = kp;
+			softpll.mpll.pi.ki = ki;
+			break;
+		default:
+			break;
+	}
+	enable_irq();
+}
 
 static struct spll_debug_queue_state
 {
