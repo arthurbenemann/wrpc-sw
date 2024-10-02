@@ -860,6 +860,38 @@ config DEFAULT_PRINT_TASK_TIME_THRESHOLD
           functionality. This value can be changed in run-time by the command
           "ps max <msecs>".
 
+config SPLL_PI_SETTINGS
+	depends on TARGET_WR_SWITCH || TARGET_WR_SWITCH_V4
+	bool "Set SPLL loop parameters"
+	default n
+        
+config MPLL_KP
+	depends on SPLL_PI_SETTINGS
+	int "Main PLL proportional gain"
+	default 1100
+	help
+	   Main PLL proportional gain term, 4.12 format
+
+config MPLL_KI
+	depends on SPLL_PI_SETTINGS
+	int "Main PLL integral gain"
+	default 30
+	help
+	   Main PLL integral gain term, 4.12 format
+
+config HPLL_KP
+	depends on SPLL_PI_SETTINGS
+	int "Helper PLL proportional gain"
+	default 150
+	help
+	   Helper PLL proportional gain term, 4.12 format
+
+config HPLL_KI
+	depends on SPLL_PI_SETTINGS
+	int "Helper PLL integral gain"
+	default 2
+	help
+	   Helper PLL integral gain term, 4.12 format
 
 # CONFIG_WR_NODE
 
