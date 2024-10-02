@@ -227,7 +227,6 @@ int wrc_mon_gui(void)
 		pp_printf("\n");
 
 	}
-#ifndef BROADCAST
 	/* If compiled with broadcast this information is meaninless, so don't show */
 	cprintf(C_BLUE, "\nTiming parameters:\n");
 
@@ -266,7 +265,17 @@ int wrc_mon_gui(void)
 
 	cprintf(C_GREY, "Update counter:");
 	cprintf(C_WHITE, "%27d\n", (int32_t) (s->update_count));
-#endif // BROADCAST
+
+#ifdef BROADCAST
+	cprintf(C_BLUE, "\nt1: ");
+	cprintf(C_GREY, "%d s", s->t1.secs);
+	cprintf(C_GREY, ": %d ns", s->t1.scaled_nsecs);
+	cprintf(C_BLUE, "\nt2: ");
+	cprintf(C_GREY, "%d s", s->t2.secs);
+	cprintf(C_GREY, ": %d ns", s->t2.scaled_nsecs);
+	cprintf(C_BLUE, "\nBitSlide: ");
+	cprintf(C_GREY, "%29d ps", s->bitslide);
+#endif // BROADCAST for tests	
 	return 1;
 }
 
