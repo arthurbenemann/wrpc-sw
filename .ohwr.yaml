@@ -12,5 +12,6 @@ images:
 documentation: 'https://ohwr.org/project/wrpc-sw/wikis'
 issues: 'https://ohwr.org/project/wrpc-sw/issues'
 licenses:
-  - GPL-3.0
-  - GPL-3.0-or-later
+  - 'GPL-3.0'
+  - 'GPL-3.0-or-later'
+forum: 'https://forums.ohwr.org/c/wrpc-sw'
