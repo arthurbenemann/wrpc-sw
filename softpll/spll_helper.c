@@ -11,6 +11,11 @@
 
 #include "softpll_ng.h"
 
+#if defined(CONFIG_TARGET_WR_SWITCH)
+static volatile int hpll_kp = 150;
+static volatile int hpll_ki = 2;
+#endif
+
 void helper_very_init( struct spll_helper_state *s )
 {
 /* Phase branch PI controller */
@@ -19,9 +24,11 @@ void helper_very_init( struct spll_helper_state *s )
 #if defined(CONFIG_WR_NODE)
 	s->pi.kp = -150;
 	s->pi.ki = -2;
+#elif defined(CONFIG_TARGET_WR_SWITCH)
+	s->pi.kp = hpll_kp;
+	s->pi.ki = hpll_ki;
 #else
-	s->pi.kp = 150;
-	s->pi.ki = 2;
+#error "Please set CONFIG for wr switch or wr node"
 #endif
 	s->pi.shift = PI_FRACBITS - BOARD_SPLL_DIV_BITS;
 	s->pi.anti_windup = 1;
