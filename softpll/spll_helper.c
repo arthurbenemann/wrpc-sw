@@ -20,13 +20,8 @@ void helper_very_init( struct spll_helper_state *s )
 	s->pi.kp = -150;
 	s->pi.ki = -2;
 #else
-	#if defined(CONFIG_SPLL_PI_SETTINGS)
-		s->pi.kp = CONFIG_HPLL_KP;
-		s->pi.ki = CONFIG_HPLL_KI;
-	#else
-		s->pi.kp = 150;
-		s->pi.ki = 2;
-	#endif
+	s->pi.kp = 150;
+	s->pi.ki = 2;
 #endif
 	s->pi.shift = PI_FRACBITS - BOARD_SPLL_DIV_BITS;
 	s->pi.anti_windup = 1;
