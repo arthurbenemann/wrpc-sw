@@ -36,18 +36,13 @@ void mpll_init(struct spll_main_state *s, int id_ref, int id_out)
 	s->pi.bias = (1 << (BOARD_SPLL_DAC_BITS - 1)); // midscale
 	s->pi.shift = PI_FRACBITS - BOARD_SPLL_DIV_BITS;
 #if defined(CONFIG_TARGET_WR_SWITCH) || defined( CONFIG_TARGET_WR_SWITCH_V4 )
-	#if defined(CONFIG_SPLL_PI_SETTINGS)
-		s->pi.kp = CONFIG_MPLL_KP;
-		s->pi.ki = CONFIG_MPLL_KI;
-	#else
-		if (spll_ljd_present) {
-			s->pi.kp = 2000;
-			s->pi.ki = 15;
-		} else {
-			s->pi.kp = 1100;		// / 2;
-			s->pi.ki = 30;			// / 2;
-		}
-	#endif
+	if (spll_ljd_present) {
+		s->pi.kp = 2000;
+		s->pi.ki = 15;
+	} else {
+		s->pi.kp = 1100;		// / 2;
+		s->pi.ki = 30;			// / 2;
+	}
 #elif defined(CONFIG_WR_NODE)
 	s->pi.kp = -1100;		// / 2;
 	s->pi.ki = -30;			// / 2;
