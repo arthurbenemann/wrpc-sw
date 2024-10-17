@@ -25,6 +25,13 @@ extern void spll_log_dac(int y);
 static inline void spll_log_dac(int y) {}
 #endif
 
+#if defined(CONFIG_TARGET_WR_SWITCH)
+static volatile int mpll_kp = 1100;
+static volatile int mpll_ki = 30;
+static volatile int mpll_ljd_kp = 2000;
+static volatile int mpll_ljd_ki = 15;
+#endif
+
 void mpll_init(struct spll_main_state *s, int id_ref, int id_out)
 {
 	/* Frequency branch PI controller */
@@ -37,13 +44,17 @@ void mpll_init(struct spll_main_state *s, int id_ref, int id_out)
 	s->pi.bias = (1 << (BOARD_SPLL_DAC_BITS - 1)); // midscale
 	s->pi.shift = PI_FRACBITS - BOARD_SPLL_DIV_BITS;
 #if defined(CONFIG_TARGET_WR_SWITCH)
-	if (spll_ljd_present) {
-		s->pi.kp = 2000;
-		s->pi.ki = 15;
-	} else {
-		s->pi.kp = 1100;		// / 2;
-		s->pi.ki = 30;			// / 2;
+	static int init = 1;
+	if (init) { /* Avoid overwriting pi values when e.g change timing mode */
+		if (spll_ljd_present) {
+			s->pi.kp = mpll_ljd_kp;
+			s->pi.ki = mpll_ljd_ki;
+		} else {
+			s->pi.kp = mpll_kp;
+			s->pi.ki = mpll_ki;
+		}
 	}
+	init = 0;
 #elif defined(CONFIG_WR_NODE)
 	s->pi.kp = -1100;		// / 2;
 	s->pi.ki = -30;			// / 2;
