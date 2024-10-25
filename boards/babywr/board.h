@@ -102,7 +102,7 @@ int  babywr_init(void);
 
 void read_sitime (void);
 void write_sitime (int dev, int val);
-int  lck_swp(void);
+int  lock_sweep(void);
 void mpll_restart(void);
 
 extern int phy_calibration_poll(void);
