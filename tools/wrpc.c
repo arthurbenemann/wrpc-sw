@@ -34,8 +34,6 @@
 #endif
 
 //#define SUPPORT_ERTM
-#define SUPPORT_WRSV3
-//#define SUPPORT_WRSV4
 
 #ifdef SUPPORT_ERTM
 #include "libertm.h"
@@ -48,10 +46,10 @@
 #include "hw/softpll_regs.h"
 #include "hw/wrc_diags_regs.h"
 
-#define SUPPORT_WRS 	defined(SUPPORT_WRSV3) || defined(SUPPORT_WRSV4)
+#define SUPPORT_WRS defined(CONFIG_TARGET_WR_SWITCH) || defined(CONFIG_TARGET_WR_SWITCH_V4)
 
 #if SUPPORT_WRS
-	#ifdef SUPPORT_WRSV4
+	#ifdef CONFIG_TARGET_WR_SWITCH_V4
 		#define BASE_FPGA 		0x0400000000
                 #define OFFSET_CPU_CSR  	0x00010900
 	#else
@@ -63,14 +61,14 @@
 	#define OFFSET_SOFTPLL  	0x00010100
 #else
 	/* From include/boards.h */
-	#define OFFSET_SYSCON          0x400
-	#define OFFSET_UART            0x500
-	#define OFFSET_WDIAGS          0x900
-	#define OFFSET_CPU_CSR         0xb00
+	#define OFFSET_SOFTPLL		0x200
+	#define OFFSET_SYSCON		0x400
+	#define OFFSET_WDIAGS		0x900
+	#define OFFSET_UART		0x500
+	#define OFFSET_CPU_CSR		0xb00
+
 #endif
 
-#define OFFSET_SYSCON		0x400
-#define OFFSET_WDIAGS		0x900
 #define VUART_EOL 13
 #define VUART_CMD_USLEEP 1000000
 #define VUART_CMD_PROMPT "wrc#"
@@ -375,7 +373,11 @@ static void mem_writel(struct board *base_board, unsigned reg, uint32_t value)
 static void board_wrs_help(void)
 {
 
-	printf("wrsv3/v4 board\n");
+	#if defined(CONFIG_TARGET_WR_SWITCH_V4)
+		printf("wrsv4 board\n");
+	#else
+		printf("wrsv3 board\n");
+	#endif
 }
 
 static int board_wrs_fini(struct board *base_board)
@@ -390,7 +392,7 @@ static int board_wrs_init(struct board *board_base,
 {
 
 	struct board_wrs *board = (struct board_wrs *)board_base;
-	#ifdef SUPPORT_WRSV4
+	#ifdef CONFIG_TARGET_WR_SWITCH_V4
 		printf("init wrsv4\n");
 	#else
 		printf("init wrsv3\n");
@@ -426,7 +428,7 @@ static int board_wrs_init(struct board *board_base,
 
 }
 
-#ifdef SUPPORT_WRSV4
+#ifdef CONFIG_TARGET_WR_SWITCH_V4
 
 //hack to swap endianness for data only, not addresses
 static uint32_t mem_wrsv4_readl(struct board *base_board, unsigned reg)
@@ -467,7 +469,7 @@ static void mem_wrsv3_writel(struct board *base_board, unsigned reg, uint32_t va
 	*(volatile uint32_t *)(board->base + reg ) = value;
 }
 
-#endif
+#endif /* CONFIG_TARGET_WR_SWITCH_V4 */
 
 static struct board_wrs board_wrs = 
 {
@@ -477,7 +479,7 @@ static struct board_wrs board_wrs =
 			board_wrs_init,
 			board_wrs_fini,
 			board_wrs_help,
-			#ifdef SUPPORT_WRSV4
+			#ifdef CONFIG_TARGET_WR_SWITCH_V4
 				mem_wrsv4_readl,
 				mem_wrsv4_writel
 			#else
@@ -492,7 +494,7 @@ static struct board_wrs board_wrs =
 	},
 };
 
-#endif /* SUPPORT_WRSV4 */
+#endif /* SUPPORT_WRS */
 
 
 static struct board_pci board_pci =
@@ -1237,7 +1239,7 @@ static int do_load(int argc, char *argv[])
 		break;
 	case CMD_DUMP:
 		/* TODO: specify offset and length */
-		wrc_dump(board, 0, 0x200);
+		wrc_dump(board, 0, 0x10000);
 		break;
 	}
 
@@ -1560,42 +1562,6 @@ static int do_vuart(int argc, char *argv[])
 		wrpc_vuart_command(board, cmd);
 	else
 		wrpc_vuart_term(board, keep_term, timeout);
-
-	board->fini(board);
-
-	return 0;
-}
-
-static void help_info(void)
-{
-	printf("usage: %s info\n", progname);
-	printf("display board info\n"
-	       "also useful to check mapping\n");
-}
-
-static int do_info(int argc, char *argv[])
-{
-	unsigned hwfr;
-	unsigned hwir;
-
-	if (board_open(&argc, argv) < 0)
-		return 1;
-
-	hwfr = board->readl(board, OFFSET_SYSCON + offsetof(struct SYSC_WB, HWFR));
-	printf ("hwfr=%08x:  "
-		"memsize: %ukB,  storage: %u, storage sector size: %ukB\n",
-		hwfr,
-		SYSC_HWFR_MEMSIZE_R(hwfr) * 16,
-		SYSC_HWFR_STORAGE_TYPE_R(hwfr),
-		SYSC_HWFR_STORAGE_SEC_R(hwfr));
-
-	hwir = board->readl(board, OFFSET_SYSCON + offsetof(struct SYSC_WB, HWIR));
-	printf ("hwir=%08x:  ", hwir);
-        for (unsigned i = 0; i < 4; i++) {
-                unsigned c = (hwir >> (24 - i * 8)) & 0xff;
-                putchar (c >= 32 && c < 127 ? c : '.');
-        }
-        printf ("\n");
 
 	board->fini(board);
 
@@ -3155,6 +3121,47 @@ out_sock:
         return ret_exit;
 }
 
+#if !defined(SUPPORT_WRS)
+
+static void help_info(void)
+{
+	printf("usage: %s info\n", progname);
+	printf("display board info\n"
+	       "also useful to check mapping\n");
+}
+
+static int do_info(int argc, char *argv[])
+{
+	unsigned hwfr;
+	unsigned hwir;
+
+	if (board_open(&argc, argv) < 0)
+		return 1;
+
+	#if defined(SUPPORT_WRS)
+		printf("wrs unsupported command\n");
+	#else
+		hwfr = board->readl(board, OFFSET_SYSCON + offsetof(struct SYSC_WB, HWFR));
+		printf ("hwfr=%08x:  "
+			"memsize: %ukB,  storage: %u, storage sector size: %ukB\n",
+			hwfr,
+			SYSC_HWFR_MEMSIZE_R(hwfr) * 16,
+			SYSC_HWFR_STORAGE_TYPE_R(hwfr),
+			SYSC_HWFR_STORAGE_SEC_R(hwfr));
+
+		hwir = board->readl(board, OFFSET_SYSCON + offsetof(struct SYSC_WB, HWIR));
+		printf ("hwir=%08x:  ", hwir);
+	        for (unsigned i = 0; i < 4; i++) {
+	                unsigned c = (hwir >> (24 - i * 8)) & 0xff;
+	                putchar (c >= 32 && c < 127 ? c : '.');
+	        }
+	        printf ("\n");
+        #endif
+	board->fini(board);
+
+	return 0;
+}
+
 static void help_wdiags(void)
 {
 	printf("usage: %s wdiags\n", progname);
@@ -3485,6 +3492,8 @@ static int do_aux_logger(int argc, char *argv[])
 	return 0;
 }
 
+#endif /* !defined(SUPPORT_WRS) */
+
 static const struct tool_base tool_help = {
         "help",
         "display list of commands (this help), or help for a command",
@@ -3520,13 +3529,6 @@ static const struct tool_base tool_vuart = {
         help_vuart
 };
 
-static const struct tool_base tool_info = {
-        "info",
-        "display wrpc info and check board",
-        do_info,
-        help_info
-};
-
 static const struct tool_base tool_spll_recorder = {
         "spll-recorder",
         "SoftPLL log recorder",
@@ -3539,6 +3541,15 @@ static const struct tool_base tool_gdbserver = {
         "risc-v gdb-sever",
         do_gdbserver,
         help_gdbserver
+};
+
+
+#if !defined(SUPPORT_WRS)
+static const struct tool_base tool_info = {
+        "info",
+        "display wrpc info and check board",
+        do_info,
+        help_info
 };
 
 static const struct tool_base tool_wdiags = {
@@ -3555,17 +3566,21 @@ static const struct tool_base tool_aux_logger = {
         help_aux_logger
 };
 
+#endif
+
 static const struct tool_base *tools[] = {
 	&tool_help,
 	&tool_version,
         &tool_board,
 	&tool_load,
 	&tool_vuart,
-	&tool_info,
 	&tool_spll_recorder,
 	&tool_gdbserver,
+	#if !defined(SUPPORT_WRS)
+	&tool_info,
 	&tool_wdiags,
         &tool_aux_logger,
+        #endif
 	NULL
 };
 
