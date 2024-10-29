@@ -60,10 +60,17 @@
 #define ALIGN_STATE_WAIT_CLKIN 9
 #define ALIGN_STATE_WAIT_PLOCK 10
 
-#define SPLL_STATS_VER 3
+#define SPLL_STATS_VER 4
 #define SPLL_STATS_MAGIC 0x5b1157a7
 #define SPLL_LOOP_HELPER -1
 #define SPLL_LOOP_MAIN 0
+
+struct spll_build_id {
+	char commit_id[32];
+	char build_date[16];
+	char build_time[16];
+	char build_by[32];
+};
 
 /* info reported through .stat section */
 /* due to endiannes problem strings has to be 4 bytes alligned */
@@ -80,13 +87,7 @@ struct spll_stats {
 	int H_y, M_y;
 	int del_cnt;
 	int start_cnt;
-};
-
-struct spll_build_id {
-	char commit_id[32];
-	char build_date[16];
-	char build_time[16];
-	char build_by[32];
+	struct spll_build_id build_id;
 };
 
 extern struct spll_stats *stats;

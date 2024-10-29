@@ -7,6 +7,7 @@
  *
  * Released according to the GNU GPL, version 2 or any later version.
  */
+#include <string.h>
 #include <wrc.h>
 #include "dev/console.h"
 #include "softpll_ng.h"
@@ -43,6 +44,7 @@ int main(void)
 	console_init();
 	pp_printf("\n");
 	pp_printf("WR Switch Real Time Subsystem (c) CERN 2011 - 2020\n");
+	memcpy(&stats->build_id, &build_id, sizeof (build_id));
 	pp_printf("Commit: %s, built: %s %s.\n",
 	      build_id.commit_id, build_id.build_date, build_id.build_time);
 	pp_printf("SCB version: %d. %s\n", scb_ver,(scb_ver>=34)?"10 MHz SMC Output.":"" );
