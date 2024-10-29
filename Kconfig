@@ -712,6 +712,7 @@ config VERBOSE_DETAIL
 
 config LTO
 	bool
+	default n if TARGET_WR_SWITCH
 	default y if ARCH_RISCV
 	default n
 
