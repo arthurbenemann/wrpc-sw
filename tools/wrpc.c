@@ -45,12 +45,24 @@
 #include "hw/softpll_regs.h"
 #include "hw/wrc_diags_regs.h"
 
-/* From include/boards.h */
-#define OFFSET_SOFTPLL		0x200
-#define OFFSET_SYSCON		0x400
-#define OFFSET_UART		0x500
-#define OFFSET_WDIAGS		0x900
-#define OFFSET_CPU_CSR		0xb00
+#define SUPPORT_WRS defined(CONFIG_TARGET_WR_SWITCH)
+
+#if SUPPORT_WRS
+
+	#define BASE_FPGA		0x10000000
+	#define OFFSET_CPU_CSR  	0x00010800
+	#define SIZE_FPGA 		0x20000
+	#define OFFSET_UART 		0x00010000
+	#define OFFSET_SOFTPLL  	0x00010100
+#else
+	/* From include/boards.h */
+	#define OFFSET_SOFTPLL		0x200
+	#define OFFSET_SYSCON		0x400
+	#define OFFSET_UART		0x500
+	#define OFFSET_WDIAGS		0x900
+	#define OFFSET_CPU_CSR		0xb00
+
+#endif
 
 #define WRPCV4_BASE_SYSCON 0x20400
 
@@ -124,6 +136,10 @@ struct pci_slot {
 };
 
 struct board_host {
+	struct board_mem parent;
+};
+
+struct board_wrs{
 	struct board_mem parent;
 };
 
@@ -432,6 +448,77 @@ static int board_host_init(struct board *board_base,
 
 }
 
+#if SUPPORT_WRS
+
+static void board_wrs_help(void)
+{
+	printf("wrsv3 board\n");
+}
+
+static int board_wrs_fini(struct board *base_board)
+{
+	struct board_wrs *board = (struct board_wrs *)base_board;
+	munmap(board->parent.map_addr, board->parent.map_length);
+	return 0;
+}
+
+static int board_wrs_init(struct board *board_base,
+			  int *argc, char *argv[])
+{
+
+	struct board_wrs *board = (struct board_wrs *)board_base;
+	#ifdef CONFIG_TARGET_WR_SWITCH_V4
+		printf("init wrsv4\n");
+	#else
+		printf("init wrsv3\n");
+	#endif
+	int fd;
+	unsigned pg = getpagesize();
+
+	fd = open("/dev/mem", O_RDWR | O_SYNC);
+	if (fd < 0) {
+		fprintf(stderr, "cannot open resource file '%s': %s\n",
+			"/dev/mem", strerror(errno));
+		return -1;
+	}
+
+	board->parent.map_addr = mmap(NULL, SIZE_FPGA, PROT_READ | PROT_WRITE,
+		       MAP_SHARED, fd,
+		       BASE_FPGA);
+
+
+	if (board->parent.map_addr == MAP_FAILED) {
+		fprintf(stderr, "cannot map resource file '%s': %s\n",
+			"/dev/mem", strerror(errno));
+		close(fd);
+		return -1;
+	}
+	close(fd);
+
+	board->parent.map_length = pg;
+	board->parent.base = board->parent.map_addr;
+	board->parent.is_be = 1;
+
+	return 0;
+
+}
+
+//FIXME: update gateware so can use same readl/writel for wrsv3 and wrsv4
+static uint32_t mem_wrsv3_readl(struct board *base_board, unsigned reg)
+{
+	struct board_mem *board = (struct board_mem *)base_board;
+
+	uint32_t r = *(volatile uint32_t *)(board->base + reg);
+	return r;
+} 
+
+static void mem_wrsv3_writel(struct board *base_board, unsigned reg, uint32_t value)
+{
+	struct board_mem *board = (struct board_mem *)base_board;
+	*(volatile uint32_t *)(board->base + reg ) = value;
+}
+#endif /* SUPPORT_WRS */
+
 static struct board_host board_host =
 {
 	{
@@ -449,6 +536,27 @@ static struct board_host board_host =
 		0
 	},
 };
+
+#if SUPPORT_WRS
+static struct board_wrs board_wrs = 
+{
+	{
+		{
+			"wrs",
+			board_wrs_init,
+			board_wrs_fini,
+			board_wrs_help,
+			mem_wrsv3_readl,
+			mem_wrsv3_writel
+		},
+		NULL,
+		0,
+		NULL,
+		0
+	},
+};
+
+#endif /* SUPPORT_WRS */
 
 
 static struct board_pci board_pci =
@@ -824,6 +932,9 @@ static struct board *boards[] = {
 	&board_cernvme.parent.parent,
 	&board_cernvme_le.parent.parent,
 	&board_wr2rf.parent.parent,
+#endif
+#if SUPPORT_WRS
+        &board_wrs.parent.parent,
 #endif
 	NULL
 };
@@ -1676,6 +1787,7 @@ static int do_vuart(int argc, char *argv[])
 
 	return 0;
 }
+#if !defined(SUPPORT_WRS)
 
 static void help_info(void)
 {
@@ -1712,6 +1824,7 @@ static int do_info(int argc, char *argv[])
 
 	return 0;
 }
+#endif /* !defined(SUPPORT_WRS) */
 
 static int do_board(int argc, char *argv[])
 {
@@ -3267,6 +3380,8 @@ out_sock:
         return ret_exit;
 }
 
+#if !defined(SUPPORT_WRS)
+
 static void help_wdiags(void)
 {
 	printf("usage: %s wdiags\n", progname);
@@ -3597,6 +3712,8 @@ static int do_aux_logger(int argc, char *argv[])
 	return 0;
 }
 
+#endif /* !defined(SUPPORT_WRS) */
+
 static const struct tool_base tool_help = {
         "help",
         "display list of commands (this help), or help for a command",
@@ -3632,12 +3749,14 @@ static const struct tool_base tool_vuart = {
         help_vuart
 };
 
+#if !defined(SUPPORT_WRS)
 static const struct tool_base tool_info = {
         "info",
         "display wrpc info and check board",
         do_info,
         help_info
 };
+#endif /* !defined(SUPPORT_WRS) */
 
 static const struct tool_base tool_spll_recorder = {
         "spll-recorder",
@@ -3653,6 +3772,8 @@ static const struct tool_base tool_gdbserver = {
         help_gdbserver
 };
 
+
+#if !defined(SUPPORT_WRS)
 static const struct tool_base tool_wdiags = {
         "wdiags",
         "WR diags dumper",
@@ -3667,17 +3788,23 @@ static const struct tool_base tool_aux_logger = {
         help_aux_logger
 };
 
+#endif /* !defined(SUPPORT_WRS) */
+
 static const struct tool_base *tools[] = {
 	&tool_help,
 	&tool_version,
         &tool_board,
 	&tool_load,
 	&tool_vuart,
+#if !defined(SUPPORT_WRS)
 	&tool_info,
+#endif /* !defined(SUPPORT_WRS) */
 	&tool_spll_recorder,
 	&tool_gdbserver,
+#if !defined(SUPPORT_WRS)
 	&tool_wdiags,
         &tool_aux_logger,
+#endif /* !defined(SUPPORT_WRS) */
 	NULL
 };
 
