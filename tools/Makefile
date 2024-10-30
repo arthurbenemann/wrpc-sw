@@ -18,9 +18,7 @@ ALL   += wrpc-load
 ALL   += wr-streamers
 ALL   += wrpc-diags
 ALL   += gensdbfs
-ifneq ($(CONFIG_TARGET_WR_SWITCH),y)
 ALL   += wrpc
-endif
 ALL-$(CONFIG_WRPC_PPSI)  += wrpc-dump
 
 ALL+= $(ALL-y)
@@ -116,7 +114,7 @@ wrpc: wrpc.o
 	$(CC) $(CFLAGS) $(WRPC_ERTM_FLAGS) $^ $(TOOL_LDFLAGS) $(LIBVME_LDFLAGS) -o $@ $(WRPC_ERTM_LIBS) -lm
 
 wrpc.o: wrpc.c
-	$(CC_TARGET_HOST) -c $(CFLAGS) $< $(LIBVME_CFLAGS) -o $@
+	$(CC_TARGET_HOST) -c $(CFLAGS) $< $(LIBVME_CFLAGS) -include ../include/generated/autoconf.h -o $@
 
 pfilter-builder: pfilter-builder.c
 	$(CC) $(CFLAGS)  -include ../include/generated/autoconf.h \
