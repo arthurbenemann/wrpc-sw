@@ -170,7 +170,12 @@ int ep_get_bitslide()
 	return PICOS_PER_SERIAL_BIT *
 	    MDIO_WR_SPEC_BSLIDE_R(pcs_read(MDIO_REG_WR_SPEC));
 }
-
+#ifdef BROADCAST
+int ep_get_raw_register()
+{
+	return pcs_read(MDIO_REG_WR_SPEC);
+}
+#endif // BROADCAST
 /* Returns the TX/RX latencies. They are valid only when the link is up. */
 int ep_get_deltas(uint32_t * delta_tx, uint32_t * delta_rx)
 {

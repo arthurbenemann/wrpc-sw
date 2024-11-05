@@ -275,6 +275,8 @@ int wrc_mon_gui(void)
 	cprintf(C_GREY, ": %d ns", s->t2.scaled_nsecs);
 	cprintf(C_BLUE, "\nBitSlide: ");
 	cprintf(C_GREY, "%29d ps", s->bitslide);
+	cprintf(C_BLUE, "\nRaw register: ");
+	cprintf(C_GREY, "%29d ps", s->raw_register);
 #endif // BROADCAST for tests	
 	return 1;
 }
