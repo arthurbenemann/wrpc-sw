@@ -47,6 +47,8 @@
 #  include "boards/pxie-fmc/board-config.h"
 #elif defined(CONFIG_TARGET_WR2RF_VME)
 #  include "boards/wr2rf-vme/board-config.h"
+#elif defined(CONFIG_TARGET_AMD_DEVBOARD)
+#  include "boards/amd-devboard/board-config.h"
 #else
 #  error no board defined
 #endif

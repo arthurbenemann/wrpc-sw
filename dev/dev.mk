@@ -81,6 +81,8 @@ obj-$(CONFIG_TARGET_PXIE_FMC) += \
 obj-$(CONFIG_TARGET_WR2RF_VME) += \
 				dev/24aa025.o \
 
+obj-$(CONFIG_TARGET_AMD_DEVBOARD) += \
+
 # Filter rules are selected according to configuration, but we may
 # have more than one. Note: the filename is reflected in symbol names,
 # so they are hardwired in ../Makefile (and ../tools/pfilter-builder too)
