@@ -260,7 +260,7 @@ int ad9516_init(int scb_version, int lj_periph_type, int ljd_present)
 
 	ad9516_sync_outputs(spi_base);
 
-	if (lj_periph_type == PERIPH_ID_WRS_LJ_SAFRAN) {
+	if (lj_periph_type == PERIPH_WRS_LJ_SAFRAN) {
 		/* Do nothing */
 	} else if (scb_version >= 34) {	//New SCB v3.4. 10MHz Output.
 
