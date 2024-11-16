@@ -26,15 +26,18 @@ static inline void spll_log_dac(int y) {}
 #endif
 
 #if defined(CONFIG_TARGET_WR_SWITCH)
+/* Standard WRS version */
+#define MPLL_KP_DEFAULT		1100
+#define MPLL_KI_DEFAULT		30
+/* WRS LJD version */
 #define MPLL_LJD_KP_DEFAULT	2000
 #define MPLL_LJD_KI_DEFAULT	15
+/* WRS LJD version from Safrane */
 #define MPLL_LJD_KP_SAFRANE	1100
 #define MPLL_LJD_KI_SAFRANE	30
 
-static volatile int mpll_kp = 1100;
-static volatile int mpll_ki = 30;
-static volatile int mpll_ljd_kp = 0;
-static volatile int mpll_ljd_ki = 0;
+static volatile int mpll_kp = 0;
+static volatile int mpll_ki = 0;
 #endif
 
 void mpll_init(struct spll_main_state *s, int id_ref, int id_out)
@@ -51,6 +54,8 @@ void mpll_init(struct spll_main_state *s, int id_ref, int id_out)
 #if defined(CONFIG_TARGET_WR_SWITCH)
 	static int init = 1;
 	if (init) { /* Avoid overwriting pi values when e.g change timing mode */
+		s->pi.kp = mpll_kp;
+		s->pi.ki = mpll_ki;
 		if (scb_ljd_present_global
 		    && periph_id_global == PERIPH_ID_WRS_LJ_SAFRAN) {
 			/* LJD version from Safrane */
@@ -65,8 +70,11 @@ void mpll_init(struct spll_main_state *s, int id_ref, int id_out)
 			if (s->pi.ki == 0) /* 0 means not changed at load */
 				s->pi.ki = MPLL_LJD_KI_DEFAULT;
 		} else {
-			s->pi.kp = mpll_kp;
-			s->pi.ki = mpll_ki;
+			/* Standard version */
+			if (s->pi.kp == 0) /* 0 means not changed at load */
+				s->pi.kp = MPLL_KP_DEFAULT;
+			if (s->pi.ki == 0) /* 0 means not changed at load */
+				s->pi.ki = MPLL_KI_DEFAULT;
 		}
 	}
 	init = 0;
