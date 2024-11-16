@@ -36,8 +36,8 @@ static inline void spll_log_dac(int y) {}
 #define MPLL_LJD_KP_SAFRANE	1100
 #define MPLL_LJD_KI_SAFRANE	30
 
-static volatile int mpll_kp = 0;
-static volatile int mpll_ki = 0;
+static volatile int main_pll_kp = 0;
+static volatile int main_pll_ki = 0;
 #endif
 
 void mpll_init(struct spll_main_state *s, int id_ref, int id_out)
@@ -54,8 +54,8 @@ void mpll_init(struct spll_main_state *s, int id_ref, int id_out)
 #if defined(CONFIG_TARGET_WR_SWITCH)
 	static int init = 1;
 	if (init) { /* Avoid overwriting pi values when e.g change timing mode */
-		s->pi.kp = mpll_kp;
-		s->pi.ki = mpll_ki;
+		s->pi.kp = main_pll_kp;
+		s->pi.ki = main_pll_ki;
 		if (scb_ljd_present_global
 		    && periph_id_global == PERIPH_ID_WRS_LJ_SAFRAN) {
 			/* LJD version from Safrane */

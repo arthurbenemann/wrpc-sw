@@ -776,6 +776,11 @@ int spll_update(void)
 	stats->M_y = softpll.mpll.pi.y;
 	stats->del_cnt = softpll.delock_count;
 	stats->ext_pps_latency_ps = softpll.ext.pps_latency_ps;
+	stats->main_pll_kp = softpll.mpll.pi.kp;
+	stats->main_pll_ki = softpll.mpll.pi.ki;
+	stats->helper_pll_kp = softpll.helper.pi.kp;
+	stats->helper_pll_ki = softpll.helper.pi.ki;
+	
 	stats->sequence++;
 #endif
 

@@ -12,8 +12,8 @@
 #include "softpll_ng.h"
 
 #if defined(CONFIG_TARGET_WR_SWITCH)
-static volatile int hpll_kp = 150;
-static volatile int hpll_ki = 2;
+static volatile int helper_pll_kp = 150;
+static volatile int helper_pll_ki = 2;
 #endif
 
 void helper_very_init( struct spll_helper_state *s )
@@ -25,8 +25,8 @@ void helper_very_init( struct spll_helper_state *s )
 	s->pi.kp = -150;
 	s->pi.ki = -2;
 #elif defined(CONFIG_TARGET_WR_SWITCH)
-	s->pi.kp = hpll_kp;
-	s->pi.ki = hpll_ki;
+	s->pi.kp = helper_pll_kp;
+	s->pi.ki = helper_pll_ki;
 #else
 #error "Please set CONFIG for wr switch or wr node"
 #endif
