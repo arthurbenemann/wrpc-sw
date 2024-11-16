@@ -36,8 +36,9 @@ static inline void spll_log_dac(int y) {}
 #define MPLL_LJD_KP_SAFRANE	1100
 #define MPLL_LJD_KI_SAFRANE	30
 
-static volatile int main_pll_kp = 0;
-static volatile int main_pll_ki = 0;
+/* Force varaibles below in .sdata section so can be updated at load time */
+int main_pll_kp __attribute__((section(".sdata.main_pll_kp"))) = 0;
+int main_pll_ki __attribute__((section(".sdata.main_pll_ki"))) = 0;
 #endif
 
 void mpll_init(struct spll_main_state *s, int id_ref, int id_out)
