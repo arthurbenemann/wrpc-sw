@@ -76,9 +76,9 @@
   {0x0150, 0x00}, //12bit multislip digital delay (MSB)
   {0x0151, 0x00}, //Output mux: channel divider
   {0x0152, 0x08}, //LVPECL      
-  //channel 11 SYNC_CLK2, 250MHz
+  //channel 11 SYNC_CLK2, 500MHz
   {0x0136, 0xC1}, //High perf, SYNC, normal startup, Ch enable
-  {0x0137, 0x0A}, //Divider(/40) LSB 
+  {0x0137, 0x05}, //Divider(/40) LSB
   {0x0138, 0x00}, //Divider (/40) MSB 
   {0x0139, 0x00}, //Fine analog delay
   {0x013A, 0x00}, //Coarse digital delay
