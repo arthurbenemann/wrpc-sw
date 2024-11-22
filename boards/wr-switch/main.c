@@ -37,6 +37,7 @@ static int lj_periph_id_read(void)
 	periph_id  =  gen_gpio_in(&gpio_pin_ljd_periph_id_0);
 	periph_id += (gen_gpio_in(&gpio_pin_ljd_periph_id_1) << 1);
 	periph_id += (gen_gpio_in(&gpio_pin_ljd_periph_id_2) << 2);
+	stats->lj_periph_id = periph_id;
 
 	return periph_id;
 }
@@ -53,6 +54,7 @@ static int lj_periph_type_read(int ljd_present, int periph_id)
 	osc_freq   =  gen_gpio_in(&gpio_pin_ljd_osc_freq_0);
 	osc_freq  += (gen_gpio_in(&gpio_pin_ljd_osc_freq_1) << 1);
 	osc_freq  += (gen_gpio_in(&gpio_pin_ljd_osc_freq_2) << 2);
+	stats->lj_osc_freq_type = osc_freq;
 
 	pp_printf("\n--- WRS Low jitter peripherial detected. "
 		  "OSC FREQ is %d LJ_PERIPH_ID is %d ---\n",
@@ -99,9 +101,11 @@ int main(void)
 	pp_printf("Start counter %d\n", stats->start_cnt);
 	/* Low-jitter Daughterboard detection */
 	scb_ljd_present_global = gen_gpio_in(&gpio_pin_ljd_board_detect);
+	stats->ljd_present = scb_ljd_present_global;
 	periph_id_global = lj_periph_id_read();
 	lj_periph_type = lj_periph_type_read(scb_ljd_present_global, periph_id_global);
-	
+	stats->lj_wrs_type = lj_periph_type;
+
 	if (stats->start_cnt > 1) {
 		pp_printf("!!spll does not work after restart!!\n");
 		/* for sure problem is in calling second time ad9516_init,
