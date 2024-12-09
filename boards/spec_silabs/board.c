@@ -30,7 +30,7 @@ static void wrc_board_si57x_init(void)
 	si57x_read(&si57x, 0, regs, 16);
 	uint32_t f_xtal = 0;
 
-	si57x_get_xtal_frequency(&si57x, &f_xtal);
+	si57x_get_xtal_frequency(&si57x, 100000000, &f_xtal); // 570BBC000121DG => 100M startup f0
 
 	// set Si570 to 100 MHz, hw interface VCO gain = 3 (~20 ppm)
 	si57x_set_frequency(&si57x, f_xtal, 100000000, 3);
