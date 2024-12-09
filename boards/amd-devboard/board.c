@@ -21,6 +21,7 @@
 #include "dev/i2c_eeprom.h"
 #include "dev/syscon.h"
 #include "dev/endpoint.h"
+#include "dev/si57x.h"
 #include "storage.h"
 #include "wrc-debug.h"
 #include "wrc_global.h"
@@ -41,6 +42,7 @@ static struct i2c_bus i2c_wrc_general;
 static struct i2c_bus i2c_wrc_eeprom;
 static struct i2c_eeprom_device wrc_eeprom_mac_dev;
 static struct i2c_eeprom_device wrc_eeprom_sdbfs_dev;
+static struct wr_si57x_interface_device wrc_si570_dev;
 
 static supported_boards_t this_board = UNSUPPORTED;
 
@@ -60,7 +62,7 @@ static const i2c_mux_cfg_t zcu102_i2c_mux_cfg[] = {
 	{.addr = ZCU102_I2C_MUX0_ADR,
 	 .ch_bitmask = ZCU102_I2C_MUX0_CH_BIT_EEPROM
 	             | ZCU102_I2C_MUX0_CH_BIT_SI5341
-	             | ZCU102_I2C_MUX0_CH_BIT_SI570},
+	             | ZCU102_I2C_MUX0_CH_BIT_MGT_SI570},
 	/* Mux 1 */
 	{.addr = ZCU102_I2C_MUX1_ADR,
 	 .ch_bitmask = ZCU102_I2C_MUX1_CH_BIT_SFP2}
@@ -149,6 +151,21 @@ int wrc_board_early_init()
 	/* create MAC EEPROM for ZCU10X */
 	if (this_board == ZCU102) {
 		i2c_eeprom_create(&wrc_eeprom_mac_dev, &i2c_wrc_general, EEPROM_M24C08_ADR, EEPROM_M24C08_BYTE_OFFSET);
+
+		// Initialize Si570 on ZCU102, de-tune to exactly 124975605 Hz
+		wr_si57x_interface_init(&wrc_si570_dev, BASE_SI570, SI570_ADR);
+		si57x_reset(&wrc_si570_dev);
+		timer_delay_ms(10);
+
+		uint32_t f_xtal;
+		si57x_get_xtal_frequency(&wrc_si570_dev, 156250000, &f_xtal); // ZCU102 uses 156250000 as f0
+
+		si57x_set_frequency(&wrc_si570_dev, f_xtal, 124975605, 3); // hw interface VCO gain = 3 (~20 ppm)
+		board_dbg("Si570: frequency set\n");
+
+		si57x_get_xtal_frequency(&wrc_si570_dev, 124975605, &f_xtal); // ZCU102 uses 156250000 as f0
+		board_dbg("Wait 1 second for clock to settle ...\n");
+		timer_delay_ms(1000);
 	}
 
 	return 0;

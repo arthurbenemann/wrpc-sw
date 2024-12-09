@@ -17,6 +17,9 @@
 /* Support etherbone: define the address of the etherbone core. */
 #define BASE_ETHERBONE_CFG BASE_AUXWB
 
+/* Added peripherals */
+#define BASE_SI570        (DEV_BASE + 0x8000)
+
 /* Board-specific parameters */
 #define TICS_PER_SECOND 1000
 
@@ -59,6 +62,7 @@
 #define ZCU102_I2C_MUX0_CH_BIT_EEPROM (1 << 0)
 #define ZCU102_I2C_MUX0_CH_BIT_SI5341 (1 << 1)
 #define ZCU102_I2C_MUX0_CH_BIT_SI570 (1 << 2)
+#define ZCU102_I2C_MUX0_CH_BIT_MGT_SI570 (1 << 3)
 
 #define ZCU102_I2C_MUX1_ADR 0x75
 #define ZCU102_I2C_MUX1_CH_BIT_SFP0 (1 << 7)
@@ -71,6 +75,9 @@
 #define EEPROM_M24C08_BYTE_OFFSET -2
 #define EEPROM_HDMI_EDID_ADR 0x50
 #define EEPROM_HDMI_EDID_BYTE_OFFSET 2
+
+/* i2c addresses */
+#define SI570_ADR 0x5D
 
 /* Maximum number of files in the sdb filesystem.
    Need at least 4: ., sfp database, init script and calibration
