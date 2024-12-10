@@ -10,6 +10,7 @@
  * This file is intended to cover a range of AMD development boards.
  * Currently, the following boards are supported:
  *   - ZCU102
+ *   - ZCU106
  *
  * Released according to the GNU LGPL, version 2.1 or any later version.
  */
@@ -28,6 +29,7 @@
 
 typedef enum {
 	ZCU102,
+	ZCU106,
 	/* additional boards can be added here */
 	NUM_SUPPORTED_BOARDS,
 	UNSUPPORTED,
@@ -48,24 +50,37 @@ static supported_boards_t this_board = UNSUPPORTED;
 
 /* match board type with hardware name string in syscon */
 static const char * const supported_boards_hw_name_strs[NUM_SUPPORTED_BOARDS] = {
-	[ZCU102] = "X102"
+	[ZCU102] = "X102",
+	[ZCU106] = "X106"
 };
 
 /* board names for printing */
 static const char * const supported_boards_strs[NUM_SUPPORTED_BOARDS] = {
-	[ZCU102] = "ZCU102"
+	[ZCU102] = "ZCU102",
+	[ZCU106] = "ZCU106"
 };
 
 /* I2C MUX configurations per board */
 static const i2c_mux_cfg_t zcu102_i2c_mux_cfg[] = {
 	/* Mux 0 */
-	{.addr = ZCU102_I2C_MUX0_ADR,
-	 .ch_bitmask = ZCU102_I2C_MUX0_CH_BIT_EEPROM
-	             | ZCU102_I2C_MUX0_CH_BIT_SI5341
-	             | ZCU102_I2C_MUX0_CH_BIT_MGT_SI570},
+	{.addr = ZCU10x_I2C_MUX0_ADR,
+	 .ch_bitmask = ZCU10x_I2C_MUX0_CH_BIT_EEPROM
+	             | ZCU10x_I2C_MUX0_CH_BIT_SI5341
+	             | ZCU10x_I2C_MUX0_CH_BIT_MGT_SI570},
 	/* Mux 1 */
-	{.addr = ZCU102_I2C_MUX1_ADR,
+	{.addr = ZCU10x_I2C_MUX1_ADR,
 	 .ch_bitmask = ZCU102_I2C_MUX1_CH_BIT_SFP2}
+};
+
+static const i2c_mux_cfg_t zcu106_i2c_mux_cfg[] = {
+	/* Mux 0 */
+	{.addr = ZCU10x_I2C_MUX0_ADR,
+	 .ch_bitmask = ZCU10x_I2C_MUX0_CH_BIT_EEPROM
+	             | ZCU10x_I2C_MUX0_CH_BIT_SI5341
+	             | ZCU10x_I2C_MUX0_CH_BIT_MGT_SI570},
+	/* Mux 1 */
+	{.addr = ZCU10x_I2C_MUX1_ADR,
+	 .ch_bitmask = ZCU10x_I2C_MUX1_CH_BIT_SFP0}
 };
 
 /*
@@ -73,7 +88,8 @@ static const i2c_mux_cfg_t zcu102_i2c_mux_cfg[] = {
  * to 0, so check for nullptr before trying to configure MUX
  */
 static const i2c_mux_cfg_t *i2c_mux_cfgs[NUM_SUPPORTED_BOARDS] = {
-	[ZCU102] = zcu102_i2c_mux_cfg
+	[ZCU102] = zcu102_i2c_mux_cfg,
+	[ZCU106] = zcu106_i2c_mux_cfg
 };
 
 /*
@@ -139,8 +155,8 @@ int wrc_board_early_init()
 	/* default to M24C08 EEPROM */
 	uint8_t eeprom_i2c_addr = EEPROM_M24C08_ADR;
 	int eeprom_offset_bytes = EEPROM_M24C08_BYTE_OFFSET;
-	if (this_board == ZCU102) {
-		/* for ZCU102, use HDMI EDID EEPROM instead*/
+	if (this_board == ZCU102 || this_board == ZCU106) {
+		/* for ZCU10x, use HDMI EDID EEPROM instead*/
 		eeprom_i2c_addr = EEPROM_HDMI_EDID_ADR;
 		eeprom_offset_bytes = EEPROM_HDMI_EDID_BYTE_OFFSET;
 	}
@@ -149,21 +165,21 @@ int wrc_board_early_init()
 	storage_mount(&wrc_storage_dev);
 
 	/* create MAC EEPROM for ZCU10X */
-	if (this_board == ZCU102) {
+	if (this_board == ZCU102 || this_board == ZCU106) {
 		i2c_eeprom_create(&wrc_eeprom_mac_dev, &i2c_wrc_general, EEPROM_M24C08_ADR, EEPROM_M24C08_BYTE_OFFSET);
 
-		// Initialize Si570 on ZCU102, de-tune to exactly 124975605 Hz
+		// Initialize Si570 on ZCU10x, de-tune to exactly 124975605 Hz
 		wr_si57x_interface_init(&wrc_si570_dev, BASE_SI570, SI570_ADR);
 		si57x_reset(&wrc_si570_dev);
 		timer_delay_ms(10);
 
 		uint32_t f_xtal;
-		si57x_get_xtal_frequency(&wrc_si570_dev, 156250000, &f_xtal); // ZCU102 uses 156250000 as f0
+		si57x_get_xtal_frequency(&wrc_si570_dev, 156250000, &f_xtal); // ZCU10x uses 156250000 as f0
 
 		si57x_set_frequency(&wrc_si570_dev, f_xtal, 124975605, 3); // hw interface VCO gain = 3 (~20 ppm)
 		board_dbg("Si570: frequency set\n");
 
-		si57x_get_xtal_frequency(&wrc_si570_dev, 124975605, &f_xtal); // ZCU102 uses 156250000 as f0
+		si57x_get_xtal_frequency(&wrc_si570_dev, 124975605, &f_xtal); // ZCU10x uses 156250000 as f0
 		board_dbg("Wait 1 second for clock to settle ...\n");
 		timer_delay_ms(1000);
 	}
@@ -177,7 +193,7 @@ int wrc_board_init()
 
 	if (storage_get_persistent_mac(0, mac_addr) == 0) {
 		board_dbg("Got MAC address from SDBFS\n");
-	} else if (this_board == ZCU102 &&
+	} else if ((this_board == ZCU102 || this_board == ZCU106) &&
 	           i2c_eeprom_read(&wrc_eeprom_mac_dev, 0x20, mac_addr, 6) == 6) {
 		board_dbg("Got MAC address from board-level metadata EEPROM\n");
 	} else {
