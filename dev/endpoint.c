@@ -175,6 +175,18 @@ int ep_get_raw_register()
 {
 	return pcs_read(MDIO_REG_WR_SPEC);
 }
+/* Returns the TX/RX latencies. They are valid only when the link is up. */
+int bc_ep_get_deltas(uint32_t * delta_tx, uint32_t * delta_rx, uint32_t * sfp_deltaRx)
+{
+	/* fixme: these values should be stored in calibration block in the EEPROM on the FMC. Also, the TX/RX delays of a particular SFP
+	   should be added here */
+	*delta_tx = sfp_deltaTx;
+	*delta_rx =
+	    sfp_deltaRx +
+	    PICOS_PER_SERIAL_BIT *
+	    MDIO_WR_SPEC_BSLIDE_R(pcs_read(MDIO_REG_WR_SPEC));
+	return 0;
+}
 #endif // BROADCAST
 /* Returns the TX/RX latencies. They are valid only when the link is up. */
 int ep_get_deltas(uint32_t * delta_tx, uint32_t * delta_rx)

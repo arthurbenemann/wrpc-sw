@@ -274,9 +274,24 @@ int wrc_mon_gui(void)
 	cprintf(C_GREY, "%d s", s->t2.secs);
 	cprintf(C_GREY, ": %d ns", s->t2.scaled_nsecs);
 	cprintf(C_BLUE, "\nBitSlide: ");
-	cprintf(C_GREY, "%29d ps", s->bitslide);
-	cprintf(C_BLUE, "\nRaw register: ");
-	cprintf(C_GREY, "%29d ps", s->raw_register);
+	cprintf(C_GREY, "%10d ps", s->bitslide);
+	cprintf(C_BLUE, ", Raw register: ");
+	cprintf(C_GREY, "%d ps", s->raw_register);
+
+	cprintf(C_GREY, "deltaRx:            ");
+	cprintf(C_WHITE, "At WRLS, RxPHY: %d ps, RxPs: %d ps, RxBoard: %d ps\n
+	                                          sfp: %d ps\n",
+			(int32_t) s->c_delta_rx_phy_s,
+			(int32_t) s->c_delta_rx_ps_s,
+			(int32_t) s->c_delta_rx_board_s,
+			(int32_t) s->c_delta_rx_sfp_s);
+	cprintf(C_WHITE, "At WR servo, RxPHY: %d ps, RxPs: %d ps, RxBoard: %d ps\n
+	                                          sfpDeltaRx: %d ps\n",
+			(int32_t) s->delta_rx_phy_s,
+			(int32_t) s->delta_rx_ps_s,
+			(int32_t) s->delta_rx_board_s,
+			(int32_t) s->delta_rx_sfp_s);
+
 #endif // BROADCAST for tests	
 	return 1;
 }

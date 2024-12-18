@@ -28,6 +28,7 @@ int ep_link_up(uint16_t * lpa);
 int ep_get_bitslide(void);
 #ifdef BROADCAST
 int ep_get_raw_register(void);
+int ep_get_bc_deltas(uint32_t * delta_tx, uint32_t * delta_rx, uint32_t * sfp_deltaRx);
 #endif // BROADCAST
 
 int ep_get_deltas(uint32_t * delta_tx, uint32_t * delta_rx);

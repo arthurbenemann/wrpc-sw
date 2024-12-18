@@ -44,9 +44,15 @@ int wrpc_get_port_state(struct hal_port_state *port, const char *port_name)
 	else
 		port->mode = HEXP_PORT_MODE_WR_MASTER;
 
+#ifdef BROADCAST
+	ep_get_bc_deltas(&port->calib.delta_tx_board,
+					 &port->calib.delta_rx_board, 
+					 &port->calib.sfp_deltaRx);
+#else
 	/* all deltas are added anyway */
 	ep_get_deltas(&port->calib.delta_tx_board,
 		      &port->calib.delta_rx_board);
+#endif // BROADCAST
 	port->calib.delta_tx_phy = 0;
 	port->calib.delta_rx_phy = 0;
 	port->calib.sfp.delta_tx_ps = 0;
