@@ -44,6 +44,10 @@ typedef struct hal_port_calibration {
 	uint32_t delta_tx_board;
 	uint32_t delta_rx_board;
 
+#ifdef BROADCAST
+	uint32_t sfp_deltaRx;
+#endif // BROADCAST
+
 	/* When non-zero: RX path is calibrated (delta_*_rx contain valid values) */
 	int rx_calibrated;
 	/* When non-zero: TX path is calibrated */
