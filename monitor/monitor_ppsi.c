@@ -280,13 +280,12 @@ int wrc_mon_gui(void)
 	cprintf(C_BLUE, " Raw register: ");
 	cprintf(C_GREY, "%d ps", s->raw_register);
 
-	cprintf(C_GREY, "\ndeltaRx: ");
-	cprintf(C_WHITE, "At WRLS:       RxPHY:%9d ps,       RxPs: %d ps\n                      RxBoard: %9d ps,  sfpDeltaRx: %d ps",
+	cprintf(C_WHITE, "\ndeltaRx: At WRLS:       RxPHY:%9d ps,       RxPs: %d ps\n                      RxBoard:%9d ps,  sfpDeltaRx: %d ps",
 			(int32_t) s->c_delta_rx_phy_s,
 			(int32_t) s->c_delta_rx_ps_s,
 			(int32_t) s->c_delta_rx_board_s,
 			(int32_t) s->c_delta_rx_sfp_s);
-	cprintf(C_WHITE, "\nAt WR servo:   RxPHY: %9d ps,       RxPs: %d ps\n                      RxBoard: %9d ps\n sfpDeltaRx: %d ps",
+	cprintf(C_WHITE, "\n         At WR servo:   RxPHY:%9d ps,       RxPs: %d ps\n                      RxBoard:%9d ps, sfpDeltaRx: %d ps",
 			(int32_t) s->delta_rx_phy_s,
 			(int32_t) s->delta_rx_ps_s,
 			(int32_t) s->delta_rx_board_s,
