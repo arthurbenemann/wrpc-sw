@@ -278,33 +278,32 @@ int wrc_mon_gui(void)
 		s->t2.scaled_nsecs);
 
 	cprintf(C_BLUE, "\nBitSlide: ");
-	cprintf(C_GREY, "%32d ps,", s->bitslide);
+	cprintf(C_GREY, "%32d ps", s->bitslide);
 	cprintf(C_BLUE, "\nRaw register: ");
 	cprintf(C_GREY, "%28d ps", s->raw_register);
 
 	cprintf(C_BLUE, "\ndeltaRx:");
-	cprintf(C_GREY, "\nAt WRLS:");
-	cprintf(C_GREY, "\nRxPHY:    ");
-	cprintf(C_WHITE, "%24d", (int32_t) s->c_delta_rx_phy_s);
+	cprintf(C_BLUE, "\nAt WRLS:");
+	cprintf(C_GREY, "\n         RxPHY:    ");
+	cprintf(C_WHITE, "%15d", (int32_t) s->c_delta_rx_phy_s);
 	cprintf(C_GREY, " ps, RxPs: ");
 	cprintf(C_WHITE, "%15d", (int32_t) s->c_delta_rx_ps_s); 
-	cprintf(C_GREY, " ps, \nRxBoard:  ");
-	cprintf(C_WHITE, "%24d", (int32_t) s->c_delta_rx_board_s);
+	cprintf(C_GREY, " ps\n         RxBoard:  ");
+	cprintf(C_WHITE, "%15d", (int32_t) s->c_delta_rx_board_s);
 	cprintf(C_GREY, " ps, sfpDeltaRx: ");
 	cprintf(C_WHITE, "%10d", (int32_t) s->c_delta_rx_sfp_s);
 	cprintf(C_GREY, " ps");
 
-	cprintf(C_GREY, "\nAt WR servo:");
-	cprintf(C_GREY, "\nRxPHY:");
-	cprintf(C_WHITE, "%24d", (int32_t) s->delta_rx_phy_s);
+	cprintf(C_BLUE, "\nAt WR servo:");
+	cprintf(C_GREY, "\n         RxPHY:    ");
+	cprintf(C_WHITE, "%15d", (int32_t) s->delta_rx_phy_s);
 	cprintf(C_GREY, " ps, RxPs: ");
-	cprintf(C_WHITE, "%15d", (int32_t) s->delta_rx_ps_s);
-	cprintf(C_GREY, " ps, \nRxBoard: ");
-	cprintf(C_WHITE, "%24d", (int32_t) s->delta_rx_board_s);
+	cprintf(C_WHITE, "%15d", (int32_t) s->delta_rx_ps_s); 
+	cprintf(C_GREY, " ps\n         RxBoard:  ");
+	cprintf(C_WHITE, "%15d", (int32_t) s->delta_rx_board_s);
 	cprintf(C_GREY, " ps, sfpDeltaRx: ");
 	cprintf(C_WHITE, "%10d", (int32_t) s->delta_rx_sfp_s);
 	cprintf(C_GREY, " ps");
-
 #endif // BROADCAST for tests	
 	return 1;
 }
