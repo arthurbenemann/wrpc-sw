@@ -32,6 +32,9 @@
 #include "dev/gpio.h"
 #include "netconsole.h"
 #include "dev/wdiags.h"
+#include "dev/timecode.h"
+#include "dev/auxclk.h"
+#include "dev/nmea.h"
 
 #include "wrpc.h"
 #include "system_checks.h"
@@ -44,6 +47,7 @@
 #include "sensors.h"
 
 #include "board.h"
+#include <hw/timecode_regs.h>
 
 #ifdef CONFIG_DAC_LOG
 #include "dev/dac_log.h"
@@ -128,6 +132,33 @@ static void wrc_initialize(void)
 
 	if (HAS_TEMP_SENSORS && HAS_TEMP_FAKE)
 		temp_faketemp_init();
+
+
+#if defined CONFIG_AUX_TIMING_EN
+
+#if defined(CONFIG_AUXCLK_EN)
+    auxclk_init(CONFIG_AUXCLK_FREQ, CONFIG_AUXCLK_DUTY);
+  #endif
+
+  #if defined(CONFIG_NMEA_EN)
+    struct timecode *wrc_timecode =  ((struct timecode *)(BASE_TIMECODE));
+    nmea_init(&wrc_timecode->nmea, CONFIG_NMEA_BAUD, CONFIG_NMEA_INVERT);
+  #endif
+
+  //mux setup
+  #if defined(CONFIG_AUXTMG_SEL_CLK)
+    timecode_sel(TIMECODE_SEL_CLK);
+  #endif
+
+  #if defined(CONFIG_AUXTMG_SEL_IRIG)
+    timecode_sel(TIMECODE_SEL_IRIG);
+  #endif
+
+  #if defined(CONFIG_AUXTMG_SEL_NMEA)
+    timecode_sel(TIMECODE_SEL_NMEA);
+  #endif
+
+#endif
 
 	wrc_board_init();
 
@@ -286,6 +317,10 @@ static void create_tasks(void)
 	/* Read DOM data from SFP even if the link is down or/and SFP
 	 * unplugged */
 	wrc_task_create("sfp_dom", NULL, sfp_dom_update);
+#endif
+
+#ifdef CONFIG_AUX_TIMING_EN
+  wrc_task_create("timecode", NULL, timecode_update);
 #endif
 }
 
