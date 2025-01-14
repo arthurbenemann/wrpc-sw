@@ -38,7 +38,10 @@ obj-$(CONFIG_EMBEDDED_NODE) += \
 
 obj-$(CONFIG_WR_NODE) += \
 	dev/sensors.o \
-	dev/pps_gen.o
+	dev/pps_gen.o \
+	dev/auxclk.o \
+	dev/nmea.o \
+	dev/timecode.o
 
 obj-$(CONFIG_TARGET_WR_SWITCH) += dev/timer-wrs.o dev/gpio.o
 obj-$(CONFIG_PUTS_SYSLOG) += dev/puts-syslog.o
