@@ -355,6 +355,106 @@ config NETCONSOLE_DEF_DISABLE
 
 endchoice
 
+
+config AUX_TIMING_EN
+	boolean "Enable Auxiliary Timing Outputs"
+	default n
+	help
+	  Enable configurable auxiliary timing outputs.
+	  These include:
+	  Expose leap second flags, value
+	  Expose UTC time
+	  Auxiliary clock output
+	  IRIG-B output
+	  NMEA output
+	  (above outputs can be multiplexed)
+
+menu "Auxiliary Timing Configuration"
+	depends on AUX_TIMING_EN
+
+config AUXCLK_EN
+	boolean "Enable Auxclk output"
+	default n
+	help
+	  Enable configurable auxclk output
+
+config AUXCLK_FREQ
+	depends on AUXCLK_EN
+	int "frequency (Hz)"
+	default 10000000
+	help
+	  set the auxclk frequency
+
+config AUXCLK_DUTY
+	depends on AUXCLK_EN
+	int "duty cycle (%)"
+	default 50
+	help
+	  set the auxclk duty cycle
+
+config NMEA_EN
+	boolean "Enable NMEA output"
+	default n
+	help
+	  Enable NMEA output
+
+choice
+	prompt "NMEA Baud Rate"
+	depends on NMEA_EN
+	default NMEA_B9600
+	help
+	  Set baud rate of NMEA interface
+	config NMEA_B9600
+		bool "9600"
+	config NMEA_B19200
+		bool "19200"
+	config NMEA_B38400
+		bool "38400"
+	config NMEA_B57600
+		bool "57600"
+	config NMEA_B115200
+		bool "115200"
+endchoice
+
+config NMEA_INVERT
+	depends on NMEA_EN
+	boolean "Invert NMEA output"
+	default n
+	help
+	  Invert NMEA generator output.  Useful if interfacing directly with RS232 device without local RS232 line driver.
+
+config NMEA_BAUD
+	int
+	default 9600
+	default 19200 if NMEA_B19200
+	default 38400 if NMEA_B38400
+	default 57600 if NMEA_B57600
+	default 115200 if NMEA_B115200
+
+config IRIG_EN
+	boolean "Enable IRIG-B output"
+	default n
+	help
+	  Enable IRIG-B output
+
+choice
+	prompt "Aux Timing Mux"
+	default AUXTMG_SEL_CLK
+	help
+	  Default setting for auxiliary timing output mux
+	config AUXTMG_SEL_CLK
+		depends on AUXCLK_EN
+		bool "Auxclk"
+	config AUXTMG_SEL_IRIG
+		depends on IRIG_EN
+		bool "IRIG-B"
+	config AUXTMG_SEL_NMEA
+		depends on NMEA_EN
+		bool "NMEA"
+endchoice
+
+endmenu
+
 config TEMP_SENSORS
 	depends on WR_NODE
 	boolean "Add suport for temperature sensors"
@@ -522,6 +622,27 @@ config CMD_EP
 	default n
 	help
 	  This enables ep command, which can be used to diagnose endpoint.
+
+config CMD_AUXCLK
+	depends on WR_NODE && AUXCLK_EN
+	boolean "Add 'auxclk' command to configure auxclk output"
+	default n
+	help
+	  This enables auxclk command, which can be used to configure auxclk output.
+
+config CMD_NMEA
+	depends on WR_NODE && NMEA_EN
+	boolean "Add 'nmea' command to configure NMEA output"
+	default n
+	help
+	  This enables nmea command, which can be used to configure NMEA baud rate.
+
+config CMD_AUXTMG
+	depends on WR_NODE
+	boolean "Add 'auxtmg' command to configure auxiliary timing outputs"
+	default n
+	help
+	  This enables auxtmg command, which can be used to configure and read status of auxiliary timing outputs (UTC, NMEA, IRIG-B).
 
 comment "wrpc-sw is tainted if you change the following options"
 config DEVELOPER
