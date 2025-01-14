@@ -106,6 +106,24 @@
 #define HAS_FREQUENCY_MONITOR 0
 #endif
 
+#ifdef CONFIG_CMD_AUXCLK
+#define HAS_CMD_AUXCLK 1
+#else
+#define HAS_CMD_AUXCLK 0
+#endif
+
+#ifdef CONFIG_CMD_NMEA
+#define HAS_CMD_NMEA 1
+#else
+#define HAS_CMD_NMEA 0
+#endif
+
+#ifdef CONFIG_CMD_AUXTMG
+#define HAS_CMD_AUXTMG 1
+#else
+#define HAS_CMD_AUXTMG 0
+#endif
+
 
 static char cmd_buf[SH_MAX_LINE_LEN + 1];
 static int cmd_pos = 0, cmd_len = 0;
@@ -524,4 +542,12 @@ void shell_register_commands(void)
 	}
 	if( HAS_FREQUENCY_MONITOR )
 		REGISTER_WRC_COMMAND(freqmon);
+	if(HAS_CMD_AUXCLK)
+		REGISTER_WRC_COMMAND(auxclk);
+	if(HAS_CMD_NMEA){
+		REGISTER_WRC_COMMAND(nmea);
+	}
+	if(HAS_CMD_AUXTMG)
+		REGISTER_WRC_COMMAND(auxtmg);
+
 }
