@@ -39,6 +39,8 @@ char *format_time(uint64_t sec, int format);
 #define TIME_FORMAT_SYSLOG 1
 #define TIME_FORMAT_SORTED 2
 
+int format_time_int(uint64_t sec_in, int *year, int *month, int *day, int *hour, int *min, int *sec, int *sbs, int *diy);
+
 typedef struct
 {
     uint32_t start_tics;

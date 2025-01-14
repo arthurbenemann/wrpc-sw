@@ -105,6 +105,45 @@ char *format_time(uint64_t sec, int format)
 	return buf;
 }
 
+int format_time_int(uint64_t sec_in, int *year, int *month, int *day, int *hour, int *min, int *sec, int *sbs, int *diy){
+
+	struct time_m t;
+	unsigned long dayclock, dayno;
+	int tmp_year = EPOCH_YR;
+
+	dayclock = (unsigned long)sec_in % SECS_DAY;
+	dayno = (unsigned long)sec_in / SECS_DAY;
+
+	t.tm_sec = dayclock % 60;
+	t.tm_min = (dayclock % 3600) / 60;
+	t.tm_hour = dayclock / 3600;
+	t.tm_wday = (dayno + 4) % 7;	/* day 0 was a thursday */
+
+	while (dayno >= YEARSIZE(tmp_year)) {
+		dayno -= YEARSIZE(tmp_year);
+		tmp_year++;
+	}
+
+	*diy = (int)dayno;
+	t.tm_year = tmp_year;
+	t.tm_mon = 0;
+	while (dayno >= _ytab[LEAPYEAR(tmp_year)][t.tm_mon]) {
+		dayno -= _ytab[LEAPYEAR(tmp_year)][t.tm_mon];
+		t.tm_mon++;
+	}
+	t.tm_mday = dayno + 1;
+
+	*year  = tmp_year;
+	*month = t.tm_mon+1;
+	*day   = t.tm_mday;
+	*hour  = t.tm_hour;
+	*min   = t.tm_min;
+	*sec   = t.tm_sec;
+	*sbs   = (int)dayclock;
+
+	return 0;
+}
+
 void cprintf(int color, const char *fmt, ...)
 {
 	va_list ap;
