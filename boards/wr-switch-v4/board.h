@@ -70,6 +70,9 @@
 #define CONSOLE_UART_BAUDRATE 115200
 #define BOARD_MAX_CONSOLE_DEVICES 1
 
+/* ((ppm/0.0001164)/(2^16-1)) << 8 */
+#define BOARD_SI549_HELPER_GAIN 0x0D1C      //13.109 8n8, gives +/-100ppm swing for 16bit "dac"
+
 // fixme:
 //#define CONFIG_WR_SWITCH_V4
 

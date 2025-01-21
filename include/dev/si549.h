@@ -35,8 +35,7 @@ struct wr_si549_interface_device
 	struct gpio_pin pin_sda;
 	struct gpio_device gpio_i2c;
 	struct i2c_bus master;
-	int n1, hsdiv;
-	uint64_t rfreq;
+	uint16_t gain_factor;
 };
 
 void si549_reset(struct wr_si549_interface_device *dev);
@@ -51,7 +50,7 @@ void si549_get_frequency(struct wr_si549_interface_device *dev, uint32_t* freq_h
 int si549_calc_frequency(uint32_t freq_hz, uint8_t *lsdiv, uint16_t *hsdiv, uint64_t *fbdiv);
 int si549_set_frequency(struct wr_si549_interface_device *dev, uint32_t freq_hz, int vco_gain);
 
-void wr_si549_interface_init(struct wr_si549_interface_device *dev, uint32_t base_addr, uint8_t i2c_addr);
+void wr_si549_interface_init(struct wr_si549_interface_device *dev, uint32_t base_addr, uint8_t i2c_addr, uint16_t gain_factor);
 
 #endif
 

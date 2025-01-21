@@ -52,8 +52,6 @@
 #define SI549_PIN_SCL 0
 #define SI549_PIN_SDA 1
 
-#define GAIN_FIXP8_8	0x0D1C		//13.7539 8n8, gives +/-100ppm swing for 16bit "dac"
-
 void si549_gpio_out(const struct gpio_pin *pin, int value)
 {
 	struct wr_si549_interface_device* dev = ( struct wr_si549_interface_device* ) pin->device->priv;
@@ -435,7 +433,7 @@ int si549_set_frequency(struct wr_si549_interface_device *dev, uint32_t freq_hz,
 	board_dbg("Si549: VCO Gain = %d\n", vco_gain);
 
 	/* Set the gain to adapt command from WRSv3 to the new VCXO of WRSv4 */
-	writel((GAIN_FIXP8_8 << SI549_IF_WB_GAIN_GAIN_VALUE_SHIFT) & SI549_IF_WB_GAIN_GAIN_VALUE_MASK,
+	writel((dev->gain_factor << SI549_IF_WB_GAIN_GAIN_VALUE_SHIFT) & SI549_IF_WB_GAIN_GAIN_VALUE_MASK,
 		dev->base_addr + SI549_IF_WB_GAIN);
 
 	/* Set I2C address, enable SPLL FSM, set gain and set I2C freq prescaler in CR */
@@ -449,7 +447,7 @@ int si549_set_frequency(struct wr_si549_interface_device *dev, uint32_t freq_hz,
 }
 
 
-void wr_si549_interface_init(struct wr_si549_interface_device *dev, uint32_t base_addr, uint8_t i2c_addr)
+void wr_si549_interface_init(struct wr_si549_interface_device *dev, uint32_t base_addr, uint8_t i2c_addr, uint16_t gain_factor)
 {
 	dev->base_addr = (void *) base_addr;
 	dev->gpio_i2c.priv = (void *) dev;
@@ -461,6 +459,7 @@ void wr_si549_interface_init(struct wr_si549_interface_device *dev, uint32_t bas
 	dev->pin_scl.pin = SI549_PIN_SCL;
 	dev->pin_sda.device = &dev->gpio_i2c;
 	dev->pin_sda.pin = SI549_PIN_SDA;
+	dev->gain_factor = gain_factor;
 	bb_i2c_create( &dev->master, &dev->pin_scl, &dev->pin_sda );
 	bb_i2c_scan( &dev->master );
 }

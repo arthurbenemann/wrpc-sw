@@ -103,7 +103,7 @@ int board_init(void)
   int ret;
   //board_dbg("board_init()\n");
 
-  wr_si549_interface_init(&board.si549, BASE_SI57X_INTERFACE, 0x67);
+  wr_si549_interface_init(&board.si549, BASE_SI57X_INTERFACE, 0x67, BOARD_SI549_HELPER_GAIN);
   si549_reset(&board.si549);
 
   uint8_t id = si549_get_id(&board.si549);
