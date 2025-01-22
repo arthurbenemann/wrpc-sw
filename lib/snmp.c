@@ -290,7 +290,7 @@ static const struct snmp_oid oid_array_wrpcPtpConfigGroup[] = {
 	OID_FIELD_VAR(   oid_wrpcPtpConfigSfpPn,     get_p,        set_p,    ASN_OCTET_STR, &snmp_ptp_config.pn),
 	OID_FIELD_VAR(   oid_wrpcPtpConfigDeltaTx,   get_p,        set_p,    ASN_INTEGER,   &snmp_ptp_config.dTx),
 	OID_FIELD_VAR(   oid_wrpcPtpConfigDeltaRx,   get_p,        set_p,    ASN_INTEGER,   &snmp_ptp_config.dRx),
-	OID_FIELD_VAR(   oid_wrpcPtpConfigAlpha,     get_p,        set_p,    ASN_INTEGER,   &snmp_ptp_config.alpha),
+	OID_FIELD_VAR(   oid_wrpcPtpConfigAlpha,     get_p,        set_p,    ASN_COUNTER64, &snmp_ptp_config.alpha),
 	{ 0, }
 };
 
@@ -1213,6 +1213,7 @@ static int set_value(uint8_t *set_buff, struct snmp_oid *obj, void *p)
 	uint8_t len = set_buff[1];
 	uint8_t *oid_data = set_buff + 2;
 	uint32_t tmp_u32;
+	uint64_t tmp_u64;
 	char str_buf[20];
 
 	if (asn_incoming != asn_expected) { /* wrong asn */
@@ -1233,6 +1234,23 @@ static int set_value(uint8_t *set_buff, struct snmp_oid *obj, void *p)
 	    *(uint32_t *)p = tmp_u32;
 	    snmp_verbose("%s: 0x%08x 0x%08x len %d\n", __func__,
 			 *(uint32_t *)p, tmp_u32, len);
+	    break;
+	case ASN_COUNTER64:
+	    if (snmp_version == SNMP_V1) {
+		/* There is no support for 64bit counters in SNMPv1 */
+		return -SNMP_ERR_BADVALUE;
+	    }
+	    if (len > sizeof(uint64_t))
+		return -SNMP_ERR_BADVALUE;
+	    tmp_u64 = 0;
+	    memcpy(&tmp_u64, oid_data, len);
+	    tmp_u64 = htonll(tmp_u64);
+	    /* move data when shorter than 8 bytes */
+	    tmp_u64 = tmp_u64 >> ((8 - len) * 8);
+	    *(uint64_t *)p = tmp_u64;
+	    /* Our printf has disabled printing of 64bit values */
+	    snmp_verbose("%s: 64bit value 0x%08x|%08x\n", __func__,
+			 (uint32_t)(tmp_u64 >> 32), (uint32_t)tmp_u64);
 	    break;
 	case ASN_OCTET_STR:
 	    /* Check the string size */
