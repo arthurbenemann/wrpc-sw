@@ -25,3 +25,13 @@ size_info.txt
 *.bk
 disasm.S
 .gdbinit
+gitmodules
+wrc.size
+arch/risc-v/ram.ld
+libertm/aux_logger
+libertm/libertm_display.so
+libertm/libertm.so
+libertm/main
+libertm/udev-find
+tools/wrpc
+tools/wrpc-load
