@@ -17,8 +17,8 @@ void helper_very_init( struct spll_helper_state *s )
 	s->pi.y_min = (5 << BOARD_SPLL_DIV_BITS);
 	s->pi.y_max = (1 << BOARD_SPLL_DAC_BITS) - (5 << BOARD_SPLL_DIV_BITS);
 #if defined(CONFIG_WR_NODE)
-    s->pi.kp = get_spll_kp();
-    s->pi.ki = get_spll_ki();
+	s->pi.kp = -150;
+	s->pi.ki = -2;
 #else
 	s->pi.kp = 150;
 	s->pi.ki = 2;
@@ -45,7 +45,7 @@ void helper_update(struct spll_helper_state *s, int tag,
 	/* Helper pll tracks the ref clock */
 	if (source != s->ref_src)
 		return;
-
+	
 	//spll_debug(SPLL_DBG_SRC_HELPER, SPLL_DBG_SIGNAL_TAG, tag, 0);
 	//spll_debug(SPLL_DBG_SRC_HELPER, SPLL_DBG_SIGNAL_REF, s->p_setpoint, 0);
 

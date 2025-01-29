@@ -197,18 +197,3 @@ void net_rst(void)
 {
 	SYSCON->GPSR |= SYSC_GPSR_NET_RST;
 }
-
-int get_spll_ki(void)
-{
-    return SYSCON->SPLL_KI;
-}
-
-int get_spll_kp(void)
-{
-    return SYSCON->SPLL_KP;
-}
-
-int get_ptp_rate(void)
-{
-    return SYSCON->PTP_RATE;
-}
