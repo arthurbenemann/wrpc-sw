@@ -266,7 +266,8 @@ void spll_irq_entry(void)
 		tag_source = SPLL_TRR_R0_CHAN_ID_R(trr);
 		tag_value  = SPLL_TRR_R0_VALUE_R(trr);
 
-		if (0) {
+		// Source: 4: MAIN, 5: ext (front panel), 6: board
+		if (tag_source == 6 || tag_source == 5) {
 			spll_debug(SPLL_DBG_SRC_RAW, SPLL_DBG_SIGNAL_SRC, tag_source, 0);
 			spll_debug(SPLL_DBG_SRC_RAW, SPLL_DBG_SIGNAL_TAG, tag_value, 1);
 		}
@@ -291,7 +292,7 @@ void spll_very_init(void)
 
 	spll_n_chan_ref = SPLL_CSR_N_REF_R(csr);
 	spll_n_chan_out = SPLL_CSR_N_OUT_R(csr);
-
+	pp_printf("spll_n_chan_out: %d\n", spll_n_chan_out);
 	if( spll_n_chan_out > 3 ) // fixme: bug in HDL?
 		spll_n_chan_out = 3;
 
@@ -362,7 +363,7 @@ void spll_init(int mode, int slave_ref_channel, int flags)
 		mpll_init(&s->aux[i].pll.dmtd, slave_ref_channel, spll_n_chan_ref + i + 1);
 		s->aux[i].seq_state = AUX_DISABLED;
 	}
-
+	pp_printf("spll_n_chan_ref: %d\n", spll_n_chan_ref);
 	for (i = 0; i < spll_n_chan_ref; i++)
 		ptracker_init(&s->ptrackers[i], i, PTRACKER_AVERAGE_SAMPLES);
 
