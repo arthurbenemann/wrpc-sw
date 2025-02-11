@@ -109,14 +109,14 @@ int minic_rx_frame(struct wr_minic *nic, struct wr_ethhdr *hdr,
 	uint32_t raw_ts;
 	int rx_empty, rx_type;
 	uint16_t rx_data;
-	uint16_t *ptr16_hdr, *ptr16_payload;
+	uint16_t *ptr16_hdr;
+	uint8_t *ptr8_payload;
 	uint32_t oob_cnt;
 	uint16_t oob_hdr;
 	uint64_t sec;
 	uint32_t counter_r, counter_f, counter_ppsg;
 	int cntr_diff;
 	int got_rx_error = 0;
-
 	if (!ver_supported)
 		return 0;
 
@@ -128,7 +128,7 @@ int minic_rx_frame(struct wr_minic *nic, struct wr_ethhdr *hdr,
 	payload_size = 0;
 	/* uint16_t pointers to copy directly 16-bit data from FIFO to memory */
 	ptr16_hdr = (uint16_t *)hdr;
-	ptr16_payload = (uint16_t *)payload;
+	ptr8_payload = payload;
 	/* Read the whole frame till OOB or till the FIFO is empty */
 	oob_cnt = 0;
 	raw_ts  = 0;
@@ -138,7 +138,7 @@ int minic_rx_frame(struct wr_minic *nic, struct wr_ethhdr *hdr,
 	pp_printf("RX@%x:", (unsigned)nic->base);
 #endif
 
-	while (1) {
+	do {
 		unsigned rx;
 
 		rx = minic_readl(nic, MINIC_REG_RX_FIFO);
@@ -152,9 +152,6 @@ int minic_rx_frame(struct wr_minic *nic, struct wr_ethhdr *hdr,
 		rx_data = MINIC_RX_FIFO_DAT_R(rx);
 		rx_empty = (rx & MINIC_RX_FIFO_EMPTY);
 
-		if (rx_empty)
-			break;
-
 		if (rx_type == WRF_DATA && hdr_size < ETH_HEADER_SIZE) {
 			/* reading header */
 			ptr16_hdr[hdr_size>>1] = htons(rx_data);
@@ -166,10 +163,14 @@ int minic_rx_frame(struct wr_minic *nic, struct wr_ethhdr *hdr,
 			payload_size += 2;
 		} else if (rx_type == WRF_DATA) {
 			/* normal situation, retreiving payload */
-			ptr16_payload[payload_size>>1] = htons(rx_data);
+			rx_data = htons(rx_data);
+			memcpy(ptr8_payload, &rx_data, sizeof(uint16_t));
+			ptr8_payload += 2;
 			payload_size += 2;
 		} else if (rx_type == WRF_BYTESEL) {
-			ptr16_payload[payload_size>>1] = htons(rx_data);
+			rx_data = htons(rx_data);
+			memcpy(ptr8_payload, &rx_data, sizeof(uint8_t));
+			ptr8_payload += 1;
 			payload_size += 1;
 		} else if (rx_type == WRF_STATUS && hdr_size > 0) {
 			/* receiving status means error in our frame or
@@ -186,7 +187,6 @@ int minic_rx_frame(struct wr_minic *nic, struct wr_ethhdr *hdr,
 
 			break;
 
-
 		} else if ( rx_type == WRF_OOB) {
 			//pp_printf("rxoob\n");
 			if (oob_cnt == 0)
@@ -198,7 +198,7 @@ int minic_rx_frame(struct wr_minic *nic, struct wr_ethhdr *hdr,
 
 			oob_cnt++;
 		}
-	}
+	} while (!rx_empty);
 
 
 #ifdef RX_DUMP
