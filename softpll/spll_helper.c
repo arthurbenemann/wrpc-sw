@@ -47,6 +47,10 @@ void helper_init(struct spll_helper_state *s, int ref_channel)
 void helper_update(struct spll_helper_state *s, int tag,
 			 int source)
 {
+#if defined(CONFIG_IGNORE_HPLL)
+	s->ld.lock_changed = 1;
+	s->ld.locked = 1;
+#else
 	int err, y;
 
 	/* Helper pll tracks the ref clock */
@@ -104,6 +108,7 @@ void helper_update(struct spll_helper_state *s, int tag,
 	{
 		s->last_lock_duration_ms = timer_get_tics() - s->lock_start_ms;
 	}
+#endif
 }
 
 void helper_start(struct spll_helper_state *s)

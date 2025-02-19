@@ -127,6 +127,12 @@ config LPDC_GTHE4
 
 endchoice
 
+config IGNORE_HPLL
+	bool "Ignore helper PLL"
+	default n
+	help
+	  Ignore helper PLL for applications with external PLL options to generate DMTD clock
+
 # most options with no prompt here are prompted-for in the "advanced" section
 
 config STACKSIZE
